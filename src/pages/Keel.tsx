@@ -23,6 +23,7 @@ import { useKeel } from '../hooks/useKeel';
 import { usePageContext } from '../hooks/usePageContext';
 import type { KeelEntry, KeelCategory } from '../lib/types';
 import { KEEL_CATEGORY_LABELS, KEEL_CATEGORY_ORDER } from '../lib/types';
+import './Keel.css';
 
 function SortableEntryCard({
   entry,
@@ -182,7 +183,7 @@ export default function Keel() {
     return (
       <div className="page">
         <h1>The Keel</h1>
-        <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--spacing-2xl)' }}>
+        <div className="keel-loading">
           <LoadingSpinner />
         </div>
       </div>
@@ -205,11 +206,7 @@ export default function Keel() {
   return (
     <div className="page">
       <h1>The Keel</h1>
-      <p style={{
-        color: 'var(--color-text-secondary)',
-        fontSize: 'var(--font-size-sm)',
-        marginBottom: 'var(--spacing-lg)',
-      }}>
+      <p className="keel-subtitle">
         What you're made of.
       </p>
 
@@ -257,7 +254,6 @@ export default function Keel() {
               <Button
                 variant="text"
                 onClick={() => handleAddForCategory(category)}
-                style={{ alignSelf: 'flex-start' }}
               >
                 + Add {KEEL_CATEGORY_LABELS[category].replace(/s$/, '')}
               </Button>
@@ -266,7 +262,7 @@ export default function Keel() {
         })
       )}
 
-      <div style={{ textAlign: 'center', padding: 'var(--spacing-md) 0' }}>
+      <div className="keel-archived-link">
         <Button variant="text" onClick={handleShowArchived}>
           View Archived
         </Button>

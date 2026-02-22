@@ -12,6 +12,12 @@
   max-width: 420px;
 }
 
+.auth-page__loading {
+  display: flex;
+  justify-content: center;
+  padding: var(--spacing-2xl);
+}
+
 /* Welcome */
 .auth-welcome {
   display: flex;

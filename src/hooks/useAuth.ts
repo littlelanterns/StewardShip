@@ -22,9 +22,8 @@ export function useAuth() {
   useEffect(() => {
     // onAuthStateChange fires immediately with INITIAL_SESSION,
     // so we don't need a separate getSession() call.
-    // This avoids a known hang issue with React 18 Strict Mode.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         console.log('[Auth] onAuthStateChange:', event, session ? 'session exists' : 'no session');
 
         if (session?.user) {
@@ -32,12 +31,18 @@ export function useAuth() {
           if (event === 'INITIAL_SESSION' && initialized.current) return;
           initialized.current = true;
 
-          try {
-            const profile = await fetchProfile(session.user.id);
-            setState({ user: session.user, profile, session, loading: false });
-          } catch {
-            setState({ user: session.user, profile: null, session, loading: false });
-          }
+          // Set user/session immediately so routing works
+          setState((prev) => ({ ...prev, user: session.user, session, loading: false }));
+
+          // Fetch profile OUTSIDE the callback to avoid Supabase client deadlock.
+          // Supabase locks during onAuthStateChange — async calls inside it block all other queries.
+          setTimeout(() => {
+            fetchProfile(session.user.id).then((profile) => {
+              if (profile) setState((prev) => ({ ...prev, profile }));
+            }).catch(() => {
+              // Profile fetch failed — user is still authenticated
+            });
+          }, 0);
         } else {
           initialized.current = true;
           setState({ user: null, profile: null, session: null, loading: false });
@@ -47,6 +52,7 @@ export function useAuth() {
 
     // Safety timeout — if onAuthStateChange never fires, stop loading after 5s
     const timeout = setTimeout(() => {
+      if (initialized.current) return;
       setState((prev) => {
         if (prev.loading) {
           console.warn('[Auth] Timed out waiting for session, continuing without auth');
@@ -59,6 +65,7 @@ export function useAuth() {
     return () => {
       subscription.unsubscribe();
       clearTimeout(timeout);
+      initialized.current = false; // Reset for Strict Mode remount
     };
   }, []);
 

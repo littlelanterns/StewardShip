@@ -23,6 +23,7 @@ import { useMast } from '../hooks/useMast';
 import { usePageContext } from '../hooks/usePageContext';
 import type { MastEntry, MastEntryType } from '../lib/types';
 import { MAST_TYPE_LABELS, MAST_TYPE_ORDER } from '../lib/types';
+import './Mast.css';
 
 function SortableEntryCard({
   entry,
@@ -183,7 +184,7 @@ export default function Mast() {
     return (
       <div className="page">
         <h1>The Mast</h1>
-        <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--spacing-2xl)' }}>
+        <div className="mast-loading">
           <LoadingSpinner />
         </div>
       </div>
@@ -206,11 +207,7 @@ export default function Mast() {
   return (
     <div className="page">
       <h1>The Mast</h1>
-      <p style={{
-        color: 'var(--color-text-secondary)',
-        fontSize: 'var(--font-size-sm)',
-        marginBottom: 'var(--spacing-lg)',
-      }}>
+      <p className="mast-subtitle">
         What holds everything up.
       </p>
 
@@ -258,7 +255,6 @@ export default function Mast() {
               <Button
                 variant="text"
                 onClick={() => handleAddForType(type)}
-                style={{ alignSelf: 'flex-start' }}
               >
                 + Add {MAST_TYPE_LABELS[type].replace(/s$/, '')}
               </Button>
@@ -267,7 +263,7 @@ export default function Mast() {
         })
       )}
 
-      <div style={{ textAlign: 'center', padding: 'var(--spacing-md) 0' }}>
+      <div className="mast-archived-link">
         <Button variant="text" onClick={handleShowArchived}>
           View Archived
         </Button>

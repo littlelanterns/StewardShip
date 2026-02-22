@@ -12,7 +12,10 @@ export function useKeel() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchEntries = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -84,38 +87,44 @@ export function useKeel() {
   }, [user, entries]);
 
   const updateEntry = useCallback(async (id: string, updates: Partial<KeelEntry>) => {
+    if (!user) return;
     const { error: err } = await supabase
       .from('keel_entries')
       .update(updates)
-      .eq('id', id);
+      .eq('id', id)
+      .eq('user_id', user.id);
 
     if (err) throw err;
     setEntries((prev) =>
       prev.map((e) => (e.id === id ? { ...e, ...updates } : e))
     );
-  }, []);
+  }, [user]);
 
   const archiveEntry = useCallback(async (id: string) => {
+    if (!user) return;
     const now = new Date().toISOString();
     const { error: err } = await supabase
       .from('keel_entries')
       .update({ archived_at: now })
-      .eq('id', id);
+      .eq('id', id)
+      .eq('user_id', user.id);
 
     if (err) throw err;
     setEntries((prev) => prev.filter((e) => e.id !== id));
-  }, []);
+  }, [user]);
 
   const restoreEntry = useCallback(async (id: string) => {
+    if (!user) return;
     const { error: err } = await supabase
       .from('keel_entries')
       .update({ archived_at: null })
-      .eq('id', id);
+      .eq('id', id)
+      .eq('user_id', user.id);
 
     if (err) throw err;
     setArchivedEntries((prev) => prev.filter((e) => e.id !== id));
     fetchEntries();
-  }, [fetchEntries]);
+  }, [user, fetchEntries]);
 
   const reorderEntries = useCallback(async (category: KeelCategory, orderedIds: string[]) => {
     // Optimistic update
@@ -131,7 +140,7 @@ export function useKeel() {
     });
 
     const updates = orderedIds.map((id, index) =>
-      supabase.from('keel_entries').update({ sort_order: index }).eq('id', id)
+      supabase.from('keel_entries').update({ sort_order: index }).eq('id', id).eq('user_id', user!.id)
     );
 
     try {
@@ -139,7 +148,7 @@ export function useKeel() {
     } catch {
       fetchEntries();
     }
-  }, [fetchEntries]);
+  }, [user, fetchEntries]);
 
   const entriesByCategory = useMemo(() => {
     const grouped: Record<KeelCategory, KeelEntry[]> = {

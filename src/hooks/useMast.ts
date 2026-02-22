@@ -12,7 +12,10 @@ export function useMast() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchEntries = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -85,39 +88,44 @@ export function useMast() {
   }, [user, entries]);
 
   const updateEntry = useCallback(async (id: string, updates: Partial<MastEntry>) => {
+    if (!user) return;
     const { error: err } = await supabase
       .from('mast_entries')
       .update(updates)
-      .eq('id', id);
+      .eq('id', id)
+      .eq('user_id', user.id);
 
     if (err) throw err;
     setEntries((prev) =>
       prev.map((e) => (e.id === id ? { ...e, ...updates } : e))
     );
-  }, []);
+  }, [user]);
 
   const archiveEntry = useCallback(async (id: string) => {
+    if (!user) return;
     const now = new Date().toISOString();
     const { error: err } = await supabase
       .from('mast_entries')
       .update({ archived_at: now })
-      .eq('id', id);
+      .eq('id', id)
+      .eq('user_id', user.id);
 
     if (err) throw err;
     setEntries((prev) => prev.filter((e) => e.id !== id));
-  }, []);
+  }, [user]);
 
   const restoreEntry = useCallback(async (id: string) => {
+    if (!user) return;
     const { error: err } = await supabase
       .from('mast_entries')
       .update({ archived_at: null })
-      .eq('id', id);
+      .eq('id', id)
+      .eq('user_id', user.id);
 
     if (err) throw err;
     setArchivedEntries((prev) => prev.filter((e) => e.id !== id));
-    // Refetch active entries to include the restored one
     fetchEntries();
-  }, [fetchEntries]);
+  }, [user, fetchEntries]);
 
   const reorderEntries = useCallback(async (type: MastEntryType, orderedIds: string[]) => {
     // Optimistic update
@@ -134,7 +142,7 @@ export function useMast() {
 
     // Batch update to DB
     const updates = orderedIds.map((id, index) =>
-      supabase.from('mast_entries').update({ sort_order: index }).eq('id', id)
+      supabase.from('mast_entries').update({ sort_order: index }).eq('id', id).eq('user_id', user!.id)
     );
 
     try {

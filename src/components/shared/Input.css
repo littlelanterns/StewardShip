@@ -25,7 +25,7 @@
 .input-group__input:focus {
   outline: none;
   border-color: var(--color-border-focus);
-  box-shadow: 0 0 0 2px rgba(59, 110, 103, 0.2);
+  box-shadow: 0 0 0 2px var(--color-focus-ring);
 }
 
 .input-group--error .input-group__input {
@@ -33,7 +33,7 @@
 }
 
 .input-group--error .input-group__input:focus {
-  box-shadow: 0 0 0 2px rgba(192, 57, 43, 0.2);
+  box-shadow: 0 0 0 2px var(--color-error-ring);
 }
 
 .input-group__error {

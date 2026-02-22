@@ -47,6 +47,11 @@
   --color-success: #27AE60;
   --color-accent: var(--color-cognac);
 
+  /* Overlay & focus ring */
+  --color-overlay: rgba(0, 0, 0, 0.4);
+  --color-focus-ring: rgba(59, 110, 103, 0.2);
+  --color-error-ring: rgba(192, 57, 43, 0.2);
+
   /* Gold — ONLY for victories and celebrations */
   --color-victory: var(--color-gold);
 

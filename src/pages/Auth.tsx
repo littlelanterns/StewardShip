@@ -11,8 +11,19 @@ export default function Auth() {
   const { user, loading } = useAuthContext();
   const [view, setView] = useState<AuthView>('welcome');
 
+  // Show spinner while auth state resolves
+  if (loading) {
+    return (
+      <div className="auth-page">
+        <div className="auth-page__container auth-page__loading">
+          <LoadingSpinner size="lg" />
+        </div>
+      </div>
+    );
+  }
+
   // Redirect authenticated users to home
-  if (!loading && user) {
+  if (user) {
     return <Navigate to="/" replace />;
   }
 

@@ -8,7 +8,7 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { user, profile, loading } = useAuthContext();
+  const { user, loading } = useAuthContext();
 
   if (loading) {
     return (

@@ -149,7 +149,7 @@
 .entry-card__textarea:focus {
   outline: none;
   border-color: var(--color-border-focus);
-  box-shadow: 0 0 0 2px rgba(59, 110, 103, 0.2);
+  box-shadow: 0 0 0 2px var(--color-focus-ring);
 }
 
 .entry-card__select {
@@ -168,7 +168,7 @@
 .entry-card__select:focus {
   outline: none;
   border-color: var(--color-border-focus);
-  box-shadow: 0 0 0 2px rgba(59, 110, 103, 0.2);
+  box-shadow: 0 0 0 2px var(--color-focus-ring);
 }
 
 .entry-card__field-group {

@@ -1,0 +1,16 @@
+.keel-subtitle {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  margin-bottom: var(--spacing-lg);
+}
+
+.keel-loading {
+  display: flex;
+  justify-content: center;
+  padding: var(--spacing-2xl);
+}
+
+.keel-archived-link {
+  text-align: center;
+  padding: var(--spacing-md) 0;
+}

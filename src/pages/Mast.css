@@ -1,0 +1,16 @@
+.mast-subtitle {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  margin-bottom: var(--spacing-lg);
+}
+
+.mast-loading {
+  display: flex;
+  justify-content: center;
+  padding: var(--spacing-2xl);
+}
+
+.mast-archived-link {
+  text-align: center;
+  padding: var(--spacing-md) 0;
+}

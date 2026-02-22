@@ -17,10 +17,10 @@ interface EntryCardProps {
   onEditTextChange: (text: string) => void;
   /** Called when entering/exiting edit mode */
   onEditModeChange?: (editing: boolean) => void;
-  /** Drag handle props from dnd-kit */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   dragHandleProps?: {
-    attributes: Record<string, unknown>;
-    listeners: Record<string, unknown>;
+    attributes: any;
+    listeners: any;
   };
   isDragging?: boolean;
   className?: string;
