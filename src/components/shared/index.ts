@@ -3,3 +3,8 @@ export { Input } from './Input';
 export { Card } from './Card';
 export { LoadingSpinner } from './LoadingSpinner';
 export { EmptyState } from './EmptyState';
+export { CollapsibleGroup } from './CollapsibleGroup';
+export { EntryCard } from './EntryCard';
+export { ArchivedView } from './ArchivedView';
+export { AddEntryModal } from './AddEntryModal';
+export { FloatingActionButton } from './FloatingActionButton';

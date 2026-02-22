@@ -70,3 +70,69 @@ export type CompassView =
   | 'big_rocks'
   | 'ivy_lee'
   | 'by_category';
+
+// === PRD-02: The Mast ===
+
+export type MastEntryType = 'value' | 'declaration' | 'faith_foundation' | 'scripture_quote' | 'vision';
+
+export type EntrySource = 'manual' | 'helm_conversation' | 'manifest_extraction' | 'log_routed';
+
+export interface MastEntry {
+  id: string;
+  user_id: string;
+  type: MastEntryType;
+  text: string;
+  category: string | null;
+  sort_order: number;
+  source: EntrySource;
+  source_reference_id: string | null;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const MAST_TYPE_LABELS: Record<MastEntryType, string> = {
+  value: 'Values',
+  declaration: 'Declarations',
+  faith_foundation: 'Faith Foundations',
+  scripture_quote: 'Scriptures & Quotes',
+  vision: 'Vision',
+};
+
+export const MAST_TYPE_ORDER: MastEntryType[] = [
+  'value', 'declaration', 'faith_foundation', 'scripture_quote', 'vision'
+];
+
+// === PRD-03: The Keel ===
+
+export type KeelCategory = 'personality_assessment' | 'trait_tendency' | 'strength' | 'growth_area' | 'you_inc' | 'general';
+
+export type KeelSourceType = 'manual' | 'uploaded_file' | 'helm_conversation' | 'manifest_extraction' | 'log_routed';
+
+export interface KeelEntry {
+  id: string;
+  user_id: string;
+  category: KeelCategory;
+  text: string;
+  source: string;
+  source_type: KeelSourceType;
+  source_reference_id: string | null;
+  file_storage_path: string | null;
+  sort_order: number;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const KEEL_CATEGORY_LABELS: Record<KeelCategory, string> = {
+  personality_assessment: 'Personality Assessments',
+  trait_tendency: 'Traits & Tendencies',
+  strength: 'Strengths',
+  growth_area: 'Growth Areas',
+  you_inc: 'You, Inc.',
+  general: 'General Self-Knowledge',
+};
+
+export const KEEL_CATEGORY_ORDER: KeelCategory[] = [
+  'personality_assessment', 'trait_tendency', 'strength', 'growth_area', 'you_inc', 'general'
+];

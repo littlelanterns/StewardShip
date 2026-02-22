@@ -390,6 +390,78 @@ The AI applies this framework naturally when it helps the user understand why ch
 - When a task is completed, a subtle dismissible prompt asks "Is this a victory worth recording?"
 - Never blocking, never forced. User can dismiss with no consequence.
 
+### Mast Conventions
+- **The Mast is the structural center of StewardShip.** Everything else hangs from it. It contains core values, faith foundations, life declarations, key scriptures/quotes, and vision statements.
+- **Five entry types:** `value`, `declaration`, `faith_foundation`, `scripture_quote`, `vision`. Displayed grouped by type, each group collapsible, user-reorderable within groups via `sort_order`.
+- **Always loaded in AI system prompt.** All active (non-archived) Mast entries are included in every Helm conversation, formatted as:
+  ```
+  The user's guiding principles (The Mast):
+
+  VALUES:
+  - [text]
+
+  DECLARATIONS:
+  - [text]
+
+  FAITH FOUNDATIONS:
+  - [text]
+
+  SCRIPTURES & QUOTES:
+  - [text]
+
+  VISION:
+  - [text]
+  ```
+- **Context budget:** If total Mast text exceeds ~2000 tokens, include all entries but truncate very long individual entries with "[truncated — full text available on Mast page]".
+- **"Craft at Helm" flow:** From the Mast page, user can choose "Craft it at The Helm" to create a new principle via guided conversation. AI asks what area of life the principle is about, then guides articulation. For declarations specifically, AI enforces honest commitment language (Cross-Feature Rule #1). AI presents the crafted text and asks user to confirm before saving.
+- **Empty Mast behavior:** AI still functions without Mast entries. May suggest setting them up — gentle, not nagging, maximum once per week: "I notice your Mast doesn't have any guiding principles yet. Would you like to set some up? It helps me give you better advice."
+- **Misalignment reflection:** When the AI notices patterns in Log, Helm, or Compass data that seem misaligned with Mast principles, it can gently reflect — but ONLY in receptive contexts (processing at The Helm, during a review session). Never as an unsolicited accusation. This is post-MVP (requires accumulated data).
+- **Manifest-to-Mast flow:** User uploads content to Manifest → selects "Extract principles for The Mast" → AI identifies candidate principles → user selects which to keep → user confirms type per entry → saved with `source = 'manifest_extraction'` and `source_reference_id` pointing to Manifest item. (Requires Manifest to be built first.)
+- **Log-to-Mast flow:** User captures a Log entry → selects "Save to Mast" from routing options → app asks for type and optional category → entry created with `source = 'log_routed'` and `source_reference_id` pointing to Log entry. Original Log entry remains (copied, not moved). (Requires Log routing to be built first.)
+- **Onboarding integration (Step 3):** Guided conversation at The Helm walks through: (1) core values, (2) faith tradition/spiritual framework, (3) declarations about who user is choosing to become, (4) anchoring scriptures/quotes/principles, (5) vision for life. AI sets expectations: "This is a starting point. Your Mast will grow and deepen as you use StewardShip."
+- **Natural reference, not mechanical:** AI references Mast entries when relevant to conversation — never lists them or quotes them mechanically. Example: User says "I lost my temper with the kids" and Mast includes a patience declaration → AI says "That's frustrating, especially since you've committed to responding with patience. What happened right before?"
+- **Near-duplicate detection (post-MVP):** AI can notice similar principles and suggest consolidation: "I notice you have two similar principles about patience. Would you like to combine them?"
+- **One table:** `mast_entries` with type enum, optional freeform category, source tracking, soft delete via `archived_at`.
+
+### Keel Conventions
+- **The Keel is who the user IS right now** — personality traits, tendencies, strengths, growth areas, and professional self-knowledge. Where the Mast defines who the user WANTS to become, the Keel describes current reality. Together they give the AI the full picture.
+- **Six entry categories:** `personality_assessment`, `trait_tendency`, `strength`, `growth_area`, `you_inc`, `general`. Displayed grouped by category, each group collapsible, user-reorderable within groups via `sort_order`.
+- **UI label rule:** Always "Growth Areas" — never "Weaknesses" in any UI label, button, or heading.
+- **Flexible input — three paths:** (1) "Write it myself" — simple text form with category and source fields, (2) "Upload a file" — PDF/image, AI generates structured summary, user edits before saving, original stored in Supabase Storage, (3) "Discover at The Helm" — guided self-discovery conversation where AI asks questions, identifies patterns, compiles findings, and presents summary for user confirmation. AI can spread discovery across multiple conversations.
+- **Loaded selectively into AI context** (unlike Mast which is always loaded). Load Keel when personality context would improve the response: relationship conversations, Wheel Spoke 3 (self-inventory), Safe Harbor (processing style during stress), career/professional advice (You, Inc. data), any conversation needing personality-tailored advice.
+- **AI system prompt format when loaded:**
+  ```
+  About the user (The Keel — who they are):
+
+  PERSONALITY ASSESSMENTS:
+  - [source]: [text]
+
+  TRAITS & TENDENCIES:
+  - [text]
+
+  STRENGTHS:
+  - [text]
+
+  GROWTH AREAS:
+  - [text]
+
+  PROFESSIONAL SELF-KNOWLEDGE (You, Inc.):
+  - [text]
+
+  GENERAL:
+  - [text]
+  ```
+- **Contradictory entries are normal.** People are complex. The AI does not flag contradictions as errors. Instead, it can note nuance: "You've described yourself as generally patient but quick to anger when you feel disrespected. That's a useful distinction."
+- **Sensitive content handling:** Keel entries may contain mental health details, trauma history, or shame-related patterns. AI treats all Keel content with care, never throws it back judgmentally. If Keel contains anxiety info, AI avoids high-pressure framing. If it contains trauma info, AI adjusts tone.
+- **Empty Keel behavior:** AI still functions but gives less personalized advice. May suggest building it out — gentle, not nagging, maximum once per week: "I could give you more tailored advice if I knew more about how you think and process. Want to spend a few minutes building out your Keel?"
+- **File uploads:** AI-generated summary stored in `keel_entries.text`, original file stored in Supabase Storage at `keel_entries.file_storage_path`. Very large PDFs route through Manifest RAG pipeline — Keel stores the summary, Manifest stores the chunked/embedded content.
+- **Manifest-to-Keel flow:** User uploads content to Manifest → selects "Inform The Keel" → AI extracts personality-relevant data → user reviews, edits, confirms → saved with `source_type = 'manifest_extraction'`. (Requires Manifest to be built first.)
+- **Log-to-Keel flow:** User captures a Log entry → selects "Save to Keel" from routing options → app asks for category → entry created with `source_type = 'log_routed'`. Original Log entry remains. (Requires Log routing to be built first.)
+- **Onboarding integration (Step 4):** Lighter than Mast setup — AI gathers context, not principles. Asks about personality, typical patterns, assessment results (optional). Compiles and presents for confirmation. Sets expectations: "This is just a starting point. Your Keel will deepen over time."
+- **Source field is freeform** (unlike Mast's enum): allows specific labels like "Enneagram Type 1", "MBTI - INTJ", "therapist", "self-observed". The `source_type` enum tracks HOW the entry was created; the `source` field tracks WHERE the knowledge came from.
+- **Post-MVP:** "You, Inc." guided professional self-assessment at Helm. AI recognizing Keel-relevant insights in ongoing conversations and offering to add them. Visual personality profile summary card.
+- **One table:** `keel_entries` with category enum, freeform source label, source_type enum, optional file_storage_path, source tracking, soft delete via `archived_at`.
+
 ### Charts & Progress Conventions
 - **Streaks:** Calculated on-the-fly from task data, never stored in a separate table. Weekday-only habits skip weekends. Weekly habits = one completion per week maintains the streak.
 - **Broken streaks:** AI does NOT mention unless the user brings it up. When they do, be merciful: "Streaks break. It doesn't erase the days you showed up."
@@ -612,6 +684,8 @@ _This section collects things still needed. Check items off as they're addressed
 - [x] AI system prompt template → defined in PRD-04
 - [x] Helm drawer implementation → defined in PRD-04
 - [x] Declaration language rules → defined in PRD-02
+- [x] Mast conventions → added to feature conventions section
+- [x] Keel conventions → added to feature conventions section
 - [x] Onboarding steps 3-4 → defined in PRD-02 (Mast) and PRD-03 (Keel)
 - [x] First Mate conventions → defined in PRD-12
 - [x] Marriage Toolbox guided modes → defined in PRD-12

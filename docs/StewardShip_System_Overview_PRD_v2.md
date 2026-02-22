@@ -1217,9 +1217,9 @@ stewardship/
 
 | PRD | Status |
 |-----|--------|
-| PRD-01: Auth & User Setup | PRD Written |
-| PRD-02: The Mast | PRD Written |
-| PRD-03: The Keel | PRD Written |
+| PRD-01: Auth & User Setup | Built |
+| PRD-02: The Mast | In Development |
+| PRD-03: The Keel | In Development |
 | PRD-04: The Helm (Drawer + Full Page) | PRD Written |
 | PRD-05: The Log (Commonplace Book) | PRD Written |
 | PRD-06: The Compass + Task Breaker + Lists | PRD Written |
