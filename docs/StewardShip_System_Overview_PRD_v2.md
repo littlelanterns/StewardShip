@@ -949,7 +949,11 @@ God is the Captain. The user is the steward â€” entrusted with the vessel, 
 Zero emoji in UI, AI responses, or generated content. Text-based buttons only. Gold visual effects reserved exclusively for Victory Recorder and streak milestones.
 
 ### Rule 15: AI Auto-Tagging
-When entries are saved (Log entries, Compass tasks, Victories), the AI automatically suggests and applies life area tags. Tags appear as removable chips â€” the user can delete or add but never needs to make tagging decisions themselves.
+When entries are saved (Log entries, Compass tasks, Victories), the AI automatically suggests and applies life area tags. Tags appear as removable chips â€" the user can delete or add but never needs to make tagging decisions themselves.
+
+
+### Rule 16: Gender & Relationship Adaptive
+The AI adapts pronouns, feature visibility, and relationship framing based on `user_profiles.gender` and `user_profiles.relationship_status`. Null values default to gender-neutral/inclusive language. The user can change these at any time in Settings and the app adapts immediately. See ADDENDUM-User-Flexibility.md for full details.
 
 ---
 

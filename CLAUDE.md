@@ -28,17 +28,17 @@ StewardShip is an AI-powered personal growth companion app with nautical theming
 
 ```
 stewardship/
-├── public/                    PWA assets
+├── public/                    PWA assets (manifest.json, sw.js, icons/)
 ├── src/
 │   ├── main.tsx
 │   ├── App.tsx
 │   ├── styles/
-│   │   ├── theme.css          CSS variables (colors, fonts, spacing) — default theme
-│   │   ├── global.css         Reset, base styles
-│   │   └── themes/            Additional theme overrides
+│   │   ├── theme.css          CSS custom properties — default "Captain's Quarters" theme
+│   │   ├── global.css         Reset, base styles, typography
+│   │   └── themes/            Additional theme override files
 │   │       └── [theme-name].css
 │   ├── contexts/
-│   │   └── ThemeContext.tsx    Theme provider and switching logic
+│   │   └── ThemeContext.tsx    Theme provider, switching logic, persistence
 │   ├── lib/
 │   │   ├── supabase.ts        Supabase client
 │   │   ├── ai.ts              AI provider adapter
@@ -46,16 +46,19 @@ stewardship/
 │   │   ├── whisper.ts         Transcription
 │   │   └── types.ts           ALL shared TypeScript interfaces
 │   ├── hooks/                 One hook per feature
-│   ├── components/            One folder per feature
-│   │   ├── shared/            Reusable themed UI components (Button, Card, Input, Modal, etc.)
-│   │   └── [feature]/         Feature-specific components
+│   ├── components/
+│   │   ├── shared/            Themed base components (Button, Card, Input, Modal, Tooltip, etc.)
+│   │   ├── navigation/        Bottom bar, sidebar, routing, Helm drawer shell
+│   │   └── [feature]/         Feature-specific components (one folder per feature)
 │   └── pages/                 One page per route
 ├── supabase/
-│   ├── migrations/            SQL migrations
-│   └── functions/             Edge Functions
-├── docs/                      PRDs, System Overview, and Database Schema
-├── CLAUDE.md                  THIS FILE — project root, read by Claude Code
-└── package.json
+│   ├── migrations/            SQL migration files
+│   └── functions/             Edge Functions (AI proxy, etc.)
+├── docs/                      PRDs, System Overview, Database Schema
+├── CLAUDE.md                  THIS FILE — project root, read by Claude Code automatically
+├── package.json
+├── vite.config.ts
+└── tsconfig.json
 ```
 
 ---
@@ -96,7 +99,15 @@ stewardship/
 - **Additional themes added during development.** The infrastructure supports unlimited themes. Each theme file only needs to redefine the CSS custom properties.
 - **Theme switching:** Instant via Settings page. No page reload required.
 - **Gold effects rule still applies across all themes:** Gold visual accents reserved exclusively for victories and celebrations, regardless of theme.
-- **Shared component library:** `src/components/shared/` contains themed base components (Button, Card, Input, Modal, Tooltip, etc.) that all features import. These components consume CSS variables so they automatically adapt to any theme.
+
+### Shared Component Library
+- **Location:** `src/components/shared/`
+- **Purpose:** Themed base components that all features import. These consume CSS variables so they automatically adapt to any theme.
+- **Core components:** Button, Card, Input, TextArea, Modal, Tooltip, Badge, EmptyState, LoadingSpinner, IconButton
+- **Every feature component should import from shared/ rather than creating its own base elements.**
+- **All shared components must use CSS variables exclusively — zero hardcoded colors, fonts, or spacing values.**
+- **Naming convention:** PascalCase component files (e.g., `Button.tsx`, `Card.tsx`)
+- **Each component has its own CSS module or uses CSS variables directly**
 
 ### Mobile-First
 - Design for phone screens first, scale up for tablet/desktop
@@ -189,7 +200,7 @@ When building any page, assume the Helm drawer can be opened from it. The page s
 
 ```typescript
 // Example: every page provides its context to the Helm
-type HelmPageContext = 
+type HelmPageContext =
   | { page: 'compass'; activeView?: string }
   | { page: 'firstmate' }
   | { page: 'crew'; personId?: string }
@@ -450,7 +461,7 @@ The AI applies this framework naturally when it helps the user understand why ch
 ### First Mate Conventions
 - **Flexible input:** Spouse profile built through conversation at the Helm, file uploads (PDF, .md, .txt, images), pasted text, or direct entry. No rigid form fields. Same flexible-input philosophy as the Keel.
 - **spouse_insights table:** Central store for all knowledge about the spouse. Each record is one categorized insight, tagged by category and source. AI auto-categorizes on save, user can adjust (same pattern as Log tagging).
-- **Categories:** personality, love_appreciation, communication, dreams_goals, challenges_needs, her_world, observation, her_response, gratitude, general.
+- **Categories:** personality, love_appreciation, communication, dreams_goals, challenges_needs, their_world, observation, her_response, gratitude, general.
 - **File handling:** Small/medium files → content extracted into spouse_insights as direct AI context. Large files → sent to Manifest RAG pipeline, `is_rag_indexed` flag set on the insight. Threshold: ~3000 tokens.
 - **Sacred triangle framing (initial user):** Becoming a better husband = drawing closer to God. Swedenborg's conjugial love: deepening spiritual union as both draw closer to the Lord. Applied when natural, never forced. For future multi-user: adapts to user's Mast faith context, omitted for secular users.
 - **Relationship safety — three-tier:**
@@ -566,7 +577,7 @@ Five guided conversation modes accessible from the First Mate page, each opening
 
 ### Settings Conventions
 - **Settings is the configuration panel** — no new tables, no new features. It surfaces controls for `user_profiles` and `user_settings` columns defined across PRDs 01-18, plus `meeting_schedules` from PRD-17.
-- **Nine sections:** Account, AI Configuration, Daily Rhythms, Notifications, Rhythms, Meeting Schedules, Compass, Data & Privacy, About. Collapsible sections with progressive disclosure.
+- **Nine sections:** Account (includes Appearance/Theme), AI Configuration, Daily Rhythms, Notifications, Rhythms, Meeting Schedules, Compass, Data & Privacy, About. Collapsible sections with progressive disclosure.
 - **Appearance/Theme setting:** Lives in Account section. Switches active theme instantly via ThemeProvider context. Persists to `user_settings.theme` column.
 - **Plain language labels** everywhere — "Response Length" not "max_tokens", "Context Depth" not "context_window_size", friendly labels not technical terms.
 - **Deep linking:** other features can link directly to a specific Settings section expanded (e.g., "Notification Settings" from a reminder, "Meeting Schedules" from Meeting Frameworks).
@@ -574,6 +585,22 @@ Five guided conversation modes accessible from the First Mate page, each opening
 - **Delete account:** irreversible, two-step confirmation (warning + type "DELETE"). Cascade delete on auth.users removes all related records.
 - **API key:** encrypted storage, "Test Connection" before saving, "Clear" button to revert to developer key.
 - **Data export:** ZIP of JSON files per table, background generation, 24-hour download link expiry.
+
+---
+
+
+### User Flexibility (Gender & Relationship Status)
+- AI reads `user_profiles.gender` and `user_profiles.relationship_status` to adapt language.
+- If either is null, use gender-neutral language (they/them, "person", "partner").
+- First Mate visibility: only if relationship_status is 'married' or 'dating'.
+- Marriage Toolbox visibility: only if relationship_status is 'married'.
+- Sphere Focus center: Self always. Spouse if married. God if faith Mast entries exist. Partner optional if dating.
+- Pronoun adaptation: AI determines spouse/partner pronouns from conversational context, not a form field.
+- Sacred triangle: adapts to [user role] + [partner role] + Lord. Omitted for secular users.
+- Language rule: Never assume gender or relationship status. Adapt naturally when context is provided.
+- Onboarding asks gender/relationship early (optional, skippable). First Mate step only shows for married/dating.
+- `spouse_insights` category 'her_world' renamed to 'their_world' (displayed as "His World" / "Her World" / "Their World" based on partner gender).
+- `spouse_prompts` prompt_type 'ask_her' renamed to 'ask_them' (button displayed as "Ask Him" / "Ask Her" / "Ask Them").
 
 ---
 

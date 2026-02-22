@@ -31,6 +31,8 @@
 | display_name | TEXT | | NOT NULL | User's preferred name for AI greetings |
 | timezone | TEXT | 'America/Chicago' | NOT NULL | IANA timezone string |
 | onboarding_completed | BOOLEAN | false | NOT NULL | Set true after onboarding finishes |
+| gender | TEXT | null | NULL | Enum: 'male', 'female', 'non_binary', 'prefer_not_to_say'. Set during onboarding or Settings. |
+| relationship_status | TEXT | null | NULL | Enum: 'single', 'dating', 'married', 'divorced', 'widowed'. Set during onboarding or Settings. |
 | created_at | TIMESTAMPTZ | now() | NOT NULL | |
 | updated_at | TIMESTAMPTZ | now() | NOT NULL | Auto-trigger |
 
@@ -508,7 +510,7 @@
 | baseline_summary | TEXT | null | NULL | "Where I was" — first compiled observation |
 | baseline_date | DATE | null | NULL | When baseline was established |
 | current_summary | TEXT | null | NULL | "Where I am" — most recent compiled observation |
-| current_date | DATE | null | NULL | When current summary was last updated |
+| current_assessed_date | DATE | null | NULL | When current summary was last updated |
 | vision_summary | TEXT | null | NULL | "Where I'm wanting to end up" |
 | vision_date | DATE | null | NULL | When vision was last updated |
 | created_at | TIMESTAMPTZ | now() | NOT NULL | |
@@ -592,7 +594,7 @@ All knowledge about the spouse from any source. Each record is one categorized i
 | id | UUID | gen_random_uuid() | NOT NULL | PK |
 | user_id | UUID | | NOT NULL | FK → auth.users |
 | person_id | UUID | | NOT NULL | FK → people (the First Mate) |
-| category | TEXT | | NOT NULL | Enum: 'personality', 'love_appreciation', 'communication', 'dreams_goals', 'challenges_needs', 'her_world', 'observation', 'her_response', 'gratitude', 'general' |
+| category | TEXT | | NOT NULL | Enum: 'personality', 'love_appreciation', 'communication', 'dreams_goals', 'challenges_needs', 'their_world', 'observation', 'her_response', 'gratitude', 'general' |
 | text | TEXT | | NOT NULL | The insight content |
 | source_type | TEXT | 'manual' | NOT NULL | Enum: 'manual', 'uploaded_file', 'helm_conversation', 'spouse_prompt', 'log_routed' |
 | source_label | TEXT | null | NULL | Freeform label (e.g., "Gallup StrengthsFinder", "she told me", "I noticed at dinner") |

@@ -1,0 +1,14 @@
+.crowsnest__greeting {
+  font-size: var(--font-size-2xl);
+  margin-bottom: var(--spacing-xs);
+}
+
+.crowsnest__subtitle {
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.crowsnest__signout {
+  text-align: center;
+  margin-top: var(--spacing-xl);
+}

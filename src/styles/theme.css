@@ -1,0 +1,103 @@
+/* Captain's Quarters — Default Theme */
+/* All components MUST use var(--*) — never hardcode values */
+
+:root,
+.theme-captains-quarters {
+  /* Colors */
+  --color-deep-teal: #12403A;
+  --color-dark-teal: #1F514E;
+  --color-mid-teal: #3B6E67;
+  --color-slate-gray: #879E9D;
+  --color-cognac: #A46A3C;
+  --color-deep-brown: #733C0C;
+  --color-gold: #C9A84C;
+  --color-cream: #F5F0E8;
+  --color-warm-sand: #E8DFD0;
+  --color-navy: #2C3E50;
+  --color-white: #FFFFFF;
+  --color-light-gray: #F2F2F2;
+
+  /* Semantic colors */
+  --color-bg-primary: var(--color-cream);
+  --color-bg-secondary: var(--color-warm-sand);
+  --color-bg-card: var(--color-white);
+  --color-bg-nav: var(--color-deep-teal);
+  --color-bg-input: var(--color-white);
+  --color-bg-input-focus: var(--color-light-gray);
+
+  --color-text-primary: var(--color-navy);
+  --color-text-secondary: var(--color-slate-gray);
+  --color-text-heading: var(--color-deep-teal);
+  --color-text-on-dark: var(--color-cream);
+  --color-text-link: var(--color-mid-teal);
+
+  --color-border: var(--color-warm-sand);
+  --color-border-focus: var(--color-mid-teal);
+  --color-border-error: #C0392B;
+
+  --color-btn-primary-bg: var(--color-mid-teal);
+  --color-btn-primary-text: var(--color-white);
+  --color-btn-primary-hover: var(--color-dark-teal);
+  --color-btn-secondary-bg: transparent;
+  --color-btn-secondary-text: var(--color-mid-teal);
+  --color-btn-secondary-border: var(--color-mid-teal);
+  --color-btn-secondary-hover: var(--color-cream);
+
+  --color-error: #C0392B;
+  --color-success: #27AE60;
+  --color-accent: var(--color-cognac);
+
+  /* Gold — ONLY for victories and celebrations */
+  --color-victory: var(--color-gold);
+
+  /* Typography */
+  --font-heading: Georgia, 'Times New Roman', serif;
+  --font-body: Arial, Helvetica, sans-serif;
+
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-md: 1.125rem;
+  --font-size-lg: 1.25rem;
+  --font-size-xl: 1.5rem;
+  --font-size-2xl: 1.875rem;
+  --font-size-3xl: 2.25rem;
+
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-bold: 700;
+
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.75;
+
+  /* Spacing */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
+  --spacing-3xl: 4rem;
+
+  /* Border radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.12);
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+
+  /* Layout */
+  --touch-target-min: 44px;
+  --content-max-width: 600px;
+  --nav-height: 56px;
+}
