@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import type { User, Session } from '@supabase/supabase-js';
 import type { UserProfile } from '../lib/types';
@@ -17,32 +17,49 @@ export function useAuth() {
     session: null,
     loading: true,
   });
+  const initialized = useRef(false);
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        fetchProfile(session.user.id).then((profile) => {
-          setState({ user: session.user, profile, session, loading: false });
-        });
-      } else {
-        setState({ user: null, profile: null, session: null, loading: false });
-      }
-    });
-
-    // Listen for auth changes
+    // onAuthStateChange fires immediately with INITIAL_SESSION,
+    // so we don't need a separate getSession() call.
+    // This avoids a known hang issue with React 18 Strict Mode.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
+        console.log('[Auth] onAuthStateChange:', event, session ? 'session exists' : 'no session');
+
         if (session?.user) {
-          const profile = await fetchProfile(session.user.id);
-          setState({ user: session.user, profile, session, loading: false });
+          // Avoid duplicate profile fetches from Strict Mode double-fire
+          if (event === 'INITIAL_SESSION' && initialized.current) return;
+          initialized.current = true;
+
+          try {
+            const profile = await fetchProfile(session.user.id);
+            setState({ user: session.user, profile, session, loading: false });
+          } catch {
+            setState({ user: session.user, profile: null, session, loading: false });
+          }
         } else {
+          initialized.current = true;
           setState({ user: null, profile: null, session: null, loading: false });
         }
       }
     );
 
-    return () => subscription.unsubscribe();
+    // Safety timeout — if onAuthStateChange never fires, stop loading after 5s
+    const timeout = setTimeout(() => {
+      setState((prev) => {
+        if (prev.loading) {
+          console.warn('[Auth] Timed out waiting for session, continuing without auth');
+          return { user: null, profile: null, session: null, loading: false };
+        }
+        return prev;
+      });
+    }, 5000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
   async function fetchProfile(userId: string): Promise<UserProfile | null> {
@@ -61,41 +78,49 @@ export function useAuth() {
     password: string,
     displayName: string
   ): Promise<{ error: string | null }> {
-    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Chicago';
+    try {
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Chicago';
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          display_name: displayName,
-          timezone,
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            display_name: displayName,
+            timezone,
+          },
         },
-      },
-    });
+      });
 
-    if (error) {
-      if (error.message.includes('already registered')) {
-        return { error: 'An account with this email already exists. Would you like to sign in instead?' };
+      if (error) {
+        if (error.message.includes('already registered')) {
+          return { error: 'An account with this email already exists. Would you like to sign in instead?' };
+        }
+        return { error: error.message };
       }
-      return { error: error.message };
+      return { error: null };
+    } catch {
+      return { error: 'Unable to connect. Please check your internet connection and try again.' };
     }
-    return { error: null };
   }
 
   async function signIn(
     email: string,
     password: string
   ): Promise<{ error: string | null }> {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const result = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (error) {
-      return { error: 'Invalid email or password. Please try again.' };
+      if (result.error) {
+        return { error: 'Invalid email or password. Please try again.' };
+      }
+      return { error: null };
+    } catch {
+      return { error: 'Unable to connect. Please check your internet connection and try again.' };
     }
-    return { error: null };
   }
 
   async function signOut(): Promise<void> {

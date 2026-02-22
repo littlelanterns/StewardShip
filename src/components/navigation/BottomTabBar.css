@@ -1,0 +1,76 @@
+.bottom-tab-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-around;
+  height: var(--nav-height);
+  background-color: var(--color-bg-nav);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@media (min-width: 768px) {
+  .bottom-tab-bar {
+    display: none;
+  }
+}
+
+.bottom-tab-bar__tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  flex: 1;
+  min-height: var(--touch-target-min);
+  padding: var(--spacing-xs) 0;
+  color: var(--color-slate-gray);
+  background: none;
+  border: none;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.bottom-tab-bar__tab:hover,
+.bottom-tab-bar__tab.active {
+  color: var(--color-cream);
+}
+
+.bottom-tab-bar__tab--active {
+  color: var(--color-cream);
+}
+
+.bottom-tab-bar__label {
+  font-family: var(--font-body);
+  font-size: 0.625rem;
+  font-weight: var(--font-weight-medium);
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+/* Helm center tab — prominent */
+.bottom-tab-bar__tab--helm {
+  position: relative;
+}
+
+.bottom-tab-bar__helm-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-mid-teal);
+  color: var(--color-white);
+  margin-top: -10px;
+  transition: background-color var(--transition-fast);
+}
+
+.bottom-tab-bar__tab--helm:hover .bottom-tab-bar__helm-icon,
+.bottom-tab-bar__tab--helm.bottom-tab-bar__tab--active .bottom-tab-bar__helm-icon {
+  background-color: var(--color-cognac);
+}

@@ -100,4 +100,8 @@
   --touch-target-min: 44px;
   --content-max-width: 600px;
   --nav-height: 56px;
+  --sidebar-width: 240px;
+  --drawer-handle-height: 28px;
+  --drawer-peek-height: 55vh;
+  --drawer-full-height: calc(100dvh - var(--spacing-xl));
 }

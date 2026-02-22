@@ -22,10 +22,10 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     return <Navigate to="/auth" replace />;
   }
 
-  // New users who haven't completed onboarding
-  if (profile && !profile.onboarding_completed && window.location.pathname !== '/onboarding') {
-    return <Navigate to="/onboarding" replace />;
-  }
+  // TODO: Re-enable once onboarding is built
+  // if (profile && !profile.onboarding_completed && window.location.pathname !== '/onboarding') {
+  //   return <Navigate to="/onboarding" replace />;
+  // }
 
   return <>{children}</>;
 }

@@ -1,5 +1,6 @@
 import { useAuthContext } from '../contexts/AuthContext';
 import { Button, Card, EmptyState } from '../components/shared';
+import { usePageContext } from '../hooks/usePageContext';
 import './CrowsNest.css';
 
 function getGreeting(timezone: string): string {
@@ -19,6 +20,7 @@ function getGreeting(timezone: string): string {
 }
 
 export default function CrowsNest() {
+  usePageContext({ page: 'crowsnest' });
   const { profile, signOut } = useAuthContext();
   const greeting = getGreeting(profile?.timezone || 'America/Chicago');
   const name = profile?.display_name || 'Steward';

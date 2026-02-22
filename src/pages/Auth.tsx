@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { Navigate } from 'react-router-dom';
 import { useAuthContext } from '../contexts/AuthContext';
 import { Button, Input, Card } from '../components/shared';
 import { LoadingSpinner } from '../components/shared';
@@ -7,7 +8,13 @@ import './Auth.css';
 type AuthView = 'welcome' | 'signup' | 'signin' | 'forgot';
 
 export default function Auth() {
+  const { user, loading } = useAuthContext();
   const [view, setView] = useState<AuthView>('welcome');
+
+  // Redirect authenticated users to home
+  if (!loading && user) {
+    return <Navigate to="/" replace />;
+  }
 
   return (
     <div className="auth-page">
