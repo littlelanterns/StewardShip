@@ -14,18 +14,6 @@
   margin-bottom: var(--spacing-xl);
 }
 
-.unload-page__icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 64px;
-  height: 64px;
-  border-radius: var(--radius-full);
-  background-color: var(--color-bg-secondary);
-  color: var(--color-cognac);
-  margin-bottom: var(--spacing-xs);
-}
-
 .unload-page__subtitle {
   color: var(--color-text-secondary);
   font-size: var(--font-size-sm);

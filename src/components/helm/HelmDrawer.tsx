@@ -1,10 +1,14 @@
 import { useRef, useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Maximize2, X, Plus, Clock } from 'lucide-react';
+import { Maximize2, X, Plus, Clock, PackageOpen } from 'lucide-react';
 import { useHelmContext } from '../../contexts/HelmContext';
+import { useUnloadTheHold } from '../../hooks/useUnloadTheHold';
+import { GUIDED_MODE_LABELS } from '../../lib/types';
 import MessageList from './MessageList';
 import MessageInput from './MessageInput';
 import ConversationHistory from './ConversationHistory';
+import TriageReview from './TriageReview';
+import { LoadingSpinner } from '../shared';
 import './HelmDrawer.css';
 
 const PAGE_LABELS: Record<string, string> = {
@@ -60,6 +64,37 @@ export default function HelmDrawer() {
   const dragStartState = useRef(drawerState);
   const [historyOffset, setHistoryOffset] = useState(0);
 
+  // Unload the Hold triage
+  const {
+    triageItems,
+    sorting,
+    routing,
+    error: triageError,
+    startDump,
+    triggerTriage,
+    updateTriageItem,
+    discardTriageItem,
+    routeAll,
+    archiveToLog,
+    reset: resetTriage,
+  } = useUnloadTheHold();
+
+  const [showTriageReview, setShowTriageReview] = useState(false);
+  const [triageLoading, setTriageLoading] = useState(false);
+
+  const isUnloadMode = activeConversation?.guided_mode === 'unload_the_hold';
+  const hasUserMessages = messages.some((m) => m.role === 'user');
+
+  const guidedModeLabel = activeConversation?.guided_mode
+    ? GUIDED_MODE_LABELS[activeConversation.guided_mode]
+    : null;
+
+  // Reset triage state when conversation changes
+  useEffect(() => {
+    resetTriage();
+    setShowTriageReview(false);
+  }, [activeConversation?.id, resetTriage]);
+
   const handleExpandToFullPage = useCallback(() => {
     closeDrawer();
     navigate('/helm');
@@ -108,8 +143,10 @@ export default function HelmDrawer() {
 
   const handleHandleClick = useCallback(() => {
     if (drawerState === 'closed') setDrawerState('peek');
-    else if (drawerState === 'peek') closeDrawer();
-    else closeDrawer();
+    else {
+      (document.activeElement as HTMLElement)?.blur();
+      closeDrawer();
+    }
   }, [drawerState, setDrawerState, closeDrawer]);
 
   const handleShowHistory = useCallback(() => {
@@ -128,6 +165,38 @@ export default function HelmDrawer() {
     sendMessage(content);
   }, [sendMessage]);
 
+  // Triage flow: start dump → trigger AI triage → show review
+  const handleReviewAndRoute = useCallback(async () => {
+    if (!activeConversation) return;
+    setTriageLoading(true);
+
+    try {
+      const dump = await startDump(activeConversation.id);
+      if (!dump) return;
+
+      const items = await triggerTriage(activeConversation.id, dump.id);
+      if (items.length > 0) {
+        setShowTriageReview(true);
+      }
+    } finally {
+      setTriageLoading(false);
+    }
+  }, [activeConversation, startDump, triggerTriage]);
+
+  const handleRouteAll = useCallback(async (items: typeof triageItems) => {
+    const counts = await routeAll(items);
+
+    if (activeConversation) {
+      await archiveToLog(activeConversation.id);
+    }
+
+    return counts;
+  }, [routeAll, archiveToLog, activeConversation]);
+
+  const handleTriageClose = useCallback(() => {
+    setShowTriageReview(false);
+  }, []);
+
   const contextLabel = PAGE_LABELS[pageContext.page] || pageContext.page;
 
   return (
@@ -144,9 +213,8 @@ export default function HelmDrawer() {
       <div
         ref={drawerRef}
         className={`helm-drawer helm-drawer--${drawerState}`}
-        role="dialog"
-        aria-label="Helm chat drawer"
-        aria-hidden={drawerState === 'closed'}
+        role={drawerState !== 'closed' ? 'dialog' : undefined}
+        aria-label={drawerState !== 'closed' ? 'Helm chat drawer' : undefined}
       >
         {/* Drag handle */}
         <div
@@ -165,7 +233,12 @@ export default function HelmDrawer() {
         {drawerState !== 'closed' && (
           <div className="helm-drawer__header">
             <div className="helm-drawer__header-left">
-              <h3 className="helm-drawer__title">The Helm</h3>
+              <div className="helm-drawer__title-row">
+                <h3 className="helm-drawer__title">The Helm</h3>
+                {guidedModeLabel && (
+                  <span className="helm-drawer__guided-tag">{guidedModeLabel}</span>
+                )}
+              </div>
               <span className="helm-drawer__context-label">
                 From: {contextLabel}
               </span>
@@ -228,10 +301,50 @@ export default function HelmDrawer() {
             ) : (
               <>
                 <MessageList messages={messages} loading={loading} isThinking={isThinking} />
+
+                {/* Review & Route action bar — available for all conversations */}
+                {hasUserMessages && !showTriageReview && (
+                  <div className="helm-drawer__unload-bar">
+                    {triageLoading || sorting ? (
+                      <div className="helm-drawer__unload-loading">
+                        <LoadingSpinner />
+                        <span>Sorting through the hold...</span>
+                      </div>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          className="helm-drawer__unload-btn"
+                          onClick={handleReviewAndRoute}
+                          disabled={isThinking}
+                        >
+                          <PackageOpen size={18} strokeWidth={1.5} />
+                          Review & Route
+                        </button>
+                        {triageError && (
+                          <span className="helm-drawer__unload-error">{triageError}</span>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+
                 <MessageInput onSend={handleSend} disabled={loading || isThinking} />
               </>
             )}
           </div>
+        )}
+
+        {/* Triage Review overlay */}
+        {showTriageReview && triageItems.length > 0 && (
+          <TriageReview
+            items={triageItems}
+            onUpdateItem={updateTriageItem}
+            onDiscardItem={discardTriageItem}
+            onRouteAll={handleRouteAll}
+            onClose={handleTriageClose}
+            routing={routing}
+          />
         )}
       </div>
     </>

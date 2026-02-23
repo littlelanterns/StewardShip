@@ -138,10 +138,81 @@
   color: var(--color-text-primary);
 }
 
+/* Title row with guided tag */
+.helm-drawer__title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.helm-drawer__guided-tag {
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-cognac);
+  background-color: color-mix(in srgb, var(--color-cognac) 10%, transparent);
+  padding: 2px var(--spacing-xs);
+  border-radius: var(--radius-sm);
+}
+
 /* Content area */
 .helm-drawer__content {
   flex: 1;
   display: flex;
   flex-direction: column;
   min-height: 0;
+}
+
+/* Unload the Hold — Review & Route bar */
+.helm-drawer__unload-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
+  flex-shrink: 0;
+}
+
+.helm-drawer__unload-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-mid-teal);
+  background-color: color-mix(in srgb, var(--color-mid-teal) 8%, var(--color-cream));
+  border: 1px solid color-mix(in srgb, var(--color-mid-teal) 25%, transparent);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.helm-drawer__unload-btn:hover {
+  background-color: color-mix(in srgb, var(--color-mid-teal) 14%, var(--color-cream));
+  border-color: var(--color-mid-teal);
+}
+
+.helm-drawer__unload-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.helm-drawer__unload-loading {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.helm-drawer__unload-error {
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  color: var(--color-error);
 }

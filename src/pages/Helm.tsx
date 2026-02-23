@@ -107,8 +107,8 @@ export default function Helm() {
       const dump = await startDump(activeConversation.id);
       if (!dump) return;
 
-      // Trigger AI triage
-      const items = await triggerTriage(activeConversation.id);
+      // Trigger AI triage (pass dump.id to avoid stale closure)
+      const items = await triggerTriage(activeConversation.id, dump.id);
       if (items.length > 0) {
         setShowTriageReview(true);
       }
@@ -234,8 +234,8 @@ export default function Helm() {
           <>
             <MessageList messages={messages} loading={loading} isThinking={isThinking} />
 
-            {/* Unload the Hold — Review & Route action bar */}
-            {isUnloadMode && hasUserMessages && !showTriageReview && (
+            {/* Review & Route action bar — available for all conversations */}
+            {hasUserMessages && !showTriageReview && (
               <div className="helm-page__unload-bar">
                 {triageLoading || sorting ? (
                   <div className="helm-page__unload-loading">

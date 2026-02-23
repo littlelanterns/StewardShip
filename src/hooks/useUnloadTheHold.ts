@@ -40,8 +40,10 @@ export function useUnloadTheHold() {
   }, [user]);
 
   // Trigger AI triage — concatenate user messages and call Edge Function
+  // Accepts dumpId directly to avoid stale closure on holdDump state
   const triggerTriage = useCallback(async (
     conversationId: string,
+    dumpId?: string,
     context?: {
       mast_entries?: string;
       active_tasks?: string[];
@@ -49,7 +51,7 @@ export function useUnloadTheHold() {
       people_names?: string[];
     },
   ): Promise<TriageItem[]> => {
-    if (!user || !holdDump) return [];
+    if (!user) return [];
     setSorting(true);
     setError(null);
 
@@ -79,23 +81,26 @@ export function useUnloadTheHold() {
 
       setTriageItems(items);
 
-      // Update hold_dumps record
-      await supabase
-        .from('hold_dumps')
-        .update({
-          status: 'triaging' as HoldDumpStatus,
+      // Update hold_dumps record if we have a dump ID
+      const resolvedDumpId = dumpId || holdDump?.id;
+      if (resolvedDumpId) {
+        await supabase
+          .from('hold_dumps')
+          .update({
+            status: 'triaging' as HoldDumpStatus,
+            items_extracted: items.length,
+            triage_result: items,
+          })
+          .eq('id', resolvedDumpId)
+          .eq('user_id', user.id);
+
+        setHoldDump((prev) => prev ? {
+          ...prev,
+          status: 'triaging',
           items_extracted: items.length,
           triage_result: items,
-        })
-        .eq('id', holdDump.id)
-        .eq('user_id', user.id);
-
-      setHoldDump((prev) => prev ? {
-        ...prev,
-        status: 'triaging',
-        items_extracted: items.length,
-        triage_result: items,
-      } : prev);
+        } : prev);
+      }
 
       return items;
     } catch (e: unknown) {
@@ -105,7 +110,7 @@ export function useUnloadTheHold() {
     } finally {
       setSorting(false);
     }
-  }, [user, holdDump]);
+  }, [user, holdDump?.id]);
 
   // Update a single triage item (change category, text, or metadata)
   const updateTriageItem = useCallback((itemId: string, updates: Partial<TriageItem>) => {

@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react';
-import { PackageOpen } from 'lucide-react';
 import { useHelmContext } from '../contexts/HelmContext';
 import { usePageContext } from '../hooks/usePageContext';
 import './UnloadTheHold.css';
@@ -30,12 +29,9 @@ export default function UnloadTheHold() {
   return (
     <div className="page unload-page">
       <div className="unload-page__header">
-        <div className="unload-page__icon">
-          <PackageOpen size={32} strokeWidth={1.5} />
-        </div>
         <h1>Unload the Hold</h1>
         <p className="unload-page__subtitle">
-          Get it all out of your head and into safe hands.
+          Just talk. I'll organize it.
         </p>
       </div>
 
