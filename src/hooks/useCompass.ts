@@ -393,6 +393,62 @@ export function useCompass() {
     return grouped;
   }, [tasks]);
 
+  const createSubtasks = useCallback(async (
+    parentId: string,
+    subtasks: Array<{ title: string; description?: string; sort_order: number }>,
+  ): Promise<void> => {
+    if (!user) return;
+    setError(null);
+
+    const parent = tasks.find((t) => t.id === parentId);
+
+    try {
+      const rows = subtasks.map((st) => ({
+        user_id: user.id,
+        title: st.title,
+        description: st.description || null,
+        parent_task_id: parentId,
+        task_breaker_level: null, // Set by caller if needed
+        due_date: parent?.due_date || null,
+        life_area_tag: parent?.life_area_tag || null,
+        related_goal_id: parent?.related_goal_id || null,
+        related_wheel_id: parent?.related_wheel_id || null,
+        related_meeting_id: parent?.related_meeting_id || null,
+        related_rigging_plan_id: parent?.related_rigging_plan_id || null,
+        source: 'manual',
+        sort_order: st.sort_order,
+        status: 'pending',
+      }));
+
+      const { error: err } = await supabase
+        .from('compass_tasks')
+        .insert(rows);
+
+      if (err) throw err;
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Failed to create subtasks';
+      setError(msg);
+    }
+  }, [user, tasks]);
+
+  const fetchSubtasks = useCallback(async (parentId: string): Promise<CompassTask[]> => {
+    if (!user) return [];
+    try {
+      const { data, error: err } = await supabase
+        .from('compass_tasks')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('parent_task_id', parentId)
+        .is('archived_at', null)
+        .order('sort_order', { ascending: true });
+
+      if (err) throw err;
+      return (data as CompassTask[]) || [];
+    } catch {
+      return [];
+    }
+  }, [user]);
+
   return {
     tasks,
     loading,
@@ -408,5 +464,7 @@ export function useCompass() {
     getOverdueTasks,
     taskCount,
     tasksByCategory,
+    createSubtasks,
+    fetchSubtasks,
   };
 }

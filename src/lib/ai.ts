@@ -77,6 +77,34 @@ export async function autoTitleConversation(
   }
 }
 
+export async function breakDownTask(
+  taskTitle: string,
+  taskDescription: string | null,
+  detailLevel: 'quick' | 'detailed' | 'granular',
+  userId: string,
+  context?: string,
+): Promise<Array<{ title: string; description?: string; sort_order: number }>> {
+  const { data, error } = await supabase.functions.invoke('task-breaker', {
+    body: {
+      task_title: taskTitle,
+      task_description: taskDescription,
+      detail_level: detailLevel,
+      context: context || undefined,
+      user_id: userId,
+    },
+  });
+
+  if (error) {
+    throw new Error(error.message || 'Failed to break down task');
+  }
+
+  if (data?.error) {
+    throw new Error(data.error);
+  }
+
+  return data?.subtasks || [];
+}
+
 export async function autoTagTask(
   title: string,
   description: string | null,

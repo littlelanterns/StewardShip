@@ -151,3 +151,40 @@
   color: var(--color-slate-gray);
   font-style: italic;
 }
+
+.task-card-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.task-card__expand-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  min-height: 44px;
+  background: none;
+  border: none;
+  color: var(--color-mid-teal);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.task-card__subtask-count {
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  color: var(--color-slate-gray);
+}
+
+.task-card__subtasks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2xs);
+  margin-left: var(--spacing-xl);
+  padding-left: var(--spacing-sm);
+  border-left: 2px solid var(--color-warm-sand);
+}
+
+.task-card--subtask {
+  padding: var(--spacing-2xs) var(--spacing-sm);
+}

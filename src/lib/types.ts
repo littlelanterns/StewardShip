@@ -400,3 +400,46 @@ export interface LogFilters {
   dateTo: string | null;
   searchQuery: string;
 }
+
+// === PRD-06 Part 3: Lists ===
+
+export type ListType = 'shopping' | 'wishlist' | 'expenses' | 'todo' | 'custom';
+export type ListAiAction = 'store_only' | 'remind' | 'schedule' | 'prioritize';
+
+export interface List {
+  id: string;
+  user_id: string;
+  title: string;
+  list_type: ListType;
+  ai_action: ListAiAction;
+  share_token: string | null;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ListItem {
+  id: string;
+  list_id: string;
+  user_id: string;
+  text: string;
+  checked: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export const LIST_TYPE_LABELS: Record<ListType, string> = {
+  shopping: 'Shopping',
+  wishlist: 'Wishlist',
+  expenses: 'Expenses',
+  todo: 'To-Do',
+  custom: 'Custom',
+};
+
+export const LIST_AI_ACTION_LABELS: Record<ListAiAction, string> = {
+  store_only: 'Just store it',
+  remind: 'Remind me',
+  schedule: 'Help me schedule it',
+  prioritize: 'Help me prioritize it',
+};

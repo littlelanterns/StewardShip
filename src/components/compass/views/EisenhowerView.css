@@ -1,0 +1,85 @@
+.eisenhower {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.eisenhower__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-sm);
+}
+
+@media (max-width: 480px) {
+  .eisenhower__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.eisenhower__quadrant {
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm);
+  min-height: 120px;
+  transition: box-shadow var(--transition-fast);
+}
+
+.eisenhower__quadrant--over {
+  box-shadow: inset 0 0 0 2px var(--color-mid-teal);
+}
+
+.eisenhower__quadrant--do_now {
+  background: color-mix(in srgb, var(--color-cognac) 8%, var(--color-cream));
+  border: 1px solid color-mix(in srgb, var(--color-cognac) 25%, var(--color-warm-sand));
+}
+
+.eisenhower__quadrant--schedule {
+  background: color-mix(in srgb, var(--color-mid-teal) 8%, var(--color-cream));
+  border: 1px solid color-mix(in srgb, var(--color-mid-teal) 25%, var(--color-warm-sand));
+}
+
+.eisenhower__quadrant--delegate {
+  background: color-mix(in srgb, var(--color-slate-gray) 8%, var(--color-cream));
+  border: 1px solid color-mix(in srgb, var(--color-slate-gray) 25%, var(--color-warm-sand));
+}
+
+.eisenhower__quadrant--eliminate {
+  background: var(--color-light-gray);
+  border: 1px solid var(--color-warm-sand);
+}
+
+.eisenhower__quadrant-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: var(--spacing-sm);
+  padding-bottom: var(--spacing-xs);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-slate-gray) 20%, transparent);
+}
+
+.eisenhower__quadrant-label {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--color-text-heading);
+}
+
+.eisenhower__quadrant-subtitle {
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  color: var(--color-slate-gray);
+}
+
+.eisenhower__quadrant-tasks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2xs);
+}
+
+.eisenhower__empty-quadrant {
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  color: var(--color-slate-gray);
+  text-align: center;
+  padding: var(--spacing-md) var(--spacing-sm);
+  font-style: italic;
+}

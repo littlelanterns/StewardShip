@@ -3,9 +3,10 @@ import { supabase } from '../../lib/supabase';
 import { autoTagTask } from '../../lib/ai';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useHelmContext } from '../../contexts/HelmContext';
-import type { MastEntryType, KeelCategory } from '../../lib/types';
+import type { MastEntryType, KeelCategory, List } from '../../lib/types';
 import { MAST_TYPE_LABELS, KEEL_CATEGORY_LABELS } from '../../lib/types';
 import { Button } from './Button';
+import { LoadingSpinner } from './LoadingSpinner';
 import './RoutingSelector.css';
 
 interface RoutingSelectorProps {
@@ -15,7 +16,7 @@ interface RoutingSelectorProps {
   onClose: () => void;
 }
 
-type SubScreen = 'main' | 'mast' | 'keel';
+type SubScreen = 'main' | 'mast' | 'keel' | 'lists';
 
 export function RoutingSelector({ entryId, entryText, onRouted, onClose }: RoutingSelectorProps) {
   const { user } = useAuthContext();
@@ -29,6 +30,10 @@ export function RoutingSelector({ entryId, entryText, onRouted, onClose }: Routi
 
   // Keel sub-screen state
   const [keelCategory, setKeelCategory] = useState<KeelCategory>('general');
+
+  // Lists sub-screen state
+  const [userLists, setUserLists] = useState<List[]>([]);
+  const [listsLoading, setListsLoading] = useState(false);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -141,6 +146,66 @@ export function RoutingSelector({ entryId, entryText, onRouted, onClose }: Routi
     }
   };
 
+  const handleOpenLists = async () => {
+    if (!user) return;
+    setSubScreen('lists');
+    setListsLoading(true);
+    try {
+      const { data, error: err } = await supabase
+        .from('lists')
+        .select('*')
+        .eq('user_id', user.id)
+        .is('archived_at', null)
+        .order('updated_at', { ascending: false });
+
+      if (err) throw err;
+      setUserLists((data as List[]) || []);
+    } catch {
+      showToast('Failed to load lists');
+      setSubScreen('main');
+    } finally {
+      setListsLoading(false);
+    }
+  };
+
+  const handleRouteToList = async (list: List) => {
+    if (!user) return;
+    setSaving(true);
+    try {
+      // Get current max sort_order
+      const { data: existingItems } = await supabase
+        .from('list_items')
+        .select('sort_order')
+        .eq('list_id', list.id)
+        .eq('user_id', user.id)
+        .order('sort_order', { ascending: false })
+        .limit(1);
+
+      const maxSort = existingItems && existingItems.length > 0 ? existingItems[0].sort_order : -1;
+
+      const { data, error: err } = await supabase
+        .from('list_items')
+        .insert({
+          list_id: list.id,
+          user_id: user.id,
+          text: entryText,
+          checked: false,
+          sort_order: maxSort + 1,
+        })
+        .select()
+        .single();
+
+      if (err) throw err;
+      onRouted('list_item', data.id);
+      showToast(`Added to "${list.title}"`);
+      setSubScreen('main');
+    } catch {
+      showToast('Failed to add to list');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleHelmProcess = () => {
     openDrawer();
     sendMessage(`Processing a Log entry:\n\n"${entryText}"`);
@@ -209,6 +274,41 @@ export function RoutingSelector({ entryId, entryText, onRouted, onClose }: Routi
     );
   }
 
+  if (subScreen === 'lists') {
+    return (
+      <div className="routing-selector">
+        <h4 className="routing-selector__title">Add to a List</h4>
+        <p className="routing-selector__subtitle">Which list?</p>
+
+        {listsLoading ? (
+          <div className="routing-selector__loading"><LoadingSpinner /></div>
+        ) : userLists.length === 0 ? (
+          <p className="routing-selector__empty">No lists yet. Create one from the Compass page.</p>
+        ) : (
+          <div className="routing-selector__list">
+            {userLists.map((list) => (
+              <button
+                key={list.id}
+                type="button"
+                className="routing-selector__item"
+                onClick={() => handleRouteToList(list)}
+                disabled={saving}
+              >
+                <span className="routing-selector__item-label">{list.title}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="routing-selector__actions">
+          <Button variant="text" onClick={() => setSubScreen('main')}>Back</Button>
+        </div>
+
+        {toast && <div className="routing-selector__toast">{toast}</div>}
+      </div>
+    );
+  }
+
   return (
     <div className="routing-selector">
       <h4 className="routing-selector__title">Do something with this entry?</h4>
@@ -235,7 +335,7 @@ export function RoutingSelector({ entryId, entryText, onRouted, onClose }: Routi
         <button
           type="button"
           className="routing-selector__item"
-          onClick={() => showToast('Lists coming in a later phase')}
+          onClick={handleOpenLists}
         >
           <span className="routing-selector__item-label">Add to a list</span>
           <span className="routing-selector__item-desc">Save to a flexible list</span>

@@ -80,6 +80,21 @@
   color: var(--color-white);
 }
 
+.routing-selector__loading {
+  display: flex;
+  justify-content: center;
+  padding: var(--spacing-md);
+}
+
+.routing-selector__empty {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  text-align: center;
+  padding: var(--spacing-md);
+  margin: 0;
+}
+
 .routing-selector__actions {
   display: flex;
   justify-content: flex-end;

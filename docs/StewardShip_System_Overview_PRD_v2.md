@@ -1088,16 +1088,16 @@ Every AI interaction includes these context layers (loaded dynamically based on 
 11. AI auto-tagging for Log entries
 12. Declaration + Self-Discovery guided modes
 
-### Phase 4A: Compass Core — NEXT
-13. Compass task CRUD, Simple List + By Category views
-14. Recurring tasks, AI auto-tagging for tasks
-15. Wire routing stubs from Helm and Log → Compass
+### Phase 4A: Compass Core ✅
+13. Compass task CRUD, Simple List + By Category views ✅
+14. Recurring tasks, AI auto-tagging for tasks ✅
+15. Wire routing stubs from Helm and Log → Compass ✅
 
-### Phase 4B: Compass Views + Task Breaker
+### Phase 4B: Compass Views + Task Breaker ✅
 16. Remaining view toggles (Eisenhower, Frog, 1/3/9, Big Rocks, Ivy Lee)
 17. Task Breaker (AI decomposition, all three levels)
 
-### Phase 4C: Lists
+### Phase 4C: Lists ✅
 18. Lists CRUD, list items, share infrastructure
 
 ### Phase 5: Progress
@@ -1239,7 +1239,7 @@ stewardship/
 | PRD-03: The Keel | Built (Phase 2) |
 | PRD-04: The Helm (Drawer + Full Page) | Built (Phase 3A + 3C) |
 | PRD-05: The Log (Commonplace Book) | Built (Phase 3B + 3C) |
-| PRD-06: The Compass + Task Breaker + Lists | Phase 4 Next |
+| PRD-06: The Compass + Task Breaker + Lists | 4A/4B/4C Built ✅ |
 | PRD-07: Charts | PRD Written |
 | PRD-08: Victory Recorder | PRD Written |
 | PRD-09: Crow's Nest | PRD Written |

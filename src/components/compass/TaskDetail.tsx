@@ -3,6 +3,7 @@ import { ArrowLeft } from 'lucide-react';
 import type { CompassTask, CompassLifeArea, RecurrenceRule } from '../../lib/types';
 import { COMPASS_LIFE_AREA_LABELS } from '../../lib/types';
 import { Button } from '../shared/Button';
+import TaskBreakerModal from './TaskBreakerModal';
 import './TaskDetail.css';
 
 interface TaskDetailProps {
@@ -10,6 +11,7 @@ interface TaskDetailProps {
   onUpdate: (id: string, updates: Partial<CompassTask>) => Promise<CompassTask | null>;
   onArchive: (id: string) => void;
   onBack: () => void;
+  onCreateSubtasks?: (parentId: string, subtasks: Array<{ title: string; description?: string; sort_order: number }>) => Promise<void>;
 }
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -31,7 +33,7 @@ const RECURRENCE_OPTIONS: { value: RecurrenceRule; label: string }[] = [
 
 const LIFE_AREA_OPTIONS = Object.entries(COMPASS_LIFE_AREA_LABELS) as [CompassLifeArea, string][];
 
-export default function TaskDetail({ task, onUpdate, onArchive, onBack }: TaskDetailProps) {
+export default function TaskDetail({ task, onUpdate, onArchive, onBack, onCreateSubtasks }: TaskDetailProps) {
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description || '');
   const [dueDate, setDueDate] = useState(task.due_date || '');
@@ -40,6 +42,7 @@ export default function TaskDetail({ task, onUpdate, onArchive, onBack }: TaskDe
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [showBreaker, setShowBreaker] = useState(false);
 
   const markDirty = () => { if (!dirty) setDirty(true); };
 
@@ -71,10 +74,28 @@ export default function TaskDetail({ task, onUpdate, onArchive, onBack }: TaskDe
     alert('Victory Recorder coming soon');
   };
 
-  const handleBreakDownStub = () => {
-    // Stub — Task Breaker coming in Phase 4B
-    alert('Task Breaker coming in Phase 4B');
+  const handleBreakDown = () => {
+    setShowBreaker(true);
   };
+
+  const handleSaveSubtasks = async (subtasks: Array<{ title: string; description?: string; sort_order: number }>) => {
+    if (onCreateSubtasks) {
+      await onCreateSubtasks(task.id, subtasks);
+    }
+    setShowBreaker(false);
+  };
+
+  if (showBreaker) {
+    return (
+      <div className="task-detail">
+        <TaskBreakerModal
+          task={task}
+          onSave={handleSaveSubtasks}
+          onCancel={() => setShowBreaker(false)}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="task-detail">
@@ -199,7 +220,7 @@ export default function TaskDetail({ task, onUpdate, onArchive, onBack }: TaskDe
           </Button>
         )}
 
-        <Button variant="secondary" onClick={handleBreakDownStub}>
+        <Button variant="secondary" onClick={handleBreakDown}>
           Break Down
         </Button>
 
