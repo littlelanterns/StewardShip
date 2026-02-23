@@ -571,6 +571,8 @@ export interface Goal {
 export type TrackerType = 'count' | 'yes_no' | 'duration' | 'rating';
 export type TrackerVisualization = 'line_graph' | 'streak_calendar' | 'bar_chart';
 
+export type TrackerPromptPeriod = 'morning' | 'evening' | 'both';
+
 export interface CustomTracker {
   id: string;
   user_id: string;
@@ -579,6 +581,7 @@ export interface CustomTracker {
   target_value: number | null;
   visualization: TrackerVisualization;
   life_area_tag: string | null;
+  prompt_period: TrackerPromptPeriod | null;
   sort_order: number;
   archived_at: string | null;
   created_at: string;
@@ -612,4 +615,22 @@ export interface ChartsSummary {
   victoryCount: number;
   victoryBreakdown: Record<string, number>;
   journalCount: number;
+}
+
+// === PRD-10: Reveille + Reckoning ===
+
+export interface DailyRhythmStatus {
+  id: string;
+  user_id: string;
+  rhythm_date: string;
+  reveille_dismissed: boolean;
+  reckoning_dismissed: boolean;
+  gratitude_prompt_completed: boolean;
+  joy_prompt_completed: boolean;
+  anticipation_prompt_completed: boolean;
+  mast_thought_morning_id: string | null;
+  morning_reading_source: string | null;
+  mast_thought_evening_id: string | null;
+  evening_reading_source: string | null;
+  created_at: string;
 }

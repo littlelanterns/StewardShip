@@ -1,10 +1,11 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, BookOpen, Award, MessageSquare } from 'lucide-react';
+import { Plus, BookOpen, Award, MessageSquare, Moon } from 'lucide-react';
 import { useAuthContext } from '../contexts/AuthContext';
 import { usePageContext } from '../hooks/usePageContext';
 import { useCrowsNest } from '../hooks/useCrowsNest';
 import { Button, Card } from '../components/shared';
+import { supabase } from '../lib/supabase';
 import { TodaysCompassCard } from '../components/crowsnest/TodaysCompassCard';
 import { ActiveStreaksCard } from '../components/crowsnest/ActiveStreaksCard';
 import { RecentVictoriesCard } from '../components/crowsnest/RecentVictoriesCard';
@@ -30,18 +31,54 @@ function getGreeting(timezone: string): string {
   }
 }
 
+function getUserLocalHour(timezone: string): number {
+  try {
+    const hour = new Date().toLocaleString('en-US', {
+      timeZone: timezone,
+      hour: 'numeric',
+      hour12: false,
+    });
+    return parseInt(hour, 10);
+  } catch {
+    return new Date().getHours();
+  }
+}
+
 export default function CrowsNest() {
   usePageContext({ page: 'crowsnest' });
-  const { profile, signOut } = useAuthContext();
+  const { profile, user, signOut } = useAuthContext();
   const { data, loading, fetchDashboard } = useCrowsNest();
   const navigate = useNavigate();
+  const [showEveningReview, setShowEveningReview] = useState(false);
 
-  const greeting = getGreeting(profile?.timezone || 'America/Chicago');
+  const timezone = profile?.timezone || 'America/Chicago';
+  const greeting = getGreeting(timezone);
   const name = profile?.display_name || 'Steward';
 
   useEffect(() => {
     fetchDashboard();
   }, [fetchDashboard]);
+
+  // Check if Evening Review button should show
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const { data: settings } = await supabase
+        .from('user_settings')
+        .select('reckoning_enabled, reckoning_time')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (!settings?.reckoning_enabled) {
+        setShowEveningReview(false);
+        return;
+      }
+
+      const reckoningHour = parseInt((settings.reckoning_time || '21:00').split(':')[0], 10);
+      const currentHour = getUserLocalHour(timezone);
+      setShowEveningReview(currentHour >= reckoningHour);
+    })();
+  }, [user, timezone]);
 
   const handleRefresh = useCallback(() => {
     fetchDashboard();
@@ -147,6 +184,17 @@ export default function CrowsNest() {
 
       {loading && !data && (
         <p className="crowsnest__loading">Loading your dashboard...</p>
+      )}
+
+      {showEveningReview && (
+        <button
+          type="button"
+          className="crowsnest__evening-review"
+          onClick={() => navigate('/reckoning')}
+        >
+          <Moon size={16} />
+          <span>Evening Review</span>
+        </button>
       )}
 
       <div className="crowsnest__signout">

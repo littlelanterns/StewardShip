@@ -350,6 +350,7 @@
 | target_value | NUMERIC | null | NULL | Optional daily target |
 | visualization | TEXT | 'line_graph' | NOT NULL | Enum: 'line_graph', 'streak_calendar', 'bar_chart' |
 | life_area_tag | TEXT | null | NULL | AI auto-assigned |
+| prompt_period | TEXT | null | NULL | Enum: 'morning', 'evening', 'both', null. When to show quick-log prompt in Reveille/Reckoning. |
 | sort_order | INTEGER | 0 | NOT NULL | Display order |
 | archived_at | TIMESTAMPTZ | null | NULL | Soft delete |
 | created_at | TIMESTAMPTZ | now() | NOT NULL | |

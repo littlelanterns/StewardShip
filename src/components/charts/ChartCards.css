@@ -417,6 +417,12 @@
   color: var(--color-text-primary);
 }
 
+.chart-field__helper {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  margin-top: calc(-1 * var(--spacing-xs));
+}
+
 .chart-field__input,
 .chart-field__select,
 .chart-field__textarea {

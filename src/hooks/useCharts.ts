@@ -195,6 +195,7 @@ export function useCharts() {
     target_value?: number | null;
     visualization?: CustomTracker['visualization'];
     life_area_tag?: string | null;
+    prompt_period?: CustomTracker['prompt_period'];
   }): Promise<CustomTracker | null> => {
     if (!user) return null;
     setError(null);
@@ -209,6 +210,7 @@ export function useCharts() {
           target_value: data.target_value ?? null,
           visualization: data.visualization || 'line_graph',
           life_area_tag: data.life_area_tag || null,
+          prompt_period: data.prompt_period ?? null,
           sort_order: maxSort + 1,
         })
         .select()

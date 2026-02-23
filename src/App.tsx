@@ -27,6 +27,7 @@ import Lists from './pages/Lists';
 import Reveille from './pages/Reveille';
 import Reckoning from './pages/Reckoning';
 import UnloadTheHold from './pages/UnloadTheHold';
+import { RhythmInterceptor } from './components/navigation/RhythmInterceptor';
 
 export default function App() {
   return (
@@ -55,7 +56,7 @@ export default function App() {
                 </ProtectedRoute>
               }
             >
-              <Route index element={<CrowsNest />} />
+              <Route index element={<RhythmInterceptor><CrowsNest /></RhythmInterceptor>} />
               <Route path="compass" element={<Compass />} />
               <Route path="helm" element={<Helm />} />
               <Route path="log" element={<Log />} />

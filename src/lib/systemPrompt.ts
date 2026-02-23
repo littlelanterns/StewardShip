@@ -11,6 +11,8 @@ export interface SystemPromptContext {
   compassContext?: string;
   chartsContext?: string;
   dashboardContext?: string;
+  reveilleContext?: string;
+  reckoningContext?: string;
   pageContext: string;
   guidedMode?: GuidedMode;
   conversationHistory: HelmMessage[];
@@ -291,6 +293,22 @@ export function buildSystemPrompt(context: SystemPromptContext): string {
     const dashboardTokens = estimateTokens(context.dashboardContext);
     if (currentTokens + dashboardTokens < budget) {
       prompt += context.dashboardContext;
+      currentTokens += dashboardTokens;
+    }
+  }
+
+  if (context.reveilleContext) {
+    const reveilleTokens = estimateTokens(context.reveilleContext);
+    if (currentTokens + reveilleTokens < budget) {
+      prompt += context.reveilleContext;
+      currentTokens += reveilleTokens;
+    }
+  }
+
+  if (context.reckoningContext) {
+    const reckoningTokens = estimateTokens(context.reckoningContext);
+    if (currentTokens + reckoningTokens < budget) {
+      prompt += context.reckoningContext;
     }
   }
 
@@ -380,4 +398,12 @@ export function shouldLoadCharts(message: string, pageContext: string): boolean 
 
 export function shouldLoadDashboard(message: string, pageContext: string): boolean {
   return pageContext === 'crowsnest';
+}
+
+export function shouldLoadReveille(pageContext: string): boolean {
+  return pageContext === 'reveille';
+}
+
+export function shouldLoadReckoning(pageContext: string): boolean {
+  return pageContext === 'reckoning';
 }

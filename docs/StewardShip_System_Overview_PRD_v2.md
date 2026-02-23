@@ -1120,9 +1120,9 @@ Every AI interaction includes these context layers (loaded dynamically based on 
 13. Charts (visualization components, data aggregation, goals CRUD, custom trackers) ✅
 14. Crow's Nest (dashboard aggregating from all sources) ✅
 
-### Phase 6: Daily Rhythms
-15. Reveille (morning card, data aggregation)
-16. Reckoning (evening card, tomorrow prep, optional Helm link)
+### Phase 6: Daily Rhythms ✅
+15. Reveille (morning card, Mast thought rotation, priorities, streaks, tracker prompts) ✅
+16. Reckoning (evening card, Victory Review triage, carry forward, tomorrow's priorities, prompted entries, tracker prompts) ✅
 
 ### Phase 7: Growth Tools
 17. The Wheel (page + guided Helm process, all Spokes, Rim cycle)

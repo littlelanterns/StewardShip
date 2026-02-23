@@ -7,6 +7,8 @@ import {
   shouldLoadVictories,
   shouldLoadCharts,
   shouldLoadDashboard,
+  shouldLoadReveille,
+  shouldLoadReckoning,
   type SystemPromptContext,
 } from './systemPrompt';
 
@@ -49,11 +51,13 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
 
   // Conditionally fetch based on keyword detection
   const needKeel = shouldLoadKeel(message, pageContext);
-  const needLog = shouldLoadLog(message, pageContext);
-  const needCompass = shouldLoadCompass(message, pageContext);
+  const needLog = shouldLoadLog(message, pageContext) || pageContext === 'reveille' || pageContext === 'reckoning';
+  const needCompass = shouldLoadCompass(message, pageContext) || pageContext === 'reveille' || pageContext === 'reckoning';
   const needVictories = shouldLoadVictories(message, pageContext);
   const needCharts = shouldLoadCharts(message, pageContext);
   const needDashboard = shouldLoadDashboard(message, pageContext);
+  const needReveille = shouldLoadReveille(pageContext);
+  const needReckoning = shouldLoadReckoning(pageContext);
 
   let keelEntries: KeelEntry[] | undefined;
   let recentLogEntries: LogEntry[] | undefined;
@@ -61,6 +65,8 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
   let recentVictories: Victory[] | undefined;
   let chartsContext: string | undefined;
   let dashboardContext: string | undefined;
+  let reveilleContext: string | undefined;
+  let reckoningContext: string | undefined;
 
   // Fetch conditional data in parallel
   const keelPromise = needKeel
@@ -141,6 +147,19 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     dashboardContext = await buildDashboardContext(userId, today, compassResult?.data as CompassTask[] | undefined, recentVictories);
   }
 
+  // Reveille context — morning briefing opening for Helm
+  if (needReveille) {
+    reveilleContext = buildReveilleContext(
+      compassResult?.data as CompassTask[] | undefined,
+      mastEntries,
+    );
+  }
+
+  // Reckoning context — evening review opening for Helm
+  if (needReckoning) {
+    reckoningContext = await buildReckoningContext(userId, today, compassResult?.data as CompassTask[] | undefined, recentVictories);
+  }
+
   return {
     displayName,
     mastEntries,
@@ -150,6 +169,8 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     compassContext,
     chartsContext,
     dashboardContext,
+    reveilleContext,
+    reckoningContext,
     pageContext,
     guidedMode: guidedMode || null,
     conversationHistory,
@@ -270,6 +291,113 @@ async function buildDashboardContext(
 
     if (victories && victories.length > 0) {
       result += `- Recent victories: ${victories.length} in last 30 days\n`;
+    }
+
+    return result;
+  } catch {
+    return undefined;
+  }
+}
+
+function buildReveilleContext(
+  todayTasks?: CompassTask[],
+  mastEntries?: MastEntry[],
+): string | undefined {
+  try {
+    const dayOfWeek = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+    const dateStr = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+    const pending = todayTasks?.filter((t) => t.status === 'pending') || [];
+
+    let result = `\n\nMORNING CONTEXT (Reveille):
+The user just saw their Reveille morning briefing and tapped "Talk to The Helm."
+Today is ${dayOfWeek}, ${dateStr}.\n`;
+
+    if (pending.length > 0) {
+      result += `Today's tasks (${pending.length}):\n`;
+      for (const t of pending.slice(0, 5)) {
+        result += `- ${t.title}${t.life_area_tag ? ` [${t.life_area_tag}]` : ''}\n`;
+      }
+      if (pending.length > 5) {
+        result += `- ...and ${pending.length - 5} more\n`;
+      }
+    } else {
+      result += 'No tasks scheduled for today.\n';
+    }
+
+    result += `\nAI style: Be grounded and practical, not over-enthusiastic. Example openings:
+- "Good morning. You've got ${pending.length} things on your plate today. Anything weighing on you before you start?"
+- "Morning. Want to think through how to approach today?"`;
+
+    return result;
+  } catch {
+    return undefined;
+  }
+}
+
+async function buildReckoningContext(
+  userId: string,
+  today: string,
+  todayTasks?: CompassTask[],
+  victories?: Victory[],
+): Promise<string | undefined> {
+  try {
+    const completed = todayTasks?.filter((t) => t.status === 'completed') || [];
+    const pending = todayTasks?.filter((t) => t.status === 'pending') || [];
+    const totalToday = (todayTasks || []).length;
+
+    // Get tomorrow's tasks
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+    const { data: tomorrowTasks } = await supabase
+      .from('compass_tasks')
+      .select('title, life_area_tag')
+      .eq('user_id', userId)
+      .eq('due_date', tomorrowStr)
+      .in('status', ['pending', 'carried_forward'])
+      .is('archived_at', null)
+      .order('sort_order')
+      .limit(5);
+
+    // Get today's log entries
+    const { data: todayLogs } = await supabase
+      .from('log_entries')
+      .select('text, entry_type')
+      .eq('user_id', userId)
+      .is('archived_at', null)
+      .gte('created_at', `${today}T00:00:00`)
+      .lte('created_at', `${today}T23:59:59`)
+      .limit(5);
+
+    let result = `\n\nEVENING CONTEXT (Reckoning):
+The user just saw their Reckoning evening review and tapped "Talk to The Helm."\n`;
+
+    result += `Today: ${completed.length} of ${totalToday} tasks completed.`;
+    if (pending.length > 0) {
+      result += ` ${pending.length} incomplete: ${pending.slice(0, 3).map((t) => t.title).join(', ')}`;
+      if (pending.length > 3) result += ` and ${pending.length - 3} more`;
+    }
+    result += '\n';
+
+    if (victories && victories.length > 0) {
+      result += `Victories today: ${victories.map((v) => v.description).join('; ')}\n`;
+    }
+
+    if (tomorrowTasks && tomorrowTasks.length > 0) {
+      result += `Tomorrow's priorities: ${(tomorrowTasks as { title: string }[]).map((t) => t.title).join(', ')}\n`;
+    }
+
+    if (todayLogs && todayLogs.length > 0) {
+      result += `Today's journal entries: ${todayLogs.length}\n`;
+    }
+
+    result += `\nAI style: Be reflective, not evaluative. Example openings:
+- "How are you feeling about today?"
+- "Looks like you got through ${completed.length} of your ${totalToday} tasks. How do you feel about what's left?"`;
+
+    if (pending.length > 3) {
+      result += `\n- If heavy day detected: "It looks like today was a lot. Want to talk about it, or just close things out and rest?"`;
     }
 
     return result;

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { X } from 'lucide-react';
 import { useCharts } from '../../hooks/useCharts';
 import { LIFE_AREA_LABELS } from '../../lib/types';
-import type { TrackerType, TrackerVisualization } from '../../lib/types';
+import type { TrackerType, TrackerVisualization, TrackerPromptPeriod } from '../../lib/types';
 import './ChartCards.css';
 
 interface CreateTrackerProps {
@@ -23,6 +23,13 @@ const VIZ_TYPES: { value: TrackerVisualization; label: string }[] = [
   { value: 'streak_calendar', label: 'Streak Calendar' },
 ];
 
+const PROMPT_PERIOD_OPTIONS: { value: string; label: string }[] = [
+  { value: '', label: "Don't prompt" },
+  { value: 'morning', label: 'Morning (Reveille)' },
+  { value: 'evening', label: 'Evening (Reckoning)' },
+  { value: 'both', label: 'Both' },
+];
+
 const LIFE_AREAS = Object.entries(LIFE_AREA_LABELS);
 
 export function CreateTracker({ onClose, onCreated }: CreateTrackerProps) {
@@ -32,6 +39,7 @@ export function CreateTracker({ onClose, onCreated }: CreateTrackerProps) {
   const [targetValue, setTargetValue] = useState('');
   const [visualization, setVisualization] = useState<TrackerVisualization>('line_graph');
   const [lifeArea, setLifeArea] = useState('');
+  const [promptPeriod, setPromptPeriod] = useState('');
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
@@ -43,6 +51,7 @@ export function CreateTracker({ onClose, onCreated }: CreateTrackerProps) {
       target_value: targetValue ? Number(targetValue) : null,
       visualization,
       life_area_tag: lifeArea || null,
+      prompt_period: (promptPeriod as TrackerPromptPeriod) || null,
     });
     setSaving(false);
     if (tracker) {
@@ -134,6 +143,23 @@ export function CreateTracker({ onClose, onCreated }: CreateTrackerProps) {
               ))}
             </select>
           </label>
+
+          <div className="chart-field">
+            <span className="chart-field__label">Daily Prompt</span>
+            <span className="chart-field__helper">Show a quick-log prompt during your daily rhythm</span>
+            <div className="chart-viz-options">
+              {PROMPT_PERIOD_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className={`chart-viz-option ${promptPeriod === opt.value ? 'chart-viz-option--active' : ''}`}
+                  onClick={() => setPromptPeriod(opt.value)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         <div className="chart-modal__footer">

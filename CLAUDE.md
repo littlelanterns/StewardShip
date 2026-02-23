@@ -1,7 +1,7 @@
 # CLAUDE.md — StewardShip Project Instructions
 
 > This is a living document. It grows as PRDs are written and development progresses.
-> Last updated: February 2026 — Phase 5 (Victory Recorder + Charts + Crow's Nest) built.
+> Last updated: February 2026 — Phase 6 (Reveille + Reckoning) built.
 
 ---
 
@@ -619,6 +619,11 @@ The AI applies this framework naturally when it helps the user understand why ch
 - **Victories as encouragement:** When user is discouraged, acknowledge the difficulty FIRST, then offer victory evidence. Never dismissive ("But look at all these wins!"). Always validating before redirecting.
 - **Victory from deleted source:** Victory record persists. Source link becomes inactive with "Original source no longer available."
 - **Victory Review:** Conversational AI narrative reflecting on victories for a time period (today/week/month). Not a list — a warm personal reflection connecting victories to identity, Mast, Wheels, and each other. Embedded in Reckoning for daily review. Saveable to Log. If no victories for the period, skip the section entirely rather than showing empty state.
+- **Victory Review Triage (Reckoning):** After displaying the Victory Review narrative, Reckoning presents three response paths:
+  - **Course Correcting:** User identifies an area to focus more on. Brief text input → saves as Log entry with `entry_type = 'reflection'` and life area tag. Option to create a Compass task.
+  - **Smooth Sailing:** Everything's tracking well. Acknowledge and move on — no forced input.
+  - **Rough Waters:** User is struggling with an obstacle. Brief text input → saves as Log entry. "Go deeper at the Helm" button opens Helm with Safe Harbor-adjacent context (validating, not coaching).
+  - Triage is inline on the Reckoning card, not a modal or separate page. Lightweight, not heavy.
 
 ### Dashboard (Crow's Nest) Conventions
 - Crow's Nest is purely read-only — it creates no data, only aggregates and navigates.
@@ -640,6 +645,14 @@ The AI applies this framework naturally when it helps the user understand why ch
   - User configures which sources are enabled in Settings (`morning_reading_sources`).
 - Prompted entries (gratitude/joy/anticipation) are simple capture moments in Reckoning, not conversation starters. Save to Log quietly.
 - Victory Review (from PRD-08) embedded in Reckoning evening flow.
+
+### Phase 6 Stubs & Deferred Wiring
+- **Morning Reading section (Reveille):** Stubbed — requires Manifest (PRD-15) for devotional content and sufficient Log history for breakthroughs. Wire when Manifest is built in Phase 9.
+- **Closing Thought reading sources (Reckoning):** Currently Mast-only. Wire Manifest Devotional and Log Breakthrough sources when Manifest is built in Phase 9.
+- **Upcoming Today section (Reveille):** Hidden — requires Meetings (PRD-17) and Reminders (PRD-18). Wire when built in Phase 10.
+- **AI milestone celebrations in Reckoning:** Stub — wire when full Reckoning + Charts integration is polished.
+- **Tracker entry → auto-increment linked goal progress:** Deferred — wire when Rigging is built.
+- **Tracker entry → auto-complete linked Compass task:** Deferred — wire when Rigging is built.
 
 ### Wheel Conventions
 - **Framework:** From the user's therapist (Change Wheel). For big character/identity changes, not small habits or tasks.
@@ -848,14 +861,17 @@ Tracks placeholder/stub functionality that needs to be wired up when the target 
 | Compass → Task Breaker "Break Down" button | Phase 4A (Compass) | Phase 4B (Task Breaker) | WIRED |
 | Compass → AI view suggestion banner | Phase 4B (Views) | Enhancement (polish) | STUB |
 | Compass → "Mark as Victory" button | Phase 4A (Compass) | Phase 5 (Victory Recorder) | WIRED |
-| Compass → Carry forward from Reckoning trigger | Phase 4A (Compass) | Phase 6 (Reckoning) | STUB |
+| Compass → Carry forward from Reckoning trigger | Phase 4A (Compass) | Phase 6 (Reckoning) | WIRED |
 | Unload the Hold → Crew person_note routing | Phase 4D (Unload the Hold) | Phase 8 (Crew) | STUB |
 | Unload the Hold → Reminder routing | Phase 4D (Unload the Hold) | Phase 10 (Reminders) | STUB |
 | Unload the Hold → Voice messages in conversation | Phase 4D (Unload the Hold) | TBD (Whisper integration) | STUB |
 | Charts → Wheel Progress cards | Phase 5B (Charts) | Phase 7 (Wheel) | STUB |
 | Charts → AI milestone celebrations in Reckoning | Phase 5B (Charts) | Phase 6 (Reckoning) | STUB |
-| Charts → Custom tracker prompts in Reveille/Reckoning | Phase 5B (Charts) | Phase 6 (Reveille) + Phase 10 (Reminders) | STUB |
+| Charts → Custom tracker prompts in Reveille/Reckoning | Phase 5B (Charts) | Phase 6 (Reveille) + Phase 10 (Reminders) | WIRED (Phase 6) |
 | Charts → AI trend observations in Helm | Phase 5B (Charts) | Enhancement (polish) | STUB |
+| Goal → Tracker auto-increments goal progress | Phase 5B (Charts) | Phase 7 (Rigging) | STUB |
+| Goal → Tracker entry auto-completes linked Compass task | Phase 5B (Charts) | Phase 7 (Rigging) | STUB |
+| Helm → Natural language hour/activity logging to tracker + task + goal | Phase 5B (Charts) | Enhancement (AI context) | STUB |
 | Crow's Nest → Active Wheels card | Phase 5C (Crow's Nest) | Phase 7 (Wheel) | STUB |
 | Crow's Nest → Upcoming card (meetings/reminders) | Phase 5C (Crow's Nest) | Phase 10 (Reminders) + Phase 10 (Meetings) | STUB |
 | Victory → Helm AI suggestion during conversations | Phase 5A (Victory) | Enhancement (AI context) | STUB |
