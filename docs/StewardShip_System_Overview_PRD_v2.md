@@ -694,6 +694,8 @@ Core data objects referenced by multiple features. Individual PRDs define how ea
 - Completed timestamp
 - Victory flagged (boolean)
 
+**Note on life area tags:** Compass tasks use a single `life_area_tag` TEXT column with action-oriented categories (spouse_marriage, family, career_work, home, spiritual, health_physical, social, financial, personal, custom). Log entries use a `life_area_tags` TEXT[] array with broader life area categories (spiritual, marriage, family, physical, emotional, social, professional, financial, personal_development, service, custom). These are intentionally different — tasks need quick single-category assignment, journal entries need nuanced multi-tagging.
+
 ### Lists
 - Title
 - Type: todo, shopping, wishlist, expenses, custom
@@ -1064,24 +1066,39 @@ Every AI interaction includes these context layers (loaded dynamically based on 
 
 ## Build Order and Dependencies
 
-### Phase 1: Foundation
+### Phase 1: Foundation ✅
 1. Auth + User Setup
-2. Database Schema (all tables)
-3. Design System (CSS variables, component library)
+2. Database Schema (all 37 tables)
+3. Design System (CSS variables, themes, shared component library)
 4. Navigation Shell (routing, bottom bar, sidebar, Helm drawer infrastructure)
 
-### Phase 2: Core Identity
+### Phase 2: Core Identity ✅
 5. The Mast (CRUD for principles, declarations)
 6. The Keel (CRUD for personality data)
 
-### Phase 3: Primary Interface
-7. The Helm (chat UI, AI integration, context loading, drawer + full page)
-8. The Log (commonplace book CRUD, routing options, tagging)
+### Phase 3A: Helm UI ✅
+7. The Helm (chat UI, drawer + full page, conversation management)
 
-### Phase 4: Daily Action
-9. The Compass (task CRUD, all 7 view toggles with hover descriptions, category tagging)
-10. Task Breaker (AI decomposition within Compass)
-11. Lists (CRUD, shareable links)
+### Phase 3B: The Log ✅
+8. The Log (commonplace book CRUD, routing options, tagging, Helm "Save to Log")
+
+### Phase 3C: AI Integration ✅
+9. Edge Functions (helm-chat, auto-tag via OpenRouter)
+10. System prompt assembly with dynamic context loading
+11. AI auto-tagging for Log entries
+12. Declaration + Self-Discovery guided modes
+
+### Phase 4A: Compass Core — NEXT
+13. Compass task CRUD, Simple List + By Category views
+14. Recurring tasks, AI auto-tagging for tasks
+15. Wire routing stubs from Helm and Log → Compass
+
+### Phase 4B: Compass Views + Task Breaker
+16. Remaining view toggles (Eisenhower, Frog, 1/3/9, Big Rocks, Ivy Lee)
+17. Task Breaker (AI decomposition, all three levels)
+
+### Phase 4C: Lists
+18. Lists CRUD, list items, share infrastructure
 
 ### Phase 5: Progress
 12. Victory Recorder (CRUD, source tracking, AI celebration, Victory Review narratives)
@@ -1217,15 +1234,15 @@ stewardship/
 
 | PRD | Status |
 |-----|--------|
-| PRD-01: Auth & User Setup | Built |
-| PRD-02: The Mast | Built |
-| PRD-03: The Keel | Built |
-| PRD-04: The Helm (Drawer + Full Page) | Built |
-| PRD-05: The Log (Commonplace Book) | Built |
-| PRD-06: The Compass + Task Breaker + Lists | PRD Written |
+| PRD-01: Auth & User Setup | Built (Phase 1) |
+| PRD-02: The Mast | Built (Phase 2) |
+| PRD-03: The Keel | Built (Phase 2) |
+| PRD-04: The Helm (Drawer + Full Page) | Built (Phase 3A + 3C) |
+| PRD-05: The Log (Commonplace Book) | Built (Phase 3B + 3C) |
+| PRD-06: The Compass + Task Breaker + Lists | Phase 4 Next |
 | PRD-07: Charts | PRD Written |
 | PRD-08: Victory Recorder | PRD Written |
-| PRD-09: Crow’s Nest | PRD Written |
+| PRD-09: Crow's Nest | PRD Written |
 | PRD-10: Reveille + Reckoning | PRD Written |
 | PRD-11: The Wheel + Life Inventory | PRD Written |
 | PRD-12: First Mate (incl. Spouse Questions) | PRD Written |

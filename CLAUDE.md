@@ -1,7 +1,7 @@
 # CLAUDE.md — StewardShip Project Instructions
 
 > This is a living document. It grows as PRDs are written and development progresses.
-> Last updated: February 2026 — All PRDs complete (PRD-01 through PRD-19)
+> Last updated: February 2026 — Phases 1-3C built. Phase 4A (Compass Core) next.
 
 ---
 
@@ -350,6 +350,7 @@ The system prompt is assembled dynamically for each message. It consists of:
    - Keel entries — when personality/self-knowledge topic detected
    - Recent Log entries (last 7 days, top 10, ~200 char each) — when user references recent events or drawer opened from Log
    - Additional contexts (First Mate, Crew, Wheels, Compass, Charts, Rigging, Manifest RAG, Life Inventory, Sphere) — loaded when relevant features are built. Until then, these conditional sections are omitted.
+   - **Context Loading (Phase 4A):** `contextLoader.ts` will be extended to load today's Compass tasks into AI context when page is 'compass' or conversation topic is task-related
 
 ### Context Detection (Keyword-Based for MVP)
 Before calling the AI, scan the user's message for topic signals:
@@ -540,6 +541,19 @@ The AI applies this framework naturally when it helps the user understand why ch
 - **Source field is freeform** (unlike Mast's enum): allows specific labels like "Enneagram Type 1", "MBTI - INTJ", "therapist", "self-observed". The `source_type` enum tracks HOW the entry was created; the `source` field tracks WHERE the knowledge came from.
 - **Post-MVP:** "You, Inc." guided professional self-assessment at Helm. AI recognizing Keel-relevant insights in ongoing conversations and offering to add them. Visual personality profile summary card.
 - **One table:** `keel_entries` with category enum, freeform source label, source_type enum, optional file_storage_path, source tracking, soft delete via `archived_at`.
+
+### Compass Conventions
+- **The Compass is the daily action hub.** It answers: "What should I do right now to stay on course?" Same tasks viewed through 7 framework toggles — switching views changes layout, not data.
+- **Quick-add mode:** User types a title and taps Save → task created with today's date, AI-suggested life area tag, no other metadata. Minimal friction is the priority.
+- **AI auto-tagging on tasks:** Same pattern as Log. When a task is created, AI auto-assigns a single `life_area_tag` based on title/description. Tag appears as removable chip. User can change. Life area tags for tasks are action-oriented: spouse_marriage, family, career_work, home, spiritual, health_physical, social, financial, personal, custom. (Different from Log's broader `life_area_tags` TEXT[] array.)
+- **Carry forward flow:** End of day (triggered by Reckoning) or manual. Per-task options: "Move to tomorrow" (shifts due_date), "Reschedule" (date picker), "I'm done with this" (cancelled, not deleted), "Still working on it" (keeps current date). Also available inline when viewing past-date tasks.
+- **Recurring tasks:** Next instance generated on completion or when next date arrives. If not completed, does NOT generate duplicates — stays as current instance. User can skip (cancelled for that date, next generates normally). Supported rules: daily, weekdays, weekly. Custom iCal RRULE is post-MVP.
+- **Source tracking:** Tasks show where they came from. Source types: manual, helm_conversation, log_routed, meeting_action, rigging_output, wheel_commitment, recurring_generated. Source indicator visible on task card and detail view. `source_reference_id` links back to originating record.
+- **Tasks/Lists navigation:** Lists accessible from Compass page via tab or toggle at top ("Tasks | Lists"). Lists are lightweight — shopping, wishlists, expenses, custom. Not tracked goals or habits.
+- **Subtask ordering:** Subtasks display in sort_order within parent. Only visible when parent is expanded. In framework views, subtasks are NOT individually categorized — they inherit parent's placement.
+- **Helm context from Compass:** When Helm drawer is opened from Compass, today's tasks are loaded as AI context. Page context includes active view: `{ page: 'compass', activeView?: string }`.
+- **Too many tasks:** If 20+ tasks for a day, AI gently suggests prioritization help. Opens Helm. Never guilt-inducing.
+- **No tasks:** Clean empty state: "No tasks for today. Add one, or ask the Helm what you should focus on."
 
 ### Charts & Progress Conventions
 - **Streaks:** Calculated on-the-fly from task data, never stored in a separate table. Weekday-only habits skip weekends. Weekly habits = one completion per week maintains the streak.
@@ -765,9 +779,9 @@ Tracks placeholder/stub functionality that needs to be wired up when the target 
 | Helm → Voice recording button (disabled) | Phase 3A (Helm) | TBD (Whisper integration) | STUB |
 | Helm → File attachments button (disabled) | Phase 3A (Helm) | TBD (Manifest storage pipeline) | STUB |
 | Helm → Save to Log message action | Phase 3A (Helm) | Phase 3B (Log) | WIRED |
-| Helm → Create task message action | Phase 3A (Helm) | Phase 4 (Compass) | STUB |
+| Helm → Create task message action | Phase 3A (Helm) | Phase 4A (Compass) | WIRING IN 4A |
 | Helm → Regenerate/Shorter/Longer on AI messages | Phase 3A (Helm) | Phase 3C (AI Integration) | WIRED |
-| Log → Route to Compass (create task) | Phase 3B (Log) | Phase 4 (Compass) | STUB |
+| Log → Route to Compass (create task) | Phase 3B (Log) | Phase 4A (Compass) | WIRING IN 4A |
 | Log → Route to Lists (add item) | Phase 3B (Log) | Phase 4 (Lists) | STUB |
 | Log → Route to Reminders | Phase 3B (Log) | Phase 10 (Reminders) | STUB |
 | Log → Route to Victory Recorder | Phase 3B (Log) | Phase 5 (Victory Recorder) | STUB |
@@ -810,6 +824,7 @@ _This section collects things still needed. Check items off as they're addressed
 - [x] AI Edge Function proxy for secure API key handling → built in Phase 3C
 - [x] System prompt assembly with dynamic context loading → built in Phase 3C
 - [x] AI auto-tagging for Log entries → built in Phase 3C
+- [x] Compass conventions → added to CLAUDE.md Compass Conventions section
 - [ ] Edge Function specifications
 - [ ] PWA manifest and service worker configuration
 - [ ] Remaining onboarding steps (1-2, 5-7)
