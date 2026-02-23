@@ -60,7 +60,7 @@ serve(async (req: Request) => {
       );
     }
 
-    const model = settings?.ai_model || 'anthropic/claude-sonnet';
+    const model = settings?.ai_model || 'anthropic/claude-sonnet-4';
 
     const isCompass = tag_type === 'compass';
     const systemPrompt = isCompass ? COMPASS_TAG_PROMPT : LOG_TAG_PROMPT;

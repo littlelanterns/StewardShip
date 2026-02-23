@@ -1,6 +1,6 @@
 import { useRef, useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Maximize2, X, Plus, History } from 'lucide-react';
+import { Maximize2, X, Plus, Clock } from 'lucide-react';
 import { useHelmContext } from '../../contexts/HelmContext';
 import MessageList from './MessageList';
 import MessageInput from './MessageInput';
@@ -185,7 +185,7 @@ export default function HelmDrawer() {
                 aria-label="Conversation history"
                 title="Conversation history"
               >
-                <History size={18} strokeWidth={1.5} />
+                <Clock size={18} strokeWidth={1.5} />
               </button>
               <button
                 type="button"

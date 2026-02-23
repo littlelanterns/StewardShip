@@ -46,7 +46,7 @@ serve(async (req: Request) => {
       );
     }
 
-    const model = settings?.ai_model || 'anthropic/claude-sonnet';
+    const model = settings?.ai_model || 'anthropic/claude-sonnet-4';
     const tokens = max_tokens || settings?.max_tokens || 1024;
 
     // Call OpenRouter
