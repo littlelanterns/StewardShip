@@ -219,6 +219,33 @@ type HelmPageContext =
   | { page: 'lists' };
 ```
 
+### Helm Conventions
+
+- **Two forms:** Persistent drawer (pull-up from any page, covers ~60-90% of screen) and full-page Helm (dedicated chat page from nav bar or drawer expand button). On screens <360px wide, drawer covers full screen.
+- **Drawer persistence:** Dismissing the drawer hides it — does NOT end the conversation. Conversation state survives page navigation, app close, and refresh. Page context updates additively when user navigates (AI is aware of page change, conversation continues).
+- **New Conversation:** Clears current messages and starts fresh. Old conversation is deactivated (`is_active = false`).
+- **Context Assembly Engine — priority order for trimming:**
+  1. Base system prompt + personality + behavioral rules (never trimmed)
+  2. Mast entries (never trimmed)
+  3. Current conversation history (trimmed from oldest messages first)
+  4. Guided mode data (never trimmed if mode is active)
+  5. Page-context data (trimmed if too large)
+  6. Detected topic data (trimmed by relevance)
+  7. RAG results (limited to top-K, K configurable)
+- **Context budget by user setting:** Short ~4K tokens (cheaper), Medium ~8K (default), Long ~16K (richer, more expensive). Controlled by `user_settings.context_window_size`.
+- **Topic detection:** AI scans user message for signals — crew member names, relationship words, emotion/stress words, goal/progress words, task words, faith/spiritual words, work/career words — and loads corresponding context automatically. User never manually selects a mode.
+- **Guided mode rules:** Only one guided mode active at a time. Can pause and resume across sessions and devices. Progress saved incrementally per step (each Wheel spoke, each Life Inventory area, each Rigging milestone saves to DB as completed). On return, AI detects in-progress guided mode and offers to resume with summary of completed steps.
+- **Guided modes available:** `'wheel'`, `'life_inventory'`, `'rigging'`, `'declaration'`, `'self_discovery'`, `'meeting'`, `'first_mate_action'` (with `guided_subtype`), `'safe_harbor'`, `null` (free-form default).
+- **Voice input flow:** Record → Whisper transcription → transcribed text appears in input field for editing → user taps send manually. Never auto-send transcribed text.
+- **Conversation storage:** Messages saved to Supabase database as sent/received (not batched or deferred). Local React state for UI responsiveness only — database is source of truth. On app open or refresh, active conversation loaded from DB.
+- **Conversation history:** List of past conversations, newest first. Each shows AI-generated title (~5-10 words), date, guided mode tag if applicable. Tap to reopen. Conversations older than 90 days can be archived (configurable in Settings).
+- **Message-level user actions:** Long-press (mobile) or right-click (desktop) on any message: copy text, save to Log, create task. AI messages additionally: regenerate, shorter/longer. Conversation-level (from menu): save entire conversation to Log, export as text, share.
+- **Attachments:** Paperclip button accepts PDF, PNG, JPG, JPEG, WEBP, TXT, MD. Files stored in Supabase Storage, path saved on `helm_messages.file_storage_path`. AI processes inline (vision for images, text extraction for PDFs/text). User can route attachments after discussion (to Manifest, Keel, etc.).
+- **AI celebration style:** Connect actions to identity, never generic praise. NOT "Great job!" NOT "I'm so proud!" YES: "That conversation you had with your wife tonight — that's the kind of man you described in your Wheel vision." Connect accomplishments to Mast declarations, Wheel visions, or identity shifts.
+- **AI "never does" list:** Never calls user "Captain," never uses emoji, never claims to be friend/companion, never provides clinical diagnosis/treatment, never provides specific legal/financial advice, never shares personal feelings/experiences, never guilt-trips/shames, never says "as an AI" or "I'm just a language model," never cites framework authors during active conversation (only after, or when asked).
+- **Saving to Log:** Creates a `log_entries` record with `entry_type = 'helm_conversation'` and `source_reference_id` pointing to the conversation. Saving does NOT end the conversation.
+- **Two tables:** `helm_conversations` (conversation metadata, guided mode, active status) and `helm_messages` (individual messages with role, content, page context, attachment paths). Messages are immutable — no `updated_at` on `helm_messages`.
+
 ---
 
 ## The Log: Universal Inbox Pattern
@@ -698,6 +725,10 @@ _This section collects things still needed. Check items off as they're addressed
 - [x] Meeting Frameworks conventions → defined in PRD-17
 - [x] Reminders + Rhythms conventions → defined in PRD-18
 - [x] Settings conventions → defined in PRD-19
+- [x] Helm conventions (context assembly, guided modes, voice, storage, drawer, message actions, attachments, AI rules) → added to CLAUDE.md Helm Conventions section
+- [x] Context budget by setting: short (~4K), medium (~8K), long (~16K) → documented in Helm Conventions
+- [x] AI "never does" list → documented in Helm Conventions
+- [x] AI celebration style → documented in Helm Conventions and Victory Conventions
 - [ ] Edge Function specifications
 - [ ] PWA manifest and service worker configuration
 - [ ] Remaining onboarding steps (1-2, 5-7)

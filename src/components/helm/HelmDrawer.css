@@ -56,6 +56,13 @@
   bottom: 0;
 }
 
+/* On narrow screens, peek goes full screen */
+@media (max-width: 359px) {
+  .helm-drawer--peek {
+    height: 100dvh;
+  }
+}
+
 /* Drag handle */
 .helm-drawer__handle {
   display: flex;
@@ -82,21 +89,36 @@
 /* Header */
 .helm-drawer__header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   padding: 0 var(--spacing-md) var(--spacing-sm);
   flex-shrink: 0;
+}
+
+.helm-drawer__header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
 .helm-drawer__title {
   font-family: var(--font-heading);
   font-size: var(--font-size-md);
   color: var(--color-text-heading);
+  margin: 0;
+}
+
+.helm-drawer__context-label {
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
 }
 
 .helm-drawer__controls {
   display: flex;
   gap: var(--spacing-xs);
+  flex-shrink: 0;
 }
 
 .helm-drawer__control-btn {
@@ -122,56 +144,4 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-}
-
-.helm-drawer__messages {
-  flex: 1;
-  overflow-y: auto;
-  padding: var(--spacing-md);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-}
-
-.helm-drawer__placeholder {
-  font-family: var(--font-body);
-  font-size: var(--font-size-base);
-  color: var(--color-text-secondary);
-  text-align: center;
-  font-style: italic;
-}
-
-/* Input bar */
-.helm-drawer__input-bar {
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-top: 1px solid var(--color-border);
-  flex-shrink: 0;
-}
-
-.helm-drawer__input {
-  width: 100%;
-  padding: var(--spacing-sm) var(--spacing-md);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  background-color: var(--color-bg-input);
-  color: var(--color-text-primary);
-  font-family: var(--font-body);
-  font-size: var(--font-size-base);
-  min-height: var(--touch-target-min);
-  outline: none;
-  transition: border-color var(--transition-fast);
-}
-
-.helm-drawer__input:focus {
-  border-color: var(--color-border-focus);
-}
-
-.helm-drawer__input::placeholder {
-  color: var(--color-text-secondary);
-}
-
-.helm-drawer__input:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }

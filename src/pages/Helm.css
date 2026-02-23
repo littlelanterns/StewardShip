@@ -1,0 +1,111 @@
+.helm-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-height: 100dvh;
+  background-color: var(--color-bg-primary);
+}
+
+/* Top bar */
+.helm-page__top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-bottom: 1px solid var(--color-border);
+  background-color: var(--color-bg-card);
+  flex-shrink: 0;
+}
+
+.helm-page__top-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--touch-target-min);
+  height: var(--touch-target-min);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.helm-page__top-btn:hover {
+  background-color: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+}
+
+.helm-page__top-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.helm-page__title {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-md);
+  color: var(--color-text-heading);
+  margin: 0;
+}
+
+.helm-page__guided-tag {
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  color: var(--color-mid-teal);
+  background-color: var(--color-bg-primary);
+  padding: 1px var(--spacing-sm);
+  border-radius: var(--radius-sm);
+}
+
+.helm-page__top-actions {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+/* Menu */
+.helm-page__menu-wrapper {
+  position: relative;
+}
+
+.helm-page__menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+}
+
+.helm-page__menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 100;
+  min-width: 180px;
+  background-color: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: var(--spacing-xs) 0;
+}
+
+.helm-page__menu-item {
+  display: block;
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  text-align: left;
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.helm-page__menu-item:hover {
+  background-color: var(--color-bg-secondary);
+}
+
+/* Content area */
+.helm-page__content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}

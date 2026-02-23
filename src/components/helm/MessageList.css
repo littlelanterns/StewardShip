@@ -1,0 +1,27 @@
+.message-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  scroll-behavior: smooth;
+}
+
+.message-list--loading {
+  justify-content: center;
+  align-items: center;
+}
+
+.message-list--empty {
+  justify-content: center;
+  align-items: center;
+}
+
+.message-list__empty-text {
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+  text-align: center;
+  font-style: italic;
+}

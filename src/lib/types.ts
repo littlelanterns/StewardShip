@@ -136,3 +136,85 @@ export const KEEL_CATEGORY_LABELS: Record<KeelCategory, string> = {
 export const KEEL_CATEGORY_ORDER: KeelCategory[] = [
   'personality_assessment', 'trait_tendency', 'strength', 'growth_area', 'you_inc', 'general'
 ];
+
+// === PRD-04: The Helm ===
+
+export type HelmPageContext =
+  | { page: 'crowsnest' }
+  | { page: 'compass'; activeView?: string }
+  | { page: 'helm' }
+  | { page: 'log' }
+  | { page: 'charts' }
+  | { page: 'mast' }
+  | { page: 'keel' }
+  | { page: 'wheel'; wheelId?: string }
+  | { page: 'lifeinventory' }
+  | { page: 'rigging'; planId?: string }
+  | { page: 'firstmate' }
+  | { page: 'crew'; personId?: string }
+  | { page: 'victories' }
+  | { page: 'safeharbor' }
+  | { page: 'manifest' }
+  | { page: 'settings' }
+  | { page: 'meetings'; meetingType?: string; personId?: string }
+  | { page: 'lists' }
+  | { page: 'reveille' }
+  | { page: 'reckoning' };
+
+export type GuidedMode =
+  | 'wheel'
+  | 'life_inventory'
+  | 'rigging'
+  | 'declaration'
+  | 'self_discovery'
+  | 'meeting'
+  | 'first_mate_action'
+  | 'safe_harbor'
+  | null;
+
+export type GuidedSubtype =
+  | 'quality_time'
+  | 'gifts'
+  | 'observe_serve'
+  | 'words_of_affirmation'
+  | 'gratitude'
+  | null;
+
+export type MessageRole = 'user' | 'assistant' | 'system';
+
+export interface HelmConversation {
+  id: string;
+  user_id: string;
+  title: string | null;
+  guided_mode: GuidedMode;
+  guided_subtype: GuidedSubtype;
+  guided_mode_reference_id: string | null;
+  is_active: boolean;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface HelmMessage {
+  id: string;
+  conversation_id: string;
+  user_id: string;
+  role: MessageRole;
+  content: string;
+  page_context: string | null;
+  voice_transcript: boolean;
+  file_storage_path: string | null;
+  file_type: string | null;
+  created_at: string;
+}
+
+export const GUIDED_MODE_LABELS: Record<string, string> = {
+  wheel: 'The Wheel',
+  life_inventory: 'Life Inventory',
+  rigging: 'Rigging',
+  declaration: 'Declaration',
+  self_discovery: 'Self-Discovery',
+  meeting: 'Meeting',
+  first_mate_action: 'First Mate',
+  safe_harbor: 'Safe Harbor',
+};
