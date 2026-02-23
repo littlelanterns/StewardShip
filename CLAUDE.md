@@ -1,7 +1,7 @@
 # CLAUDE.md — StewardShip Project Instructions
 
 > This is a living document. It grows as PRDs are written and development progresses.
-> Last updated: February 2026 — Phases 1-3C built. Phase 4A (Compass Core) next.
+> Last updated: February 2026 — Phase 4A (Compass Core) built. Phase 4B (Views + Task Breaker) next.
 
 ---
 
@@ -779,9 +779,9 @@ Tracks placeholder/stub functionality that needs to be wired up when the target 
 | Helm → Voice recording button (disabled) | Phase 3A (Helm) | TBD (Whisper integration) | STUB |
 | Helm → File attachments button (disabled) | Phase 3A (Helm) | TBD (Manifest storage pipeline) | STUB |
 | Helm → Save to Log message action | Phase 3A (Helm) | Phase 3B (Log) | WIRED |
-| Helm → Create task message action | Phase 3A (Helm) | Phase 4A (Compass) | WIRING IN 4A |
+| Helm → Create task message action | Phase 3A (Helm) | Phase 4A (Compass) | WIRED |
 | Helm → Regenerate/Shorter/Longer on AI messages | Phase 3A (Helm) | Phase 3C (AI Integration) | WIRED |
-| Log → Route to Compass (create task) | Phase 3B (Log) | Phase 4A (Compass) | WIRING IN 4A |
+| Log → Route to Compass (create task) | Phase 3B (Log) | Phase 4A (Compass) | WIRED |
 | Log → Route to Lists (add item) | Phase 3B (Log) | Phase 4 (Lists) | STUB |
 | Log → Route to Reminders | Phase 3B (Log) | Phase 10 (Reminders) | STUB |
 | Log → Route to Victory Recorder | Phase 3B (Log) | Phase 5 (Victory Recorder) | STUB |
@@ -790,6 +790,14 @@ Tracks placeholder/stub functionality that needs to be wired up when the target 
 | Log → Full-text search | Phase 3B (Log) | Phase 3B (verify) | STUB |
 | AI → Streaming responses | Phase 3C (AI) | Post-MVP | POST-MVP |
 | AI → Token usage cost tracking | Phase 3C (AI) | Phase 11 (Settings/Polish) | POST-MVP |
+| Compass → Eisenhower view | Phase 4A (Compass) | Phase 4B (Views) | STUB |
+| Compass → Frog view | Phase 4A (Compass) | Phase 4B (Views) | STUB |
+| Compass → 1/3/9 view | Phase 4A (Compass) | Phase 4B (Views) | STUB |
+| Compass → Big Rocks view | Phase 4A (Compass) | Phase 4B (Views) | STUB |
+| Compass → Ivy Lee view | Phase 4A (Compass) | Phase 4B (Views) | STUB |
+| Compass → Task Breaker "Break Down" button | Phase 4A (Compass) | Phase 4B (Task Breaker) | STUB |
+| Compass → "Mark as Victory" button | Phase 4A (Compass) | Phase 5 (Victory Recorder) | STUB |
+| Compass → Carry forward from Reckoning trigger | Phase 4A (Compass) | Phase 6 (Reckoning) | STUB |
 
 ---
 

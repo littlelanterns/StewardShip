@@ -49,3 +49,21 @@ export async function autoTagEntry(
     return [];
   }
 }
+
+export async function autoTagTask(
+  title: string,
+  description: string | null,
+  userId: string,
+): Promise<string | null> {
+  try {
+    const text = description ? `${title}\n${description}` : title;
+    const { data, error } = await supabase.functions.invoke('auto-tag', {
+      body: { text, user_id: userId, tag_type: 'compass' },
+    });
+
+    if (error || !data?.tags || data.tags.length === 0) return null;
+    return data.tags[0]; // Single tag for tasks
+  } catch {
+    return null;
+  }
+}

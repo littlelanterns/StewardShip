@@ -6,13 +6,21 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const VALID_TAGS = [
+const LOG_VALID_TAGS = [
   'spiritual', 'marriage', 'family', 'physical', 'emotional',
   'social', 'professional', 'financial', 'personal_development', 'service',
 ];
 
-const TAG_SYSTEM_PROMPT =
+const LOG_TAG_PROMPT =
   'You are a tag classifier. Given a journal entry, suggest 1-3 life area tags from this list: spiritual, marriage, family, physical, emotional, social, professional, financial, personal_development, service. Respond with ONLY the tag names, comma-separated, nothing else.';
+
+const COMPASS_VALID_TAGS = [
+  'spouse_marriage', 'family', 'career_work', 'home', 'spiritual',
+  'health_physical', 'social', 'financial', 'personal', 'custom',
+];
+
+const COMPASS_TAG_PROMPT =
+  'You are a tag classifier. Given a task title and optional description, suggest exactly 1 life area tag from this list: spouse_marriage, family, career_work, home, spiritual, health_physical, social, financial, personal, custom. Respond with ONLY the tag name, nothing else.';
 
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
@@ -20,7 +28,7 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { text, user_id } = await req.json();
+    const { text, user_id, tag_type } = await req.json();
 
     if (!text || !user_id) {
       return new Response(
@@ -54,6 +62,10 @@ serve(async (req: Request) => {
 
     const model = settings?.ai_model || 'anthropic/claude-sonnet';
 
+    const isCompass = tag_type === 'compass';
+    const systemPrompt = isCompass ? COMPASS_TAG_PROMPT : LOG_TAG_PROMPT;
+    const validTags = isCompass ? COMPASS_VALID_TAGS : LOG_VALID_TAGS;
+
     const openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -66,7 +78,7 @@ serve(async (req: Request) => {
         model,
         max_tokens: 50,
         messages: [
-          { role: 'system', content: TAG_SYSTEM_PROMPT },
+          { role: 'system', content: systemPrompt },
           { role: 'user', content: text },
         ],
       }),
@@ -86,7 +98,7 @@ serve(async (req: Request) => {
     const tags = content
       .split(',')
       .map((t: string) => t.trim().toLowerCase().replace(/\s+/g, '_'))
-      .filter((t: string) => VALID_TAGS.includes(t));
+      .filter((t: string) => validTags.includes(t));
 
     return new Response(
       JSON.stringify({ tags }),

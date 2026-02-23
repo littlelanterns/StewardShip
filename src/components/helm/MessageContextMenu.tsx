@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import { autoTagTask } from '../../lib/ai';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useHelmContext } from '../../contexts/HelmContext';
 import type { HelmMessage } from '../../lib/types';
@@ -84,9 +85,46 @@ export default function MessageContextMenu({
     }
   };
 
-  const handleCreateTask = () => {
-    // Stub — will wire to Compass in a later phase
-    showToast('Task creation coming in Compass phase');
+  const handleCreateTask = async () => {
+    if (!user) return;
+    try {
+      // Extract title: first line or first ~100 chars
+      const firstLine = message.content.split('\n')[0];
+      const title = firstLine.length > 100 ? firstLine.slice(0, 97) + '...' : firstLine;
+      const today = new Date().toISOString().split('T')[0];
+
+      const { data, error } = await supabase
+        .from('compass_tasks')
+        .insert({
+          user_id: user.id,
+          title,
+          source: 'helm_conversation',
+          source_reference_id: message.conversation_id,
+          due_date: today,
+          status: 'pending',
+          sort_order: 0,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Trigger auto-tag in background
+      autoTagTask(title, null, user.id).then((tag) => {
+        if (tag && data) {
+          supabase
+            .from('compass_tasks')
+            .update({ life_area_tag: tag })
+            .eq('id', data.id)
+            .eq('user_id', user.id)
+            .then(() => {});
+        }
+      });
+
+      showToast('Task created in Compass');
+    } catch {
+      showToast('Failed to create task');
+    }
   };
 
   const handleRegenerate = () => {

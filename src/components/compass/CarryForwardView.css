@@ -1,0 +1,108 @@
+.carry-forward {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.carry-forward__top-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 1px solid var(--color-warm-sand);
+}
+
+.carry-forward__back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: none;
+  border: none;
+  color: var(--color-mid-teal);
+  cursor: pointer;
+}
+
+.carry-forward__top-title {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-lg);
+  color: var(--color-text-heading);
+}
+
+.carry-forward__loading {
+  text-align: center;
+  color: var(--color-slate-gray);
+  padding: var(--spacing-2xl);
+}
+
+.carry-forward__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.carry-forward__card {
+  padding: var(--spacing-md);
+}
+
+.carry-forward__task-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2xs);
+  margin-bottom: var(--spacing-sm);
+}
+
+.carry-forward__task-title {
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  color: var(--color-navy);
+  font-weight: 600;
+}
+
+.carry-forward__task-date {
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  color: var(--color-cognac);
+}
+
+.carry-forward__options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.carry-forward__option-btn {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-mid-teal);
+  background: none;
+  border: 1px solid var(--color-warm-sand);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  cursor: pointer;
+  text-align: left;
+  min-height: 44px;
+  transition: background var(--transition-fast);
+}
+
+.carry-forward__option-btn:hover {
+  background: var(--color-cream);
+}
+
+.carry-forward__reschedule-row {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+  padding-left: var(--spacing-sm);
+}
+
+.carry-forward__date-input {
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  color: var(--color-navy);
+  background: var(--color-cream);
+  border: 1px solid var(--color-warm-sand);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+}

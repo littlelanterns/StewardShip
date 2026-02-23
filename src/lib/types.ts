@@ -71,6 +71,97 @@ export type CompassView =
   | 'ivy_lee'
   | 'by_category';
 
+// Compass task life area tags (action-oriented, single tag per task)
+// Different from Log's life_area_tags which are broader and multi-tag
+export type CompassLifeArea =
+  | 'spouse_marriage'
+  | 'family'
+  | 'career_work'
+  | 'home'
+  | 'spiritual'
+  | 'health_physical'
+  | 'social'
+  | 'financial'
+  | 'personal'
+  | 'custom';
+
+export type TaskStatus = 'pending' | 'completed' | 'carried_forward' | 'cancelled';
+export type RecurrenceRule = 'daily' | 'weekdays' | 'weekly' | null;
+export type EisenhowerQuadrant = 'do_now' | 'schedule' | 'delegate' | 'eliminate';
+export type ImportanceLevel = 'critical_1' | 'important_3' | 'small_9';
+export type TaskBreakerLevel = 'quick' | 'detailed' | 'granular';
+export type TaskSource =
+  | 'manual'
+  | 'helm_conversation'
+  | 'log_routed'
+  | 'meeting_action'
+  | 'rigging_output'
+  | 'wheel_commitment'
+  | 'recurring_generated';
+
+export interface CompassTask {
+  id: string;
+  user_id: string;
+  title: string;
+  description: string | null;
+  status: TaskStatus;
+  due_date: string | null;
+  recurrence_rule: RecurrenceRule;
+  life_area_tag: CompassLifeArea | null;
+  eisenhower_quadrant: EisenhowerQuadrant | null;
+  frog_rank: number | null;
+  importance_level: ImportanceLevel | null;
+  big_rock: boolean;
+  ivy_lee_rank: number | null;
+  sort_order: number;
+  parent_task_id: string | null;
+  task_breaker_level: TaskBreakerLevel | null;
+  related_goal_id: string | null;
+  related_wheel_id: string | null;
+  related_meeting_id: string | null;
+  related_rigging_plan_id: string | null;
+  source: TaskSource;
+  source_reference_id: string | null;
+  victory_flagged: boolean;
+  completed_at: string | null;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const COMPASS_LIFE_AREA_LABELS: Record<CompassLifeArea, string> = {
+  spouse_marriage: 'Spouse / Marriage',
+  family: 'Family',
+  career_work: 'Career / Work',
+  home: 'Home',
+  spiritual: 'Spiritual',
+  health_physical: 'Health / Physical',
+  social: 'Social',
+  financial: 'Financial',
+  personal: 'Personal',
+  custom: 'Custom',
+};
+
+export const COMPASS_VIEW_LABELS: Record<CompassView, string> = {
+  simple_list: 'Simple List',
+  eisenhower: 'Eisenhower',
+  eat_the_frog: 'Frog',
+  one_three_nine: '1/3/9',
+  big_rocks: 'Big Rocks',
+  ivy_lee: 'Ivy Lee',
+  by_category: 'By Category',
+};
+
+export const COMPASS_VIEW_DESCRIPTIONS: Record<CompassView, string> = {
+  simple_list: 'Plain checkboxes. No framework — just check things off.',
+  eisenhower: 'Four quadrants: Do Now (urgent + important), Schedule (important, not urgent), Delegate (urgent, not important), Eliminate (neither). Focus on what matters, not just what\'s loud.',
+  eat_the_frog: 'Your hardest or most dreaded task goes to the top. Do it first — everything else feels easier after.',
+  one_three_nine: 'Limits your day: 1 critical task, 3 important tasks, 9 small tasks. Keeps you focused without being overwhelmed.',
+  big_rocks: 'Identify your 2-3 major priorities. Everything else is gravel that fits around them. If the big rocks don\'t go in first, they won\'t fit at all.',
+  ivy_lee: 'Your top 6 tasks, strictly ordered. Work only on #1 until it\'s done. Then #2. Simple, powerful, no multitasking.',
+  by_category: 'Tasks grouped by life area: marriage, family, work, spiritual, etc. See at a glance what each role in your life needs from you today.',
+};
+
 // === PRD-02: The Mast ===
 
 export type MastEntryType = 'value' | 'declaration' | 'faith_foundation' | 'scripture_quote' | 'vision';

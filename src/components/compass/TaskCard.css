@@ -1,0 +1,153 @@
+.task-card {
+  padding: var(--spacing-sm) var(--spacing-md);
+  transition: opacity var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.task-card--dragging {
+  opacity: 0.6;
+  box-shadow: var(--shadow-lg);
+}
+
+.task-card--completed {
+  opacity: 0.7;
+}
+
+.task-card__row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+}
+
+.task-card__drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  min-height: 44px;
+  background: none;
+  border: none;
+  color: var(--color-slate-gray);
+  cursor: grab;
+  font-size: var(--font-size-sm);
+  flex-shrink: 0;
+  touch-action: none;
+}
+
+.task-card__drag-handle:active {
+  cursor: grabbing;
+}
+
+.task-card__checkbox-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.task-card__checkbox {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.task-card__checkmark {
+  display: block;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--color-mid-teal);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.task-card__checkbox:checked + .task-card__checkmark {
+  background: var(--color-mid-teal);
+  border-color: var(--color-mid-teal);
+}
+
+.task-card__checkbox:checked + .task-card__checkmark::after {
+  content: '';
+  display: block;
+  width: 6px;
+  height: 12px;
+  border: solid var(--color-white);
+  border-width: 0 2px 2px 0;
+  transform: translate(6px, 2px) rotate(45deg);
+}
+
+.task-card__checkbox:focus-visible + .task-card__checkmark {
+  outline: 2px solid var(--color-cognac);
+  outline-offset: 2px;
+}
+
+.task-card__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2xs);
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  padding: var(--spacing-xs) 0;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font-family: inherit;
+}
+
+.task-card__title {
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  color: var(--color-navy);
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.task-card__title--completed {
+  text-decoration: line-through;
+  color: var(--color-slate-gray);
+}
+
+.task-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+  align-items: center;
+}
+
+.task-card__tag {
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  color: var(--color-mid-teal);
+  background: var(--color-cream);
+  border: 1px solid var(--color-warm-sand);
+  border-radius: var(--radius-full);
+  padding: 2px var(--spacing-xs);
+}
+
+.task-card__due-date {
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  color: var(--color-slate-gray);
+}
+
+.task-card__recurring {
+  display: flex;
+  align-items: center;
+  color: var(--color-slate-gray);
+}
+
+.task-card__source {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  color: var(--color-slate-gray);
+  font-style: italic;
+}

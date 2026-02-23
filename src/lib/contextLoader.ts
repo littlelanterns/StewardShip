@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
-import type { MastEntry, KeelEntry, LogEntry, GuidedMode, HelmMessage } from './types';
-import { shouldLoadKeel, shouldLoadLog, type SystemPromptContext } from './systemPrompt';
+import type { MastEntry, KeelEntry, LogEntry, CompassTask, GuidedMode, HelmMessage } from './types';
+import { shouldLoadKeel, shouldLoadLog, shouldLoadCompass, type SystemPromptContext } from './systemPrompt';
 
 interface LoadContextOptions {
   message: string;
@@ -42,9 +42,11 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
   // Conditionally fetch based on keyword detection
   const needKeel = shouldLoadKeel(message, pageContext);
   const needLog = shouldLoadLog(message, pageContext);
+  const needCompass = shouldLoadCompass(message, pageContext);
 
   let keelEntries: KeelEntry[] | undefined;
   let recentLogEntries: LogEntry[] | undefined;
+  let compassContext: string | undefined;
 
   // Fetch conditional data in parallel
   const keelPromise = needKeel
@@ -70,9 +72,21 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
         .limit(10)
     : null;
 
-  const [keelResult, logResult] = await Promise.all([
+  const today = new Date().toISOString().split('T')[0];
+  const compassPromise = needCompass
+    ? supabase
+        .from('compass_tasks')
+        .select('title, status, life_area_tag, due_date, recurrence_rule')
+        .eq('user_id', userId)
+        .eq('due_date', today)
+        .is('archived_at', null)
+        .order('sort_order')
+    : null;
+
+  const [keelResult, logResult, compassResult] = await Promise.all([
     keelPromise,
     logPromise,
+    compassPromise,
   ]);
 
   if (keelResult?.data) {
@@ -81,15 +95,41 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
   if (logResult?.data) {
     recentLogEntries = logResult.data as LogEntry[];
   }
+  if (compassResult?.data && compassResult.data.length > 0) {
+    compassContext = formatCompassContext(compassResult.data as CompassTask[]);
+  }
 
   return {
     displayName,
     mastEntries,
     keelEntries,
     recentLogEntries,
+    compassContext,
     pageContext,
     guidedMode: guidedMode || null,
     conversationHistory,
     contextBudget,
   };
+}
+
+function formatCompassContext(tasks: Pick<CompassTask, 'title' | 'status' | 'life_area_tag' | 'due_date' | 'recurrence_rule'>[]): string {
+  const pending = tasks.filter((t) => t.status === 'pending');
+  const completed = tasks.filter((t) => t.status === 'completed');
+
+  let result = '\n\nTODAY\'S COMPASS (Tasks):\n';
+  if (pending.length > 0) {
+    result += `Pending (${pending.length}):\n`;
+    for (const t of pending) {
+      const tag = t.life_area_tag ? ` [${t.life_area_tag}]` : '';
+      const recurring = t.recurrence_rule ? ` (${t.recurrence_rule})` : '';
+      result += `- ${t.title}${tag}${recurring}\n`;
+    }
+  }
+  if (completed.length > 0) {
+    result += `Completed (${completed.length}):\n`;
+    for (const t of completed) {
+      result += `- ${t.title}\n`;
+    }
+  }
+  return result;
 }

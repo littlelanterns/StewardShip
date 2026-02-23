@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import { autoTagTask } from '../../lib/ai';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useHelmContext } from '../../contexts/HelmContext';
 import type { MastEntryType, KeelCategory } from '../../lib/types';
@@ -91,6 +92,55 @@ export function RoutingSelector({ entryId, entryText, onRouted, onClose }: Routi
     }
   };
 
+  const handleRouteToCompass = async () => {
+    if (!user) return;
+    setSaving(true);
+    try {
+      // Extract title: first line or first ~100 chars
+      const firstLine = entryText.split('\n')[0];
+      const title = firstLine.length > 100 ? firstLine.slice(0, 97) + '...' : firstLine;
+      const description = entryText.length > title.length ? entryText : null;
+      const today = new Date().toISOString().split('T')[0];
+
+      const { data, error } = await supabase
+        .from('compass_tasks')
+        .insert({
+          user_id: user.id,
+          title,
+          description,
+          source: 'log_routed',
+          source_reference_id: entryId,
+          due_date: today,
+          status: 'pending',
+          sort_order: 0,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      onRouted('compass_task', data.id);
+
+      // Trigger auto-tag in background
+      autoTagTask(title, description, user.id).then((tag) => {
+        if (tag) {
+          supabase
+            .from('compass_tasks')
+            .update({ life_area_tag: tag })
+            .eq('id', data.id)
+            .eq('user_id', user.id)
+            .then(() => {});
+        }
+      });
+
+      showToast('Task created in Compass');
+    } catch {
+      showToast('Failed to create task');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleHelmProcess = () => {
     openDrawer();
     sendMessage(`Processing a Log entry:\n\n"${entryText}"`);
@@ -176,7 +226,7 @@ export function RoutingSelector({ entryId, entryText, onRouted, onClose }: Routi
         <button
           type="button"
           className="routing-selector__item"
-          onClick={() => showToast('Task creation coming in Compass phase')}
+          onClick={handleRouteToCompass}
         >
           <span className="routing-selector__item-label">Create a task</span>
           <span className="routing-selector__item-desc">Add to your Compass</span>

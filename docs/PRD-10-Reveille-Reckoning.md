@@ -174,6 +174,8 @@ A single, clean, full-screen card with sections that scroll vertically. The feel
   - "Still today" — keeps it (for users doing Reckoning before midnight who might still finish)
 - If all tasks were completed: section shows "Everything done. Clean slate." (brief, not over-celebrating)
 
+**Note (added during Phase 4A build):** The Compass carry forward flow is built and functional as a manual action from the Compass page. When Reckoning is built in Phase 6, it should trigger the carry forward flow as part of the evening review. The existing `CarryForwardView` component can be embedded in or navigated to from Reckoning. The Stub Registry tracks this: "Compass → Carry forward from Reckoning trigger."
+
 **Section 5: Tomorrow's Priorities**
 - "What are your top priorities for tomorrow?"
 - Shows any tasks already scheduled for tomorrow

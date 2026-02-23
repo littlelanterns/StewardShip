@@ -7,6 +7,7 @@ export interface SystemPromptContext {
   mastEntries: MastEntry[];
   keelEntries?: KeelEntry[];
   recentLogEntries?: LogEntry[];
+  compassContext?: string;
   pageContext: string;
   guidedMode?: GuidedMode;
   conversationHistory: HelmMessage[];
@@ -216,6 +217,14 @@ export function buildSystemPrompt(context: SystemPromptContext): string {
     const logTokens = estimateTokens(logSection);
     if (currentTokens + logTokens < budget) {
       prompt += logSection;
+      currentTokens += logTokens;
+    }
+  }
+
+  if (context.compassContext) {
+    const compassTokens = estimateTokens(context.compassContext);
+    if (currentTokens + compassTokens < budget) {
+      prompt += context.compassContext;
     }
   }
 
@@ -249,4 +258,16 @@ export function shouldLoadLog(message: string, pageContext: string): boolean {
   if (pageContext === 'log') return true;
   const lower = message.toLowerCase();
   return LOG_KEYWORDS.some((kw) => lower.includes(kw));
+}
+
+const COMPASS_KEYWORDS = [
+  'task', 'todo', 'to-do', 'to do', 'need to', 'should i',
+  'priorities', 'today', 'schedule', 'deadline', 'due',
+  'compass', 'get done', 'finish', 'complete',
+];
+
+export function shouldLoadCompass(message: string, pageContext: string): boolean {
+  if (pageContext === 'compass') return true;
+  const lower = message.toLowerCase();
+  return COMPASS_KEYWORDS.some((kw) => lower.includes(kw));
 }
