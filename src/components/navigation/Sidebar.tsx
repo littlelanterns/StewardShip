@@ -26,12 +26,11 @@ import { useHelm } from '../../contexts/HelmContext';
 import './Sidebar.css';
 
 export default function Sidebar() {
-  const { toggleDrawer, drawerState, startGuidedConversation } = useHelm();
+  const { toggleDrawer, drawerState } = useHelm();
   const navigate = useNavigate();
 
-  const handleUnloadTheHold = async () => {
-    await startGuidedConversation('unload_the_hold');
-    navigate('/helm');
+  const handleUnloadTheHold = () => {
+    navigate('/unload-the-hold');
   };
 
   return (

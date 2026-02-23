@@ -16,37 +16,48 @@ export function useHelmData() {
   const [error, setError] = useState<string | null>(null);
 
   // Load the user's active conversation + its messages
+  // Prefers non-guided conversations so the drawer doesn't resume a guided session
   const loadActiveConversation = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     setError(null);
     try {
-      const { data: convData, error: convErr } = await supabase
+      // First try to find a non-guided active conversation
+      let { data: convData, error: convErr } = await supabase
         .from('helm_conversations')
         .select('*')
         .eq('user_id', user.id)
         .eq('is_active', true)
+        .is('guided_mode', null)
         .order('updated_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
       if (convErr) throw convErr;
 
-      if (convData) {
-        setActiveConversation(convData as HelmConversation);
-        const { data: msgData, error: msgErr } = await supabase
-          .from('helm_messages')
-          .select('*')
-          .eq('conversation_id', convData.id)
+      // If no normal active conversation, deactivate any lingering guided ones
+      if (!convData) {
+        await supabase
+          .from('helm_conversations')
+          .update({ is_active: false })
           .eq('user_id', user.id)
-          .order('created_at', { ascending: true });
+          .eq('is_active', true);
 
-        if (msgErr) throw msgErr;
-        setMessages((msgData as HelmMessage[]) || []);
-      } else {
         setActiveConversation(null);
         setMessages([]);
+        return;
       }
+
+      setActiveConversation(convData as HelmConversation);
+      const { data: msgData, error: msgErr } = await supabase
+        .from('helm_messages')
+        .select('*')
+        .eq('conversation_id', convData.id)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true });
+
+      if (msgErr) throw msgErr;
+      setMessages((msgData as HelmMessage[]) || []);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Failed to load conversation';
       setError(msg);

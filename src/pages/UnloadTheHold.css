@@ -1,0 +1,106 @@
+.unload-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding-bottom: var(--spacing-4xl);
+}
+
+.unload-page__header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-xl);
+}
+
+.unload-page__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-bg-secondary);
+  color: var(--color-cognac);
+  margin-bottom: var(--spacing-xs);
+}
+
+.unload-page__subtitle {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-style: italic;
+  margin: 0;
+}
+
+.unload-page__description {
+  max-width: 540px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-base);
+  line-height: 1.6;
+  margin-bottom: var(--spacing-xl);
+}
+
+.unload-page__description p {
+  margin: 0;
+}
+
+.unload-page__steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  max-width: 540px;
+  width: 100%;
+  text-align: left;
+  margin-bottom: var(--spacing-xl);
+}
+
+.unload-page__step {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background-color: var(--color-bg-card);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+
+.unload-page__step-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-mid-teal);
+  color: var(--color-white);
+  font-family: var(--font-heading);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+}
+
+.unload-page__step strong {
+  display: block;
+  font-family: var(--font-heading);
+  font-size: var(--font-size-base);
+  color: var(--color-text-heading);
+  margin-bottom: 2px;
+}
+
+.unload-page__step p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+}
+
+.unload-page__hint {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  margin: 0;
+}

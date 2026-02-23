@@ -19,7 +19,6 @@ import {
   Settings,
   X,
 } from 'lucide-react';
-import { useHelmContext } from '../../contexts/HelmContext';
 import './MoreMenu.css';
 
 interface MoreMenuProps {
@@ -29,14 +28,12 @@ interface MoreMenuProps {
 
 export default function MoreMenu({ open, onClose }: MoreMenuProps) {
   const navigate = useNavigate();
-  const { startGuidedConversation } = useHelmContext();
 
   if (!open) return null;
 
-  const handleUnloadTheHold = async () => {
+  const handleUnloadTheHold = () => {
     onClose();
-    await startGuidedConversation('unload_the_hold');
-    navigate('/helm');
+    navigate('/unload-the-hold');
   };
 
   return (

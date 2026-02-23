@@ -26,6 +26,7 @@ import Meetings from './pages/Meetings';
 import Lists from './pages/Lists';
 import Reveille from './pages/Reveille';
 import Reckoning from './pages/Reckoning';
+import UnloadTheHold from './pages/UnloadTheHold';
 
 export default function App() {
   return (
@@ -74,6 +75,7 @@ export default function App() {
               <Route path="lists" element={<Lists />} />
               <Route path="reveille" element={<Reveille />} />
               <Route path="reckoning" element={<Reckoning />} />
+              <Route path="unload-the-hold" element={<UnloadTheHold />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />
