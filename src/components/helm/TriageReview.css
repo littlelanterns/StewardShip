@@ -1,0 +1,450 @@
+/* TriageReview — full-screen triage overlay */
+
+.triage-review {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-bg-primary);
+  animation: triage-slide-up var(--transition-normal) ease;
+}
+
+@keyframes triage-slide-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+/* Top bar */
+.triage-review__top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-bottom: 1px solid var(--color-border);
+  background-color: var(--color-bg-card);
+  flex-shrink: 0;
+}
+
+.triage-review__back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--touch-target-min);
+  height: var(--touch-target-min);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.triage-review__back:hover {
+  background-color: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+}
+
+.triage-review__top-title {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-md);
+  color: var(--color-text-heading);
+}
+
+.triage-review__top-spacer {
+  width: var(--touch-target-min);
+}
+
+.triage-review__item-count {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  min-width: var(--touch-target-min);
+  text-align: right;
+}
+
+/* Scrollable item list */
+.triage-review__list {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+/* Single triage item */
+.triage-review__item {
+  background-color: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.triage-review__item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-xs);
+}
+
+/* Category badge */
+.triage-review__category-wrapper {
+  position: relative;
+}
+
+.triage-review__category-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-2xs) var(--spacing-sm);
+  border-radius: var(--radius-full);
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+  min-height: 28px;
+}
+
+.triage-review__category-badge:hover {
+  opacity: 0.85;
+}
+
+.triage-review__category-dest {
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+/* Category color variants */
+.triage-review__category-badge--task {
+  background-color: color-mix(in srgb, var(--color-mid-teal) 15%, var(--color-cream));
+  color: var(--color-dark-teal);
+}
+
+.triage-review__category-badge--journal {
+  background-color: var(--color-warm-sand);
+  color: var(--color-navy);
+}
+
+.triage-review__category-badge--insight {
+  background-color: color-mix(in srgb, var(--color-cognac) 15%, var(--color-cream));
+  color: var(--color-deep-brown);
+}
+
+.triage-review__category-badge--principle {
+  background-color: color-mix(in srgb, var(--color-deep-teal) 15%, var(--color-cream));
+  color: var(--color-deep-teal);
+}
+
+.triage-review__category-badge--person_note {
+  background-color: color-mix(in srgb, var(--color-slate-gray) 15%, var(--color-cream));
+  color: var(--color-navy);
+}
+
+.triage-review__category-badge--reminder {
+  background-color: color-mix(in srgb, var(--color-dark-teal) 15%, var(--color-cream));
+  color: var(--color-dark-teal);
+}
+
+.triage-review__category-badge--list_item {
+  background-color: var(--color-light-gray);
+  color: var(--color-navy);
+}
+
+.triage-review__category-badge--discard {
+  background-color: var(--color-light-gray);
+  color: var(--color-slate-gray);
+  text-decoration: line-through;
+}
+
+/* Discard button */
+.triage-review__discard-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--touch-target-min);
+  height: var(--touch-target-min);
+  background: none;
+  border: none;
+  color: var(--color-slate-gray);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color var(--transition-fast);
+}
+
+.triage-review__discard-btn:hover {
+  color: var(--color-cognac);
+}
+
+/* Category picker dropdown */
+.triage-review__picker-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 210;
+}
+
+.triage-review__category-picker {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 211;
+  min-width: 200px;
+  max-height: 280px;
+  overflow-y: auto;
+  background-color: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: var(--spacing-xs) 0;
+  margin-top: var(--spacing-xs);
+}
+
+.triage-review__picker-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  text-align: left;
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+  min-height: var(--touch-target-min);
+}
+
+.triage-review__picker-option:hover {
+  background-color: var(--color-bg-secondary);
+}
+
+.triage-review__picker-option--active {
+  background-color: color-mix(in srgb, var(--color-mid-teal) 10%, var(--color-bg-card));
+  font-weight: var(--font-weight-medium);
+}
+
+.triage-review__picker-label {
+  flex: 1;
+}
+
+.triage-review__picker-dest {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+/* Item text — tappable for editing */
+.triage-review__item-text {
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  line-height: var(--line-height-relaxed);
+  margin: 0;
+  padding: var(--spacing-xs) 0;
+  cursor: text;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--transition-fast);
+}
+
+.triage-review__item-text:hover {
+  background-color: var(--color-bg-secondary);
+}
+
+/* Item editing textarea */
+.triage-review__item-edit {
+  width: 100%;
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  line-height: var(--line-height-relaxed);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-border-focus);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-bg-input);
+  resize: vertical;
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-focus-ring);
+}
+
+/* Metadata chips row */
+.triage-review__item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2xs);
+}
+
+.triage-review__meta-chip {
+  display: inline-flex;
+  padding: 1px var(--spacing-xs);
+  background-color: var(--color-warm-sand);
+  color: var(--color-navy);
+  border-radius: var(--radius-full);
+  font-family: var(--font-body);
+  font-size: 10px;
+  line-height: 1.4;
+  text-transform: capitalize;
+}
+
+/* Discarded section */
+.triage-review__discarded-section {
+  margin-top: var(--spacing-sm);
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--color-border);
+}
+
+.triage-review__discarded-label {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+}
+
+.triage-review__discarded-items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2xs);
+  margin-top: var(--spacing-xs);
+}
+
+.triage-review__discarded-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-2xs) var(--spacing-sm);
+  background-color: var(--color-light-gray);
+  border-radius: var(--radius-sm);
+}
+
+.triage-review__discarded-text {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  text-decoration: line-through;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.triage-review__restore-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color var(--transition-fast);
+}
+
+.triage-review__restore-btn:hover {
+  color: var(--color-mid-teal);
+}
+
+/* Bottom bar */
+.triage-review__bottom-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  border-top: 1px solid var(--color-border);
+  background-color: var(--color-bg-card);
+  flex-shrink: 0;
+}
+
+.triage-review__routing-status {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.triage-review__back-link {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-link);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: var(--spacing-xs);
+  min-height: var(--touch-target-min);
+  display: flex;
+  align-items: center;
+}
+
+.triage-review__back-link:hover {
+  text-decoration: underline;
+}
+
+/* Post-routing summary */
+.triage-review__summary {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xl);
+  gap: var(--spacing-lg);
+}
+
+.triage-review__summary-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-full);
+  background-color: color-mix(in srgb, var(--color-mid-teal) 15%, var(--color-cream));
+  color: var(--color-mid-teal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.triage-review__summary-heading {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-xl);
+  color: var(--color-text-heading);
+  margin: 0;
+  text-align: center;
+}
+
+.triage-review__summary-counts {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-2xs);
+}
+
+.triage-review__summary-line {
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+/* Desktop adjustments */
+@media (min-width: 768px) {
+  .triage-review {
+    animation: none;
+  }
+
+  .triage-review__list {
+    max-width: 640px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .triage-review__bottom-bar {
+    max-width: 640px;
+    margin: 0 auto;
+    width: 100%;
+  }
+}

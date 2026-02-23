@@ -117,3 +117,11 @@
   background-color: var(--color-bg-secondary);
   font-weight: var(--font-weight-medium);
 }
+
+.more-menu__link--button {
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}

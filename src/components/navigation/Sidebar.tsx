@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Compass,
@@ -17,6 +17,7 @@ import {
   Archive,
   Calendar,
   ListChecks,
+  PackageOpen,
   Sun,
   Moon,
   Settings,
@@ -25,7 +26,13 @@ import { useHelm } from '../../contexts/HelmContext';
 import './Sidebar.css';
 
 export default function Sidebar() {
-  const { toggleDrawer, drawerState } = useHelm();
+  const { toggleDrawer, drawerState, startGuidedConversation } = useHelm();
+  const navigate = useNavigate();
+
+  const handleUnloadTheHold = async () => {
+    await startGuidedConversation('unload_the_hold');
+    navigate('/helm');
+  };
 
   return (
     <aside className="sidebar" aria-label="Main navigation">
@@ -117,6 +124,16 @@ export default function Sidebar() {
         {/* Planning & Action */}
         <div className="sidebar__section-label">Planning</div>
         <ul className="sidebar__group">
+          <li>
+            <button
+              type="button"
+              className="sidebar__link sidebar__link--button"
+              onClick={handleUnloadTheHold}
+            >
+              <PackageOpen size={18} strokeWidth={1.5} />
+              <span>Unload the Hold</span>
+            </button>
+          </li>
           <li>
             <NavLink to="/rigging" className="sidebar__link">
               <Map size={18} strokeWidth={1.5} />

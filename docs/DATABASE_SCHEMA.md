@@ -1,7 +1,7 @@
 # StewardShip: Database Schema
 
 > This is a living document. Updated after each PRD is written.
-> Last updated: After PRD-19 (Settings) — All PRDs complete
+> Last updated: After PRD-20 (Unload the Hold) — All PRDs complete
 
 ---
 
@@ -107,7 +107,7 @@
 | text | TEXT | | NOT NULL | The principle content. Cannot be empty. |
 | category | TEXT | null | NULL | Optional freeform (e.g., "Marriage", "Work") |
 | sort_order | INTEGER | 0 | NOT NULL | Order within type group. Lower = higher. |
-| source | TEXT | 'manual' | NOT NULL | Enum: 'manual', 'helm_conversation', 'manifest_extraction', 'log_routed' |
+| source | TEXT | 'manual' | NOT NULL | Enum: 'manual', 'helm_conversation', 'manifest_extraction', 'log_routed', 'unload_the_hold' |
 | source_reference_id | UUID | null | NULL | FK → source entry if applicable |
 | archived_at | TIMESTAMPTZ | null | NULL | Null = active. Set = archived. |
 | created_at | TIMESTAMPTZ | now() | NOT NULL | |
@@ -131,7 +131,7 @@
 | category | TEXT | | NOT NULL | Enum: 'personality_assessment', 'trait_tendency', 'strength', 'growth_area', 'you_inc', 'general' |
 | text | TEXT | | NOT NULL | Entry content. Can be substantial for test summaries. |
 | source | TEXT | 'self_observed' | NOT NULL | Freeform label (e.g., 'Enneagram Type 1', 'MBTI - INTJ', 'therapist') |
-| source_type | TEXT | 'manual' | NOT NULL | Enum: 'manual', 'uploaded_file', 'helm_conversation', 'manifest_extraction', 'log_routed' |
+| source_type | TEXT | 'manual' | NOT NULL | Enum: 'manual', 'uploaded_file', 'helm_conversation', 'manifest_extraction', 'log_routed', 'unload_the_hold' |
 | source_reference_id | UUID | null | NULL | FK → source entry if applicable |
 | file_storage_path | TEXT | null | NULL | Path in Supabase Storage if file was uploaded |
 | sort_order | INTEGER | 0 | NOT NULL | Order within category group |
@@ -154,7 +154,7 @@
 | id | UUID | gen_random_uuid() | NOT NULL | PK |
 | user_id | UUID | | NOT NULL | FK → auth.users |
 | title | TEXT | null | NULL | AI-generated topic summary (~5-10 words) |
-| guided_mode | TEXT | null | NULL | Enum: 'wheel', 'life_inventory', 'rigging', 'declaration', 'self_discovery', 'meeting', 'first_mate_action', 'safe_harbor', null |
+| guided_mode | TEXT | null | NULL | Enum: 'wheel', 'life_inventory', 'rigging', 'declaration', 'self_discovery', 'meeting', 'first_mate_action', 'safe_harbor', 'unload_the_hold', null |
 | guided_subtype | TEXT | null | NULL | Sub-mode within guided_mode (e.g., 'quality_time', 'gifts', 'observe_serve', 'words_of_affirmation', 'gratitude' for first_mate_action) |
 | guided_mode_reference_id | UUID | null | NULL | FK → the in-progress record (wheel, plan, person, etc.) |
 | is_active | BOOLEAN | true | NOT NULL | Currently active conversation |
@@ -201,9 +201,9 @@
 | id | UUID | gen_random_uuid() | NOT NULL | PK |
 | user_id | UUID | | NOT NULL | FK → auth.users |
 | text | TEXT | | NOT NULL | Entry content (can be long-form) |
-| entry_type | TEXT | 'journal' | NOT NULL | Enum: 'journal', 'gratitude', 'reflection', 'quick_note', 'meeting_notes', 'transcript', 'helm_conversation', 'custom' |
+| entry_type | TEXT | 'journal' | NOT NULL | Enum: 'journal', 'gratitude', 'reflection', 'quick_note', 'meeting_notes', 'transcript', 'helm_conversation', 'brain_dump', 'custom' |
 | life_area_tags | TEXT[] | '{}' | NOT NULL | Array of tags. AI auto-applied. GIN indexed. |
-| source | TEXT | 'manual_text' | NOT NULL | Enum: 'manual_text', 'voice_transcription', 'helm_conversation', 'meeting_framework' |
+| source | TEXT | 'manual_text' | NOT NULL | Enum: 'manual_text', 'voice_transcription', 'helm_conversation', 'meeting_framework', 'unload_the_hold' |
 | source_reference_id | UUID | null | NULL | FK → helm_conversations or meetings |
 | audio_file_path | TEXT | null | NULL | Supabase Storage path for voice entries |
 | routed_to | TEXT[] | '{}' | NOT NULL | Tracking array: 'compass_task', 'list_item', 'reminder', 'mast_entry', 'keel_entry', 'victory', 'spouse_insight', 'crew_note' |
@@ -250,7 +250,7 @@
 | related_wheel_id | UUID | null | NULL | FK → wheel_instances |
 | related_meeting_id | UUID | null | NULL | FK → meetings |
 | related_rigging_plan_id | UUID | null | NULL | FK → rigging_plans |
-| source | TEXT | 'manual' | NOT NULL | Enum: 'manual', 'helm_conversation', 'log_routed', 'meeting_action', 'rigging_output', 'wheel_commitment', 'recurring_generated' |
+| source | TEXT | 'manual' | NOT NULL | Enum: 'manual', 'helm_conversation', 'log_routed', 'meeting_action', 'rigging_output', 'wheel_commitment', 'recurring_generated', 'unload_the_hold' |
 | source_reference_id | UUID | null | NULL | FK → source record |
 | victory_flagged | BOOLEAN | false | NOT NULL | Recorded as victory on completion |
 | completed_at | TIMESTAMPTZ | null | NULL | When completed |
@@ -1150,6 +1150,37 @@ Tracks weekly/monthly/quarterly rhythm card display and dismissal.
 
 ---
 
+## PRD-20: Unload the Hold
+
+#### `hold_dumps`
+
+| Column | Type | Default | Nullable | Notes |
+|--------|------|---------|----------|-------|
+| id | UUID | gen_random_uuid() | NOT NULL | PK |
+| user_id | UUID | | NOT NULL | FK → auth.users |
+| conversation_id | UUID | | NOT NULL | FK → helm_conversations |
+| items_extracted | INTEGER | 0 | NOT NULL | Count of items AI extracted |
+| items_routed | INTEGER | 0 | NOT NULL | Count of items user confirmed |
+| items_discarded | INTEGER | 0 | NOT NULL | Count of items user discarded |
+| triage_result | JSONB | '[]' | NOT NULL | Full AI triage response |
+| status | TEXT | 'dumping' | NOT NULL | Enum: 'dumping', 'sorting', 'triaging', 'routed', 'cancelled' |
+| log_entry_id | UUID | null | NULL | FK → log_entries (archived copy) |
+| created_at | TIMESTAMPTZ | now() | NOT NULL | |
+| updated_at | TIMESTAMPTZ | now() | NOT NULL | Auto-trigger |
+
+**RLS:** Users CRUD own dumps only.
+**Indexes:**
+- `user_id, created_at DESC` (history)
+- `user_id, status` (active dumps)
+- `conversation_id` (link to Helm conversation)
+
+**Trigger:**
+```sql
+CREATE TRIGGER set_updated_at BEFORE UPDATE ON hold_dumps FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
+```
+
+---
+
 ## Triggers
 
 ### Auto-create profile and settings on signup
@@ -1219,6 +1250,7 @@ CREATE TRIGGER set_updated_at BEFORE UPDATE ON meeting_schedules FOR EACH ROW EX
 CREATE TRIGGER set_updated_at BEFORE UPDATE ON meeting_templates FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
 CREATE TRIGGER set_updated_at BEFORE UPDATE ON reminders FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
 CREATE TRIGGER set_updated_at BEFORE UPDATE ON push_subscriptions FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
+CREATE TRIGGER set_updated_at BEFORE UPDATE ON hold_dumps FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
 ```
 
 ---
@@ -1263,13 +1295,15 @@ auth.users
   ├── meeting_templates (user_id → auth.users.id)
   ├── reminders (user_id → auth.users.id)
   ├── push_subscriptions (user_id → auth.users.id)
-  └── rhythm_status (user_id → auth.users.id)
+  ├── rhythm_status (user_id → auth.users.id)
+  └── hold_dumps (user_id → auth.users.id)
 
 helm_conversations
   ├── helm_messages (conversation_id → helm_conversations.id)
   ├── log_entries (source_reference_id → helm_conversations.id, when source = 'helm_conversation')
   ├── wheel_instances (helm_conversation_id → helm_conversations.id)
-  └── rigging_plans (helm_conversation_id → helm_conversations.id)
+  ├── rigging_plans (helm_conversation_id → helm_conversations.id)
+  └── hold_dumps (conversation_id → helm_conversations.id)
 
 compass_tasks
   └── compass_tasks (parent_task_id → compass_tasks.id, self-referential for subtasks)
@@ -1330,7 +1364,7 @@ compass_tasks
 
 ## Tables — All PRDs Complete
 
-All tables across PRDs 01-19 have been defined. Settings (PRD-19) introduces no new tables — it surfaces existing `user_profiles`, `user_settings`, and `meeting_schedules` data.
+All tables across PRDs 01-20 have been defined (38 total). Settings (PRD-19) introduces no new tables. PRD-20 adds `hold_dumps`.
 
 | Table | Expected PRD | Purpose |
 |-------|-------------|---------|
@@ -1365,6 +1399,7 @@ All tables across PRDs 01-19 have been defined. Settings (PRD-19) introduces no 
 | reminders | ~~PRD-18~~ DONE | Reminder records with type, delivery method, lifecycle status, snooze tracking, related entity |
 | push_subscriptions | PRD-18 | DONE (new — Web Push API device subscription records) |
 | rhythm_status | PRD-18 | DONE (new — tracks weekly/monthly/quarterly rhythm card dismissals) |
+| hold_dumps | PRD-20 | DONE (new — brain dump triage records linking to Helm conversations) |
 | reminder_schedules | PRD-18 | Not needed — scheduling handled within reminders table + server-side Edge Function |
 
 ---

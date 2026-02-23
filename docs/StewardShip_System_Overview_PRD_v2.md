@@ -65,6 +65,7 @@ This is the "map." The individual PRDs are the detailed blueprints for each loca
 | 17 | **Life Inventory** | Own page (view/edit/archive) + Helm (guided process) | Structured life assessment |
 | 18 | **Lists** | The Compass (or standalone) | Flexible shareable lists |
 | 19 | **Sphere of Influence** | Crew (alternate view) | Relationship influence visualization |
+| 20 | **Unload the Hold** | The Helm (guided mode) | Helm-based brain dump with AI triage and batch routing |
 
 ### Rhythms (Time-Based Experiences)
 
@@ -957,6 +958,14 @@ When entries are saved (Log entries, Compass tasks, Victories), the AI automatic
 ### Rule 16: Gender & Relationship Adaptive
 The AI adapts pronouns, feature visibility, and relationship framing based on `user_profiles.gender` and `user_profiles.relationship_status`. Null values default to gender-neutral/inclusive language. The user can change these at any time in Settings and the app adapts immediately. See ADDENDUM-User-Flexibility.md for full details.
 
+### Rule 17: Unload the Hold Routing
+When Unload the Hold routes items to their destinations, all standard rules for those destinations apply:
+- Tasks get AI auto-tagged (same as Compass)
+- Journal entries get AI life area tags (same as Log)
+- Principles follow declaration language rules (Rule 3) if applicable
+- The user always confirms before any routing occurs
+- The original conversation is preserved in the Helm
+
 ---
 
 ## Navigation Structure
@@ -1040,7 +1049,7 @@ Every AI interaction includes these context layers (loaded dynamically based on 
 ### Always Included
 1. **Base personality:** Warm, empathetic, direct processing partner. Not a friend, not clinical. Boundaried.
 2. **Framework awareness:** Straight Line Leadership contrasts, Atomic Habits, Change Wheel, 5 Levels of Consciousness, Covey/7 Habits/Divine Center, Thou Shall Prosper, TSG/TJEd, Sphere of Influence
-3. **Behavioral rules:** All 16 cross-feature rules
+3. **Behavioral rules:** All 17 cross-feature rules
 4. **User's Mast entries**
 
 ### Included When Relevant
@@ -1099,6 +1108,12 @@ Every AI interaction includes these context layers (loaded dynamically based on 
 
 ### Phase 4C: Lists ✅
 18. Lists CRUD, list items, share infrastructure
+
+### Phase 4D: Unload the Hold — NEXT
+19. Helm guided mode conversation flow (dump → sort → triage)
+20. Unload-the-hold Edge Function for AI triage extraction
+21. Structured triage review screen with batch routing
+22. Stub routing for Crew and Reminders
 
 ### Phase 5: Progress
 12. Victory Recorder (CRUD, source tracking, AI celebration, Victory Review narratives)
@@ -1253,6 +1268,7 @@ stewardship/
 | PRD-17: Meeting Frameworks | PRD Written |
 | PRD-18: Reminders + Rhythms | PRD Written |
 | PRD-19: Settings | PRD Written |
+| PRD-20: Unload the Hold (Brain Dump) | Phase 4D Next |
 
 ---
 

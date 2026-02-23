@@ -1,12 +1,15 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, History, MoreVertical } from 'lucide-react';
+import { ArrowLeft, Plus, History, MoreVertical, PackageOpen } from 'lucide-react';
 import { useHelmContext } from '../contexts/HelmContext';
 import { usePageContext } from '../hooks/usePageContext';
+import { useUnloadTheHold } from '../hooks/useUnloadTheHold';
 import { GUIDED_MODE_LABELS } from '../lib/types';
 import MessageList from '../components/helm/MessageList';
 import MessageInput from '../components/helm/MessageInput';
 import ConversationHistory from '../components/helm/ConversationHistory';
+import TriageReview from '../components/helm/TriageReview';
+import { LoadingSpinner } from '../components/shared';
 import './Helm.css';
 
 export default function Helm() {
@@ -31,8 +34,33 @@ export default function Helm() {
     isThinking,
   } = useHelmContext();
 
+  const {
+    triageItems,
+    sorting,
+    routing,
+    error: triageError,
+    startDump,
+    triggerTriage,
+    updateTriageItem,
+    discardTriageItem,
+    routeAll,
+    archiveToLog,
+    reset: resetTriage,
+  } = useUnloadTheHold();
+
   const [historyOffset, setHistoryOffset] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showTriageReview, setShowTriageReview] = useState(false);
+  const [triageLoading, setTriageLoading] = useState(false);
+
+  const isUnloadMode = activeConversation?.guided_mode === 'unload_the_hold';
+  const hasUserMessages = messages.some((m) => m.role === 'user');
+
+  // Reset triage state when conversation changes
+  useEffect(() => {
+    resetTriage();
+    setShowTriageReview(false);
+  }, [activeConversation?.id, resetTriage]);
 
   // Close drawer when entering full page (it shares state)
   useEffect(() => {
@@ -67,6 +95,42 @@ export default function Helm() {
   const handleExport = useCallback(() => {
     // Stub — will implement in later phase
     setMenuOpen(false);
+  }, []);
+
+  // Triage flow: start dump → trigger AI triage → show review
+  const handleReviewAndRoute = useCallback(async () => {
+    if (!activeConversation) return;
+    setTriageLoading(true);
+
+    try {
+      // Create hold_dumps record
+      const dump = await startDump(activeConversation.id);
+      if (!dump) return;
+
+      // Trigger AI triage
+      const items = await triggerTriage(activeConversation.id);
+      if (items.length > 0) {
+        setShowTriageReview(true);
+      }
+    } finally {
+      setTriageLoading(false);
+    }
+  }, [activeConversation, startDump, triggerTriage]);
+
+  // Handle routing completion — also archive raw dump to Log
+  const handleRouteAll = useCallback(async (items: typeof triageItems) => {
+    const counts = await routeAll(items);
+
+    // Archive raw dump text to Log as brain_dump entry
+    if (activeConversation) {
+      await archiveToLog(activeConversation.id);
+    }
+
+    return counts;
+  }, [routeAll, archiveToLog, activeConversation]);
+
+  const handleTriageClose = useCallback(() => {
+    setShowTriageReview(false);
   }, []);
 
   const guidedModeLabel = activeConversation?.guided_mode
@@ -169,10 +233,50 @@ export default function Helm() {
         ) : (
           <>
             <MessageList messages={messages} loading={loading} isThinking={isThinking} />
+
+            {/* Unload the Hold — Review & Route action bar */}
+            {isUnloadMode && hasUserMessages && !showTriageReview && (
+              <div className="helm-page__unload-bar">
+                {triageLoading || sorting ? (
+                  <div className="helm-page__unload-loading">
+                    <LoadingSpinner />
+                    <span>Sorting through the hold...</span>
+                  </div>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="helm-page__unload-btn"
+                      onClick={handleReviewAndRoute}
+                      disabled={isThinking}
+                    >
+                      <PackageOpen size={18} strokeWidth={1.5} />
+                      Review & Route
+                    </button>
+                    {triageError && (
+                      <span className="helm-page__unload-error">{triageError}</span>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
             <MessageInput onSend={handleSend} disabled={loading || isThinking} />
           </>
         )}
       </div>
+
+      {/* Triage Review overlay */}
+      {showTriageReview && triageItems.length > 0 && (
+        <TriageReview
+          items={triageItems}
+          onUpdateItem={updateTriageItem}
+          onDiscardItem={discardTriageItem}
+          onRouteAll={handleRouteAll}
+          onClose={handleTriageClose}
+          routing={routing}
+        />
+      )}
     </div>
   );
 }

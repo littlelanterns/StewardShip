@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuthContext } from '../contexts/AuthContext';
-import type { HelmConversation, HelmMessage } from '../lib/types';
+import type { HelmConversation, HelmMessage, GuidedMode, GuidedSubtype } from '../lib/types';
 
 const HISTORY_PAGE_SIZE = 20;
 
@@ -90,7 +90,11 @@ export function useHelmData() {
   }, [user]);
 
   // Create a new conversation (deactivate any current active one first)
-  const createConversation = useCallback(async (): Promise<HelmConversation | null> => {
+  const createConversation = useCallback(async (options?: {
+    guided_mode?: GuidedMode;
+    guided_subtype?: GuidedSubtype;
+    guided_mode_reference_id?: string;
+  }): Promise<HelmConversation | null> => {
     if (!user) return null;
     setError(null);
     try {
@@ -109,6 +113,9 @@ export function useHelmData() {
         .insert({
           user_id: user.id,
           is_active: true,
+          guided_mode: options?.guided_mode || null,
+          guided_subtype: options?.guided_subtype || null,
+          guided_mode_reference_id: options?.guided_mode_reference_id || null,
         })
         .select()
         .single();

@@ -4,11 +4,20 @@ import { useAuthContext } from './AuthContext';
 import { sendChatMessage, autoTitleConversation } from '../lib/ai';
 import { loadContext } from '../lib/contextLoader';
 import { buildSystemPrompt } from '../lib/systemPrompt';
-import type { HelmPageContext, HelmConversation, HelmMessage } from '../lib/types';
+import type { HelmPageContext, HelmConversation, HelmMessage, GuidedMode, GuidedSubtype } from '../lib/types';
 
 export type { HelmPageContext };
 
 type DrawerState = 'closed' | 'peek' | 'full';
+
+function getGuidedModeOpeningMessage(mode: GuidedMode): string | null {
+  switch (mode) {
+    case 'unload_the_hold':
+      return "Let's get it all out. Tell me everything that's on your mind — tasks, worries, ideas, things you need to remember. Don't worry about organizing it. I'll sort through it when you're ready.";
+    default:
+      return null;
+  }
+}
 
 interface HelmContextValue {
   // Drawer state
@@ -36,6 +45,7 @@ interface HelmContextValue {
   // Actions
   sendMessage: (content: string) => Promise<void>;
   startNewConversation: () => Promise<void>;
+  startGuidedConversation: (mode: GuidedMode, subtype?: GuidedSubtype, refId?: string) => Promise<HelmConversation | null>;
   switchConversation: (conversationId: string) => Promise<void>;
   deleteConversation: (conversationId: string) => Promise<void>;
   renameConversation: (conversationId: string, title: string) => Promise<void>;
@@ -231,6 +241,28 @@ export function HelmProvider({ children }: { children: ReactNode }) {
     await helmData.createConversation();
   }, [helmData]);
 
+  const startGuidedConversation = useCallback(async (
+    mode: GuidedMode,
+    subtype?: GuidedSubtype,
+    refId?: string,
+  ): Promise<HelmConversation | null> => {
+    if (!user) return null;
+    const conversation = await helmData.createConversation({
+      guided_mode: mode,
+      guided_subtype: subtype || null,
+      guided_mode_reference_id: refId,
+    });
+    if (!conversation) return null;
+
+    // Send the AI's opening message for guided modes
+    const openingMessage = getGuidedModeOpeningMessage(mode);
+    if (openingMessage) {
+      await helmData.addMessage(conversation.id, 'assistant', openingMessage);
+    }
+
+    return conversation;
+  }, [user, helmData]);
+
   const switchConversation = useCallback(async (conversationId: string) => {
     await helmData.loadConversation(conversationId);
     setShowHistory(false);
@@ -265,6 +297,7 @@ export function HelmProvider({ children }: { children: ReactNode }) {
         error: helmData.error,
         sendMessage,
         startNewConversation,
+        startGuidedConversation,
         switchConversation,
         deleteConversation,
         renameConversation,

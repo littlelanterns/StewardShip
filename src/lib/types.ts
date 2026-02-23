@@ -97,7 +97,8 @@ export type TaskSource =
   | 'meeting_action'
   | 'rigging_output'
   | 'wheel_commitment'
-  | 'recurring_generated';
+  | 'recurring_generated'
+  | 'unload_the_hold';
 
 export interface CompassTask {
   id: string;
@@ -261,6 +262,7 @@ export type GuidedMode =
   | 'meeting'
   | 'first_mate_action'
   | 'safe_harbor'
+  | 'unload_the_hold'
   | null;
 
 export type GuidedSubtype =
@@ -308,6 +310,7 @@ export const GUIDED_MODE_LABELS: Record<string, string> = {
   meeting: 'Meeting',
   first_mate_action: 'First Mate',
   safe_harbor: 'Safe Harbor',
+  unload_the_hold: 'Unload the Hold',
 };
 
 // === PRD-05: The Log ===
@@ -320,13 +323,15 @@ export type LogEntryType =
   | 'meeting_notes'
   | 'transcript'
   | 'helm_conversation'
+  | 'brain_dump'
   | 'custom';
 
 export type LogSource =
   | 'manual_text'
   | 'voice_transcription'
   | 'helm_conversation'
-  | 'meeting_framework';
+  | 'meeting_framework'
+  | 'unload_the_hold';
 
 export type LogRouteTarget =
   | 'compass_task'
@@ -371,6 +376,7 @@ export const LOG_ENTRY_TYPE_LABELS: Record<LogEntryType, string> = {
   meeting_notes: 'Meeting Notes',
   transcript: 'Transcript',
   helm_conversation: 'Helm Conversation',
+  brain_dump: 'Brain Dump',
   custom: 'Custom',
 };
 
@@ -443,3 +449,69 @@ export const LIST_AI_ACTION_LABELS: Record<ListAiAction, string> = {
   schedule: 'Help me schedule it',
   prioritize: 'Help me prioritize it',
 };
+
+// === PRD-20: Unload the Hold ===
+
+export type HoldDumpStatus = 'dumping' | 'sorting' | 'triaging' | 'routed' | 'cancelled';
+
+export type TriageCategory =
+  | 'task'
+  | 'journal'
+  | 'insight'
+  | 'principle'
+  | 'person_note'
+  | 'reminder'
+  | 'list_item'
+  | 'discard';
+
+export const TRIAGE_CATEGORY_LABELS: Record<TriageCategory, string> = {
+  task: 'Task',
+  journal: 'Journal',
+  insight: 'Insight',
+  principle: 'Principle',
+  person_note: 'Person Note',
+  reminder: 'Reminder',
+  list_item: 'List Item',
+  discard: 'Discard',
+};
+
+export const TRIAGE_CATEGORY_DESTINATIONS: Record<TriageCategory, string> = {
+  task: 'Compass',
+  journal: 'Log',
+  insight: 'Keel',
+  principle: 'Mast',
+  person_note: 'Crew',
+  reminder: 'Reminders',
+  list_item: 'Lists',
+  discard: 'Skip',
+};
+
+export interface TriageItem {
+  id: string;
+  text: string;
+  category: TriageCategory;
+  metadata: {
+    life_area_tag?: string;
+    due_suggestion?: 'today' | 'this_week' | 'no_date';
+    entry_type?: string;
+    keel_category?: string;
+    mast_type?: string;
+    person_name?: string;
+    reminder_text?: string;
+    suggested_list?: string;
+  };
+}
+
+export interface HoldDump {
+  id: string;
+  user_id: string;
+  conversation_id: string;
+  items_extracted: number;
+  items_routed: number;
+  items_discarded: number;
+  triage_result: TriageItem[];
+  status: HoldDumpStatus;
+  log_entry_id: string | null;
+  created_at: string;
+  updated_at: string;
+}

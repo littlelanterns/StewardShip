@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import {
   BarChart3,
   Trophy,
@@ -13,11 +13,13 @@ import {
   Archive,
   Calendar,
   ListChecks,
+  PackageOpen,
   Sun,
   Moon,
   Settings,
   X,
 } from 'lucide-react';
+import { useHelmContext } from '../../contexts/HelmContext';
 import './MoreMenu.css';
 
 interface MoreMenuProps {
@@ -26,7 +28,16 @@ interface MoreMenuProps {
 }
 
 export default function MoreMenu({ open, onClose }: MoreMenuProps) {
+  const navigate = useNavigate();
+  const { startGuidedConversation } = useHelmContext();
+
   if (!open) return null;
+
+  const handleUnloadTheHold = async () => {
+    onClose();
+    await startGuidedConversation('unload_the_hold');
+    navigate('/helm');
+  };
 
   return (
     <>
@@ -94,6 +105,16 @@ export default function MoreMenu({ open, onClose }: MoreMenuProps) {
           {/* Planning & Action */}
           <div className="more-menu__section-label">Planning</div>
           <ul className="more-menu__group">
+            <li>
+              <button
+                type="button"
+                className="more-menu__link more-menu__link--button"
+                onClick={handleUnloadTheHold}
+              >
+                <PackageOpen size={20} strokeWidth={1.5} />
+                <span>Unload the Hold</span>
+              </button>
+            </li>
             <li>
               <NavLink to="/rigging" className="more-menu__link" onClick={onClose}>
                 <Map size={20} strokeWidth={1.5} />

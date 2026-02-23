@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import type { TriageItem } from './types';
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
@@ -103,6 +104,44 @@ export async function breakDownTask(
   }
 
   return data?.subtasks || [];
+}
+
+export async function triggerHoldTriage(
+  conversationText: string,
+  userId: string,
+  context?: {
+    mast_entries?: string;
+    active_tasks?: string[];
+    keel_categories?: string;
+    people_names?: string[];
+  },
+): Promise<TriageItem[]> {
+  const { data, error } = await supabase.functions.invoke('unload-the-hold', {
+    body: {
+      conversation_text: conversationText,
+      user_id: userId,
+      context: context || undefined,
+    },
+  });
+
+  if (error) {
+    throw new Error(error.message || 'Failed to process brain dump');
+  }
+
+  if (data?.error) {
+    throw new Error(data.error);
+  }
+
+  const items: TriageItem[] = (data?.items || []).map(
+    (item: { text: string; category: string; metadata?: Record<string, unknown> }, index: number) => ({
+      id: `triage-${Date.now()}-${index}`,
+      text: item.text,
+      category: item.category,
+      metadata: item.metadata || {},
+    }),
+  );
+
+  return items;
 }
 
 export async function autoTagTask(

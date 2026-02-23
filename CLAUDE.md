@@ -1,7 +1,7 @@
 # CLAUDE.md — StewardShip Project Instructions
 
 > This is a living document. It grows as PRDs are written and development progresses.
-> Last updated: February 2026 — Phase 4B (Views + Task Breaker) + 4C (Lists) built.
+> Last updated: February 2026 — Phase 4D (Unload the Hold) built.
 
 ---
 
@@ -144,6 +144,7 @@ Every feature has a nautical name. Use these consistently in code, UI, and comme
 | Life Inventory | Life assessment tool | `lifeinventory/` |
 | Task Breaker | AI task decomposition (within Compass) | `compass/` |
 | Lists | Shareable flexible lists | `lists/` |
+| Unload the Hold | Brain dump → Helm conversation → AI triage → batch routing | Global action (FAB, More menu) → Helm guided mode |
 | Reveille | Morning briefing | `reveille/` |
 | Reckoning | Evening review | `reckoning/` |
 | Reminders | Nudges and prompts | `reminders/` |
@@ -235,7 +236,8 @@ type HelmPageContext =
 - **Context budget by user setting:** Short ~4K tokens (cheaper), Medium ~8K (default), Long ~16K (richer, more expensive). Controlled by `user_settings.context_window_size`.
 - **Topic detection:** AI scans user message for signals — crew member names, relationship words, emotion/stress words, goal/progress words, task words, faith/spiritual words, work/career words — and loads corresponding context automatically. User never manually selects a mode.
 - **Guided mode rules:** Only one guided mode active at a time. Can pause and resume across sessions and devices. Progress saved incrementally per step (each Wheel spoke, each Life Inventory area, each Rigging milestone saves to DB as completed). On return, AI detects in-progress guided mode and offers to resume with summary of completed steps.
-- **Guided modes available:** `'wheel'`, `'life_inventory'`, `'rigging'`, `'declaration'`, `'self_discovery'`, `'meeting'`, `'first_mate_action'` (with `guided_subtype`), `'safe_harbor'`, `null` (free-form default).
+- **Guided modes available:** `'wheel'`, `'life_inventory'`, `'rigging'`, `'declaration'`, `'self_discovery'`, `'meeting'`, `'first_mate_action'` (with `guided_subtype`), `'safe_harbor'`, `'unload_the_hold'`, `null` (free-form default).
+- **Unload the Hold mode** (`guided_mode = 'unload_the_hold'`): Brain dump conversation. AI adapts engagement to the dump — just listens for straightforward items, offers clarifying questions for messy/emotional content (always offers, never imposes). When user signals completion, AI calls the triage Edge Function, presents a conversational summary, then "Review & Route" button opens structured triage screen. After routing, AI confirms and checks in warmly.
 - **Voice input flow:** Record → Whisper transcription → transcribed text appears in input field for editing → user taps send manually. Never auto-send transcribed text.
 - **Conversation storage:** Messages saved to Supabase database as sent/received (not batched or deferred). Local React state for UI responsiveness only — database is source of truth. On app open or refresh, active conversation loaded from DB.
 - **Conversation history:** List of past conversations, newest first. Each shows AI-generated title (~5-10 words), date, guided mode tag if applicable. Tap to reopen. Conversations older than 90 days can be archived (configurable in Settings).
@@ -590,6 +592,19 @@ The AI applies this framework naturally when it helps the user understand why ch
 - **Share token:** Generated on demand, stored on `lists.share_token`. For future multi-user support. MVP: generate token, show "link copied" — actual shared access is post-MVP.
 - **List items:** Simple checkable rows with drag reorder. Quick-add input at bottom.
 
+### Unload the Hold Conventions
+- **Helm guided mode, not a standalone page.** Always flows through a Helm conversation. Accessible globally from FAB expansion and More menu.
+- **AI behavior during dump: adaptive engagement.** Default is to listen with short acknowledgments. For straightforward dumps (task lists, errands), just receive — don't slow the user down. For messy or emotional dumps (tangled feelings, unclear priorities), the AI may OFFER to ask clarifying questions — always offer, never impose. "I can just sort this, or I can ask a couple questions to make sure things land right. Up to you." If the user says "just sort it," respect that immediately. Never coach, advise, or apply frameworks during the dump.
+- **Completeness check:** After the user slows down, gently ask: "Anything else, or is that everything?" Wait for explicit signal before sorting.
+- **Conversational summary first, structured triage second.** AI presents sorted items as a warm conversation message with counts and key items. "Review & Route" action button opens the structured triage screen for final adjustments.
+- **Eight triage categories:** task (→ Compass), journal (→ Log), insight (→ Keel), principle (→ Mast), person_note (→ Crew, stub until built), reminder (→ Reminders, stub until built), list_item (→ Lists), discard (→ skip).
+- **Merciful defaults:** If AI can't categorize, default to "journal." Never discard something the user put effort into. Extract MORE rather than fewer. Acknowledge heavy content warmly before categorizing.
+- **Compound splitting:** AI splits multi-topic sentences into separate items when destinations differ.
+- **Source tracking:** All routed items use `source = 'unload_the_hold'` with `source_reference_id` → `hold_dumps.id`. Raw dump archived to Log as `entry_type = 'brain_dump'`.
+- **No data duplication:** Raw dump text lives in `helm_messages` via the conversation. `hold_dumps` links to the conversation rather than storing text separately.
+- **Edge Function:** `unload-the-hold` — takes conversation text + optional context (Mast, active tasks, Keel categories, people names). Returns JSON array of categorized items.
+- **FAB expansion pattern:** On pages with a FAB, long-press or expand reveals secondary actions including "Unload the Hold." This pattern can be reused for other global actions.
+
 ### Charts & Progress Conventions
 - **Streaks:** Calculated on-the-fly from task data, never stored in a separate table. Weekday-only habits skip weekends. Weekly habits = one completion per week maintains the streak.
 - **Broken streaks:** AI does NOT mention unless the user brings it up. When they do, be merciful: "Streaks break. It doesn't erase the days you showed up."
@@ -834,6 +849,9 @@ Tracks placeholder/stub functionality that needs to be wired up when the target 
 | Compass → AI view suggestion banner | Phase 4B (Views) | Enhancement (polish) | STUB |
 | Compass → "Mark as Victory" button | Phase 4A (Compass) | Phase 5 (Victory Recorder) | STUB |
 | Compass → Carry forward from Reckoning trigger | Phase 4A (Compass) | Phase 6 (Reckoning) | STUB |
+| Unload the Hold → Crew person_note routing | Phase 4D (Unload the Hold) | Phase 8 (Crew) | STUB |
+| Unload the Hold → Reminder routing | Phase 4D (Unload the Hold) | Phase 10 (Reminders) | STUB |
+| Unload the Hold → Voice messages in conversation | Phase 4D (Unload the Hold) | TBD (Whisper integration) | STUB |
 
 ---
 
@@ -869,6 +887,11 @@ _This section collects things still needed. Check items off as they're addressed
 - [x] System prompt assembly with dynamic context loading → built in Phase 3C
 - [x] AI auto-tagging for Log entries → built in Phase 3C
 - [x] Compass conventions → added to CLAUDE.md Compass Conventions section
+- [x] Unload the Hold conventions → added to CLAUDE.md
+- [x] hold_dumps table schema → added to DATABASE_SCHEMA.md
+- [x] Source enum updates for unload_the_hold
+- [x] Guided mode enum update for unload_the_hold
+- [x] FAB expansion pattern documented
 - [ ] Edge Function specifications
 - [ ] PWA manifest and service worker configuration
 - [ ] Remaining onboarding steps (1-2, 5-7)
