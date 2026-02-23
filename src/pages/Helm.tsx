@@ -22,6 +22,8 @@ export default function Helm() {
     sendMessage,
     startNewConversation,
     switchConversation,
+    deleteConversation,
+    renameConversation,
     loadHistory,
     showHistory,
     setShowHistory,
@@ -159,6 +161,8 @@ export default function Helm() {
             loading={historyLoading}
             hasMore={hasMoreHistory}
             onSelect={switchConversation}
+            onDelete={deleteConversation}
+            onRename={renameConversation}
             onLoadMore={handleLoadMore}
             onClose={() => setShowHistory(false)}
           />

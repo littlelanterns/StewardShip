@@ -266,6 +266,40 @@ export function useHelmData() {
     }
   }, [user]);
 
+  // Hard delete a conversation and all its messages
+  const deleteConversation = useCallback(async (conversationId: string) => {
+    if (!user) return;
+    try {
+      // Delete messages first (child records)
+      const { error: msgErr } = await supabase
+        .from('helm_messages')
+        .delete()
+        .eq('conversation_id', conversationId)
+        .eq('user_id', user.id);
+
+      if (msgErr) throw msgErr;
+
+      // Delete the conversation record
+      const { error: convErr } = await supabase
+        .from('helm_conversations')
+        .delete()
+        .eq('id', conversationId)
+        .eq('user_id', user.id);
+
+      if (convErr) throw convErr;
+
+      // Update local state
+      setConversations((prev) => prev.filter((c) => c.id !== conversationId));
+      if (activeConversation?.id === conversationId) {
+        setActiveConversation(null);
+        setMessages([]);
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Failed to delete conversation';
+      setError(msg);
+    }
+  }, [user, activeConversation]);
+
   // Update conversation title
   const updateTitle = useCallback(async (conversationId: string, title: string) => {
     if (!user) return;
@@ -306,6 +340,7 @@ export function useHelmData() {
     loadHistory,
     deactivateConversation,
     archiveConversation,
+    deleteConversation,
     updateTitle,
   };
 }

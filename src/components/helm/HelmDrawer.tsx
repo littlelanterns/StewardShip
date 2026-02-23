@@ -46,6 +46,8 @@ export default function HelmDrawer() {
     sendMessage,
     startNewConversation,
     switchConversation,
+    deleteConversation,
+    renameConversation,
     loadHistory,
     showHistory,
     setShowHistory,
@@ -218,6 +220,8 @@ export default function HelmDrawer() {
                 loading={historyLoading}
                 hasMore={hasMoreHistory}
                 onSelect={switchConversation}
+                onDelete={deleteConversation}
+                onRename={renameConversation}
                 onLoadMore={handleLoadMore}
                 onClose={() => setShowHistory(false)}
               />

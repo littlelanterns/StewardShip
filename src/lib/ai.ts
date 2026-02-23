@@ -50,6 +50,33 @@ export async function autoTagEntry(
   }
 }
 
+export async function autoTitleConversation(
+  userMessage: string,
+  userId: string,
+): Promise<string | null> {
+  try {
+    const { data, error } = await supabase.functions.invoke('chat', {
+      body: {
+        system_prompt: 'You generate short conversation titles. Respond with ONLY the title, nothing else.',
+        messages: [
+          {
+            role: 'user',
+            content: `Given this user message, generate a 3-5 word conversation title. Respond with ONLY the title, nothing else.\n\nUser message: "${userMessage}"`,
+          },
+        ],
+        max_tokens: 20,
+        user_id: userId,
+      },
+    });
+
+    if (error || data?.error || !data?.content) return null;
+    // Clean up: remove quotes and trim
+    return data.content.replace(/^["']|["']$/g, '').trim() || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function autoTagTask(
   title: string,
   description: string | null,

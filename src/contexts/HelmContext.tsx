@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import { useHelmData } from '../hooks/useHelmData';
 import { useAuthContext } from './AuthContext';
-import { sendChatMessage } from '../lib/ai';
+import { sendChatMessage, autoTitleConversation } from '../lib/ai';
 import { loadContext } from '../lib/contextLoader';
 import { buildSystemPrompt } from '../lib/systemPrompt';
 import type { HelmPageContext, HelmConversation, HelmMessage } from '../lib/types';
@@ -37,6 +37,8 @@ interface HelmContextValue {
   sendMessage: (content: string) => Promise<void>;
   startNewConversation: () => Promise<void>;
   switchConversation: (conversationId: string) => Promise<void>;
+  deleteConversation: (conversationId: string) => Promise<void>;
+  renameConversation: (conversationId: string, title: string) => Promise<void>;
   loadHistory: (offset?: number) => Promise<void>;
   showHistory: boolean;
   setShowHistory: (show: boolean) => void;
@@ -140,6 +142,15 @@ export function HelmProvider({ children }: { children: ReactNode }) {
         aiResponse,
         pageContext.page,
       );
+
+      // Auto-title in background after first AI response
+      if (!conversation.title) {
+        autoTitleConversation(content.trim(), user.id).then((title) => {
+          if (title) {
+            helmData.updateTitle(conversation!.id, title);
+          }
+        });
+      }
     } catch {
       // Show error as a system-style message
       await helmData.addMessage(
@@ -225,6 +236,14 @@ export function HelmProvider({ children }: { children: ReactNode }) {
     setShowHistory(false);
   }, [helmData]);
 
+  const deleteConversation = useCallback(async (conversationId: string) => {
+    await helmData.deleteConversation(conversationId);
+  }, [helmData]);
+
+  const renameConversation = useCallback(async (conversationId: string, title: string) => {
+    await helmData.updateTitle(conversationId, title);
+  }, [helmData]);
+
   return (
     <HelmContext.Provider
       value={{
@@ -247,6 +266,8 @@ export function HelmProvider({ children }: { children: ReactNode }) {
         sendMessage,
         startNewConversation,
         switchConversation,
+        deleteConversation,
+        renameConversation,
         loadHistory: helmData.loadHistory,
         showHistory,
         setShowHistory,
