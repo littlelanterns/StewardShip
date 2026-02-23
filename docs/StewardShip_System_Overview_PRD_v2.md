@@ -1038,7 +1038,7 @@ Every AI interaction includes these context layers (loaded dynamically based on 
 ### Always Included
 1. **Base personality:** Warm, empathetic, direct processing partner. Not a friend, not clinical. Boundaried.
 2. **Framework awareness:** Straight Line Leadership contrasts, Atomic Habits, Change Wheel, 5 Levels of Consciousness, Covey/7 Habits/Divine Center, Thou Shall Prosper, TSG/TJEd, Sphere of Influence
-3. **Behavioral rules:** All 15 cross-feature rules
+3. **Behavioral rules:** All 16 cross-feature rules
 4. **User's Mast entries**
 
 ### Included When Relevant
