@@ -1,6 +1,9 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import { useHelmData } from '../hooks/useHelmData';
 import { useAuthContext } from './AuthContext';
+import { sendChatMessage } from '../lib/ai';
+import { loadContext } from '../lib/contextLoader';
+import { buildSystemPrompt } from '../lib/systemPrompt';
 import type { HelmPageContext, HelmConversation, HelmMessage } from '../lib/types';
 
 export type { HelmPageContext };
@@ -27,6 +30,7 @@ interface HelmContextValue {
   loading: boolean;
   historyLoading: boolean;
   hasMoreHistory: boolean;
+  isThinking: boolean;
   error: string | null;
 
   // Actions
@@ -36,6 +40,9 @@ interface HelmContextValue {
   loadHistory: (offset?: number) => Promise<void>;
   showHistory: boolean;
   setShowHistory: (show: boolean) => void;
+  regenerateMessage: (message: HelmMessage) => Promise<void>;
+  resendShorter: (message: HelmMessage) => Promise<void>;
+  resendLonger: (message: HelmMessage) => Promise<void>;
 }
 
 const HelmContext = createContext<HelmContextValue | null>(null);
@@ -45,6 +52,7 @@ export function HelmProvider({ children }: { children: ReactNode }) {
   const [drawerState, setDrawerState] = useState<DrawerState>('closed');
   const [pageContext, setPageContext] = useState<HelmPageContext>({ page: 'crowsnest' });
   const [showHistory, setShowHistory] = useState(false);
+  const [isThinking, setIsThinking] = useState(false);
 
   const helmData = useHelmData();
 
@@ -64,8 +72,43 @@ export function HelmProvider({ children }: { children: ReactNode }) {
   );
   const expandDrawer = useCallback(() => setDrawerState('full'), []);
 
+  // Core AI call logic — shared by sendMessage, regenerate, shorter, longer
+  const callAI = useCallback(async (
+    _conversationId: string,
+    messagesForContext: HelmMessage[],
+    extraInstruction?: string,
+  ): Promise<string> => {
+    if (!user) throw new Error('Not authenticated');
+
+    const lastUserMessage = [...messagesForContext]
+      .reverse()
+      .find((m) => m.role === 'user');
+    const messageText = lastUserMessage?.content || '';
+
+    const context = await loadContext({
+      message: messageText,
+      pageContext: pageContext.page,
+      userId: user.id,
+      guidedMode: helmData.activeConversation?.guided_mode,
+      conversationHistory: messagesForContext,
+    });
+
+    const systemPrompt = buildSystemPrompt(context);
+
+    // Build messages array for the API call
+    const apiMessages = messagesForContext
+      .filter((m) => m.role === 'user' || m.role === 'assistant')
+      .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
+
+    if (extraInstruction) {
+      apiMessages.push({ role: 'user', content: extraInstruction });
+    }
+
+    return await sendChatMessage(systemPrompt, apiMessages, 1024, user.id);
+  }, [user, pageContext.page, helmData.activeConversation?.guided_mode]);
+
   const sendMessage = useCallback(async (content: string) => {
-    if (!content.trim()) return;
+    if (!content.trim() || !user) return;
 
     let conversation = helmData.activeConversation;
 
@@ -76,21 +119,102 @@ export function HelmProvider({ children }: { children: ReactNode }) {
     }
 
     // Add user message
-    await helmData.addMessage(
+    const userMsg = await helmData.addMessage(
       conversation.id,
       'user',
       content.trim(),
       pageContext.page,
     );
 
-    // Placeholder assistant response (AI integration coming later)
-    await helmData.addMessage(
-      conversation.id,
-      'assistant',
-      'AI integration coming soon. Your message has been saved.',
-      pageContext.page,
-    );
-  }, [helmData, pageContext.page]);
+    if (!userMsg) return;
+
+    // Call AI
+    setIsThinking(true);
+    try {
+      const currentMessages = [...helmData.messages, userMsg];
+      const aiResponse = await callAI(conversation.id, currentMessages);
+
+      await helmData.addMessage(
+        conversation.id,
+        'assistant',
+        aiResponse,
+        pageContext.page,
+      );
+    } catch {
+      // Show error as a system-style message
+      await helmData.addMessage(
+        conversation.id,
+        'assistant',
+        'Unable to get a response right now. Your message has been saved.',
+        pageContext.page,
+      );
+    } finally {
+      setIsThinking(false);
+    }
+  }, [helmData, pageContext.page, user, callAI]);
+
+  const regenerateMessage = useCallback(async (message: HelmMessage) => {
+    if (!user || !helmData.activeConversation) return;
+
+    // Get messages up to (but not including) the message being regenerated
+    const messageIndex = helmData.messages.findIndex((m) => m.id === message.id);
+    if (messageIndex === -1) return;
+    const messagesUpTo = helmData.messages.slice(0, messageIndex);
+
+    setIsThinking(true);
+    try {
+      const aiResponse = await callAI(helmData.activeConversation.id, messagesUpTo);
+      await helmData.updateMessage(message.id, aiResponse);
+    } catch {
+      // Keep original on failure
+    } finally {
+      setIsThinking(false);
+    }
+  }, [user, helmData, callAI]);
+
+  const resendShorter = useCallback(async (message: HelmMessage) => {
+    if (!user || !helmData.activeConversation) return;
+
+    const messageIndex = helmData.messages.findIndex((m) => m.id === message.id);
+    if (messageIndex === -1) return;
+    const messagesUpTo = helmData.messages.slice(0, messageIndex);
+
+    setIsThinking(true);
+    try {
+      const aiResponse = await callAI(
+        helmData.activeConversation.id,
+        messagesUpTo,
+        'Please give a shorter, more concise response to my last message.',
+      );
+      await helmData.updateMessage(message.id, aiResponse);
+    } catch {
+      // Keep original on failure
+    } finally {
+      setIsThinking(false);
+    }
+  }, [user, helmData, callAI]);
+
+  const resendLonger = useCallback(async (message: HelmMessage) => {
+    if (!user || !helmData.activeConversation) return;
+
+    const messageIndex = helmData.messages.findIndex((m) => m.id === message.id);
+    if (messageIndex === -1) return;
+    const messagesUpTo = helmData.messages.slice(0, messageIndex);
+
+    setIsThinking(true);
+    try {
+      const aiResponse = await callAI(
+        helmData.activeConversation.id,
+        messagesUpTo,
+        'Please elaborate more on your previous response.',
+      );
+      await helmData.updateMessage(message.id, aiResponse);
+    } catch {
+      // Keep original on failure
+    } finally {
+      setIsThinking(false);
+    }
+  }, [user, helmData, callAI]);
 
   const startNewConversation = useCallback(async () => {
     await helmData.createConversation();
@@ -118,6 +242,7 @@ export function HelmProvider({ children }: { children: ReactNode }) {
         loading: helmData.loading,
         historyLoading: helmData.historyLoading,
         hasMoreHistory: helmData.hasMoreHistory,
+        isThinking,
         error: helmData.error,
         sendMessage,
         startNewConversation,
@@ -125,6 +250,9 @@ export function HelmProvider({ children }: { children: ReactNode }) {
         loadHistory: helmData.loadHistory,
         showHistory,
         setShowHistory,
+        regenerateMessage,
+        resendShorter,
+        resendLonger,
       }}
     >
       {children}

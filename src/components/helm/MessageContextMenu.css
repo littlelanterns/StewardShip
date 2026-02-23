@@ -37,3 +37,11 @@
   background-color: var(--color-border);
   margin: var(--spacing-xs) 0;
 }
+
+.message-context-menu__toast {
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  text-align: center;
+}

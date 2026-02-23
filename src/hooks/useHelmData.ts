@@ -236,6 +236,36 @@ export function useHelmData() {
     }
   }, [user, activeConversation]);
 
+  // Update an existing message's content (for regenerate/shorter/longer)
+  const updateMessage = useCallback(async (
+    messageId: string,
+    content: string,
+  ): Promise<HelmMessage | null> => {
+    if (!user) return null;
+    setError(null);
+    try {
+      const { data, error: updateErr } = await supabase
+        .from('helm_messages')
+        .update({ content })
+        .eq('id', messageId)
+        .eq('user_id', user.id)
+        .select()
+        .single();
+
+      if (updateErr) throw updateErr;
+
+      const updated = data as HelmMessage;
+      setMessages((prev) =>
+        prev.map((m) => (m.id === messageId ? updated : m)),
+      );
+      return updated;
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Failed to update message';
+      setError(msg);
+      return null;
+    }
+  }, [user]);
+
   // Update conversation title
   const updateTitle = useCallback(async (conversationId: string, title: string) => {
     if (!user) return;
@@ -272,6 +302,7 @@ export function useHelmData() {
     loadConversation,
     createConversation,
     addMessage,
+    updateMessage,
     loadHistory,
     deactivateConversation,
     archiveConversation,

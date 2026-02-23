@@ -262,6 +262,23 @@ The Log accepts any input. After capture, entries can be routed:
 
 Build the routing selector as a shared component that can be reused.
 
+### Log Conventions
+
+- **Dual purpose:** Journal AND universal capture point (commonplace book). Any thought, observation, quote, idea, or note can land here. User decides what to do with it after capture.
+- **Entry types:** `'journal'`, `'gratitude'`, `'reflection'`, `'quick_note'`, `'meeting_notes'`, `'transcript'`, `'helm_conversation'`, `'custom'`. Default: `'journal'`. Create entry form remembers last-used type within the session.
+- **Life area tags:** AI auto-applies on save as removable chips. User can remove or add but never needs to decide tags themselves. Same auto-tagging pattern applies everywhere tags are used (Compass tasks, Victories, etc.). Tags stored as TEXT[] with GIN index.
+- **Routing pattern:** After save, user sees routing selector. Original entry ALWAYS stays in Log — routing creates a copy/link, never moves. Multiple routings from a single entry allowed (e.g., route to Mast AND create a task). Editing a Log entry does NOT update routed copies — they are independent after routing. `routed_to` TEXT[] tracks destinations for display, `routed_reference_ids` JSONB maps route types to created record IDs.
+- **Routing destinations:** Compass (create task), Lists (add item), Reminders (set reminder), Mast (save as principle), Keel (save as self-knowledge), Victory Recorder (flag as victory), Helm (open for further processing with entry as context). Future: spouse_insight, crew_note.
+- **AI-suggested routing:** After save, AI can suggest a route based on content ("This sounds like a task — want to add it to your Compass?"). Suggestion appears as subtle prompt above routing options, not a popup. User can ignore.
+- **Incoming flows:** Direct entry (text or voice), Helm "Save to Log" (source = 'helm_conversation'), Meeting Frameworks impressions step (source = 'meeting_framework'), voice transcription (source = 'voice_transcription'), prompted rhythms (gratitude/joy/anticipation open Log with pre-selected type).
+- **Voice entry flow:** Record → Whisper transcription → text appears in text area for editing → user saves. Original audio stored in Supabase Storage at `audio_file_path`. Same pattern as Helm voice input but saves to Log instead of chat.
+- **Prompted entries:** Gratitude/joy/anticipation prompts (frequency set in user_settings) open the create entry screen with type pre-selected and a subtle prompt header. These are simple capture moments, not conversation starters.
+- **AI context from Log:** Last 7 days, top 10 entries, ~200 char truncation per entry. Loaded when user references recent events, Helm opened from Log page, during Reckoning, during reviews, or when AI detects relevant context.
+- **Search:** PostgreSQL built-in full-text search on `text` column. Separate filter controls for entry type, life area tags, and date range.
+- **Archive pattern:** Same as Mast/Keel — `archived_at` timestamp, archived view, restore option. No hard deletes.
+- **Printable export:** Post-MVP. Date range selection, type filtering, PDF/DOCX output with StewardShip branding. Generated server-side or client-side.
+- **One table:** `log_entries` with entry type enum, life area TEXT[] tags, source tracking, routing tracking, and optional relationships to wheels and meetings.
+
 ---
 
 ## View + Work Page Pattern
@@ -313,15 +330,50 @@ All features should be built as self-contained modules. These components are pla
 
 ---
 
-## AI Integration Notes
+## AI Integration Conventions
 
-- All AI calls go through `src/lib/ai.ts` adapter
-- API keys are NEVER in frontend code — use Supabase Edge Functions as proxy
-- System prompt assembled dynamically based on context needed
-- Mast entries always included in system prompt
-- Other context (Keel, Wheel, First Mate, etc.) included based on conversation topic
-- Max tokens configurable via user settings
-- Cost tracking: log token usage per request
+### Architecture
+- **All AI calls routed through a Supabase Edge Function** — never call AI providers directly from the frontend. The Edge Function handles: API key management (user key or developer fallback), request formatting, response streaming, token counting, error handling.
+- **`src/lib/ai.ts`** is the frontend adapter that calls the Edge Function. All Helm components use this adapter, never raw fetch calls.
+- **API key priority:** User's encrypted key from `user_settings.ai_api_key_encrypted` (if set) → developer key from Edge Function environment variable (fallback).
+- **Provider:** OpenRouter (`user_settings.ai_provider = 'openrouter'`). Model: `user_settings.ai_model` (default: `'anthropic/claude-sonnet'`).
+- **Max tokens:** `user_settings.max_tokens` (default: 1024). Configurable in Settings.
+
+### System Prompt Assembly
+The system prompt is assembled dynamically for each message. It consists of:
+
+1. **Base prompt** (always included): Role definition, critical rules, framework awareness, user's name.
+2. **Mast entries** (always included): All active mast_entries formatted as the user's guiding principles.
+3. **Conversation history** (always included): Current conversation messages.
+4. **Page context** (always included): Which page the user is on.
+5. **Conditional context** (loaded based on relevance):
+   - Keel entries — when personality/self-knowledge topic detected
+   - Recent Log entries (last 7 days, top 10, ~200 char each) — when user references recent events or drawer opened from Log
+   - Additional contexts (First Mate, Crew, Wheels, Compass, Charts, Rigging, Manifest RAG, Life Inventory, Sphere) — loaded when relevant features are built. Until then, these conditional sections are omitted.
+
+### Context Detection (Keyword-Based for MVP)
+Before calling the AI, scan the user's message for topic signals:
+- Emotion/stress/feeling words → load Keel entries
+- References to recent events, journaling, "yesterday," "this week" → load recent Log entries
+- Page context from drawer → load relevant feature data if available
+
+Context detection is simple keyword matching for MVP. Can be upgraded to AI-based classification later.
+
+### Context Budget
+- **Short:** ~4K tokens total context
+- **Medium:** ~8K tokens (default)
+- **Long:** ~16K tokens
+- Trimming priority: conversation history trimmed first (oldest messages), then detected topic data, then RAG results. System prompt, Mast, and active guided mode data are never trimmed.
+
+### Token Counting
+- Approximate token count using character-based estimation (~4 chars per token) for budget management.
+- Exact counts from API response logged for cost tracking (future).
+
+### AI Auto-Tagging (Log Entries)
+- After a log entry is saved, the AI is called with a focused prompt: "Given this journal entry, suggest 1-3 life area tags from this list: [spiritual, marriage, family, physical, emotional, social, professional, financial, personal_development, service]. Respond with ONLY the tag names, comma-separated."
+- This is a separate, lightweight AI call — not part of the Helm conversation flow.
+- Tags are applied automatically and shown as removable chips. User can adjust.
+- If AI call fails, fall back to the heuristic defaults already in place.
 
 ---
 
@@ -703,6 +755,30 @@ Five guided conversation modes accessible from the First Mate page, each opening
 
 ---
 
+## Stub Registry
+
+Tracks placeholder/stub functionality that needs to be wired up when the target feature is built. Every build phase should check this registry, wire up any stubs that are now possible, and mark them completed. New stubs created during a build phase should be added here.
+
+| Stub | Created In | Wires To | Status |
+|------|-----------|----------|--------|
+| Helm → AI responses (placeholder message) | Phase 3A (Helm) | Phase 3C (AI Integration) | WIRED |
+| Helm → Voice recording button (disabled) | Phase 3A (Helm) | TBD (Whisper integration) | STUB |
+| Helm → File attachments button (disabled) | Phase 3A (Helm) | TBD (Manifest storage pipeline) | STUB |
+| Helm → Save to Log message action | Phase 3A (Helm) | Phase 3B (Log) | WIRED |
+| Helm → Create task message action | Phase 3A (Helm) | Phase 4 (Compass) | STUB |
+| Helm → Regenerate/Shorter/Longer on AI messages | Phase 3A (Helm) | Phase 3C (AI Integration) | WIRED |
+| Log → Route to Compass (create task) | Phase 3B (Log) | Phase 4 (Compass) | STUB |
+| Log → Route to Lists (add item) | Phase 3B (Log) | Phase 4 (Lists) | STUB |
+| Log → Route to Reminders | Phase 3B (Log) | Phase 10 (Reminders) | STUB |
+| Log → Route to Victory Recorder | Phase 3B (Log) | Phase 5 (Victory Recorder) | STUB |
+| Log → AI auto-tagging (heuristic placeholder) | Phase 3B (Log) | Phase 3C (AI Integration) | WIRED |
+| Log → AI-suggested routing after save | Phase 3B (Log) | Phase 3C (AI Integration) | STUB |
+| Log → Full-text search | Phase 3B (Log) | Phase 3B (verify) | STUB |
+| AI → Streaming responses | Phase 3C (AI) | Post-MVP | POST-MVP |
+| AI → Token usage cost tracking | Phase 3C (AI) | Phase 11 (Settings/Polish) | POST-MVP |
+
+---
+
 ## TODO: Items to Add as PRDs Are Written
 
 _This section collects things still needed. Check items off as they're addressed._
@@ -729,6 +805,11 @@ _This section collects things still needed. Check items off as they're addressed
 - [x] Context budget by setting: short (~4K), medium (~8K), long (~16K) → documented in Helm Conventions
 - [x] AI "never does" list → documented in Helm Conventions
 - [x] AI celebration style → documented in Helm Conventions and Victory Conventions
+- [x] Log conventions (routing, entry types, voice, AI context, search, prompts) → added to CLAUDE.md Log Conventions section
+- [x] Stub Registry added to CLAUDE.md — tracks all placeholder functionality across phases
+- [x] AI Edge Function proxy for secure API key handling → built in Phase 3C
+- [x] System prompt assembly with dynamic context loading → built in Phase 3C
+- [x] AI auto-tagging for Log entries → built in Phase 3C
 - [ ] Edge Function specifications
 - [ ] PWA manifest and service worker configuration
 - [ ] Remaining onboarding steps (1-2, 5-7)

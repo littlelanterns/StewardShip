@@ -1,0 +1,96 @@
+.log-entry-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: var(--spacing-md);
+  background-color: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.log-entry-card:hover {
+  background-color: var(--color-bg-secondary);
+  box-shadow: var(--shadow-sm);
+}
+
+.log-entry-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-xs);
+}
+
+.log-entry-card__badge {
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  padding: 1px var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  color: var(--color-white);
+}
+
+.log-entry-card__badge--journal { background-color: var(--color-mid-teal); }
+.log-entry-card__badge--gratitude { background-color: var(--color-cognac); }
+.log-entry-card__badge--reflection { background-color: var(--color-navy); }
+.log-entry-card__badge--quick-note { background-color: var(--color-slate-gray); }
+.log-entry-card__badge--meeting { background-color: var(--color-deep-brown); }
+.log-entry-card__badge--helm { background-color: var(--color-dark-teal); }
+
+.log-entry-card__date {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.log-entry-card__source-icon {
+  display: flex;
+  align-items: center;
+  color: var(--color-slate-gray);
+}
+
+.log-entry-card__text {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  line-height: var(--line-height-normal);
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.log-entry-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--spacing-sm);
+  gap: var(--spacing-sm);
+}
+
+.log-entry-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+}
+
+.log-entry-card__tag {
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  padding: 1px var(--spacing-xs);
+  background-color: var(--color-warm-sand);
+  color: var(--color-navy);
+  border-radius: var(--radius-full);
+}
+
+.log-entry-card__routed {
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  color: var(--color-mid-teal);
+  font-style: italic;
+}

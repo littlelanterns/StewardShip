@@ -1,0 +1,92 @@
+.log-archived {
+  padding: var(--spacing-md);
+}
+
+.log-archived__top-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+}
+
+.log-archived__back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--touch-target-min);
+  height: var(--touch-target-min);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.log-archived__back:hover {
+  background-color: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+}
+
+.log-archived__title {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-md);
+  color: var(--color-text-heading);
+}
+
+.log-archived__loading {
+  display: flex;
+  justify-content: center;
+  padding: var(--spacing-xl);
+}
+
+.log-archived__empty {
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  padding: var(--spacing-xl);
+  font-style: italic;
+}
+
+.log-archived__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.log-archived__item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: var(--spacing-md);
+  background-color: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  gap: var(--spacing-sm);
+}
+
+.log-archived__item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.log-archived__item-type {
+  display: inline-block;
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.log-archived__item-text {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  line-height: var(--line-height-normal);
+  margin: 0 0 var(--spacing-xs);
+}
+
+.log-archived__item-date {
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}

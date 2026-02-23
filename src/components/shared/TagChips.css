@@ -1,0 +1,91 @@
+.tag-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+  align-items: center;
+}
+
+.tag-chips__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: 2px var(--spacing-sm);
+  background-color: var(--color-warm-sand);
+  color: var(--color-navy);
+  border-radius: var(--radius-full);
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  line-height: 1.4;
+}
+
+.tag-chips__label {
+  white-space: nowrap;
+}
+
+.tag-chips__remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-full);
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.tag-chips__remove:hover {
+  color: var(--color-error);
+  background-color: var(--color-bg-secondary);
+}
+
+.tag-chips__add-wrapper {
+  position: relative;
+}
+
+.tag-chips__add-btn {
+  padding: 2px var(--spacing-sm);
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-link);
+  cursor: pointer;
+  border-radius: var(--radius-full);
+  transition: background-color var(--transition-fast);
+}
+
+.tag-chips__add-btn:hover {
+  background-color: var(--color-bg-secondary);
+}
+
+.tag-chips__picker {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 50;
+  min-width: 160px;
+  max-height: 200px;
+  overflow-y: auto;
+  background-color: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: var(--spacing-xs) 0;
+  margin-top: var(--spacing-xs);
+}
+
+.tag-chips__picker-item {
+  display: block;
+  width: 100%;
+  padding: var(--spacing-xs) var(--spacing-md);
+  text-align: left;
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.tag-chips__picker-item:hover {
+  background-color: var(--color-bg-secondary);
+}

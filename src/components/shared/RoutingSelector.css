@@ -1,0 +1,110 @@
+.routing-selector {
+  padding: var(--spacing-md);
+}
+
+.routing-selector__title {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-md);
+  color: var(--color-text-heading);
+  margin: 0 0 var(--spacing-xs);
+}
+
+.routing-selector__subtitle {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--spacing-md);
+}
+
+.routing-selector__list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.routing-selector__item {
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-sm) var(--spacing-md);
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: background-color var(--transition-fast);
+  min-height: var(--touch-target-min);
+  justify-content: center;
+}
+
+.routing-selector__item:hover {
+  background-color: var(--color-bg-secondary);
+}
+
+.routing-selector__item-label {
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+}
+
+.routing-selector__item-desc {
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+/* Sub-screen options (Mast type, Keel category) */
+.routing-selector__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-md);
+}
+
+.routing-selector__option {
+  padding: var(--spacing-xs) var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.routing-selector__option:hover {
+  background-color: var(--color-bg-secondary);
+}
+
+.routing-selector__option--selected {
+  background-color: var(--color-mid-teal);
+  border-color: var(--color-mid-teal);
+  color: var(--color-white);
+}
+
+.routing-selector__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+}
+
+.routing-selector__toast {
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background-color: var(--color-dark-teal);
+  color: var(--color-cream);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  text-align: center;
+  animation: routing-toast-in 200ms ease;
+}
+
+@keyframes routing-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

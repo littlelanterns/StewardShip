@@ -49,6 +49,7 @@ export default function HelmDrawer() {
     loadHistory,
     showHistory,
     setShowHistory,
+    isThinking,
   } = useHelmContext();
 
   const navigate = useNavigate();
@@ -222,8 +223,8 @@ export default function HelmDrawer() {
               />
             ) : (
               <>
-                <MessageList messages={messages} loading={loading} />
-                <MessageInput onSend={handleSend} disabled={loading} />
+                <MessageList messages={messages} loading={loading} isThinking={isThinking} />
+                <MessageInput onSend={handleSend} disabled={loading || isThinking} />
               </>
             )}
           </div>

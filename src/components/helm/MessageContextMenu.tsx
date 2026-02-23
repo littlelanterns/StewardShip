@@ -1,4 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { supabase } from '../../lib/supabase';
+import { useAuthContext } from '../../contexts/AuthContext';
+import { useHelmContext } from '../../contexts/HelmContext';
 import type { HelmMessage } from '../../lib/types';
 import './MessageContextMenu.css';
 
@@ -13,7 +16,10 @@ export default function MessageContextMenu({
   position,
   onClose,
 }: MessageContextMenuProps) {
+  const { user } = useAuthContext();
+  const { regenerateMessage, resendShorter, resendLonger, isThinking } = useHelmContext();
   const menuRef = useRef<HTMLDivElement>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -46,19 +52,56 @@ export default function MessageContextMenu({
     }
   }, [position]);
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(message.content);
-    onClose();
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => {
+      onClose();
+    }, 1200);
   };
 
-  const handleSaveToLog = () => {
-    // Stub — will wire to Log in a later phase
-    onClose();
+  const handleCopy = () => {
+    navigator.clipboard.writeText(message.content);
+    showToast('Copied');
+  };
+
+  const handleSaveToLog = async () => {
+    if (!user) return;
+    try {
+      const { error } = await supabase
+        .from('log_entries')
+        .insert({
+          user_id: user.id,
+          text: message.content,
+          entry_type: 'helm_conversation',
+          source: 'helm_conversation',
+          source_reference_id: message.conversation_id,
+        });
+
+      if (error) throw error;
+      showToast('Saved to Log');
+    } catch {
+      showToast('Failed to save');
+    }
   };
 
   const handleCreateTask = () => {
     // Stub — will wire to Compass in a later phase
+    showToast('Task creation coming in Compass phase');
+  };
+
+  const handleRegenerate = () => {
     onClose();
+    regenerateMessage(message);
+  };
+
+  const handleShorter = () => {
+    onClose();
+    resendShorter(message);
+  };
+
+  const handleLonger = () => {
+    onClose();
+    resendLonger(message);
   };
 
   const isAiMessage = message.role === 'assistant';
@@ -70,34 +113,51 @@ export default function MessageContextMenu({
       style={{ top: position.y, left: position.x }}
       role="menu"
     >
-      <button type="button" className="message-context-menu__item" role="menuitem" onClick={handleCopy}>
-        Copy text
-      </button>
-      <button type="button" className="message-context-menu__item" role="menuitem" onClick={handleSaveToLog}>
-        Save to Log
-      </button>
-      <button type="button" className="message-context-menu__item" role="menuitem" onClick={handleCreateTask}>
-        Create task
-      </button>
-      {isAiMessage && (
+      {toast ? (
+        <div className="message-context-menu__toast">{toast}</div>
+      ) : (
         <>
-          <div className="message-context-menu__divider" />
-          <button
-            type="button"
-            className="message-context-menu__item message-context-menu__item--disabled"
-            role="menuitem"
-            disabled
-          >
-            Regenerate
+          <button type="button" className="message-context-menu__item" role="menuitem" onClick={handleCopy}>
+            Copy text
           </button>
-          <button
-            type="button"
-            className="message-context-menu__item message-context-menu__item--disabled"
-            role="menuitem"
-            disabled
-          >
-            Shorter / Longer
+          <button type="button" className="message-context-menu__item" role="menuitem" onClick={handleSaveToLog}>
+            Save to Log
           </button>
+          <button type="button" className="message-context-menu__item" role="menuitem" onClick={handleCreateTask}>
+            Create task
+          </button>
+          {isAiMessage && (
+            <>
+              <div className="message-context-menu__divider" />
+              <button
+                type="button"
+                className="message-context-menu__item"
+                role="menuitem"
+                onClick={handleRegenerate}
+                disabled={isThinking}
+              >
+                Regenerate
+              </button>
+              <button
+                type="button"
+                className="message-context-menu__item"
+                role="menuitem"
+                onClick={handleShorter}
+                disabled={isThinking}
+              >
+                Shorter
+              </button>
+              <button
+                type="button"
+                className="message-context-menu__item"
+                role="menuitem"
+                onClick={handleLonger}
+                disabled={isThinking}
+              >
+                Longer
+              </button>
+            </>
+          )}
         </>
       )}
     </div>

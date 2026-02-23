@@ -26,6 +26,7 @@ export default function Helm() {
     showHistory,
     setShowHistory,
     closeDrawer,
+    isThinking,
   } = useHelmContext();
 
   const [historyOffset, setHistoryOffset] = useState(0);
@@ -163,8 +164,8 @@ export default function Helm() {
           />
         ) : (
           <>
-            <MessageList messages={messages} loading={loading} />
-            <MessageInput onSend={handleSend} disabled={loading} />
+            <MessageList messages={messages} loading={loading} isThinking={isThinking} />
+            <MessageInput onSend={handleSend} disabled={loading || isThinking} />
           </>
         )}
       </div>

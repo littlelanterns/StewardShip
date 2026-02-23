@@ -1220,8 +1220,8 @@ stewardship/
 | PRD-01: Auth & User Setup | Built |
 | PRD-02: The Mast | Built |
 | PRD-03: The Keel | Built |
-| PRD-04: The Helm (Drawer + Full Page) | PRD Written |
-| PRD-05: The Log (Commonplace Book) | PRD Written |
+| PRD-04: The Helm (Drawer + Full Page) | Built |
+| PRD-05: The Log (Commonplace Book) | Built |
 | PRD-06: The Compass + Task Breaker + Lists | PRD Written |
 | PRD-07: Charts | PRD Written |
 | PRD-08: Victory Recorder | PRD Written |
