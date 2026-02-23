@@ -1,7 +1,7 @@
 # CLAUDE.md — StewardShip Project Instructions
 
 > This is a living document. It grows as PRDs are written and development progresses.
-> Last updated: February 2026 — Phase 4D (Unload the Hold) built.
+> Last updated: February 2026 — Phase 5 (Victory Recorder + Charts + Crow's Nest) built.
 
 ---
 
@@ -834,7 +834,7 @@ Tracks placeholder/stub functionality that needs to be wired up when the target 
 | Log → Route to Compass (create task) | Phase 3B (Log) | Phase 4A (Compass) | WIRED |
 | Log → Route to Lists (add item) | Phase 3B (Log) | Phase 4C (Lists) | WIRED |
 | Log → Route to Reminders | Phase 3B (Log) | Phase 10 (Reminders) | STUB |
-| Log → Route to Victory Recorder | Phase 3B (Log) | Phase 5 (Victory Recorder) | STUB |
+| Log → Route to Victory Recorder | Phase 3B (Log) | Phase 5 (Victory Recorder) | WIRED |
 | Log → AI auto-tagging (heuristic placeholder) | Phase 3B (Log) | Phase 3C (AI Integration) | WIRED |
 | Log → AI-suggested routing after save | Phase 3B (Log) | Phase 3C (AI Integration) | STUB |
 | Log → Full-text search | Phase 3B (Log) | Phase 3B (verify) | STUB |
@@ -847,11 +847,19 @@ Tracks placeholder/stub functionality that needs to be wired up when the target 
 | Compass → Ivy Lee view | Phase 4A (Compass) | Phase 4B (Views) | WIRED |
 | Compass → Task Breaker "Break Down" button | Phase 4A (Compass) | Phase 4B (Task Breaker) | WIRED |
 | Compass → AI view suggestion banner | Phase 4B (Views) | Enhancement (polish) | STUB |
-| Compass → "Mark as Victory" button | Phase 4A (Compass) | Phase 5 (Victory Recorder) | STUB |
+| Compass → "Mark as Victory" button | Phase 4A (Compass) | Phase 5 (Victory Recorder) | WIRED |
 | Compass → Carry forward from Reckoning trigger | Phase 4A (Compass) | Phase 6 (Reckoning) | STUB |
 | Unload the Hold → Crew person_note routing | Phase 4D (Unload the Hold) | Phase 8 (Crew) | STUB |
 | Unload the Hold → Reminder routing | Phase 4D (Unload the Hold) | Phase 10 (Reminders) | STUB |
 | Unload the Hold → Voice messages in conversation | Phase 4D (Unload the Hold) | TBD (Whisper integration) | STUB |
+| Charts → Wheel Progress cards | Phase 5B (Charts) | Phase 7 (Wheel) | STUB |
+| Charts → AI milestone celebrations in Reckoning | Phase 5B (Charts) | Phase 6 (Reckoning) | STUB |
+| Charts → Custom tracker prompts in Reveille/Reckoning | Phase 5B (Charts) | Phase 6 (Reveille) + Phase 10 (Reminders) | STUB |
+| Charts → AI trend observations in Helm | Phase 5B (Charts) | Enhancement (polish) | STUB |
+| Crow's Nest → Active Wheels card | Phase 5C (Crow's Nest) | Phase 7 (Wheel) | STUB |
+| Crow's Nest → Upcoming card (meetings/reminders) | Phase 5C (Crow's Nest) | Phase 10 (Reminders) + Phase 10 (Meetings) | STUB |
+| Victory → Helm AI suggestion during conversations | Phase 5A (Victory) | Enhancement (AI context) | STUB |
+| Victory → Chart milestone auto-generation | Phase 5B (Charts) | Phase 5A (Victory) wiring | STUB |
 
 ---
 

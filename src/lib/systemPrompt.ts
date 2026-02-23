@@ -1,4 +1,4 @@
-import type { MastEntry, KeelEntry, LogEntry, GuidedMode, HelmMessage } from './types';
+import type { MastEntry, KeelEntry, LogEntry, Victory, GuidedMode, HelmMessage } from './types';
 import { MAST_TYPE_ORDER, MAST_TYPE_LABELS } from './types';
 import { KEEL_CATEGORY_ORDER, KEEL_CATEGORY_LABELS } from './types';
 
@@ -7,7 +7,10 @@ export interface SystemPromptContext {
   mastEntries: MastEntry[];
   keelEntries?: KeelEntry[];
   recentLogEntries?: LogEntry[];
+  recentVictories?: Victory[];
   compassContext?: string;
+  chartsContext?: string;
+  dashboardContext?: string;
   pageContext: string;
   guidedMode?: GuidedMode;
   conversationHistory: HelmMessage[];
@@ -259,14 +262,54 @@ export function buildSystemPrompt(context: SystemPromptContext): string {
     }
   }
 
+  if (context.recentVictories && context.recentVictories.length > 0) {
+    const victoriesSection = formatRecentVictories(context.recentVictories);
+    const victoriesTokens = estimateTokens(victoriesSection);
+    if (currentTokens + victoriesTokens < budget) {
+      prompt += victoriesSection;
+      currentTokens += victoriesTokens;
+    }
+  }
+
   if (context.compassContext) {
     const compassTokens = estimateTokens(context.compassContext);
     if (currentTokens + compassTokens < budget) {
       prompt += context.compassContext;
+      currentTokens += compassTokens;
+    }
+  }
+
+  if (context.chartsContext) {
+    const chartsTokens = estimateTokens(context.chartsContext);
+    if (currentTokens + chartsTokens < budget) {
+      prompt += context.chartsContext;
+      currentTokens += chartsTokens;
+    }
+  }
+
+  if (context.dashboardContext) {
+    const dashboardTokens = estimateTokens(context.dashboardContext);
+    if (currentTokens + dashboardTokens < budget) {
+      prompt += context.dashboardContext;
     }
   }
 
   return prompt;
+}
+
+function formatRecentVictories(victories: Victory[]): string {
+  if (victories.length === 0) return '';
+
+  let result = '\n\nRECENT VICTORIES (last 30 days):\n';
+  for (const v of victories.slice(0, 10)) {
+    const date = new Date(v.created_at).toLocaleDateString();
+    result += `- [${date}] ${v.description}`;
+    if (v.celebration_text) {
+      result += ` (${v.celebration_text})`;
+    }
+    result += '\n';
+  }
+  return result;
 }
 
 // Keyword detection for context loading decisions
@@ -308,4 +351,33 @@ export function shouldLoadCompass(message: string, pageContext: string): boolean
   if (pageContext === 'compass') return true;
   const lower = message.toLowerCase();
   return COMPASS_KEYWORDS.some((kw) => lower.includes(kw));
+}
+
+const VICTORY_KEYWORDS = [
+  'accomplished', 'victory', 'win', 'proud', 'did it', 'breakthrough',
+  'succeeded', 'overcame', 'milestone', 'achieved', 'growth',
+];
+
+export function shouldLoadVictories(message: string, pageContext: string): boolean {
+  if (pageContext === 'victories') return true;
+  if (pageContext === 'reckoning') return true;
+  const lower = message.toLowerCase();
+  return VICTORY_KEYWORDS.some((kw) => lower.includes(kw));
+}
+
+const CHARTS_KEYWORDS = [
+  'progress', 'streak', 'goal', 'trend', 'chart', 'track',
+  'how am i doing', 'completion', 'stats', 'data', 'habit',
+  'discouraged', 'motivated', 'motivation',
+];
+
+export function shouldLoadCharts(message: string, pageContext: string): boolean {
+  if (pageContext === 'charts') return true;
+  if (pageContext === 'reckoning') return true;
+  const lower = message.toLowerCase();
+  return CHARTS_KEYWORDS.some((kw) => lower.includes(kw));
+}
+
+export function shouldLoadDashboard(message: string, pageContext: string): boolean {
+  return pageContext === 'crowsnest';
 }

@@ -1,14 +1,66 @@
+.crowsnest__greeting-card {
+  margin-bottom: var(--spacing-md);
+}
+
 .crowsnest__greeting {
   font-size: var(--font-size-2xl);
   margin-bottom: var(--spacing-xs);
 }
 
-.crowsnest__subtitle {
+.crowsnest__welcome {
   color: var(--color-text-secondary);
-  margin: 0;
+  margin: var(--spacing-sm) 0 0;
+  line-height: var(--line-height-relaxed);
+}
+
+/* Quick Actions */
+.crowsnest__actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.crowsnest__action-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-card);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-height: var(--touch-target-min);
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.crowsnest__action-btn:hover {
+  border-color: var(--color-mid-teal);
+  background: var(--color-bg-secondary);
+}
+
+/* Dashboard Cards */
+.crowsnest__cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  padding-bottom: var(--spacing-xl);
+}
+
+.crowsnest__loading {
+  text-align: center;
+  padding: var(--spacing-xl);
+  color: var(--color-text-secondary);
 }
 
 .crowsnest__signout {
   text-align: center;
   margin-top: var(--spacing-xl);
+  padding-bottom: 80px; /* nav clearance */
 }

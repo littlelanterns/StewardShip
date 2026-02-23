@@ -25,6 +25,9 @@ import {
   CollapsibleGroup,
 } from '../components/shared';
 import { TaskCard } from '../components/compass/TaskCard';
+import { VictoryPrompt } from '../components/compass/VictoryPrompt';
+import { RecordVictory } from '../components/victories/RecordVictory';
+import { useVictories } from '../hooks/useVictories';
 import AddTaskModal from '../components/compass/AddTaskModal';
 import TaskDetail from '../components/compass/TaskDetail';
 import CarryForwardView from '../components/compass/CarryForwardView';
@@ -165,6 +168,11 @@ export default function Compass() {
   const [subtaskMap, setSubtaskMap] = useState<Record<string, CompassTask[]>>({});
   const [subtaskCounts, setSubtaskCounts] = useState<Record<string, number>>({});
 
+  // Victory prompt state
+  const { createVictory } = useVictories();
+  const [victoryPromptTask, setVictoryPromptTask] = useState<CompassTask | null>(null);
+  const [showRecordVictory, setShowRecordVictory] = useState(false);
+
   // AI placement state
   const [placementBanner, setPlacementBanner] = useState<string | null>(null);
   const [placementLoading, setPlacementLoading] = useState(false);
@@ -253,6 +261,18 @@ export default function Compass() {
       })
       .finally(() => setPlacementLoading(false));
   }, [currentView, tasks, user, placementLoading, updateTask]);
+
+  // Wrap completeTask to show victory prompt after
+  const handleCompleteTask = useCallback(async (id: string) => {
+    const task = tasks.find((t) => t.id === id);
+    await completeTask(id);
+    // Show subtle victory prompt for completed tasks (not subtasks)
+    if (task && !task.parent_task_id) {
+      setVictoryPromptTask(task);
+      // Auto-dismiss after 8 seconds
+      setTimeout(() => setVictoryPromptTask((prev) => prev?.id === id ? null : prev), 8000);
+    }
+  }, [tasks, completeTask]);
 
   const handleViewChange = (view: CompassView) => {
     setCurrentView(view);
@@ -415,7 +435,7 @@ export default function Compass() {
         return (
           <EisenhowerView
             tasks={tasks}
-            onComplete={completeTask}
+            onComplete={handleCompleteTask}
             onTaskClick={handleTaskClick}
             onUpdateTask={updateTask}
           />
@@ -425,7 +445,7 @@ export default function Compass() {
         return (
           <FrogView
             tasks={tasks}
-            onComplete={completeTask}
+            onComplete={handleCompleteTask}
             onTaskClick={handleTaskClick}
             onUpdateTask={updateTask}
           />
@@ -435,7 +455,7 @@ export default function Compass() {
         return (
           <OneThreeNineView
             tasks={tasks}
-            onComplete={completeTask}
+            onComplete={handleCompleteTask}
             onTaskClick={handleTaskClick}
             onUpdateTask={updateTask}
           />
@@ -445,7 +465,7 @@ export default function Compass() {
         return (
           <BigRocksView
             tasks={tasks}
-            onComplete={completeTask}
+            onComplete={handleCompleteTask}
             onTaskClick={handleTaskClick}
             onUpdateTask={updateTask}
           />
@@ -455,7 +475,7 @@ export default function Compass() {
         return (
           <IvyLeeView
             tasks={tasks}
-            onComplete={completeTask}
+            onComplete={handleCompleteTask}
             onTaskClick={handleTaskClick}
             onUpdateTask={updateTask}
           />
@@ -465,7 +485,7 @@ export default function Compass() {
         return (
           <ByCategoryView
             tasksByCategory={tasksByCategory}
-            onComplete={completeTask}
+            onComplete={handleCompleteTask}
             onTaskClick={handleTaskClick}
           />
         );
@@ -496,7 +516,7 @@ export default function Compass() {
                         <SortableTaskCard
                           key={task.id}
                           task={task}
-                          onComplete={completeTask}
+                          onComplete={handleCompleteTask}
                           onClick={handleTaskClick}
                           subtaskCount={subtaskCounts[task.id] || 0}
                           onToggleExpand={handleToggleExpand}
@@ -518,7 +538,7 @@ export default function Compass() {
                       <TaskCard
                         key={task.id}
                         task={task}
-                        onComplete={completeTask}
+                        onComplete={handleCompleteTask}
                         onClick={handleTaskClick}
                       />
                     ))}
@@ -648,6 +668,33 @@ export default function Compass() {
             <Plus size={24} />
           </FloatingActionButton>
         </>
+      )}
+
+      {victoryPromptTask && !showRecordVictory && (
+        <VictoryPrompt
+          taskTitle={victoryPromptTask.title}
+          onYes={() => {
+            setShowRecordVictory(true);
+          }}
+          onDismiss={() => setVictoryPromptTask(null)}
+        />
+      )}
+
+      {showRecordVictory && victoryPromptTask && (
+        <RecordVictory
+          prefill={{
+            description: victoryPromptTask.title,
+            source: 'compass_task',
+            source_reference_id: victoryPromptTask.id,
+          }}
+          onSave={async (data) => {
+            await createVictory(data);
+          }}
+          onClose={() => {
+            setShowRecordVictory(false);
+            setVictoryPromptTask(null);
+          }}
+        />
       )}
     </div>
   );

@@ -1,0 +1,56 @@
+.victory-card {
+  border-left: 3px solid var(--color-gold);
+  cursor: pointer;
+  transition: box-shadow var(--transition-fast);
+}
+
+.victory-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.victory-card__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.victory-card__description {
+  margin: 0;
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  line-height: 1.5;
+}
+
+.victory-card__celebration {
+  margin: 0;
+  font-style: italic;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+.victory-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.victory-card__tag {
+  background: var(--color-bg-secondary);
+  padding: 2px var(--spacing-xs);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+}
+
+.victory-card__source {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.victory-card__date {
+  margin-left: auto;
+}

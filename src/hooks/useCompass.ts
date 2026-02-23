@@ -100,6 +100,7 @@ export function useCompass() {
     life_area_tag?: CompassLifeArea | null;
     source?: TaskSource;
     source_reference_id?: string | null;
+    related_goal_id?: string | null;
   }): Promise<CompassTask | null> => {
     if (!user) return null;
     setError(null);
@@ -116,6 +117,7 @@ export function useCompass() {
         life_area_tag: data.life_area_tag || null,
         source: data.source || 'manual',
         source_reference_id: data.source_reference_id || null,
+        related_goal_id: data.related_goal_id || null,
         sort_order: maxSort + 1,
         status: 'pending',
       };

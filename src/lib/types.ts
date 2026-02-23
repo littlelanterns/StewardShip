@@ -515,3 +515,101 @@ export interface HoldDump {
   created_at: string;
   updated_at: string;
 }
+
+// === PRD-08: Victory Recorder ===
+
+export type VictorySource = 'manual' | 'compass_task' | 'log_entry' | 'helm_conversation' | 'chart_milestone' | 'unload_the_hold';
+
+export interface Victory {
+  id: string;
+  user_id: string;
+  description: string;
+  celebration_text: string | null;
+  life_area_tag: string | null;
+  source: VictorySource;
+  source_reference_id: string | null;
+  related_mast_entry_id: string | null;
+  related_wheel_id: string | null;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const VICTORY_SOURCE_LABELS: Record<VictorySource, string> = {
+  manual: 'Manual',
+  compass_task: 'Compass Task',
+  log_entry: 'Log Entry',
+  helm_conversation: 'Helm Conversation',
+  chart_milestone: 'Chart Milestone',
+  unload_the_hold: 'Unload the Hold',
+};
+
+// === PRD-07: Charts ===
+
+export type GoalStatus = 'active' | 'completed' | 'paused' | 'archived';
+export type GoalProgressType = 'percentage' | 'streak' | 'count' | 'boolean';
+
+export interface Goal {
+  id: string;
+  user_id: string;
+  title: string;
+  description: string | null;
+  life_area_tag: string | null;
+  target_date: string | null;
+  status: GoalStatus;
+  progress_type: GoalProgressType;
+  progress_current: number;
+  progress_target: number | null;
+  related_mast_entry_id: string | null;
+  related_wheel_id: string | null;
+  related_rigging_plan_id: string | null;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type TrackerType = 'count' | 'yes_no' | 'duration' | 'rating';
+export type TrackerVisualization = 'line_graph' | 'streak_calendar' | 'bar_chart';
+
+export interface CustomTracker {
+  id: string;
+  user_id: string;
+  name: string;
+  tracking_type: TrackerType;
+  target_value: number | null;
+  visualization: TrackerVisualization;
+  life_area_tag: string | null;
+  sort_order: number;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TrackerEntry {
+  id: string;
+  tracker_id: string;
+  user_id: string;
+  entry_date: string;
+  value_numeric: number | null;
+  value_boolean: boolean | null;
+  created_at: string;
+}
+
+export interface StreakInfo {
+  taskId: string;
+  taskTitle: string;
+  currentStreak: number;
+  longestStreak: number;
+  lastCompleted: string | null;
+  isAtMilestone: boolean;
+  nextMilestone: number;
+}
+
+export interface ChartsSummary {
+  taskCompletion: { completed: number; total: number; period: string };
+  activeStreaks: StreakInfo[];
+  goals: { title: string; progress: number; target: number }[];
+  victoryCount: number;
+  victoryBreakdown: Record<string, number>;
+  journalCount: number;
+}

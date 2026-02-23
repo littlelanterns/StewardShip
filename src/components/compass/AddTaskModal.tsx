@@ -8,6 +8,13 @@ import { supabase } from '../../lib/supabase';
 import { Button } from '../shared/Button';
 import './AddTaskModal.css';
 
+interface AddTaskPrefill {
+  title?: string;
+  description?: string;
+  life_area_tag?: CompassLifeArea;
+  related_goal_id?: string;
+}
+
 interface AddTaskModalProps {
   onSave: (data: {
     title: string;
@@ -15,8 +22,10 @@ interface AddTaskModalProps {
     due_date?: string | null;
     recurrence_rule?: RecurrenceRule;
     life_area_tag?: CompassLifeArea | null;
+    related_goal_id?: string | null;
   }) => Promise<{ id: string; title: string } | null>;
   onBack: () => void;
+  prefill?: AddTaskPrefill;
 }
 
 const RECURRENCE_OPTIONS: { value: RecurrenceRule; label: string }[] = [
@@ -32,15 +41,15 @@ function getTodayDate(): string {
   return new Date().toISOString().split('T')[0];
 }
 
-export default function AddTaskModal({ onSave, onBack }: AddTaskModalProps) {
+export default function AddTaskModal({ onSave, onBack, prefill }: AddTaskModalProps) {
   const { user } = useAuthContext();
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
+  const [title, setTitle] = useState(prefill?.title || '');
+  const [description, setDescription] = useState(prefill?.description || '');
   const [dueDate, setDueDate] = useState(getTodayDate());
   const [noDueDate, setNoDueDate] = useState(false);
   const [recurrenceRule, setRecurrenceRule] = useState<RecurrenceRule>(null);
-  const [lifeAreaTag, setLifeAreaTag] = useState<CompassLifeArea | null>(null);
-  const [showFullForm, setShowFullForm] = useState(false);
+  const [lifeAreaTag, setLifeAreaTag] = useState<CompassLifeArea | null>(prefill?.life_area_tag || null);
+  const [showFullForm, setShowFullForm] = useState(!!prefill);
   const [saving, setSaving] = useState(false);
   const [tagging, setTagging] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
@@ -84,6 +93,7 @@ export default function AddTaskModal({ onSave, onBack }: AddTaskModalProps) {
       due_date: noDueDate ? null : dueDate,
       recurrence_rule: recurrenceRule,
       life_area_tag: lifeAreaTag,
+      related_goal_id: prefill?.related_goal_id || null,
     });
 
     if (task) {

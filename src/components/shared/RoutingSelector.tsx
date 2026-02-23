@@ -7,6 +7,8 @@ import type { MastEntryType, KeelCategory, List } from '../../lib/types';
 import { MAST_TYPE_LABELS, KEEL_CATEGORY_LABELS } from '../../lib/types';
 import { Button } from './Button';
 import { LoadingSpinner } from './LoadingSpinner';
+import { RecordVictory } from '../victories/RecordVictory';
+import { useVictories } from '../../hooks/useVictories';
 import './RoutingSelector.css';
 
 interface RoutingSelectorProps {
@@ -16,11 +18,12 @@ interface RoutingSelectorProps {
   onClose: () => void;
 }
 
-type SubScreen = 'main' | 'mast' | 'keel' | 'lists';
+type SubScreen = 'main' | 'mast' | 'keel' | 'lists' | 'victory';
 
 export function RoutingSelector({ entryId, entryText, onRouted, onClose }: RoutingSelectorProps) {
   const { user } = useAuthContext();
   const { openDrawer, sendMessage } = useHelmContext();
+  const { createVictory } = useVictories();
   const [subScreen, setSubScreen] = useState<SubScreen>('main');
   const [toast, setToast] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -212,6 +215,26 @@ export function RoutingSelector({ entryId, entryText, onRouted, onClose }: Routi
     onClose();
   };
 
+  if (subScreen === 'victory') {
+    return (
+      <RecordVictory
+        prefill={{
+          description: entryText,
+          source: 'log_entry',
+          source_reference_id: entryId,
+        }}
+        onSave={async (data) => {
+          const victory = await createVictory(data);
+          if (victory) {
+            onRouted('victory', victory.id);
+            showToast('Victory recorded');
+          }
+        }}
+        onClose={() => setSubScreen('main')}
+      />
+    );
+  }
+
   if (subScreen === 'mast') {
     return (
       <div className="routing-selector">
@@ -371,7 +394,7 @@ export function RoutingSelector({ entryId, entryText, onRouted, onClose }: Routi
         <button
           type="button"
           className="routing-selector__item"
-          onClick={() => showToast('Victory Recorder coming in a later phase')}
+          onClick={() => setSubScreen('victory')}
         >
           <span className="routing-selector__item-label">This is a victory</span>
           <span className="routing-selector__item-desc">Record an accomplishment</span>

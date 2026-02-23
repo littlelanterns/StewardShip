@@ -394,7 +394,7 @@
 | description | TEXT | | NOT NULL | What was accomplished |
 | celebration_text | TEXT | null | NULL | AI-generated, user-editable |
 | life_area_tag | TEXT | null | NULL | AI auto-assigned |
-| source | TEXT | 'manual' | NOT NULL | Enum: 'manual', 'compass_task', 'log_entry', 'helm_conversation', 'chart_milestone' |
+| source | TEXT | 'manual' | NOT NULL | Enum: 'manual', 'compass_task', 'log_entry', 'helm_conversation', 'chart_milestone', 'unload_the_hold' |
 | source_reference_id | UUID | null | NULL | FK → source record |
 | related_mast_entry_id | UUID | null | NULL | FK → mast_entries |
 | related_wheel_id | UUID | null | NULL | FK → wheel_instances |

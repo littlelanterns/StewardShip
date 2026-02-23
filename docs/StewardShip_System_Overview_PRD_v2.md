@@ -1109,16 +1109,16 @@ Every AI interaction includes these context layers (loaded dynamically based on 
 ### Phase 4C: Lists ✅
 18. Lists CRUD, list items, share infrastructure
 
-### Phase 4D: Unload the Hold — NEXT
+### Phase 4D: Unload the Hold ✅
 19. Helm guided mode conversation flow (dump → sort → triage)
 20. Unload-the-hold Edge Function for AI triage extraction
 21. Structured triage review screen with batch routing
 22. Stub routing for Crew and Reminders
 
-### Phase 5: Progress
-12. Victory Recorder (CRUD, source tracking, AI celebration, Victory Review narratives)
-13. Charts (visualization components, data aggregation)
-14. Crow's Nest (dashboard aggregating from all sources)
+### Phase 5: Progress ✅
+12. Victory Recorder (CRUD, source tracking, AI celebration, Victory Review narratives) ✅
+13. Charts (visualization components, data aggregation, goals CRUD, custom trackers) ✅
+14. Crow's Nest (dashboard aggregating from all sources) ✅
 
 ### Phase 6: Daily Rhythms
 15. Reveille (morning card, data aggregation)
@@ -1255,9 +1255,9 @@ stewardship/
 | PRD-04: The Helm (Drawer + Full Page) | Built (Phase 3A + 3C) |
 | PRD-05: The Log (Commonplace Book) | Built (Phase 3B + 3C) |
 | PRD-06: The Compass + Task Breaker + Lists | 4A/4B/4C Built ✅ |
-| PRD-07: Charts | PRD Written |
-| PRD-08: Victory Recorder | PRD Written |
-| PRD-09: Crow's Nest | PRD Written |
+| PRD-07: Charts | Phase 5B Built ✅ |
+| PRD-08: Victory Recorder | Phase 5A Built ✅ |
+| PRD-09: Crow's Nest | Phase 5C Built ✅ |
 | PRD-10: Reveille + Reckoning | PRD Written |
 | PRD-11: The Wheel + Life Inventory | PRD Written |
 | PRD-12: First Mate (incl. Spouse Questions) | PRD Written |
@@ -1268,7 +1268,7 @@ stewardship/
 | PRD-17: Meeting Frameworks | PRD Written |
 | PRD-18: Reminders + Rhythms | PRD Written |
 | PRD-19: Settings | PRD Written |
-| PRD-20: Unload the Hold (Brain Dump) | Phase 4D Next |
+| PRD-20: Unload the Hold (Brain Dump) | 4D Built ✅ |
 
 ---
 

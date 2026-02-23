@@ -1,0 +1,78 @@
+.charts__header {
+  margin-bottom: var(--spacing-md);
+}
+
+.charts__header h1 {
+  margin-bottom: var(--spacing-xs);
+}
+
+.charts__subtitle {
+  color: var(--color-text-secondary);
+  margin: 0;
+  font-style: italic;
+}
+
+.charts__period-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-lg);
+}
+
+.charts__period-btn {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+}
+
+.charts__period-btn--active {
+  background: var(--color-mid-teal);
+  color: var(--color-white);
+  border-color: var(--color-mid-teal);
+}
+
+.charts__cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  padding-bottom: 80px; /* FAB clearance */
+}
+
+.charts__section-header {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: var(--spacing-md) 0 var(--spacing-xs);
+}
+
+.charts__section-header:first-child {
+  margin-top: 0;
+}
+
+.charts__add-tracker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-md);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  width: 100%;
+}
+
+.charts__add-tracker:hover {
+  border-color: var(--color-mid-teal);
+  color: var(--color-mid-teal);
+}

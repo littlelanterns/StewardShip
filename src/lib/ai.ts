@@ -144,6 +144,81 @@ export async function triggerHoldTriage(
   return items;
 }
 
+export interface CelebrateVictoryItem {
+  description: string;
+  celebration_text: string | null;
+  life_area_tag: string | null;
+  mast_connection_id: string | null;
+  wheel_connection_id: string | null;
+}
+
+export async function celebrateVictory(
+  description: string,
+  userId: string,
+  mastEntries?: string,
+  wheelHubs?: string,
+): Promise<CelebrateVictoryItem[]> {
+  try {
+    const { data, error } = await supabase.functions.invoke('celebrate-victory', {
+      body: {
+        description,
+        user_id: userId,
+        mast_entries: mastEntries || undefined,
+        wheel_hubs: wheelHubs || undefined,
+      },
+    });
+
+    if (error || data?.error) {
+      return [{ description, celebration_text: null, life_area_tag: null, mast_connection_id: null, wheel_connection_id: null }];
+    }
+
+    // New multi-item format
+    if (data?.items && Array.isArray(data.items)) {
+      return data.items.map((item: CelebrateVictoryItem) => ({
+        description: item.description || description,
+        celebration_text: item.celebration_text || null,
+        life_area_tag: item.life_area_tag || null,
+        mast_connection_id: item.mast_connection_id || null,
+        wheel_connection_id: item.wheel_connection_id || null,
+      }));
+    }
+
+    // Backwards-compatible single-item
+    return [{
+      description,
+      celebration_text: data?.celebration_text || null,
+      life_area_tag: data?.life_area_tag || null,
+      mast_connection_id: data?.mast_connection_id || null,
+      wheel_connection_id: data?.wheel_connection_id || null,
+    }];
+  } catch {
+    return [{ description, celebration_text: null, life_area_tag: null, mast_connection_id: null, wheel_connection_id: null }];
+  }
+}
+
+export async function generateVictoryNarrative(
+  victoriesText: string,
+  userId: string,
+  mastEntries?: string,
+  mode: 'review' | 'monthly' = 'review',
+): Promise<string | null> {
+  try {
+    const { data, error } = await supabase.functions.invoke('celebrate-victory', {
+      body: {
+        description: victoriesText,
+        user_id: userId,
+        mast_entries: mastEntries || undefined,
+        mode,
+      },
+    });
+
+    if (error || data?.error) return null;
+    return data?.narrative || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function autoTagTask(
   title: string,
   description: string | null,

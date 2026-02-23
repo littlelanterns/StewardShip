@@ -1,0 +1,654 @@
+/* === Chart Card Base === */
+.chart-card {
+  cursor: pointer;
+  transition: box-shadow var(--transition-fast);
+}
+
+.chart-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.chart-card--victory {
+  border-left: 3px solid var(--color-gold);
+}
+
+.chart-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-sm);
+}
+
+.chart-card__title {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-base);
+  color: var(--color-text-heading);
+  margin: 0;
+}
+
+.chart-card__icon {
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.chart-card__icon--gold {
+  color: var(--color-gold);
+}
+
+.chart-card__stat {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-mid-teal);
+}
+
+.chart-card__stat-large {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-gold);
+  margin: 0 0 var(--spacing-sm);
+}
+
+.chart-card__summary {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--spacing-sm);
+}
+
+.chart-card__chart {
+  margin: var(--spacing-sm) 0;
+}
+
+.chart-card__empty {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  font-style: italic;
+  margin: var(--spacing-sm) 0;
+}
+
+/* === Streaks === */
+.streaks-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.streak-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-xs) 0;
+}
+
+.streak-row--milestone {
+  border-left: 2px solid var(--color-gold);
+  padding-left: var(--spacing-sm);
+}
+
+.streak-row__title {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.streak-row__right {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  flex-shrink: 0;
+}
+
+.streak-row__count {
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-sm);
+  color: var(--color-mid-teal);
+}
+
+.streak-row__count--gold {
+  color: var(--color-gold);
+}
+
+.streak-row__badge {
+  font-size: var(--font-size-xs);
+  background: var(--color-gold);
+  color: var(--color-white);
+  padding: 1px var(--spacing-xs);
+  border-radius: var(--radius-sm);
+}
+
+/* === Goals === */
+.goals-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.goal-row {
+  cursor: pointer;
+}
+
+.goal-row__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.goal-row__title {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.goal-row__pct {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-mid-teal);
+  margin-left: var(--spacing-sm);
+}
+
+.goal-row__bar {
+  height: 6px;
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.goal-row__bar--large {
+  height: 10px;
+}
+
+.goal-row__fill {
+  height: 100%;
+  background: var(--color-mid-teal);
+  border-radius: var(--radius-full);
+  transition: width var(--transition-normal);
+}
+
+.goal-row__date {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+  display: block;
+}
+
+/* === Victory Breakdown === */
+.victory-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.victory-breakdown__row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.victory-breakdown__label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  width: 80px;
+  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.victory-breakdown__bar-track {
+  flex: 1;
+  height: 8px;
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.victory-breakdown__bar-fill {
+  height: 100%;
+  background: var(--color-gold);
+  border-radius: var(--radius-full);
+  min-width: 4px;
+}
+
+.victory-breakdown__count {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-secondary);
+  width: 20px;
+  text-align: right;
+}
+
+/* === Journal Heatmap === */
+.heatmap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: var(--spacing-sm);
+}
+
+.heatmap__cell {
+  width: 28px;
+  height: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  position: relative;
+}
+
+.heatmap__fill {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-sm);
+  background: var(--color-mid-teal);
+}
+
+.heatmap__label {
+  font-size: 8px;
+  color: var(--color-text-secondary);
+}
+
+/* === Mini Bar Chart === */
+.mini-bar-chart {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  height: 80px;
+  gap: 4px;
+}
+
+.mini-bar-chart__col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  height: 100%;
+  justify-content: flex-end;
+}
+
+.mini-bar-chart__bar {
+  width: 100%;
+  max-width: 20px;
+  background: var(--color-mid-teal);
+  border-radius: 2px 2px 0 0;
+  min-height: 2px;
+}
+
+.mini-bar-chart__label {
+  font-size: 8px;
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+/* === Streak Calendar === */
+.streak-calendar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: var(--spacing-sm);
+}
+
+.streak-calendar__day {
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+  background: var(--color-bg-secondary);
+}
+
+.streak-calendar__day--filled {
+  background: var(--color-mid-teal);
+}
+
+/* === Tracker Log Button === */
+.tracker-log-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-mid-teal);
+  background: transparent;
+  color: var(--color-mid-teal);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+}
+
+.tracker-log-btn--done {
+  border-color: var(--color-success);
+  color: var(--color-success);
+  cursor: default;
+}
+
+/* === Chart Modal === */
+.chart-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--color-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: var(--spacing-md);
+}
+
+.chart-modal {
+  background: var(--color-bg-card);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+}
+
+.chart-modal--compact {
+  max-width: 360px;
+}
+
+.chart-modal--detail {
+  max-width: 520px;
+}
+
+.chart-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.chart-modal__header h2 {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-family: var(--font-heading);
+  color: var(--color-text-heading);
+}
+
+.chart-modal__close {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: var(--spacing-xs);
+  display: flex;
+}
+
+.chart-modal__body {
+  padding: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.chart-modal__footer {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-top: 1px solid var(--color-border);
+  justify-content: flex-end;
+}
+
+.chart-modal__actions-row {
+  display: flex;
+  gap: var(--spacing-sm);
+  justify-content: flex-end;
+}
+
+/* === Form Fields === */
+.chart-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.chart-field__label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+}
+
+.chart-field__input,
+.chart-field__select,
+.chart-field__textarea {
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  background: var(--color-bg-input);
+}
+
+.chart-field__input:focus,
+.chart-field__select:focus,
+.chart-field__textarea:focus {
+  outline: none;
+  border-color: var(--color-border-focus);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+.chart-field__textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+/* === Buttons === */
+.chart-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  border: none;
+  transition: background var(--transition-fast);
+}
+
+.chart-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.chart-btn--primary {
+  background: var(--color-btn-primary-bg);
+  color: var(--color-btn-primary-text);
+}
+
+.chart-btn--primary:hover:not(:disabled) {
+  background: var(--color-btn-primary-hover);
+}
+
+.chart-btn--secondary {
+  background: transparent;
+  color: var(--color-btn-secondary-text);
+  border: 1px solid var(--color-btn-secondary-border);
+}
+
+.chart-btn--secondary:hover:not(:disabled) {
+  background: var(--color-btn-secondary-hover);
+}
+
+.chart-btn--danger {
+  background: transparent;
+  color: var(--color-error);
+  border: 1px solid var(--color-error);
+}
+
+.chart-btn--danger:hover:not(:disabled) {
+  background: rgba(192, 57, 43, 0.06);
+}
+
+/* === Type Grid === */
+.chart-type-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-xs);
+}
+
+.chart-type-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-body);
+}
+
+.chart-type-option--active {
+  border-color: var(--color-mid-teal);
+  background: var(--color-focus-ring);
+}
+
+.chart-type-option__label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+}
+
+.chart-type-option__desc {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+/* === Viz Options === */
+.chart-viz-options {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+.chart-viz-option {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+}
+
+.chart-viz-option--active {
+  background: var(--color-mid-teal);
+  color: var(--color-white);
+  border-color: var(--color-mid-teal);
+}
+
+/* === Yes/No Toggle === */
+.yes-no-toggle {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.yes-no-btn {
+  flex: 1;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  cursor: pointer;
+  color: var(--color-text-secondary);
+}
+
+.yes-no-btn--active-yes {
+  border-color: var(--color-success);
+  background: var(--color-success);
+  color: var(--color-white);
+}
+
+.yes-no-btn--active-no {
+  border-color: var(--color-slate-gray);
+  background: var(--color-slate-gray);
+  color: var(--color-white);
+}
+
+/* === Goal Detail === */
+.goal-detail__title {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-lg);
+  color: var(--color-text-heading);
+  margin: 0;
+}
+
+.goal-detail__desc {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
+  line-height: var(--line-height-relaxed);
+}
+
+.goal-detail__tag {
+  display: inline-block;
+  background: var(--color-bg-secondary);
+  padding: 2px var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.goal-detail__progress-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.goal-detail__progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+}
+
+.goal-detail__pct {
+  font-weight: var(--font-weight-bold);
+  color: var(--color-mid-teal);
+}
+
+.goal-detail__progress-text {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.goal-detail__update {
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--spacing-md);
+}
+
+.goal-detail__update-row {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: flex-start;
+}
+
+.goal-detail__update-row .chart-field__input {
+  flex: 1;
+}
+
+/* AddTaskModal overlay inside GoalDetail */
+.goal-detail__task-overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--color-bg-primary);
+  border-radius: var(--radius-lg);
+  z-index: 10;
+  overflow-y: auto;
+}
