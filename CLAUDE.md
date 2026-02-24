@@ -339,6 +339,10 @@ All features should be built as self-contained modules. These components are pla
 
 **See `docs/DATABASE_SCHEMA.md` for the complete, current table definitions, indexes, triggers, and foreign key map. That file is updated after each PRD and is the authoritative source for database structure.**
 
+### Migrations
+- **Always apply migrations immediately after creating them.** Run `npx supabase db push` to push any new migration files to the remote database. Do not wait for the user to ask.
+- Verify with `npx supabase db push --dry-run` if you need to check pending status without applying.
+
 ---
 
 ## AI Integration Conventions
@@ -689,7 +693,7 @@ The AI applies this framework naturally when it helps the user understand why ch
 ### First Mate Conventions
 - **Flexible input:** Spouse profile built through conversation at the Helm, file uploads (PDF, .md, .txt, images), pasted text, or direct entry. No rigid form fields. Same flexible-input philosophy as the Keel.
 - **spouse_insights table:** Central store for all knowledge about the spouse. Each record is one categorized insight, tagged by category and source. AI auto-categorizes on save, user can adjust (same pattern as Log tagging).
-- **Categories:** personality, love_appreciation, communication, dreams_goals, challenges_needs, their_world, observation, her_response, gratitude, general.
+- **Categories:** personality, love_appreciation, communication, dreams_goals, challenges_needs, their_world, observation, their_response, gratitude, general.
 - **File handling:** Small/medium files → content extracted into spouse_insights as direct AI context. Large files → sent to Manifest RAG pipeline, `is_rag_indexed` flag set on the insight. Threshold: ~3000 tokens.
 - **Sacred triangle framing (initial user):** Becoming a better husband = drawing closer to God. Swedenborg's conjugial love: deepening spiritual union as both draw closer to the Lord. Applied when natural, never forced. For future multi-user: adapts to user's Mast faith context, omitted for secular users.
 - **Relationship safety — three-tier:**
@@ -862,7 +866,7 @@ Tracks placeholder/stub functionality that needs to be wired up when the target 
 | Compass → AI view suggestion banner | Phase 4B (Views) | Enhancement (polish) | STUB |
 | Compass → "Mark as Victory" button | Phase 4A (Compass) | Phase 5 (Victory Recorder) | WIRED |
 | Compass → Carry forward from Reckoning trigger | Phase 4A (Compass) | Phase 6 (Reckoning) | WIRED |
-| Unload the Hold → Crew person_note routing | Phase 4D (Unload the Hold) | Phase 8 (Crew) | STUB |
+| Unload the Hold → Crew person_note routing | Phase 4D (Unload the Hold) | Phase 8 (Crew) | WIRED |
 | Unload the Hold → Reminder routing | Phase 4D (Unload the Hold) | Phase 10 (Reminders) | STUB |
 | Unload the Hold → Voice messages in conversation | Phase 4D (Unload the Hold) | TBD (Whisper integration) | STUB |
 | Charts → Wheel Progress cards | Phase 5B (Charts) | Phase 7 (Wheel) | WIRED |
@@ -876,14 +880,23 @@ Tracks placeholder/stub functionality that needs to be wired up when the target 
 | Crow's Nest → Upcoming card (meetings/reminders) | Phase 5C (Crow's Nest) | Phase 10 (Reminders) + Phase 10 (Meetings) | STUB |
 | Victory → Helm AI suggestion during conversations | Phase 5A (Victory) | Enhancement (AI context) | STUB |
 | Victory → Chart milestone auto-generation | Phase 5B (Charts) | Phase 5A (Victory) wiring | STUB |
-| Wheel → Crew/Sphere references in Spoke 4 | Phase 7A (Wheel) | Phase 8 (Crew) | STUB |
+| Wheel → Crew/Sphere references in Spoke 4 | Phase 7A (Wheel) | Phase 8 (Crew) | WIRED |
 | Life Inventory → Onboarding seeding | Phase 7A (Life Inventory) | Future | STUB |
 | Life Inventory → AI notices relevant info in regular Helm conversations | Phase 7A (Life Inventory) | Enhancement | STUB |
 | Rigging → Reveille/Reckoning milestone nudging | Phase 7B (Rigging) | Phase 10 (Reminders) | STUB |
 | Rigging → Manifest RAG for planning sessions | Phase 7B (Rigging) | Phase 9 (Manifest) | STUB |
 | Rigging → Victory suggestion on plan completion | Phase 7B (Rigging) | Enhancement | STUB |
-| Safe Harbor → First Mate/Crew context loading | Phase 7C (Safe Harbor) | Phase 8 (First Mate/Crew) | STUB |
+| Safe Harbor → First Mate/Crew context loading | Phase 7C (Safe Harbor) | Phase 8 (First Mate/Crew) | WIRED |
 | Safe Harbor → Manifest RAG context | Phase 7C (Safe Harbor) | Phase 9 (Manifest) | STUB |
+| First Mate → File upload (Manifest pipeline) | Phase 8A (First Mate) | Phase 9 (Manifest) | STUB |
+| First Mate → Couple Meeting integration | Phase 8A (First Mate) | Phase 10 (Meetings) | STUB |
+| First Mate → Spouse prompts in Reveille/Reckoning | Phase 8A (First Mate) | Phase 10 (Reminders) | STUB |
+| Crew → Parent-Child Meeting Notes tab | Phase 8A (Crew) | Phase 10 (Meetings) | STUB |
+| Crew → Important dates → Reminders | Phase 8A (Crew) | Phase 10 (Reminders) | STUB |
+| Helm → AI name recognition from Crew in free-form chat | Phase 8A (Crew) | Enhancement (AI context) | STUB |
+| Helm → Offer to save spouse insights from conversation | Phase 8A (First Mate) | Enhancement (AI context) | STUB |
+| Sphere → AI gap coaching in Helm conversations | Phase 8B (Sphere) | Enhancement (AI context) | STUB |
+| Sphere → Interactive concentric circles visualization | Phase 8B (Sphere) | Post-MVP | POST-MVP |
 
 ---
 

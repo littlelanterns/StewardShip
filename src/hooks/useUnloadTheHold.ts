@@ -138,11 +138,12 @@ export function useUnloadTheHold() {
     principlesCreated: number;
     listItemsCreated: number;
     remindersStubbed: number;
+    personNotesCreated: number;
     personNotesStubbed: number;
     discarded: number;
   }> => {
     if (!user || !holdDump) {
-      return { tasksCreated: 0, journalEntriesCreated: 0, insightsCreated: 0, principlesCreated: 0, listItemsCreated: 0, remindersStubbed: 0, personNotesStubbed: 0, discarded: 0 };
+      return { tasksCreated: 0, journalEntriesCreated: 0, insightsCreated: 0, principlesCreated: 0, listItemsCreated: 0, remindersStubbed: 0, personNotesCreated: 0, personNotesStubbed: 0, discarded: 0 };
     }
 
     setRouting(true);
@@ -155,6 +156,7 @@ export function useUnloadTheHold() {
       principlesCreated: 0,
       listItemsCreated: 0,
       remindersStubbed: 0,
+      personNotesCreated: 0,
       personNotesStubbed: 0,
       discarded: 0,
     };
@@ -240,17 +242,62 @@ export function useUnloadTheHold() {
           }
 
           case 'person_note': {
-            // STUB: Until Crew is built, save as Log entry
-            const { error: pnErr } = await supabase
-              .from('log_entries')
-              .insert({
-                user_id: user.id,
-                text: `[Person note${item.metadata.person_name ? `: ${item.metadata.person_name}` : ''}] ${item.text}`,
-                entry_type: 'quick_note',
-                source: 'unload_the_hold',
-                source_reference_id: holdDump.id,
-              });
-            if (!pnErr) counts.personNotesStubbed++;
+            // Wire to Crew: try to match person_name to a people record
+            const personName = item.metadata.person_name;
+            let matched = false;
+
+            if (personName) {
+              const { data: matchedPeople } = await supabase
+                .from('people')
+                .select('id, has_rich_context, notes')
+                .eq('user_id', user.id)
+                .is('archived_at', null)
+                .ilike('name', `%${personName}%`)
+                .limit(1);
+
+              if (matchedPeople && matchedPeople.length > 0) {
+                const matchedPerson = matchedPeople[0];
+
+                if (matchedPerson.has_rich_context) {
+                  const { error: cnErr } = await supabase
+                    .from('crew_notes')
+                    .insert({
+                      user_id: user.id,
+                      person_id: matchedPerson.id,
+                      category: 'observation',
+                      text: item.text,
+                      source_type: 'log_routed',
+                      source_reference_id: holdDump.id,
+                    });
+                  if (!cnErr) { counts.personNotesCreated++; matched = true; }
+                } else {
+                  const existingNotes = matchedPerson.notes || '';
+                  const updatedNotes = existingNotes
+                    ? `${existingNotes}\n\n[${new Date().toLocaleDateString()}] ${item.text}`
+                    : `[${new Date().toLocaleDateString()}] ${item.text}`;
+
+                  const { error: upErr } = await supabase
+                    .from('people')
+                    .update({ notes: updatedNotes })
+                    .eq('id', matchedPerson.id);
+                  if (!upErr) { counts.personNotesCreated++; matched = true; }
+                }
+              }
+            }
+
+            // Fallback: No person matched — save as Log entry
+            if (!matched) {
+              const { error: pnErr } = await supabase
+                .from('log_entries')
+                .insert({
+                  user_id: user.id,
+                  text: `[Person note${personName ? `: ${personName}` : ''}] ${item.text}`,
+                  entry_type: 'quick_note',
+                  source: 'unload_the_hold',
+                  source_reference_id: holdDump.id,
+                });
+              if (!pnErr) counts.personNotesStubbed++;
+            }
             break;
           }
 
@@ -279,7 +326,7 @@ export function useUnloadTheHold() {
       // Update hold_dumps record with final counts
       const totalRouted = counts.tasksCreated + counts.journalEntriesCreated +
         counts.insightsCreated + counts.principlesCreated + counts.listItemsCreated +
-        counts.remindersStubbed + counts.personNotesStubbed;
+        counts.remindersStubbed + counts.personNotesCreated + counts.personNotesStubbed;
 
       await supabase
         .from('hold_dumps')

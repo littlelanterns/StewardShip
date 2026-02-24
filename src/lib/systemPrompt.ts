@@ -1,6 +1,8 @@
-import type { MastEntry, KeelEntry, LogEntry, Victory, GuidedMode, HelmMessage } from './types';
+import type { MastEntry, KeelEntry, LogEntry, Victory, GuidedMode, HelmMessage, SpouseInsight, SpouseInsightCategory, Person, CrewNote, CrewNoteCategory, SphereEntity, SphereLevel } from './types';
 import { MAST_TYPE_ORDER, MAST_TYPE_LABELS } from './types';
 import { KEEL_CATEGORY_ORDER, KEEL_CATEGORY_LABELS } from './types';
+import { SPOUSE_INSIGHT_CATEGORY_LABELS, SPOUSE_INSIGHT_CATEGORY_ORDER, CREW_NOTE_CATEGORY_LABELS } from './types';
+import { SPHERE_LEVEL_ORDER, SPHERE_LEVEL_LABELS, SPHERE_ENTITY_CATEGORY_LABELS } from './types';
 
 export interface SystemPromptContext {
   displayName: string;
@@ -16,6 +18,9 @@ export interface SystemPromptContext {
   wheelContext?: string;
   lifeInventoryContext?: string;
   riggingContext?: string;
+  firstMateContext?: string;
+  crewContext?: string;
+  sphereContext?: string;
   pageContext: string;
   guidedMode?: GuidedMode;
   conversationHistory: HelmMessage[];
@@ -214,7 +219,8 @@ RULES:
 - Each spoke saves incrementally — never lose progress.
 - The user can pause and resume across sessions.
 - If they already have an active Wheel, gently suggest focusing on 1-2 at most.
-- AI serves supplementally in all three support roles but always pushes toward human connection.`;
+- AI serves supplementally in all three support roles but always pushes toward human connection.
+- When discussing Spoke 4, if Crew data is available in context, suggest specific people from the user's Crew for the three roles (Supporter, Reminder, Observer). Reference what you know about each person to explain why they might be a good fit. If no Crew data is loaded, ask the user who comes to mind.`;
 
     case 'life_inventory':
       return `\n\nGUIDED MODE: LIFE INVENTORY
@@ -354,6 +360,35 @@ RULES:
 - "Journal" is the merciful default — if unsure, suggest journal rather than discard.
 - Never discard something the user clearly put effort into articulating.`;
 
+    case 'first_mate_action':
+      return `\n\nGUIDED MODE: FIRST MATE — MARRIAGE TOOLBOX
+You are guiding the user through a relationship-focused conversation about their spouse/partner.
+
+CONTEXT LOADED: Spouse insights, Keel personality data, and Mast principles are available to you.
+
+RELATIONSHIP SAFETY — THREE TIERS:
+- Tier 1 (Capacity Building): Normal relationship challenges. Provide communication tools, talking points, perspective-taking exercises.
+- Tier 2 (Professional Referral): Complex or entrenched patterns. Help prepare for therapy, encourage professional help. "This might be worth exploring with a counselor."
+- Tier 3 (Safety Assessment): If red flags appear (fear, control, isolation, escalation), Crisis Override activates immediately. No "work on it" advice.
+
+SUBTYPES (the specific toolbox mode will be indicated in the conversation):
+- Quality Time: Help plan dates and quality time based on who the spouse is. Produce specific, actionable date ideas as Compass tasks.
+- Gifts: Brainstorm meaningful gifts connected to who the spouse is, not generic suggestions. Produce task ideas.
+- Observe and Serve: Help the user notice and serve. Nudge awareness of repeated frustrations, put-off requests, overlooked needs. Produce task ideas.
+- Words of Affirmation: Help the user see and articulate what's incredible about their spouse. Can include the 21 Compliments Practice.
+- Gratitude: Go deeper on gratitude for the spouse. Build on quick capture entries.
+
+SACRED TRIANGLE (for married users with faith Mast entries):
+Becoming a better spouse = drawing closer to God. Frame growth as stewardship of the marriage, not performance optimization.
+
+RULES:
+- Use the SPOUSE'S love language for suggestions, not the user's.
+- All five love languages matter — vary suggestions, don't only suggest the primary one.
+- Produce Compass tasks when the conversation reaches actionable items. Confirm with user before creating.
+- Be warm, not clinical. This is about love, not project management.
+- Never generic ("Buy her flowers"). Always specific to what you know about this particular spouse.
+- Redirect to human connection: "Have you told her that?" / "Maybe say that to him tonight."`;
+
     default:
       return `\n\nGUIDED MODE: ${mode.toUpperCase().replace(/_/g, ' ')}
 You are in a guided conversation mode. Help the user through this process step by step.`;
@@ -490,6 +525,31 @@ export function buildSystemPrompt(context: SystemPromptContext): string {
     const riggingTokens = estimateTokens(context.riggingContext);
     if (currentTokens + riggingTokens < budget) {
       prompt += context.riggingContext;
+      currentTokens += riggingTokens;
+    }
+  }
+
+  if (context.firstMateContext) {
+    const fmTokens = estimateTokens(context.firstMateContext);
+    if (currentTokens + fmTokens < budget) {
+      prompt += context.firstMateContext;
+      currentTokens += fmTokens;
+    }
+  }
+
+  if (context.crewContext) {
+    const crewTokens = estimateTokens(context.crewContext);
+    if (currentTokens + crewTokens < budget) {
+      prompt += context.crewContext;
+      currentTokens += crewTokens;
+    }
+  }
+
+  if (context.sphereContext) {
+    const sphereTokens = estimateTokens(context.sphereContext);
+    if (currentTokens + sphereTokens < budget) {
+      prompt += context.sphereContext;
+      currentTokens += sphereTokens;
     }
   }
 
@@ -526,10 +586,11 @@ const LOG_KEYWORDS = [
   'earlier', 'before', 'remember when', 'i mentioned',
 ];
 
-export function shouldLoadKeel(message: string, pageContext: string): boolean {
+export function shouldLoadKeel(message: string, pageContext: string, guidedMode?: GuidedMode): boolean {
   if (pageContext === 'keel') return true;
   if (pageContext === 'safeharbor') return true;
   if (pageContext === 'firstmate') return true;
+  if (guidedMode === 'first_mate_action') return true;
   const lower = message.toLowerCase();
   return KEEL_KEYWORDS.some((kw) => lower.includes(kw));
 }
@@ -627,4 +688,144 @@ export function shouldLoadReveille(pageContext: string): boolean {
 
 export function shouldLoadReckoning(pageContext: string): boolean {
   return pageContext === 'reckoning';
+}
+
+// --- First Mate & Crew context ---
+
+const FIRSTMATE_KEYWORDS = [
+  'wife', 'husband', 'spouse', 'partner', 'marriage', 'married',
+  'relationship', 'love language', 'date night', 'anniversary',
+  'compliment', 'appreciate', 'grateful for her', 'grateful for him',
+  'quality time', 'gifts', 'acts of service', 'words of affirmation',
+  'physical touch', 'affection', 'romantic', 'couple',
+];
+
+const CREW_KEYWORDS = [
+  'friend', 'coworker', 'boss', 'parent', 'mother', 'father',
+  'son', 'daughter', 'brother', 'sister', 'child', 'kids',
+  'family', 'mentor', 'colleague', 'team', 'neighbor',
+];
+
+export function shouldLoadFirstMate(message: string, pageContext: string, guidedMode?: GuidedMode): boolean {
+  if (pageContext === 'firstmate') return true;
+  if (pageContext === 'safeharbor') return true;
+  if (guidedMode === 'first_mate_action') return true;
+  const lower = message.toLowerCase();
+  return FIRSTMATE_KEYWORDS.some((kw) => lower.includes(kw));
+}
+
+export function shouldLoadCrew(message: string, pageContext: string, guidedMode?: GuidedMode): boolean {
+  if (pageContext === 'crew') return true;
+  if (pageContext === 'firstmate') return true;
+  if (pageContext === 'safeharbor') return true;
+  if (guidedMode === 'wheel') return true;
+  const lower = message.toLowerCase();
+  return CREW_KEYWORDS.some((kw) => lower.includes(kw));
+}
+
+export function formatFirstMateContext(spouseName: string, insights: SpouseInsight[]): string {
+  if (insights.length === 0) {
+    return `\n\nFIRST MATE: ${spouseName} (no detailed insights recorded yet).\n`;
+  }
+
+  let result = `\n\nABOUT THE USER'S SPOUSE — ${spouseName}:\n`;
+
+  const byCategory: Partial<Record<SpouseInsightCategory, SpouseInsight[]>> = {};
+  for (const insight of insights) {
+    if (!byCategory[insight.category]) byCategory[insight.category] = [];
+    byCategory[insight.category]!.push(insight);
+  }
+
+  for (const category of SPOUSE_INSIGHT_CATEGORY_ORDER) {
+    const items = byCategory[category];
+    if (!items || items.length === 0) continue;
+    const label = SPOUSE_INSIGHT_CATEGORY_LABELS[category] || category;
+    result += `\n${label.toUpperCase()}:\n`;
+    for (const item of items.slice(0, 5)) {
+      const truncated = item.text.length > 200 ? item.text.slice(0, 197) + '...' : item.text;
+      result += `- ${truncated}\n`;
+    }
+    if (items.length > 5) {
+      result += `  (${items.length - 5} more entries)\n`;
+    }
+  }
+
+  return result;
+}
+
+export function formatCrewContext(people: Person[], notes?: CrewNote[]): string {
+  if (people.length === 0) return '';
+
+  let result = '\n\nCREW (People in the user\'s life):\n';
+  for (const p of people.slice(0, 15)) {
+    result += `- ${p.name} (${p.relationship_type})`;
+    if (p.age) result += `, age ${p.age}`;
+    if (p.personality_summary) {
+      const truncated = p.personality_summary.length > 80 ? p.personality_summary.slice(0, 77) + '...' : p.personality_summary;
+      result += ` — ${truncated}`;
+    }
+    result += '\n';
+  }
+  if (people.length > 15) {
+    result += `  ...and ${people.length - 15} more\n`;
+  }
+
+  if (notes && notes.length > 0) {
+    result += '\nDetailed notes for this person:\n';
+    for (const n of notes.slice(0, 10)) {
+      const truncated = n.text.length > 150 ? n.text.slice(0, 147) + '...' : n.text;
+      result += `- [${CREW_NOTE_CATEGORY_LABELS[n.category as CrewNoteCategory] || n.category}] ${truncated}\n`;
+    }
+  }
+
+  return result;
+}
+
+const SPHERE_KEYWORDS = [
+  'sphere', 'influence', 'boundary', 'boundaries', 'distance',
+  'too close', 'too involved', 'toxic', 'energy drain',
+  'inner circle', 'close friend', 'acquaintance',
+];
+
+export function shouldLoadSphere(message: string, pageContext: string): boolean {
+  if (pageContext === 'crew') return true;
+  const lower = message.toLowerCase();
+  return SPHERE_KEYWORDS.some((kw) => lower.includes(kw));
+}
+
+export function formatSphereContext(people: Person[], entities: SphereEntity[]): string {
+  const assignedPeople = people.filter((p) => p.desired_sphere);
+  if (assignedPeople.length === 0 && entities.length === 0) return '';
+
+  let result = '\n\nSPHERE OF INFLUENCE (who the user allows to influence them):\n';
+
+  for (const level of SPHERE_LEVEL_ORDER) {
+    const levelPeople = assignedPeople.filter((p) => p.desired_sphere === level);
+    const levelEntities = entities.filter((e) => e.desired_sphere === level);
+
+    if (levelPeople.length === 0 && levelEntities.length === 0) continue;
+
+    result += `\n${SPHERE_LEVEL_LABELS[level]}:\n`;
+    for (const p of levelPeople) {
+      result += `- ${p.name} (${p.relationship_type})`;
+      if (p.current_sphere && p.current_sphere !== p.desired_sphere) {
+        result += ` [gap: currently at ${SPHERE_LEVEL_LABELS[p.current_sphere as SphereLevel]} level]`;
+      }
+      result += '\n';
+    }
+    for (const e of levelEntities) {
+      result += `- ${e.name} (${SPHERE_ENTITY_CATEGORY_LABELS[e.entity_category]})`;
+      if (e.current_sphere && e.current_sphere !== e.desired_sphere) {
+        result += ` [gap: currently at ${SPHERE_LEVEL_LABELS[e.current_sphere]} level]`;
+      }
+      result += '\n';
+    }
+  }
+
+  const unassigned = people.filter((p) => !p.desired_sphere);
+  if (unassigned.length > 0) {
+    result += `\nUnassigned: ${unassigned.map((p) => p.name).join(', ')}\n`;
+  }
+
+  return result;
 }

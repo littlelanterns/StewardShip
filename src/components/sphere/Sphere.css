@@ -1,0 +1,370 @@
+/* === Sphere View === */
+
+.sphere-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md, 1rem);
+}
+
+.sphere-view__loading {
+  display: flex;
+  justify-content: center;
+  padding: var(--spacing-xl, 2rem);
+}
+
+.sphere-view__section {
+  border-radius: var(--radius-md, 8px);
+  padding: var(--spacing-sm, 0.75rem);
+  background: var(--color-cream);
+}
+
+.sphere-view__section--focus {
+  background: color-mix(in srgb, var(--color-deep-teal) 8%, var(--color-cream));
+}
+
+.sphere-view__section--family {
+  background: color-mix(in srgb, var(--color-deep-teal) 5%, var(--color-cream));
+}
+
+.sphere-view__section--friends {
+  background: color-mix(in srgb, var(--color-deep-teal) 3%, var(--color-cream));
+}
+
+.sphere-view__section--unassigned {
+  background: var(--color-light-gray);
+  opacity: 0.85;
+}
+
+.sphere-view__empty-hint {
+  color: var(--color-slate-gray);
+  font-size: 0.85rem;
+  font-style: italic;
+  padding: var(--spacing-xs, 0.5rem) var(--spacing-sm, 0.75rem);
+  margin: 0;
+}
+
+/* === Sphere Section Header === */
+
+.sphere-section-header {
+  margin-bottom: var(--spacing-xs, 0.5rem);
+}
+
+.sphere-section-header__top {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs, 0.5rem);
+}
+
+.sphere-section-header__title {
+  font-family: Georgia, serif;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-navy);
+  margin: 0;
+}
+
+.sphere-section-header__count {
+  font-size: 0.75rem;
+  color: var(--color-slate-gray);
+  background: var(--color-warm-sand);
+  border-radius: 10px;
+  padding: 1px 8px;
+}
+
+.sphere-section-header__desc {
+  font-size: 0.8rem;
+  color: var(--color-slate-gray);
+  margin: 2px 0 0;
+}
+
+/* === Focus Center === */
+
+.focus-center {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm, 0.75rem);
+  padding: var(--spacing-xs, 0.5rem) 0;
+  margin-bottom: var(--spacing-xs, 0.5rem);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-deep-teal) 15%, transparent);
+}
+
+.focus-center__label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-slate-gray);
+  flex-shrink: 0;
+}
+
+.focus-center__items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs, 0.5rem);
+}
+
+.focus-center__pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 14px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  border-radius: 16px;
+  background: var(--color-deep-teal);
+  color: var(--color-cream);
+  border: none;
+  cursor: default;
+}
+
+.focus-center__pill--tappable {
+  cursor: pointer;
+  background: var(--color-dark-teal);
+}
+
+.focus-center__pill--tappable:hover {
+  background: var(--color-mid-teal);
+}
+
+/* === Sphere Person Card === */
+
+.sphere-person-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--spacing-xs, 0.5rem) var(--spacing-sm, 0.75rem);
+  border: none;
+  background: var(--color-white);
+  border-radius: var(--radius-sm, 4px);
+  cursor: pointer;
+  margin-bottom: 4px;
+  text-align: left;
+  min-height: 44px;
+}
+
+.sphere-person-card:hover {
+  background: var(--color-warm-sand);
+}
+
+.sphere-person-card__left {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs, 0.5rem);
+}
+
+.sphere-person-card__gap {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.sphere-person-card__gap--inward {
+  background: var(--color-cognac);
+}
+
+.sphere-person-card__gap--outward {
+  background: var(--color-slate-gray);
+}
+
+.sphere-person-card__info {
+  display: flex;
+  flex-direction: column;
+}
+
+.sphere-person-card__name {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--color-navy);
+}
+
+.sphere-person-card__type {
+  font-size: 0.75rem;
+  color: var(--color-slate-gray);
+  text-transform: capitalize;
+}
+
+.sphere-person-card__right {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs, 0.5rem);
+  color: var(--color-slate-gray);
+}
+
+.sphere-person-card__menu {
+  background: none;
+  border: none;
+  font-size: 0.8rem;
+  color: var(--color-mid-teal);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  min-height: 44px;
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sphere-person-card__menu:hover {
+  background: var(--color-warm-sand);
+}
+
+/* === Sphere Entity Card === */
+
+.sphere-entity-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-xs, 0.5rem) var(--spacing-sm, 0.75rem);
+  background: var(--color-white);
+  border-radius: var(--radius-sm, 4px);
+  border: 1px dashed var(--color-slate-gray);
+  margin-bottom: 4px;
+  min-height: 44px;
+}
+
+.sphere-entity-card--editing {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--spacing-xs, 0.5rem);
+  padding: var(--spacing-sm, 0.75rem);
+}
+
+.sphere-entity-card__left {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs, 0.5rem);
+}
+
+.sphere-entity-card__gap {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.sphere-entity-card__gap--inward {
+  background: var(--color-cognac);
+}
+
+.sphere-entity-card__gap--outward {
+  background: var(--color-slate-gray);
+}
+
+.sphere-entity-card__info {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs, 0.5rem);
+}
+
+.sphere-entity-card__name {
+  font-size: 0.9rem;
+  color: var(--color-navy);
+}
+
+.sphere-entity-card__badge {
+  font-size: 0.7rem;
+  color: var(--color-slate-gray);
+  background: var(--color-warm-sand);
+  border-radius: 8px;
+  padding: 1px 8px;
+}
+
+.sphere-entity-card__right {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs, 0.5rem);
+}
+
+.sphere-entity-card__menu {
+  background: none;
+  border: none;
+  font-size: 0.8rem;
+  color: var(--color-mid-teal);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+.sphere-entity-card__menu:hover {
+  background: var(--color-warm-sand);
+}
+
+.sphere-entity-card__confirm {
+  display: flex;
+  gap: 4px;
+}
+
+.sphere-entity-card__input,
+.sphere-entity-card__select,
+.sphere-entity-card__textarea {
+  width: 100%;
+  padding: 8px;
+  font-size: 0.9rem;
+  border: 1px solid var(--color-slate-gray);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--color-white);
+  color: var(--color-navy);
+  font-family: inherit;
+}
+
+.sphere-entity-card__textarea {
+  resize: vertical;
+}
+
+.sphere-entity-card__actions {
+  display: flex;
+  gap: var(--spacing-xs, 0.5rem);
+  justify-content: flex-end;
+}
+
+/* === Sphere Assignment === */
+
+.sphere-assignment {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm, 0.75rem);
+}
+
+.sphere-assignment__note {
+  font-size: 0.85rem;
+  color: var(--color-slate-gray);
+  font-style: italic;
+  margin: 0;
+}
+
+.sphere-assignment__label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.9rem;
+  color: var(--color-navy);
+}
+
+.sphere-assignment__select {
+  padding: 8px;
+  font-size: 0.9rem;
+  border: 1px solid var(--color-slate-gray);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--color-white);
+  color: var(--color-navy);
+}
+
+.sphere-assignment__gap {
+  font-size: 0.85rem;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm, 4px);
+}
+
+.sphere-assignment__gap--inward {
+  background: color-mix(in srgb, var(--color-cognac) 12%, var(--color-cream));
+  color: var(--color-deep-brown);
+}
+
+.sphere-assignment__gap--outward {
+  background: color-mix(in srgb, var(--color-slate-gray) 15%, var(--color-cream));
+  color: var(--color-navy);
+}

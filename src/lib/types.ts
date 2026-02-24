@@ -853,3 +853,196 @@ export const OBSTACLE_STATUS_LABELS: Record<ObstacleStatus, string> = {
   triggered: 'Triggered',
   resolved: 'Resolved',
 };
+
+// === PRD-12: First Mate + PRD-13: Crew ===
+
+export type RelationshipType = 'spouse' | 'child' | 'parent' | 'sibling' | 'coworker' | 'friend' | 'mentor' | 'other';
+
+export type SphereLevel = 'focus' | 'family' | 'friends' | 'acquaintances' | 'community' | 'geo_political';
+
+export const SPHERE_LEVEL_LABELS: Record<SphereLevel, string> = {
+  focus: 'Focus',
+  family: 'Family',
+  friends: 'Friends',
+  acquaintances: 'Acquaintances',
+  community: 'Community',
+  geo_political: 'Geo-Political',
+};
+
+export const SPHERE_LEVEL_ORDER: SphereLevel[] = [
+  'focus', 'family', 'friends', 'acquaintances', 'community', 'geo_political',
+];
+
+export type SphereEntityCategory = 'social_media' | 'news_media' | 'politics' | 'entertainment' | 'ideology' | 'custom';
+
+export const SPHERE_ENTITY_CATEGORY_LABELS: Record<SphereEntityCategory, string> = {
+  social_media: 'Social Media',
+  news_media: 'News & Media',
+  politics: 'Politics',
+  entertainment: 'Entertainment',
+  ideology: 'Ideology',
+  custom: 'Custom',
+};
+
+export interface SphereEntity {
+  id: string;
+  user_id: string;
+  name: string;
+  entity_category: SphereEntityCategory;
+  desired_sphere: SphereLevel;
+  current_sphere: SphereLevel | null;
+  notes: string | null;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type SpouseInsightCategory =
+  | 'personality'
+  | 'love_appreciation'
+  | 'communication'
+  | 'dreams_goals'
+  | 'challenges_needs'
+  | 'their_world'
+  | 'observation'
+  | 'their_response'
+  | 'gratitude'
+  | 'general';
+
+export type SpouseInsightSourceType = 'manual' | 'uploaded_file' | 'helm_conversation' | 'spouse_prompt' | 'log_routed';
+
+export type SpousePromptType = 'ask_them' | 'reflect' | 'express';
+
+export type SpousePromptStatus = 'pending' | 'acted_on' | 'skipped';
+
+export type CrewNoteCategory = 'personality' | 'interests' | 'challenges' | 'growth' | 'observation' | 'general';
+
+export type CrewNoteSourceType = 'manual' | 'uploaded_file' | 'helm_conversation' | 'meeting_notes' | 'log_routed';
+
+export interface ImportantDate {
+  label: string;
+  date: string;
+  recurring: boolean;
+}
+
+export interface Person {
+  id: string;
+  user_id: string;
+  name: string;
+  relationship_type: RelationshipType;
+  is_first_mate: boolean;
+  categories: string[];
+  notes: string | null;
+  age: number | null;
+  personality_summary: string | null;
+  love_language: string | null;
+  important_dates: ImportantDate[] | null;
+  desired_sphere: SphereLevel | null;
+  current_sphere: SphereLevel | null;
+  has_rich_context: boolean;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SpouseInsight {
+  id: string;
+  user_id: string;
+  person_id: string;
+  category: SpouseInsightCategory;
+  text: string;
+  source_type: SpouseInsightSourceType;
+  source_label: string | null;
+  source_reference_id: string | null;
+  file_storage_path: string | null;
+  is_rag_indexed: boolean;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SpousePrompt {
+  id: string;
+  user_id: string;
+  person_id: string;
+  prompt_type: SpousePromptType;
+  prompt_text: string;
+  status: SpousePromptStatus;
+  response_text: string | null;
+  response_saved_as_insight: boolean;
+  insight_id: string | null;
+  generation_context: string | null;
+  created_at: string;
+  acted_on_at: string | null;
+}
+
+export interface CrewNote {
+  id: string;
+  user_id: string;
+  person_id: string;
+  category: CrewNoteCategory;
+  text: string;
+  source_type: CrewNoteSourceType;
+  source_label: string | null;
+  source_reference_id: string | null;
+  file_storage_path: string | null;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const SPOUSE_INSIGHT_CATEGORY_LABELS: Record<SpouseInsightCategory, string> = {
+  personality: 'Personality & Wiring',
+  love_appreciation: 'Love & Appreciation',
+  communication: 'Communication',
+  dreams_goals: 'Dreams & Goals',
+  challenges_needs: 'Challenges & Needs',
+  their_world: 'Their World',
+  observation: 'Observations',
+  their_response: 'Their Responses',
+  gratitude: 'Gratitude',
+  general: 'General',
+};
+
+export const SPOUSE_INSIGHT_CATEGORY_ORDER: SpouseInsightCategory[] = [
+  'personality', 'love_appreciation', 'communication', 'dreams_goals',
+  'challenges_needs', 'their_world', 'gratitude', 'observation', 'their_response', 'general',
+];
+
+export const SPOUSE_PROMPT_TYPE_LABELS: Record<SpousePromptType, string> = {
+  ask_them: 'Ask',
+  reflect: 'Reflect',
+  express: 'Express',
+};
+
+export const CREW_NOTE_CATEGORY_LABELS: Record<CrewNoteCategory, string> = {
+  personality: 'Personality',
+  interests: 'Interests',
+  challenges: 'Challenges',
+  growth: 'Growth',
+  observation: 'Observations',
+  general: 'General',
+};
+
+export const CREW_NOTE_CATEGORY_ORDER: CrewNoteCategory[] = [
+  'personality', 'interests', 'challenges', 'growth', 'observation', 'general',
+];
+
+export const RELATIONSHIP_TYPE_LABELS: Record<RelationshipType, string> = {
+  spouse: 'Spouse',
+  child: 'Child',
+  parent: 'Parent',
+  sibling: 'Sibling',
+  coworker: 'Coworker',
+  friend: 'Friend',
+  mentor: 'Mentor',
+  other: 'Other',
+};
+
+export const CREW_SECTIONS: { key: string; label: string; types: RelationshipType[] }[] = [
+  { key: 'immediate_family', label: 'Immediate Family', types: ['spouse', 'child'] },
+  { key: 'extended_family', label: 'Extended Family', types: ['parent', 'sibling'] },
+  { key: 'professional', label: 'Professional', types: ['coworker', 'mentor'] },
+  { key: 'social', label: 'Social & Friends', types: ['friend'] },
+  { key: 'other', label: 'Other', types: ['other'] },
+];

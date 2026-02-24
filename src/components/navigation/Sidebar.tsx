@@ -23,10 +23,13 @@ import {
   Settings,
 } from 'lucide-react';
 import { useHelm } from '../../contexts/HelmContext';
+import { useAuthContext } from '../../contexts/AuthContext';
 import './Sidebar.css';
 
 export default function Sidebar() {
   const { toggleDrawer, drawerState } = useHelm();
+  const { profile } = useAuthContext();
+  const showFirstMate = profile?.relationship_status && profile.relationship_status !== 'single';
   const navigate = useNavigate();
 
   const handleUnloadTheHold = () => {
@@ -156,12 +159,14 @@ export default function Sidebar() {
         {/* Relationships */}
         <div className="sidebar__section-label">Relationships</div>
         <ul className="sidebar__group">
-          <li>
-            <NavLink to="/first-mate" className="sidebar__link">
-              <Heart size={18} strokeWidth={1.5} />
-              <span>First Mate</span>
-            </NavLink>
-          </li>
+          {showFirstMate && (
+            <li>
+              <NavLink to="/first-mate" className="sidebar__link">
+                <Heart size={18} strokeWidth={1.5} />
+                <span>First Mate</span>
+              </NavLink>
+            </li>
+          )}
           <li>
             <NavLink to="/crew" className="sidebar__link">
               <Users size={18} strokeWidth={1.5} />

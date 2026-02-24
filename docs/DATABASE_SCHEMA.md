@@ -595,7 +595,7 @@ All knowledge about the spouse from any source. Each record is one categorized i
 | id | UUID | gen_random_uuid() | NOT NULL | PK |
 | user_id | UUID | | NOT NULL | FK → auth.users |
 | person_id | UUID | | NOT NULL | FK → people (the First Mate) |
-| category | TEXT | | NOT NULL | Enum: 'personality', 'love_appreciation', 'communication', 'dreams_goals', 'challenges_needs', 'their_world', 'observation', 'her_response', 'gratitude', 'general' |
+| category | TEXT | | NOT NULL | Enum: 'personality', 'love_appreciation', 'communication', 'dreams_goals', 'challenges_needs', 'their_world', 'observation', 'their_response', 'gratitude', 'general' |
 | text | TEXT | | NOT NULL | The insight content |
 | source_type | TEXT | 'manual' | NOT NULL | Enum: 'manual', 'uploaded_file', 'helm_conversation', 'spouse_prompt', 'log_routed' |
 | source_label | TEXT | null | NULL | Freeform label (e.g., "Gallup StrengthsFinder", "she told me", "I noticed at dinner") |

@@ -1130,9 +1130,9 @@ Every AI interaction includes these context layers (loaded dynamically based on 
 19. **7C:** Safe Harbor (specialized AI mode, three-tier safety, crisis resources, SafeHarborLanding page) ✅
 
 ### Phase 8: Relationships
-21. First Mate (spouse profile, nudges, spouse questions, sacred triangle)
-22. Crew (people profiles, categories, Add Crewmate, mentor notes)
-23. Sphere of Influence (visualization, drag/tap placement, current/desired, AI suggestions)
+21. **8A:** First Mate (spouse profile, insights, prompts, Marriage Toolbox, gratitude capture) ✅
+22. **8A:** Crew (people profiles, categories, crew_notes, person detail, name search) ✅
+23. **8B:** Sphere of Influence (list-based sphere view, sphere entities CRUD, focus center, gap indicators, AI context) ✅
 
 ### Phase 9: Knowledge
 24. The Manifest (file upload, RAG pipeline, intake flow)
@@ -1259,8 +1259,8 @@ stewardship/
 | PRD-09: Crow's Nest | Phase 5C Built ✅ |
 | PRD-10: Reveille + Reckoning | Phase 6 Built ✅ |
 | PRD-11: The Wheel + Life Inventory | Phase 7A Built ✅ |
-| PRD-12: First Mate (incl. Spouse Questions) | PRD Written |
-| PRD-13: Crew + Sphere of Influence | PRD Written |
+| PRD-12: First Mate (incl. Spouse Questions) | Phase 8A Built ✅ |
+| PRD-13: Crew + Sphere of Influence | Phase 8A Built ✅ (Sphere = Phase 8B) |
 | PRD-14: Safe Harbor | Phase 7C Built ✅ |
 | PRD-15: The Manifest | PRD Written |
 | PRD-16: Rigging (Planning Tool) | Phase 7B Built ✅ |

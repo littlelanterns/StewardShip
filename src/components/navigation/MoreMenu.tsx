@@ -19,6 +19,7 @@ import {
   Settings,
   X,
 } from 'lucide-react';
+import { useAuthContext } from '../../contexts/AuthContext';
 import './MoreMenu.css';
 
 interface MoreMenuProps {
@@ -28,6 +29,8 @@ interface MoreMenuProps {
 
 export default function MoreMenu({ open, onClose }: MoreMenuProps) {
   const navigate = useNavigate();
+  const { profile } = useAuthContext();
+  const showFirstMate = profile?.relationship_status && profile.relationship_status !== 'single';
 
   if (!open) return null;
 
@@ -135,12 +138,14 @@ export default function MoreMenu({ open, onClose }: MoreMenuProps) {
           {/* Relationships */}
           <div className="more-menu__section-label">Relationships</div>
           <ul className="more-menu__group">
-            <li>
-              <NavLink to="/first-mate" className="more-menu__link" onClick={onClose}>
-                <Heart size={20} strokeWidth={1.5} />
-                <span>First Mate</span>
-              </NavLink>
-            </li>
+            {showFirstMate && (
+              <li>
+                <NavLink to="/first-mate" className="more-menu__link" onClick={onClose}>
+                  <Heart size={20} strokeWidth={1.5} />
+                  <span>First Mate</span>
+                </NavLink>
+              </li>
+            )}
             <li>
               <NavLink to="/crew" className="more-menu__link" onClick={onClose}>
                 <Users size={20} strokeWidth={1.5} />

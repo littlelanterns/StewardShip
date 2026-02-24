@@ -1,0 +1,373 @@
+/* === Crew Category View === */
+.crew-category-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+/* === Person Card === */
+.person-card {
+  cursor: pointer;
+  margin-bottom: var(--spacing-xs);
+}
+
+.person-card:hover {
+  border-color: var(--color-mid-teal);
+}
+
+.person-card__content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.person-card__info {
+  display: flex;
+  flex-direction: column;
+}
+
+.person-card__name {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.person-card__type {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.person-card__indicators {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.person-card__badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+}
+
+.person-card__badge--firstmate {
+  background: var(--color-warm-sand);
+  color: var(--color-cognac);
+}
+
+.person-card__badge--rich {
+  background: var(--color-light-gray);
+  color: var(--color-dark-teal);
+}
+
+.person-card__arrow {
+  color: var(--color-slate-gray);
+}
+
+/* === Person Detail === */
+.person-detail {
+  padding-bottom: 80px;
+}
+
+.person-detail__toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.person-detail__back {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  background: none;
+  border: none;
+  color: var(--color-mid-teal);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+}
+
+.person-detail__toolbar-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.person-detail__action-btn {
+  background: none;
+  border: none;
+  color: var(--color-slate-gray);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+}
+
+.person-detail__action-btn:hover {
+  color: var(--color-mid-teal);
+}
+
+.person-detail__profile-card {
+  margin-bottom: var(--spacing-md);
+}
+
+.person-detail__name {
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  color: var(--color-text-primary);
+  margin: 0 0 var(--spacing-xs);
+}
+
+.person-detail__type-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--color-warm-sand);
+  color: var(--color-deep-brown);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  margin-right: var(--spacing-sm);
+}
+
+.person-detail__age {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.person-detail__personality {
+  color: var(--color-text-secondary);
+  font-style: italic;
+  margin: var(--spacing-sm) 0;
+}
+
+.person-detail__detail {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin: var(--spacing-xs) 0;
+}
+
+.person-detail__dates {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin-top: var(--spacing-sm);
+}
+
+.person-detail__dates-label {
+  font-weight: 600;
+  margin-right: var(--spacing-xs);
+}
+
+.person-detail__date-item {
+  display: inline-block;
+  margin-right: var(--spacing-sm);
+}
+
+.person-detail__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.person-detail__label {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.person-detail__textarea {
+  width: 100%;
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-slate-gray);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  background: var(--color-white);
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.person-detail__edit-card {
+  margin-bottom: var(--spacing-md);
+}
+
+.person-detail__form-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.person-detail__notes-section {
+  margin-top: var(--spacing-md);
+}
+
+.person-detail__section-title {
+  font-family: var(--font-heading);
+  color: var(--color-text-primary);
+  margin: 0 0 var(--spacing-sm);
+}
+
+.person-detail__add-note-btn {
+  background: none;
+  border: 1px dashed var(--color-slate-gray);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-sm);
+  width: 100%;
+  color: var(--color-mid-teal);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  margin-top: var(--spacing-xs);
+}
+
+.person-detail__add-note-btn:hover {
+  border-color: var(--color-mid-teal);
+  background: var(--color-cream);
+}
+
+.person-detail__add-note-btn--standalone {
+  margin-top: var(--spacing-md);
+}
+
+.person-detail__basic-notes {
+  margin-top: var(--spacing-md);
+}
+
+.person-detail__notes-text {
+  color: var(--color-text-primary);
+  line-height: 1.5;
+  margin: 0 0 var(--spacing-md);
+}
+
+.person-detail__notes-empty {
+  color: var(--color-text-secondary);
+  font-style: italic;
+  margin: 0 0 var(--spacing-md);
+}
+
+.person-detail__danger-zone {
+  margin-top: var(--spacing-xl);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--color-warm-sand);
+}
+
+.person-detail__confirm-archive p {
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--spacing-sm);
+}
+
+.person-detail__confirm-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.person-detail__archive-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  background: none;
+  border: none;
+  color: var(--color-slate-gray);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+}
+
+.person-detail__archive-btn:hover {
+  color: var(--color-cognac);
+}
+
+/* === Sphere Section in Person Detail === */
+
+.person-detail__sphere-card {
+  margin-top: var(--spacing-md);
+}
+
+.person-detail__sphere-current {
+  display: flex;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+}
+
+.person-detail__sphere-value {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+/* === Crew Note Card === */
+.crew-note-card {
+  margin-bottom: var(--spacing-xs);
+  position: relative;
+}
+
+.crew-note-card--editing {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.crew-note-card__text {
+  margin: 0 0 var(--spacing-xs);
+  color: var(--color-text-primary);
+  line-height: 1.5;
+}
+
+.crew-note-card__meta {
+  display: flex;
+  gap: var(--spacing-md);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.crew-note-card__toolbar {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+}
+
+.crew-note-card__btn {
+  background: none;
+  border: none;
+  color: var(--color-slate-gray);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+}
+
+.crew-note-card__btn:hover {
+  color: var(--color-cognac);
+}
+
+.crew-note-card__confirm {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.crew-note-card__confirm button {
+  background: none;
+  border: none;
+  text-decoration: underline;
+  cursor: pointer;
+  color: var(--color-cognac);
+  font-size: var(--font-size-xs);
+}
+
+.crew-note-card__category-select,
+.crew-note-card__textarea {
+  width: 100%;
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-slate-gray);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  background: var(--color-white);
+  box-sizing: border-box;
+}
+
+.crew-note-card__textarea {
+  resize: vertical;
+}
+
+.crew-note-card__actions {
+  display: flex;
+  gap: var(--spacing-sm);
+}

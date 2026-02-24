@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { MastEntry, KeelEntry, LogEntry, Victory, CompassTask, GuidedMode, HelmMessage, WheelInstance, LifeInventoryArea, RiggingPlan } from './types';
+import type { MastEntry, KeelEntry, LogEntry, Victory, CompassTask, GuidedMode, HelmMessage, WheelInstance, LifeInventoryArea, RiggingPlan, Person, SpouseInsight, SphereEntity } from './types';
 import { SPOKE_LABELS, PLANNING_FRAMEWORK_LABELS } from './types';
 import {
   shouldLoadKeel,
@@ -13,6 +13,12 @@ import {
   shouldLoadWheel,
   shouldLoadLifeInventory,
   shouldLoadRigging,
+  shouldLoadFirstMate,
+  shouldLoadCrew,
+  shouldLoadSphere,
+  formatFirstMateContext,
+  formatCrewContext,
+  formatSphereContext,
   type SystemPromptContext,
 } from './systemPrompt';
 
@@ -54,7 +60,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
   const mastEntries = (mastResult.data as MastEntry[]) || [];
 
   // Conditionally fetch based on keyword detection
-  const needKeel = shouldLoadKeel(message, pageContext);
+  const needKeel = shouldLoadKeel(message, pageContext, guidedMode);
   const needLog = shouldLoadLog(message, pageContext) || pageContext === 'reveille' || pageContext === 'reckoning';
   const needCompass = shouldLoadCompass(message, pageContext) || pageContext === 'reveille' || pageContext === 'reckoning';
   const needVictories = shouldLoadVictories(message, pageContext);
@@ -65,6 +71,9 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
   const needWheel = shouldLoadWheel(message, pageContext);
   const needLifeInventory = shouldLoadLifeInventory(message, pageContext);
   const needRigging = shouldLoadRigging(message, pageContext);
+  const needFirstMate = shouldLoadFirstMate(message, pageContext, guidedMode);
+  const needCrew = shouldLoadCrew(message, pageContext, guidedMode);
+  const needSphere = shouldLoadSphere(message, pageContext);
 
   let keelEntries: KeelEntry[] | undefined;
   let recentLogEntries: LogEntry[] | undefined;
@@ -77,6 +86,9 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
   let wheelContext: string | undefined;
   let lifeInventoryContext: string | undefined;
   let riggingContext: string | undefined;
+  let firstMateContext: string | undefined;
+  let crewContext: string | undefined;
+  let sphereContext: string | undefined;
 
   // Fetch conditional data in parallel
   const keelPromise = needKeel
@@ -157,7 +169,46 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
         .limit(5)
     : null;
 
-  const [keelResult, logResult, compassResult, victoriesResult, wheelResult, lifeInvResult, riggingResult] = await Promise.all([
+  const firstMatePromise = needFirstMate
+    ? supabase
+        .from('people')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('is_first_mate', true)
+        .is('archived_at', null)
+        .maybeSingle()
+    : null;
+
+  const spouseInsightsPromise = needFirstMate
+    ? supabase
+        .from('spouse_insights')
+        .select('*')
+        .eq('user_id', userId)
+        .is('archived_at', null)
+        .order('created_at', { ascending: false })
+    : null;
+
+  const crewPromise = needCrew
+    ? supabase
+        .from('people')
+        .select('*')
+        .eq('user_id', userId)
+        .is('archived_at', null)
+        .order('name')
+        .limit(50)
+    : null;
+
+  const sphereEntitiesPromise = needSphere
+    ? supabase
+        .from('sphere_entities')
+        .select('*')
+        .eq('user_id', userId)
+        .is('archived_at', null)
+        .order('desired_sphere')
+        .order('name')
+    : null;
+
+  const [keelResult, logResult, compassResult, victoriesResult, wheelResult, lifeInvResult, riggingResult, firstMateResult, spouseInsightsResult, crewResult, sphereEntitiesResult] = await Promise.all([
     keelPromise,
     logPromise,
     compassPromise,
@@ -165,6 +216,10 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     wheelPromise,
     lifeInvPromise,
     riggingPromise,
+    firstMatePromise,
+    spouseInsightsPromise,
+    crewPromise,
+    sphereEntitiesPromise,
   ]);
 
   if (keelResult?.data) {
@@ -187,6 +242,23 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
   }
   if (riggingResult?.data && riggingResult.data.length > 0) {
     riggingContext = buildRiggingContext(riggingResult.data as RiggingPlan[]);
+  }
+  if (firstMateResult?.data) {
+    const spouse = firstMateResult.data as Person;
+    const insights = (spouseInsightsResult?.data as SpouseInsight[]) || [];
+    firstMateContext = formatFirstMateContext(spouse.name, insights);
+  }
+  if (crewResult?.data && crewResult.data.length > 0) {
+    crewContext = formatCrewContext(crewResult.data as Person[]);
+  }
+
+  // Sphere context — needs crew data for people sphere assignments
+  if (needSphere) {
+    const spherePeople = (crewResult?.data as Person[]) || [];
+    const sphereEntities = (sphereEntitiesResult?.data as SphereEntity[]) || [];
+    if (spherePeople.length > 0 || sphereEntities.length > 0) {
+      sphereContext = formatSphereContext(spherePeople, sphereEntities);
+    }
   }
 
   // Charts context — aggregated summary
@@ -226,6 +298,9 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     wheelContext,
     lifeInventoryContext,
     riggingContext,
+    firstMateContext,
+    crewContext,
+    sphereContext,
     pageContext,
     guidedMode: guidedMode || null,
     conversationHistory,
