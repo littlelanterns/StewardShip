@@ -1046,3 +1046,104 @@ export const CREW_SECTIONS: { key: string; label: string; types: RelationshipTyp
   { key: 'social', label: 'Social & Friends', types: ['friend'] },
   { key: 'other', label: 'Other', types: ['other'] },
 ];
+
+// === PRD-15: The Manifest ===
+
+export type ManifestFileType = 'pdf' | 'audio' | 'image' | 'text_note';
+export type ManifestProcessingStatus = 'pending' | 'processing' | 'completed' | 'failed';
+export type ManifestUsageDesignation =
+  | 'general_reference'
+  | 'framework_source'
+  | 'mast_extraction'
+  | 'keel_info'
+  | 'goal_specific'
+  | 'store_only';
+
+export interface ManifestItem {
+  id: string;
+  user_id: string;
+  title: string;
+  file_type: ManifestFileType;
+  file_name: string | null;
+  storage_path: string | null;
+  text_content: string | null;
+  file_size_bytes: number | null;
+  usage_designations: ManifestUsageDesignation[];
+  tags: string[];
+  folder_group: string;
+  related_wheel_id: string | null;
+  related_goal_id: string | null;
+  processing_status: ManifestProcessingStatus;
+  chunk_count: number;
+  intake_completed: boolean;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ManifestChunk {
+  id: string;
+  user_id: string;
+  manifest_item_id: string;
+  chunk_index: number;
+  chunk_text: string;
+  token_count: number;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface AIFramework {
+  id: string;
+  user_id: string;
+  manifest_item_id: string;
+  name: string;
+  is_active: boolean;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+  principles?: AIFrameworkPrinciple[];
+}
+
+export interface AIFrameworkPrinciple {
+  id: string;
+  user_id: string;
+  framework_id: string;
+  text: string;
+  sort_order: number;
+  is_user_added: boolean;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ManifestSearchResult {
+  id: string;
+  manifest_item_id: string;
+  chunk_text: string;
+  metadata: Record<string, unknown>;
+  similarity: number;
+  source_title?: string;
+}
+
+export const MANIFEST_FILE_TYPE_LABELS: Record<ManifestFileType, string> = {
+  pdf: 'PDF',
+  audio: 'Audio',
+  image: 'Image',
+  text_note: 'Text Note',
+};
+
+export const MANIFEST_USAGE_LABELS: Record<ManifestUsageDesignation, string> = {
+  general_reference: 'General Reference',
+  framework_source: 'Framework Source',
+  mast_extraction: 'Mast Extraction',
+  keel_info: 'Keel Info',
+  goal_specific: 'Goal / Wheel Specific',
+  store_only: 'Store for Later',
+};
+
+export const MANIFEST_STATUS_LABELS: Record<ManifestProcessingStatus, string> = {
+  pending: 'Pending',
+  processing: 'Processing...',
+  completed: 'Ready',
+  failed: 'Failed',
+};

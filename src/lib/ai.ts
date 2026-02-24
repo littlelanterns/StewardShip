@@ -11,6 +11,7 @@ export async function sendChatMessage(
   messages: ChatMessage[],
   maxTokens: number,
   userId: string,
+  guidedMode?: string | null,
 ): Promise<string> {
   const { data, error } = await supabase.functions.invoke('chat', {
     body: {
@@ -18,6 +19,7 @@ export async function sendChatMessage(
       messages,
       max_tokens: maxTokens,
       user_id: userId,
+      guided_mode: guidedMode || undefined,
     },
   });
 

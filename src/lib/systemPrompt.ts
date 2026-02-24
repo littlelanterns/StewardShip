@@ -21,6 +21,7 @@ export interface SystemPromptContext {
   firstMateContext?: string;
   crewContext?: string;
   sphereContext?: string;
+  frameworksContext?: string;
   pageContext: string;
   guidedMode?: GuidedMode;
   conversationHistory: HelmMessage[];
@@ -553,6 +554,14 @@ export function buildSystemPrompt(context: SystemPromptContext): string {
     }
   }
 
+  if (context.frameworksContext) {
+    const fwTokens = estimateTokens(context.frameworksContext);
+    if (currentTokens + fwTokens < budget) {
+      prompt += context.frameworksContext;
+      currentTokens += fwTokens;
+    }
+  }
+
   return prompt;
 }
 
@@ -791,6 +800,48 @@ export function shouldLoadSphere(message: string, pageContext: string): boolean 
   if (pageContext === 'crew') return true;
   const lower = message.toLowerCase();
   return SPHERE_KEYWORDS.some((kw) => lower.includes(kw));
+}
+
+// --- Framework loading ---
+
+const FRAMEWORK_KEYWORDS = [
+  'framework', 'principle', 'atomic habits', 'straight line',
+  'habit', 'owner', 'victim', 'circle people', 'zigzag',
+  'identity', 'compound', 'cue', 'routine', 'reward',
+  'covey', '7 habits', 'seven habits', 'swedenborg',
+  'regeneration', 'ruling love', 'conjugial',
+];
+
+export function shouldLoadFrameworks(
+  message: string,
+  pageContext: string,
+  guidedMode?: GuidedMode,
+): boolean {
+  if (['wheel', 'life_inventory', 'rigging', 'safe_harbor', 'first_mate_action'].includes(guidedMode || '')) {
+    return true;
+  }
+  if (pageContext === 'manifest') return true;
+  const lower = message.toLowerCase();
+  return FRAMEWORK_KEYWORDS.some((kw) => lower.includes(kw));
+}
+
+export function formatFrameworksContext(
+  frameworks: Array<{ name: string; principles?: Array<{ text: string; sort_order: number }> }>,
+): string {
+  if (frameworks.length === 0) return '';
+
+  let result = '\n\nACTIVE AI FRAMEWORKS (from user\'s Manifest library):\n';
+  for (const fw of frameworks) {
+    result += `\n${fw.name}:\n`;
+    if (fw.principles && fw.principles.length > 0) {
+      const sorted = [...fw.principles].sort((a, b) => a.sort_order - b.sort_order);
+      for (const p of sorted) {
+        const truncated = p.text.length > 200 ? p.text.slice(0, 197) + '...' : p.text;
+        result += `- ${truncated}\n`;
+      }
+    }
+  }
+  return result;
 }
 
 export function formatSphereContext(people: Person[], entities: SphereEntity[]): string {

@@ -10,6 +10,37 @@ export type { HelmPageContext };
 
 type DrawerState = 'closed' | 'peek' | 'full';
 
+/**
+ * Window conversation history to prevent unbounded context growth.
+ * After SUMMARY_THRESHOLD messages, condense the middle into a summary,
+ * keeping the first 2 (topic establishment) and last WINDOW_SIZE verbatim.
+ */
+function windowConversationHistory(
+  messages: Array<{ role: string; content: string }>,
+): Array<{ role: string; content: string }> {
+  const WINDOW_SIZE = 6;
+  const SUMMARY_THRESHOLD = 8;
+
+  if (messages.length <= SUMMARY_THRESHOLD) {
+    return messages;
+  }
+
+  const opening = messages.slice(0, 2);
+  const recent = messages.slice(-WINDOW_SIZE);
+  const middle = messages.slice(2, -WINDOW_SIZE);
+
+  const summaryText = middle
+    .map((m) => `${m.role === 'user' ? 'User' : 'AI'}: ${m.content.substring(0, 150)}`)
+    .join('\n');
+
+  const summaryMessage = {
+    role: 'system' as const,
+    content: `[Earlier in this conversation — condensed summary]\n${summaryText}\n[End of summary — recent messages follow]`,
+  };
+
+  return [...opening, summaryMessage, ...recent];
+}
+
 function getGuidedModeOpeningMessage(mode: GuidedMode): string | null {
   switch (mode) {
     case 'unload_the_hold':
@@ -115,16 +146,18 @@ export function HelmProvider({ children }: { children: ReactNode }) {
 
     const systemPrompt = buildSystemPrompt(context);
 
-    // Build messages array for the API call
-    const apiMessages = messagesForContext
+    // Build messages array for the API call, with windowing for long conversations
+    const allMessages = messagesForContext
       .filter((m) => m.role === 'user' || m.role === 'assistant')
       .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
+    const apiMessages = windowConversationHistory(allMessages);
 
     if (extraInstruction) {
       apiMessages.push({ role: 'user', content: extraInstruction });
     }
 
-    return await sendChatMessage(systemPrompt, apiMessages, 1024, user.id);
+    const guidedMode = helmData.activeConversation?.guided_mode;
+    return await sendChatMessage(systemPrompt, apiMessages, 0, user.id, guidedMode);
   }, [user, pageContext.page, helmData.activeConversation?.guided_mode]);
 
   const sendMessage = useCallback(async (content: string) => {

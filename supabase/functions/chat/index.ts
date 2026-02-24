@@ -12,7 +12,7 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { messages, system_prompt, max_tokens, user_id } = await req.json();
+    const { messages, system_prompt, max_tokens, user_id, guided_mode } = await req.json();
 
     if (!messages || !system_prompt || !user_id) {
       return new Response(
@@ -46,8 +46,24 @@ serve(async (req: Request) => {
       );
     }
 
-    const model = settings?.ai_model || 'anthropic/claude-sonnet-4';
-    const tokens = max_tokens || settings?.max_tokens || 1024;
+    // Determine model: user override > guided mode routing > default
+    let model: string;
+    const userModel = settings?.ai_model;
+    const isUserOverride = userModel && userModel !== 'auto';
+
+    if (isUserOverride) {
+      model = userModel;
+    } else if (guided_mode) {
+      // Guided modes use Sonnet for depth
+      model = 'anthropic/claude-sonnet-4';
+    } else {
+      // Regular chat uses Haiku for cost efficiency
+      model = 'anthropic/claude-haiku-4-5-20251001';
+    }
+
+    // Smart max_tokens: guided modes need more room
+    const smartMaxTokens = guided_mode ? 1024 : 512;
+    const tokens = max_tokens || settings?.max_tokens || smartMaxTokens;
 
     // Call OpenRouter
     const openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {

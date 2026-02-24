@@ -16,9 +16,11 @@ import {
   shouldLoadFirstMate,
   shouldLoadCrew,
   shouldLoadSphere,
+  shouldLoadFrameworks,
   formatFirstMateContext,
   formatCrewContext,
   formatSphereContext,
+  formatFrameworksContext,
   type SystemPromptContext,
 } from './systemPrompt';
 
@@ -74,6 +76,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
   const needFirstMate = shouldLoadFirstMate(message, pageContext, guidedMode);
   const needCrew = shouldLoadCrew(message, pageContext, guidedMode);
   const needSphere = shouldLoadSphere(message, pageContext);
+  const needFrameworks = shouldLoadFrameworks(message, pageContext, guidedMode);
 
   let keelEntries: KeelEntry[] | undefined;
   let recentLogEntries: LogEntry[] | undefined;
@@ -89,6 +92,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
   let firstMateContext: string | undefined;
   let crewContext: string | undefined;
   let sphereContext: string | undefined;
+  let frameworksContext: string | undefined;
 
   // Fetch conditional data in parallel
   const keelPromise = needKeel
@@ -208,7 +212,16 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
         .order('name')
     : null;
 
-  const [keelResult, logResult, compassResult, victoriesResult, wheelResult, lifeInvResult, riggingResult, firstMateResult, spouseInsightsResult, crewResult, sphereEntitiesResult] = await Promise.all([
+  const frameworksPromise = needFrameworks
+    ? supabase
+        .from('ai_frameworks')
+        .select('*, ai_framework_principles(*)')
+        .eq('user_id', userId)
+        .eq('is_active', true)
+        .is('archived_at', null)
+    : null;
+
+  const [keelResult, logResult, compassResult, victoriesResult, wheelResult, lifeInvResult, riggingResult, firstMateResult, spouseInsightsResult, crewResult, sphereEntitiesResult, frameworksResult] = await Promise.all([
     keelPromise,
     logPromise,
     compassPromise,
@@ -220,6 +233,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     spouseInsightsPromise,
     crewPromise,
     sphereEntitiesPromise,
+    frameworksPromise,
   ]);
 
   if (keelResult?.data) {
@@ -259,6 +273,16 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     if (spherePeople.length > 0 || sphereEntities.length > 0) {
       sphereContext = formatSphereContext(spherePeople, sphereEntities);
     }
+  }
+
+  // Frameworks context
+  if (frameworksResult?.data && frameworksResult.data.length > 0) {
+    frameworksContext = formatFrameworksContext(
+      frameworksResult.data.map((fw: Record<string, unknown>) => ({
+        name: fw.name as string,
+        principles: (fw.ai_framework_principles as Array<{ text: string; sort_order: number }>) || [],
+      })),
+    );
   }
 
   // Charts context — aggregated summary
@@ -301,6 +325,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     firstMateContext,
     crewContext,
     sphereContext,
+    frameworksContext,
     pageContext,
     guidedMode: guidedMode || null,
     conversationHistory,
