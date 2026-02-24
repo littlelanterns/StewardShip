@@ -1,0 +1,85 @@
+.text-note-modal__overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: var(--spacing-md);
+}
+
+.text-note-modal {
+  width: 100%;
+  max-width: 560px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--color-white);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.text-note-modal__heading {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: var(--font-size-lg);
+  color: var(--color-text-primary);
+}
+
+.text-note-modal__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.text-note-modal__label {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.text-note-modal__input {
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-slate-gray);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  background: var(--color-white);
+}
+
+.text-note-modal__input:focus {
+  border-color: var(--color-mid-teal);
+  outline: none;
+}
+
+.text-note-modal__textarea {
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-slate-gray);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-family: inherit;
+  color: var(--color-text-primary);
+  background: var(--color-white);
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.text-note-modal__textarea:focus {
+  border-color: var(--color-mid-teal);
+  outline: none;
+}
+
+.text-note-modal__error {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-cognac);
+}
+
+.text-note-modal__actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+}

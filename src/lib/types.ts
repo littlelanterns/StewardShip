@@ -263,6 +263,7 @@ export type GuidedMode =
   | 'first_mate_action'
   | 'safe_harbor'
   | 'unload_the_hold'
+  | 'manifest_discuss'
   | null;
 
 export type GuidedSubtype =

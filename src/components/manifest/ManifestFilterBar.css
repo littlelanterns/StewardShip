@@ -1,0 +1,88 @@
+.manifest-filter {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+}
+
+.manifest-filter__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+}
+
+.manifest-filter__types {
+  display: flex;
+  gap: var(--spacing-xs);
+  overflow-x: auto;
+}
+
+.manifest-filter__btn {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-slate-gray);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--transition-fast);
+}
+
+.manifest-filter__btn:hover {
+  border-color: var(--color-mid-teal);
+  color: var(--color-mid-teal);
+}
+
+.manifest-filter__btn--active {
+  border-color: var(--color-mid-teal);
+  background: var(--color-mid-teal);
+  color: var(--color-white);
+}
+
+.manifest-filter__usage-select {
+  border: 1px solid var(--color-slate-gray);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  background: var(--color-white);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.manifest-filter__tags {
+  display: flex;
+  gap: var(--spacing-xs);
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.manifest-filter__tag-btn {
+  padding: 2px var(--spacing-sm);
+  border: 1px solid var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--transition-fast);
+}
+
+.manifest-filter__tag-btn:hover {
+  border-color: var(--color-mid-teal);
+}
+
+.manifest-filter__tag-btn--active {
+  background: var(--color-mid-teal);
+  border-color: var(--color-mid-teal);
+  color: var(--color-white);
+}
+
+.manifest-filter__tag-btn--clear {
+  background: transparent;
+  border-color: var(--color-slate-gray);
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}

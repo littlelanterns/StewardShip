@@ -1135,7 +1135,9 @@ Every AI interaction includes these context layers (loaded dynamically based on 
 23. **8B:** Sphere of Influence (list-based sphere view, sphere entities CRUD, focus center, gap indicators, AI context) ✅
 
 ### Phase 9: Knowledge
-24. The Manifest (file upload, RAG pipeline, intake flow)
+24A. Manifest Processing Pipeline (cost optimization, chunking, embedding, storage) — BUILT (Phase 9A) ✅
+24B. Manifest UI + Intake Flow (card grid, detail view, upload, text notes, AI intake classification, folder/tag organization) — BUILT (Phase 9B) ✅
+24C. Framework Extraction + AI Integration — Phase 9C (next)
 
 ### Phase 10: Cadence
 25. Meeting Frameworks (templates, custom scheduling, note integration)

@@ -1,0 +1,190 @@
+.intake-flow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.intake-flow__loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-xl);
+  color: var(--color-text-secondary);
+}
+
+.intake-flow__heading {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: var(--font-size-lg);
+  color: var(--color-text-primary);
+}
+
+.intake-flow__summary {
+  padding: var(--spacing-md);
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--color-mid-teal);
+}
+
+.intake-flow__summary-label {
+  margin: 0 0 var(--spacing-xs);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.intake-flow__summary-text {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  line-height: 1.6;
+}
+
+.intake-flow__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.intake-flow__label {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.intake-flow__usage-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-xs);
+}
+
+@media (min-width: 480px) {
+  .intake-flow__usage-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.intake-flow__usage-btn {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-slate-gray);
+  border-radius: var(--radius-md);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.intake-flow__usage-btn:hover {
+  border-color: var(--color-mid-teal);
+}
+
+.intake-flow__usage-btn--active {
+  border-color: var(--color-mid-teal);
+  background: var(--color-mid-teal);
+  color: var(--color-white);
+}
+
+.intake-flow__usage-label {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.intake-flow__usage-desc {
+  font-size: var(--font-size-xs);
+  opacity: 0.8;
+}
+
+.intake-flow__usage-btn--active .intake-flow__usage-desc {
+  color: var(--color-white);
+}
+
+.intake-flow__note {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+.intake-flow__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+  align-items: center;
+}
+
+.intake-flow__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.intake-flow__tag--selected {
+  background: var(--color-mid-teal);
+  color: var(--color-white);
+}
+
+.intake-flow__tag-add {
+  display: inline-flex;
+}
+
+.intake-flow__tag-input {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px dashed var(--color-slate-gray);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  background: transparent;
+  color: var(--color-text-primary);
+  width: 120px;
+}
+
+.intake-flow__tag-input:focus {
+  border-color: var(--color-mid-teal);
+  outline: none;
+}
+
+.intake-flow__folder-row {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+}
+
+.intake-flow__folder-select {
+  flex: 1;
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-slate-gray);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  background: var(--color-white);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.intake-flow__folder-input {
+  flex: 1;
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-mid-teal);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  background: var(--color-white);
+  color: var(--color-text-primary);
+}
+
+.intake-flow__actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+  padding-top: var(--spacing-sm);
+}

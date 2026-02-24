@@ -1,0 +1,277 @@
+.manifest-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.manifest-detail__back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  background: none;
+  border: none;
+  color: var(--color-mid-teal);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: var(--spacing-xs);
+}
+
+.manifest-detail__back:hover {
+  text-decoration: underline;
+}
+
+.manifest-detail__header {
+  display: flex;
+  gap: var(--spacing-md);
+  align-items: flex-start;
+}
+
+.manifest-detail__icon-wrap {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+  color: var(--color-slate-gray);
+}
+
+.manifest-detail__header-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.manifest-detail__title {
+  margin: 0 0 var(--spacing-xs);
+  font-family: var(--font-heading);
+  font-size: var(--font-size-lg);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.manifest-detail__title:hover {
+  color: var(--color-mid-teal);
+}
+
+.manifest-detail__title-input {
+  width: 100%;
+  margin: 0 0 var(--spacing-xs);
+  padding: var(--spacing-xs);
+  font-family: var(--font-heading);
+  font-size: var(--font-size-lg);
+  border: 1px solid var(--color-mid-teal);
+  border-radius: var(--radius-sm);
+  background: var(--color-white);
+  color: var(--color-text-primary);
+}
+
+.manifest-detail__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.manifest-detail__status {
+  padding: 1px var(--spacing-xs);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-secondary);
+}
+
+.manifest-detail__status--completed {
+  background: var(--color-mid-teal);
+  color: var(--color-white);
+}
+
+.manifest-detail__status--failed {
+  background: var(--color-cognac);
+  color: var(--color-white);
+}
+
+.manifest-detail__status--pending,
+.manifest-detail__status--processing {
+  background: var(--color-warm-sand);
+  color: var(--color-text-primary);
+}
+
+/* Sections */
+.manifest-detail__section {
+  border-top: 1px solid var(--color-bg-secondary);
+  padding-top: var(--spacing-md);
+}
+
+.manifest-detail__section-title {
+  margin: 0 0 var(--spacing-sm);
+  font-family: var(--font-heading);
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+}
+
+/* Tags */
+.manifest-detail__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+}
+
+.manifest-detail__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--font-size-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-md);
+  background: var(--color-mid-teal);
+  color: var(--color-white);
+}
+
+.manifest-detail__tag--add {
+  background: transparent;
+  border: 1px dashed var(--color-slate-gray);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.manifest-detail__tag--add:hover {
+  border-color: var(--color-mid-teal);
+  color: var(--color-mid-teal);
+}
+
+.manifest-detail__tag-remove {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+  padding: 0;
+  opacity: 0.7;
+  line-height: 1;
+}
+
+.manifest-detail__tag-remove:hover {
+  opacity: 1;
+}
+
+.manifest-detail__tag-input {
+  font-size: var(--font-size-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-mid-teal);
+  border-radius: var(--radius-md);
+  background: var(--color-white);
+  color: var(--color-text-primary);
+  width: 120px;
+}
+
+/* Usage */
+.manifest-detail__usage-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+}
+
+.manifest-detail__usage-chip {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-slate-gray);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.manifest-detail__usage-chip:hover {
+  border-color: var(--color-mid-teal);
+  color: var(--color-mid-teal);
+}
+
+.manifest-detail__usage-chip--active {
+  border-color: var(--color-mid-teal);
+  background: var(--color-mid-teal);
+  color: var(--color-white);
+}
+
+.manifest-detail__usage-note {
+  margin: var(--spacing-sm) 0 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+/* Content */
+.manifest-detail__content-preview {
+  padding: var(--spacing-md);
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.manifest-detail__content-preview--editable {
+  cursor: pointer;
+}
+
+.manifest-detail__content-preview--editable:hover {
+  outline: 1px dashed var(--color-slate-gray);
+}
+
+.manifest-detail__content-edit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.manifest-detail__content-textarea {
+  width: 100%;
+  padding: var(--spacing-md);
+  border: 1px solid var(--color-mid-teal);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-family: inherit;
+  color: var(--color-text-primary);
+  background: var(--color-white);
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.manifest-detail__content-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.manifest-detail__chunk-info {
+  margin: var(--spacing-xs) 0 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+/* Actions */
+.manifest-detail__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  align-items: center;
+}
+
+.manifest-detail__delete-confirm {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-cognac);
+}
+
+.manifest-detail__spin {
+  animation: manifest-spin 1.2s linear infinite;
+}
+
+@keyframes manifest-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

@@ -1,0 +1,117 @@
+.manifest-card {
+  border-left: 3px solid var(--color-mid-teal);
+  cursor: pointer;
+  transition: box-shadow var(--transition-fast);
+}
+
+.manifest-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.manifest-card__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.manifest-card__top {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+}
+
+.manifest-card__icon-wrap {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-sm);
+}
+
+.manifest-card__icon {
+  color: var(--color-slate-gray);
+}
+
+.manifest-card__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.manifest-card__title {
+  margin: 0;
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.manifest-card__date {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.manifest-card__status {
+  flex-shrink: 0;
+}
+
+.manifest-card__status--processing {
+  color: var(--color-mid-teal);
+}
+
+.manifest-card__status--failed {
+  font-size: var(--font-size-xs);
+  color: var(--color-cognac);
+  font-weight: 600;
+}
+
+.manifest-card__spinner {
+  animation: manifest-spin 1.2s linear infinite;
+}
+
+@keyframes manifest-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.manifest-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.manifest-card__tag {
+  font-size: var(--font-size-xs);
+  padding: 1px var(--spacing-xs);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+}
+
+.manifest-card__tag--more {
+  font-style: italic;
+}
+
+.manifest-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.manifest-card__badge {
+  font-size: var(--font-size-xs);
+  padding: 1px var(--spacing-xs);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+}
+
+.manifest-card__badge--framework {
+  background: var(--color-mid-teal);
+  color: var(--color-white);
+}

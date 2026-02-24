@@ -763,8 +763,13 @@ Five guided conversation modes accessible from the First Mate page, each opening
 - **Intake flow:** User designates how each upload is used (general reference, framework source, Mast extraction, Keel info, goal/wheel specific, store only). Multiple designations allowed.
 - **RAG retrieval:** Top-k similar chunks (typically 3-5) injected into AI context with source attribution. AI paraphrases, attributes source ("There's a concept from [title] that applies here..."), never quotes at length.
 - **ai_frameworks:** Extracted principles from framework-designated items, loaded alongside Mast in every AI interaction. Not retrieved via RAG — always present. User controls which frameworks are active.
-- **Auto-organization:** AI suggests tags and folder groupings on upload. User can override. Custom tags tracked and reused for future suggestions.
-- **Processing pipeline:** Upload → background chunking → embedding → indexed. User doesn't wait. Processing status visible on cards.
+- **Auto-organization:** AI suggests tags and folder groupings on upload via `manifest-intake` Edge Function (uses Haiku for cost efficiency). User can override. Existing tags/folders provided as context for consistency.
+- **Processing pipeline:** Upload → storage → background chunking → embedding → indexed. User sees status indicators (pending pulse, processing spinner, failed alert) but doesn't wait.
+- **Folder groupings:** AI-assigned or user-overridden. Collapsible sections on main page. Items belong to one folder and multiple tags.
+- **Duplicate detection:** Warns on same filename + approximate size. Doesn't block — user decides.
+- **Re-process:** Available for failed or completed items. Resets status and re-runs pipeline.
+- **Four Edge Functions:** `manifest-process` (chunking + embedding), `manifest-embed` (thin OpenAI wrapper), `manifest-intake` (AI classification), and future `manifest-extract` (framework extraction, Phase 9C).
+- **Discuss This / Ask Your Library:** Opens Helm in `manifest_discuss` guided mode — item-specific or library-wide. Partial stub in 9B; specialized system prompt and boosted RAG wired in 9C.
 - **Cross-feature file routing:** Large files from First Mate/Crew (>~3000 tokens) route to Manifest RAG pipeline with `is_rag_indexed` flag.
 - **Manifest-to-Mast extraction:** AI proposes principles from uploaded material, user reviews and confirms which become Mast entries (source_type = 'manifest_extraction').
 - **Manifest-to-Keel extraction:** AI proposes personality/self-knowledge data, user reviews and confirms (source_type = 'manifest_extraction').

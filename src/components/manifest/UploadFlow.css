@@ -1,0 +1,108 @@
+.upload-flow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.upload-flow__heading {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: var(--font-size-lg);
+  color: var(--color-text-primary);
+}
+
+.upload-flow__dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xl);
+  border: 2px dashed var(--color-slate-gray);
+  border-radius: var(--radius-md);
+  background: var(--color-warm-sand);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.upload-flow__dropzone:hover {
+  border-color: var(--color-mid-teal);
+  background: var(--color-bg-secondary);
+}
+
+.upload-flow__dropzone-icon {
+  color: var(--color-slate-gray);
+}
+
+.upload-flow__dropzone-text {
+  margin: 0;
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.upload-flow__dropzone-hint {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.upload-flow__preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.upload-flow__file-info {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+}
+
+.upload-flow__file-icon {
+  color: var(--color-slate-gray);
+  flex-shrink: 0;
+}
+
+.upload-flow__file-name {
+  margin: 0;
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  word-break: break-all;
+}
+
+.upload-flow__file-size {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.upload-flow__duplicate {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm);
+  background: var(--color-warm-sand);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-cognac);
+}
+
+.upload-flow__error {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-cognac);
+}
+
+.upload-flow__input {
+  display: none;
+}
+
+.upload-flow__actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+}

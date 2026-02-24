@@ -3,6 +3,13 @@ import { supabase } from '../lib/supabase';
 import { useAuthContext } from '../contexts/AuthContext';
 import type { ManifestItem, ManifestUsageDesignation } from '../lib/types';
 
+export interface IntakeSuggestions {
+  summary: string;
+  suggested_tags: string[];
+  suggested_folder: string;
+  suggested_usage: ManifestUsageDesignation;
+}
+
 export function useManifest() {
   const { user } = useAuthContext();
   const [items, setItems] = useState<ManifestItem[]>([]);
@@ -140,7 +147,7 @@ export function useManifest() {
   // Update a manifest item
   const updateItem = useCallback(async (
     id: string,
-    updates: Partial<Pick<ManifestItem, 'title' | 'tags' | 'usage_designations' | 'folder_group' | 'related_wheel_id' | 'related_goal_id' | 'intake_completed'>>,
+    updates: Partial<Pick<ManifestItem, 'title' | 'tags' | 'usage_designations' | 'folder_group' | 'related_wheel_id' | 'related_goal_id' | 'intake_completed' | 'text_content'>>,
   ): Promise<boolean> => {
     if (!user) return false;
     setError(null);
@@ -277,6 +284,99 @@ export function useManifest() {
     }, 3000);
   }, [user]);
 
+  // Run AI intake analysis on a manifest item
+  const runIntake = useCallback(async (itemId: string): Promise<IntakeSuggestions | null> => {
+    if (!user) return null;
+
+    const item = items.find((i) => i.id === itemId);
+    if (!item) return null;
+
+    // Get existing tags and folders for context
+    const existingTags = [...new Set(items.flatMap((i) => i.tags))];
+    const existingFolders = [...new Set(
+      items.map((i) => i.folder_group).filter((f) => f && f !== 'Uncategorized'),
+    )];
+
+    // If text_content isn't loaded locally, fetch it
+    let textContent = item.text_content;
+    if (!textContent) {
+      const { data } = await supabase
+        .from('manifest_items')
+        .select('text_content')
+        .eq('id', itemId)
+        .single();
+      textContent = data?.text_content;
+    }
+
+    if (!textContent) return null;
+
+    const { data, error: invokeErr } = await supabase.functions.invoke('manifest-intake', {
+      body: {
+        text_content: textContent,
+        file_name: item.file_name,
+        existing_tags: existingTags,
+        existing_folders: existingFolders,
+        user_id: user.id,
+      },
+    });
+
+    if (invokeErr || !data) return null;
+    return data as IntakeSuggestions;
+  }, [user, items]);
+
+  // Apply user-confirmed intake choices to a manifest item
+  const applyIntake = useCallback(async (
+    itemId: string,
+    intake: { tags: string[]; folder_group: string; usage_designations: ManifestUsageDesignation[] },
+  ): Promise<boolean> => {
+    return updateItem(itemId, {
+      tags: intake.tags,
+      folder_group: intake.folder_group,
+      usage_designations: intake.usage_designations,
+      intake_completed: true,
+    });
+  }, [updateItem]);
+
+  // Get all unique tags across all items
+  const getUniqueTags = useCallback((): string[] => {
+    return [...new Set(items.flatMap((i) => i.tags))].sort();
+  }, [items]);
+
+  // Get all unique folder_group values
+  const getUniqueFolders = useCallback((): string[] => {
+    return [...new Set(items.map((i) => i.folder_group).filter(Boolean))].sort();
+  }, [items]);
+
+  // Fetch a single item with full text_content
+  const fetchItemDetail = useCallback(async (itemId: string): Promise<ManifestItem | null> => {
+    if (!user) return null;
+
+    const { data, error: fetchErr } = await supabase
+      .from('manifest_items')
+      .select('*')
+      .eq('id', itemId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (fetchErr || !data) return null;
+
+    // Update local state with full data
+    setItems((prev) =>
+      prev.map((item) => (item.id === itemId ? (data as ManifestItem) : item)),
+    );
+
+    return data as ManifestItem;
+  }, [user]);
+
+  // Check for duplicate before upload
+  const checkDuplicate = useCallback((fileName: string, fileSize: number): ManifestItem | null => {
+    return items.find(
+      (i) => i.file_name === fileName &&
+        i.file_size_bytes !== null &&
+        Math.abs((i.file_size_bytes || 0) - fileSize) < 1024,
+    ) || null;
+  }, [items]);
+
   // Cleanup poll on unmount
   useEffect(() => {
     return () => {
@@ -298,5 +398,11 @@ export function useManifest() {
     archiveItem,
     deleteItem,
     pollProcessingStatus,
+    runIntake,
+    applyIntake,
+    getUniqueTags,
+    getUniqueFolders,
+    fetchItemDetail,
+    checkDuplicate,
   };
 }
