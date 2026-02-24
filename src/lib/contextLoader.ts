@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
-import type { MastEntry, KeelEntry, LogEntry, Victory, CompassTask, GuidedMode, HelmMessage } from './types';
+import type { MastEntry, KeelEntry, LogEntry, Victory, CompassTask, GuidedMode, HelmMessage, WheelInstance, LifeInventoryArea, RiggingPlan } from './types';
+import { SPOKE_LABELS, PLANNING_FRAMEWORK_LABELS } from './types';
 import {
   shouldLoadKeel,
   shouldLoadLog,
@@ -9,6 +10,9 @@ import {
   shouldLoadDashboard,
   shouldLoadReveille,
   shouldLoadReckoning,
+  shouldLoadWheel,
+  shouldLoadLifeInventory,
+  shouldLoadRigging,
   type SystemPromptContext,
 } from './systemPrompt';
 
@@ -58,6 +62,9 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
   const needDashboard = shouldLoadDashboard(message, pageContext);
   const needReveille = shouldLoadReveille(pageContext);
   const needReckoning = shouldLoadReckoning(pageContext);
+  const needWheel = shouldLoadWheel(message, pageContext);
+  const needLifeInventory = shouldLoadLifeInventory(message, pageContext);
+  const needRigging = shouldLoadRigging(message, pageContext);
 
   let keelEntries: KeelEntry[] | undefined;
   let recentLogEntries: LogEntry[] | undefined;
@@ -67,6 +74,9 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
   let dashboardContext: string | undefined;
   let reveilleContext: string | undefined;
   let reckoningContext: string | undefined;
+  let wheelContext: string | undefined;
+  let lifeInventoryContext: string | undefined;
+  let riggingContext: string | undefined;
 
   // Fetch conditional data in parallel
   const keelPromise = needKeel
@@ -117,11 +127,44 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
         .limit(10)
     : null;
 
-  const [keelResult, logResult, compassResult, victoriesResult] = await Promise.all([
+  const wheelPromise = needWheel
+    ? supabase
+        .from('wheel_instances')
+        .select('*')
+        .eq('user_id', userId)
+        .is('archived_at', null)
+        .in('status', ['in_progress', 'active'])
+        .order('updated_at', { ascending: false })
+        .limit(5)
+    : null;
+
+  const lifeInvPromise = needLifeInventory
+    ? supabase
+        .from('life_inventory_areas')
+        .select('*')
+        .eq('user_id', userId)
+        .order('display_order', { ascending: true })
+    : null;
+
+  const riggingPromise = needRigging
+    ? supabase
+        .from('rigging_plans')
+        .select('*')
+        .eq('user_id', userId)
+        .is('archived_at', null)
+        .in('status', ['active', 'paused'])
+        .order('updated_at', { ascending: false })
+        .limit(5)
+    : null;
+
+  const [keelResult, logResult, compassResult, victoriesResult, wheelResult, lifeInvResult, riggingResult] = await Promise.all([
     keelPromise,
     logPromise,
     compassPromise,
     victoriesPromise,
+    wheelPromise,
+    lifeInvPromise,
+    riggingPromise,
   ]);
 
   if (keelResult?.data) {
@@ -135,6 +178,15 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
   }
   if (victoriesResult?.data) {
     recentVictories = victoriesResult.data as Victory[];
+  }
+  if (wheelResult?.data && wheelResult.data.length > 0) {
+    wheelContext = buildWheelContext(wheelResult.data as WheelInstance[]);
+  }
+  if (lifeInvResult?.data && lifeInvResult.data.length > 0) {
+    lifeInventoryContext = buildLifeInventoryContext(lifeInvResult.data as LifeInventoryArea[]);
+  }
+  if (riggingResult?.data && riggingResult.data.length > 0) {
+    riggingContext = buildRiggingContext(riggingResult.data as RiggingPlan[]);
   }
 
   // Charts context — aggregated summary
@@ -171,6 +223,9 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     dashboardContext,
     reveilleContext,
     reckoningContext,
+    wheelContext,
+    lifeInventoryContext,
+    riggingContext,
     pageContext,
     guidedMode: guidedMode || null,
     conversationHistory,
@@ -404,4 +459,78 @@ The user just saw their Reckoning evening review and tapped "Talk to The Helm."\
   } catch {
     return undefined;
   }
+}
+
+function buildWheelContext(wheels: WheelInstance[]): string {
+  if (wheels.length === 0) return '';
+
+  let result = '\n\nACTIVE CHANGE WHEELS:\n';
+  for (const w of wheels) {
+    const spokeLabel = SPOKE_LABELS[w.current_spoke] || `Spoke ${w.current_spoke}`;
+    result += `- "${w.hub_text}" (${w.status}, current: ${spokeLabel})`;
+    if (w.life_area_tag) {
+      result += ` [${w.life_area_tag}]`;
+    }
+    if (w.next_rim_date) {
+      result += ` — next Rim: ${w.next_rim_date}`;
+    }
+    if (w.rim_count > 0) {
+      result += `, ${w.rim_count} Rim${w.rim_count > 1 ? 's' : ''} completed`;
+    }
+    result += '\n';
+
+    // Include key spoke data if available (truncated)
+    if (w.spoke_1_why) {
+      const truncated = w.spoke_1_why.length > 100 ? w.spoke_1_why.slice(0, 97) + '...' : w.spoke_1_why;
+      result += `  Why: ${truncated}\n`;
+    }
+    if (w.spoke_6_becoming_text) {
+      const truncated = w.spoke_6_becoming_text.length > 100 ? w.spoke_6_becoming_text.slice(0, 97) + '...' : w.spoke_6_becoming_text;
+      result += `  Becoming: ${truncated}\n`;
+    }
+  }
+  return result;
+}
+
+function buildLifeInventoryContext(areas: LifeInventoryArea[]): string {
+  if (areas.length === 0) return '';
+
+  const assessed = areas.filter((a) => a.current_summary || a.baseline_summary || a.vision_summary);
+  if (assessed.length === 0) {
+    return `\n\nLIFE INVENTORY: ${areas.length} areas defined, none assessed yet.\n`;
+  }
+
+  let result = `\n\nLIFE INVENTORY (${assessed.length} of ${areas.length} areas assessed):\n`;
+  for (const a of assessed) {
+    result += `- ${a.area_name}:`;
+    if (a.current_summary) {
+      const truncated = a.current_summary.length > 150 ? a.current_summary.slice(0, 147) + '...' : a.current_summary;
+      result += ` Current: ${truncated}`;
+    }
+    if (a.vision_summary) {
+      const truncated = a.vision_summary.length > 100 ? a.vision_summary.slice(0, 97) + '...' : a.vision_summary;
+      result += ` | Vision: ${truncated}`;
+    }
+    result += '\n';
+  }
+  return result;
+}
+
+function buildRiggingContext(plans: RiggingPlan[]): string {
+  if (plans.length === 0) return '';
+
+  let result = '\n\nACTIVE PLANS (Rigging):\n';
+  for (const p of plans) {
+    const framework = PLANNING_FRAMEWORK_LABELS[p.planning_framework] || p.planning_framework;
+    result += `- "${p.title}" (${p.status}, ${framework})`;
+    if (p.target_date) {
+      result += ` — target: ${p.target_date}`;
+    }
+    result += '\n';
+    if (p.description) {
+      const truncated = p.description.length > 120 ? p.description.slice(0, 117) + '...' : p.description;
+      result += `  ${truncated}\n`;
+    }
+  }
+  return result;
 }

@@ -1,0 +1,88 @@
+.life-inventory-page__header {
+  margin-bottom: var(--spacing-lg);
+}
+
+.life-inventory-page__title {
+  margin: 0 0 var(--spacing-xs);
+  font-family: var(--font-heading);
+  color: var(--color-text-primary);
+}
+
+.life-inventory-page__subtitle {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-style: italic;
+}
+
+.life-inventory-page__loading {
+  display: flex;
+  justify-content: center;
+  padding: var(--spacing-xl) 0;
+}
+
+.life-inventory-page__error {
+  color: #c0392b;
+  font-size: var(--font-size-sm);
+  margin: 0 0 var(--spacing-md);
+}
+
+.life-inventory-page__column-headers {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .life-inventory-page__column-headers {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: var(--spacing-md);
+    padding: 0 var(--spacing-md);
+    margin-bottom: var(--spacing-sm);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    color: var(--color-mid-teal);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+}
+
+.life-inventory-page__areas {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding-bottom: 80px;
+}
+
+.life-inventory-page__add-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+  margin-top: var(--spacing-sm);
+}
+
+.life-inventory-page__add-actions {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+.life-inventory-page__add-btn {
+  display: block;
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  margin-top: var(--spacing-sm);
+  background: transparent;
+  border: 1px dashed var(--color-slate-gray);
+  border-radius: var(--radius-md);
+  color: var(--color-mid-teal);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.life-inventory-page__add-btn:hover {
+  background: var(--color-bg-secondary);
+  border-color: var(--color-mid-teal);
+}

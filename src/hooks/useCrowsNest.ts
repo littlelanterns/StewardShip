@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuthContext } from '../contexts/AuthContext';
-import type { MastEntry, Victory, StreakInfo, CompassTask } from '../lib/types';
+import type { MastEntry, Victory, StreakInfo, CompassTask, WheelInstance } from '../lib/types';
 
 interface DashboardData {
   todayTasks: { total: number; completed: number; pending: CompassTask[] };
@@ -13,6 +13,7 @@ interface DashboardData {
   lastJournalDate: string | null;
   lastJournalPreview: string | null;
   mastThought: MastEntry | null;
+  activeWheels: WheelInstance[];
 }
 
 const STREAK_MILESTONES = [7, 30, 90, 365];
@@ -49,6 +50,7 @@ export function useCrowsNest() {
         journalResult,
         lastJournalResult,
         mastResult,
+        wheelsResult,
       ] = await Promise.all([
         // Today's tasks
         supabase
@@ -112,6 +114,15 @@ export function useCrowsNest() {
           .select('*')
           .eq('user_id', user.id)
           .is('archived_at', null),
+        // Active Wheels
+        supabase
+          .from('wheel_instances')
+          .select('*')
+          .eq('user_id', user.id)
+          .is('archived_at', null)
+          .in('status', ['in_progress', 'active'])
+          .order('updated_at', { ascending: false })
+          .limit(3),
       ]);
 
       // Process tasks
@@ -198,6 +209,7 @@ export function useCrowsNest() {
         lastJournalDate: lastJournal?.created_at || null,
         lastJournalPreview: lastJournal ? (lastJournal.text.length > 100 ? lastJournal.text.slice(0, 97) + '...' : lastJournal.text) : null,
         mastThought,
+        activeWheels: (wheelsResult.data as WheelInstance[]) || [],
       });
     } catch {
       // Silently fail — dashboard is read-only, stale data is acceptable

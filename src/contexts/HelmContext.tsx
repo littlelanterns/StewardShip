@@ -14,6 +14,14 @@ function getGuidedModeOpeningMessage(mode: GuidedMode): string | null {
   switch (mode) {
     case 'unload_the_hold':
       return "Let's get it all out. Tell me everything that's on your mind — tasks, worries, ideas, things you need to remember. Don't worry about organizing it. I'll sort through it when you're ready.";
+    case 'wheel':
+      return "Let's build a Change Wheel. This is for the big stuff — deep character changes, identity shifts, the patterns that have been running for years. Not habits or tasks, but who you are becoming.\n\nWhat's the change you want to make? Tell me about it in your own words, and we'll shape it into the Hub of your Wheel.";
+    case 'life_inventory':
+      return "Let's take a look at where you are across the different areas of your life. I'll walk through some areas with you — spiritual, marriage, family, health, career, and others — and you tell me what feels true right now.\n\nWe can skip anything, go deep on what matters, and add areas I don't cover. There are no scales or scores here. Just honest reflection.\n\nWhere would you like to start?";
+    case 'rigging':
+      return "Let's put together a plan. Tell me about what you're working toward — a goal, a project, something you want to accomplish. I'll help you think through it and build a plan you can actually follow.\n\nWhat are you planning?";
+    case 'safe_harbor':
+      return "I'm here. What's going on?";
     default:
       return null;
   }

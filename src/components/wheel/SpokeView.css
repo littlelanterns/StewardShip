@@ -1,0 +1,253 @@
+.spoke-view {
+  border: 1px solid var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-bottom: var(--spacing-xs);
+}
+
+.spoke-view--current {
+  border-color: var(--color-cognac);
+}
+
+.spoke-view--complete {
+  border-color: var(--color-mid-teal);
+}
+
+.spoke-view__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-bg-secondary);
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-base);
+}
+
+.spoke-view__header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.spoke-view__header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  color: var(--color-text-secondary);
+}
+
+.spoke-view__number {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  background: var(--color-slate-gray);
+  color: var(--color-white);
+}
+
+.spoke-view__number--done {
+  background: var(--color-mid-teal);
+}
+
+.spoke-view__name {
+  font-weight: 600;
+}
+
+.spoke-view__empty-badge {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.spoke-view__current-badge {
+  font-size: var(--font-size-xs);
+  color: var(--color-cognac);
+  font-weight: 600;
+}
+
+.spoke-view__body {
+  padding: var(--spacing-md);
+}
+
+.spoke-view__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.spoke-view__always {
+  margin: 0;
+  font-style: italic;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+.spoke-view__text-block {
+  margin: 0;
+}
+
+.spoke-view__text-block p {
+  margin: 0 0 var(--spacing-sm);
+  line-height: 1.6;
+  color: var(--color-text-primary);
+}
+
+.spoke-view__dates {
+  display: flex;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.spoke-view__date-item {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  background: var(--color-bg-secondary);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+}
+
+.spoke-view__essay {
+  border: 1px solid var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+}
+
+.spoke-view__essay-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-sm);
+}
+
+.spoke-view__essay-header h4 {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.spoke-view__copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--color-slate-gray);
+  background: transparent;
+  border-radius: var(--radius-sm);
+  padding: 4px var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.spoke-view__copy-btn:hover {
+  background: var(--color-bg-secondary);
+}
+
+.spoke-view__essay-text p {
+  margin: 0 0 var(--spacing-sm);
+  line-height: 1.7;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+}
+
+.spoke-view__roles {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.spoke-view__role-card {
+  border-left: 3px solid var(--color-cognac);
+}
+
+.spoke-view__role-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-xs);
+}
+
+.spoke-view__role-badge {
+  background: var(--color-bg-secondary);
+  padding: 2px var(--spacing-xs);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  text-transform: capitalize;
+}
+
+.spoke-view__script-preview {
+  margin: var(--spacing-xs) 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+.spoke-view__evidence-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.spoke-view__evidence-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-sm);
+}
+
+.spoke-view__evidence-type {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: capitalize;
+  color: var(--color-mid-teal);
+}
+
+.spoke-view__evidence-desc {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+}
+
+.spoke-view__evidence-seen {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+.spoke-view__actions-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.spoke-view__action-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+}
+
+.spoke-view__action-linked {
+  font-size: var(--font-size-xs);
+  color: var(--color-mid-teal);
+}
+
+.spoke-view__empty {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-style: italic;
+}

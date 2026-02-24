@@ -1124,11 +1124,10 @@ Every AI interaction includes these context layers (loaded dynamically based on 
 15. Reveille (morning card, Mast thought rotation, priorities, streaks, tracker prompts) ✅
 16. Reckoning (evening card, Victory Review triage, carry forward, tomorrow's priorities, prompted entries, tracker prompts) ✅
 
-### Phase 7: Growth Tools
-17. The Wheel (page + guided Helm process, all Spokes, Rim cycle)
-18. Life Inventory (page + guided Helm process, gap analysis)
-19. Safe Harbor (specialized AI mode)
-20. Rigging (page + guided Helm planning, MoSCoW + other frameworks)
+### Phase 7: Growth Tools ✅
+17. **7A:** The Wheel (page + guided Helm process, all Spokes, Rim cycle) + Life Inventory (page + guided Helm process, three-column assessment) ✅
+18. **7B:** Rigging (page + guided Helm planning, MoSCoW/Backward/Milestone/Pre-mortem/10-10-10 frameworks, milestones, obstacles) ✅
+19. **7C:** Safe Harbor (specialized AI mode, three-tier safety, crisis resources, SafeHarborLanding page) ✅
 
 ### Phase 8: Relationships
 21. First Mate (spouse profile, nudges, spouse questions, sacred triangle)
@@ -1258,13 +1257,13 @@ stewardship/
 | PRD-07: Charts | Phase 5B Built ✅ |
 | PRD-08: Victory Recorder | Phase 5A Built ✅ |
 | PRD-09: Crow's Nest | Phase 5C Built ✅ |
-| PRD-10: Reveille + Reckoning | PRD Written |
-| PRD-11: The Wheel + Life Inventory | PRD Written |
+| PRD-10: Reveille + Reckoning | Phase 6 Built ✅ |
+| PRD-11: The Wheel + Life Inventory | Phase 7A Built ✅ |
 | PRD-12: First Mate (incl. Spouse Questions) | PRD Written |
 | PRD-13: Crew + Sphere of Influence | PRD Written |
-| PRD-14: Safe Harbor | PRD Written |
+| PRD-14: Safe Harbor | Phase 7C Built ✅ |
 | PRD-15: The Manifest | PRD Written |
-| PRD-16: Rigging (Planning Tool) | PRD Written |
+| PRD-16: Rigging (Planning Tool) | Phase 7B Built ✅ |
 | PRD-17: Meeting Frameworks | PRD Written |
 | PRD-18: Reminders + Rhythms | PRD Written |
 | PRD-19: Settings | PRD Written |

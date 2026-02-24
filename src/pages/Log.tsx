@@ -19,6 +19,8 @@ const DEFAULT_FILTERS: LogFilters = {
   dateFrom: null,
   dateTo: null,
   searchQuery: '',
+  relatedWheelId: null,
+  relatedRiggingPlanId: null,
 };
 
 export default function Log() {

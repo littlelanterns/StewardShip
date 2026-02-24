@@ -392,6 +392,7 @@ export interface LogEntry {
   routed_to: string[];
   routed_reference_ids: Record<string, string>;
   related_wheel_id: string | null;
+  related_rigging_plan_id: string | null;
   related_meeting_id: string | null;
   archived_at: string | null;
   created_at: string;
@@ -405,6 +406,8 @@ export interface LogFilters {
   dateFrom: string | null;
   dateTo: string | null;
   searchQuery: string;
+  relatedWheelId: string | null;
+  relatedRiggingPlanId: string | null;
 }
 
 // === PRD-06 Part 3: Lists ===
@@ -634,3 +637,219 @@ export interface DailyRhythmStatus {
   evening_reading_source: string | null;
   created_at: string;
 }
+
+// === PRD-11: The Wheel ===
+
+export type WheelStatus = 'in_progress' | 'active' | 'completed' | 'archived';
+
+export interface WheelSupportPerson {
+  name: string;
+  relationship: string | null;
+  role_description: string | null;
+  conversation_script: string | null;
+}
+
+export interface WheelEvidenceSource {
+  type: 'self_observation' | 'observer_feedback' | 'blind_test' | 'fruits';
+  description: string;
+  seen: boolean;
+  date_seen: string | null;
+}
+
+export interface WheelBecomingAction {
+  text: string;
+  compass_task_id: string | null;
+}
+
+export interface WheelInstance {
+  id: string;
+  user_id: string;
+  hub_text: string;
+  status: WheelStatus;
+  spoke_1_why: string | null;
+  spoke_2_start_date: string | null;
+  spoke_2_checkpoint_date: string | null;
+  spoke_2_notes: string | null;
+  spoke_3_who_i_am: string | null;
+  spoke_3_who_i_want_to_be: string | null;
+  spoke_4_supporter: WheelSupportPerson | null;
+  spoke_4_reminder: WheelSupportPerson | null;
+  spoke_4_observer: WheelSupportPerson | null;
+  spoke_5_evidence: WheelEvidenceSource[] | null;
+  spoke_6_becoming: WheelBecomingAction[] | null;
+  current_spoke: number;
+  rim_interval_days: number;
+  next_rim_date: string | null;
+  rim_count: number;
+  related_mast_entry_id: string | null;
+  helm_conversation_id: string | null;
+  life_area_tag: string | null;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WheelRimEntry {
+  id: string;
+  wheel_id: string;
+  user_id: string;
+  rim_number: number;
+  notes: string | null;
+  spoke_updates: Record<string, string> | null;
+  evidence_progress: Record<string, string> | null;
+  new_actions: WheelBecomingAction[] | null;
+  helm_conversation_id: string | null;
+  created_at: string;
+}
+
+export const WHEEL_STATUS_LABELS: Record<WheelStatus, string> = {
+  in_progress: 'Building',
+  active: 'Active',
+  completed: 'Completed',
+  archived: 'Archived',
+};
+
+export const SPOKE_LABELS: Record<number, string> = {
+  0: 'Hub',
+  1: 'Why',
+  2: 'When',
+  3: 'Self-Inventory',
+  4: 'Support',
+  5: 'Evidence',
+  6: 'Becoming',
+};
+
+// === PRD-11: Life Inventory ===
+
+export type SnapshotType = 'baseline' | 'current' | 'vision';
+
+export interface LifeInventoryArea {
+  id: string;
+  user_id: string;
+  area_name: string;
+  is_custom: boolean;
+  display_order: number;
+  baseline_summary: string | null;
+  baseline_date: string | null;
+  current_summary: string | null;
+  current_assessed_date: string | null;
+  vision_summary: string | null;
+  vision_date: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LifeInventorySnapshot {
+  id: string;
+  area_id: string;
+  user_id: string;
+  snapshot_type: SnapshotType;
+  summary_text: string;
+  helm_conversation_id: string | null;
+  created_at: string;
+}
+
+export const DEFAULT_LIFE_AREAS: string[] = [
+  'Spiritual / Faith',
+  'Marriage / Partnership',
+  'Family / Parenting',
+  'Physical Health',
+  'Emotional / Mental Health',
+  'Social / Friendships',
+  'Professional / Career',
+  'Financial',
+  'Personal Development / Learning',
+  'Service / Contribution',
+];
+
+export const SNAPSHOT_TYPE_LABELS: Record<SnapshotType, string> = {
+  baseline: 'Where I Was',
+  current: 'Where I Am',
+  vision: 'Where I Want to Be',
+};
+
+// === PRD-16: Rigging ===
+
+export type RiggingPlanStatus = 'active' | 'completed' | 'paused' | 'archived';
+export type PlanningFramework = 'moscow' | 'backward' | 'milestone' | 'premortem' | 'ten_ten_ten' | 'mixed';
+export type MilestoneStatus = 'not_started' | 'in_progress' | 'completed' | 'skipped';
+export type ObstacleStatus = 'watching' | 'triggered' | 'resolved';
+
+export interface RiggingPlan {
+  id: string;
+  user_id: string;
+  title: string;
+  description: string | null;
+  status: RiggingPlanStatus;
+  planning_framework: PlanningFramework | null;
+  frameworks_used: string[];
+  moscow_must_have: string[];
+  moscow_should_have: string[];
+  moscow_could_have: string[];
+  moscow_wont_have: string[];
+  ten_ten_ten_decision: string | null;
+  ten_ten_ten_10_days: string | null;
+  ten_ten_ten_10_months: string | null;
+  ten_ten_ten_10_years: string | null;
+  ten_ten_ten_conclusion: string | null;
+  related_mast_entry_ids: string[];
+  related_goal_ids: string[];
+  nudge_approaching_milestones: boolean;
+  nudge_related_conversations: boolean;
+  nudge_overdue_milestones: boolean;
+  helm_conversation_id: string | null;
+  completed_at: string | null;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RiggingMilestone {
+  id: string;
+  user_id: string;
+  plan_id: string;
+  title: string;
+  description: string | null;
+  sort_order: number;
+  target_date: string | null;
+  status: MilestoneStatus;
+  task_breaker_level: TaskBreakerLevel | null;
+  related_goal_id: string | null;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RiggingObstacle {
+  id: string;
+  user_id: string;
+  plan_id: string;
+  risk_description: string;
+  mitigation_plan: string;
+  status: ObstacleStatus;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export const PLANNING_FRAMEWORK_LABELS: Record<PlanningFramework, string> = {
+  moscow: 'MoSCoW',
+  backward: 'Backward Planning',
+  milestone: 'Milestone Mapping',
+  premortem: 'Obstacle Pre-mortem',
+  ten_ten_ten: '10-10-10',
+  mixed: 'Mixed',
+};
+
+export const MILESTONE_STATUS_LABELS: Record<MilestoneStatus, string> = {
+  not_started: 'Not Started',
+  in_progress: 'In Progress',
+  completed: 'Completed',
+  skipped: 'Skipped',
+};
+
+export const OBSTACLE_STATUS_LABELS: Record<ObstacleStatus, string> = {
+  watching: 'Watching',
+  triggered: 'Triggered',
+  resolved: 'Resolved',
+};

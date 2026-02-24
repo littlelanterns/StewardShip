@@ -1,0 +1,29 @@
+.area-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.area-editor__input {
+  width: 100%;
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-slate-gray);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  background: var(--color-white);
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.area-editor__input:focus {
+  outline: none;
+  border-color: var(--color-mid-teal);
+  box-shadow: 0 0 0 2px rgba(59, 110, 103, 0.2);
+}
+
+.area-editor__actions {
+  display: flex;
+  gap: var(--spacing-xs);
+}

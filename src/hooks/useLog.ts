@@ -71,6 +71,14 @@ export function useLog() {
         query = query.textSearch('text', filters.searchQuery.trim(), { type: 'websearch' });
       }
 
+      if (filters.relatedWheelId) {
+        query = query.eq('related_wheel_id', filters.relatedWheelId);
+      }
+
+      if (filters.relatedRiggingPlanId) {
+        query = query.eq('related_rigging_plan_id', filters.relatedRiggingPlanId);
+      }
+
       const { data, error: err } = await query;
       if (err) throw err;
 

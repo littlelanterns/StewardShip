@@ -279,10 +279,37 @@ export function useCharts() {
         }, { onConflict: 'tracker_id,entry_date' });
 
       if (err) throw err;
+
+      // Auto-complete linked Compass task for today when tracker entry is logged
+      const tracker = trackers.find((t) => t.id === trackerId);
+      if (tracker && (value.boolean === true || (value.numeric != null && value.numeric > 0))) {
+        try {
+          const { data: taskData } = await supabase
+            .from('compass_tasks')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('due_date', entryDate)
+            .eq('status', 'pending')
+            .is('archived_at', null)
+            .ilike('title', `%${tracker.name}%`)
+            .limit(1);
+
+          if (taskData && taskData.length > 0) {
+            const taskId = (taskData[0] as { id: string }).id;
+            await supabase
+              .from('compass_tasks')
+              .update({ status: 'completed', completed_at: new Date().toISOString() })
+              .eq('id', taskId)
+              .eq('user_id', user.id);
+          }
+        } catch {
+          // Non-critical: don't fail tracker entry if task auto-complete fails
+        }
+      }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to log entry');
     }
-  }, [user]);
+  }, [user, trackers]);
 
   return {
     trackers,

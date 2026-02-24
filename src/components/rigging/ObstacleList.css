@@ -1,0 +1,101 @@
+.obstacle-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.obstacle-list__item {
+  border-left: 3px solid var(--color-slate-gray);
+}
+
+.obstacle-list__item--triggered {
+  border-left-color: var(--color-cognac);
+}
+
+.obstacle-list__item--resolved {
+  border-left-color: var(--color-mid-teal);
+  opacity: 0.7;
+}
+
+.obstacle-list__item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-sm);
+}
+
+.obstacle-list__status-select {
+  border: 1px solid var(--color-slate-gray);
+  border-radius: var(--radius-sm);
+  padding: 2px var(--spacing-xs);
+  font-size: var(--font-size-xs);
+  background: var(--color-white);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.obstacle-list__delete-btn {
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: 4px;
+}
+
+.obstacle-list__delete-btn:hover {
+  color: var(--color-cognac);
+}
+
+.obstacle-list__item-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.obstacle-list__field-label {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-mid-teal);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.obstacle-list__field-text {
+  margin: 2px 0 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  line-height: 1.5;
+}
+
+.obstacle-list__add-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+}
+
+.obstacle-list__add-actions {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+.obstacle-list__add-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm);
+  border: 1px dashed var(--color-slate-gray);
+  background: transparent;
+  border-radius: var(--radius-md);
+  color: var(--color-mid-teal);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  width: 100%;
+  justify-content: center;
+}
+
+.obstacle-list__add-btn:hover {
+  background: var(--color-bg-secondary);
+}

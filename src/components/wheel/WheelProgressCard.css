@@ -1,0 +1,53 @@
+.wheel-progress-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.wheel-progress-card {
+  cursor: pointer;
+  transition: box-shadow var(--transition-fast);
+}
+
+.wheel-progress-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.wheel-progress-card__hub {
+  margin: 0 0 var(--spacing-xs);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  line-height: 1.4;
+}
+
+.wheel-progress-card__dots {
+  display: flex;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-xs);
+}
+
+.wheel-progress-card__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-slate-gray);
+}
+
+.wheel-progress-card__dot--done {
+  background: var(--color-mid-teal);
+  border-color: var(--color-mid-teal);
+}
+
+.wheel-progress-card__dot--current {
+  background: var(--color-cognac);
+  border-color: var(--color-cognac);
+}
+
+.wheel-progress-card__meta {
+  display: flex;
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}

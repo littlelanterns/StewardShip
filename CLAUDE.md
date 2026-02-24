@@ -651,8 +651,8 @@ The AI applies this framework naturally when it helps the user understand why ch
 - **Closing Thought reading sources (Reckoning):** Currently Mast-only. Wire Manifest Devotional and Log Breakthrough sources when Manifest is built in Phase 9.
 - **Upcoming Today section (Reveille):** Hidden — requires Meetings (PRD-17) and Reminders (PRD-18). Wire when built in Phase 10.
 - **AI milestone celebrations in Reckoning:** Stub — wire when full Reckoning + Charts integration is polished.
-- **Tracker entry → auto-increment linked goal progress:** Deferred — wire when Rigging is built.
-- **Tracker entry → auto-complete linked Compass task:** Deferred — wire when Rigging is built.
+- **Tracker entry → auto-increment linked goal progress:** Partially wired — needs `related_goal_id` column on `custom_trackers` table (migration required).
+- **Tracker entry → auto-complete linked Compass task:** WIRED (Phase 7B) — title-match heuristic in `useCharts.logTrackerEntry`.
 
 ### Wheel Conventions
 - **Framework:** From the user's therapist (Change Wheel). For big character/identity changes, not small habits or tasks.
@@ -865,17 +865,25 @@ Tracks placeholder/stub functionality that needs to be wired up when the target 
 | Unload the Hold → Crew person_note routing | Phase 4D (Unload the Hold) | Phase 8 (Crew) | STUB |
 | Unload the Hold → Reminder routing | Phase 4D (Unload the Hold) | Phase 10 (Reminders) | STUB |
 | Unload the Hold → Voice messages in conversation | Phase 4D (Unload the Hold) | TBD (Whisper integration) | STUB |
-| Charts → Wheel Progress cards | Phase 5B (Charts) | Phase 7 (Wheel) | STUB |
+| Charts → Wheel Progress cards | Phase 5B (Charts) | Phase 7 (Wheel) | WIRED |
 | Charts → AI milestone celebrations in Reckoning | Phase 5B (Charts) | Phase 6 (Reckoning) | STUB |
 | Charts → Custom tracker prompts in Reveille/Reckoning | Phase 5B (Charts) | Phase 6 (Reveille) + Phase 10 (Reminders) | WIRED (Phase 6) |
 | Charts → AI trend observations in Helm | Phase 5B (Charts) | Enhancement (polish) | STUB |
-| Goal → Tracker auto-increments goal progress | Phase 5B (Charts) | Phase 7 (Rigging) | STUB |
-| Goal → Tracker entry auto-completes linked Compass task | Phase 5B (Charts) | Phase 7 (Rigging) | STUB |
+| Goal → Tracker auto-increments goal progress | Phase 5B (Charts) | Phase 7 (Rigging) | STUB (needs related_goal_id on custom_trackers) |
+| Goal → Tracker entry auto-completes linked Compass task | Phase 5B (Charts) | Phase 7 (Rigging) | WIRED (title-match heuristic) |
 | Helm → Natural language hour/activity logging to tracker + task + goal | Phase 5B (Charts) | Enhancement (AI context) | STUB |
-| Crow's Nest → Active Wheels card | Phase 5C (Crow's Nest) | Phase 7 (Wheel) | STUB |
+| Crow's Nest → Active Wheels card | Phase 5C (Crow's Nest) | Phase 7 (Wheel) | WIRED |
 | Crow's Nest → Upcoming card (meetings/reminders) | Phase 5C (Crow's Nest) | Phase 10 (Reminders) + Phase 10 (Meetings) | STUB |
 | Victory → Helm AI suggestion during conversations | Phase 5A (Victory) | Enhancement (AI context) | STUB |
 | Victory → Chart milestone auto-generation | Phase 5B (Charts) | Phase 5A (Victory) wiring | STUB |
+| Wheel → Crew/Sphere references in Spoke 4 | Phase 7A (Wheel) | Phase 8 (Crew) | STUB |
+| Life Inventory → Onboarding seeding | Phase 7A (Life Inventory) | Future | STUB |
+| Life Inventory → AI notices relevant info in regular Helm conversations | Phase 7A (Life Inventory) | Enhancement | STUB |
+| Rigging → Reveille/Reckoning milestone nudging | Phase 7B (Rigging) | Phase 10 (Reminders) | STUB |
+| Rigging → Manifest RAG for planning sessions | Phase 7B (Rigging) | Phase 9 (Manifest) | STUB |
+| Rigging → Victory suggestion on plan completion | Phase 7B (Rigging) | Enhancement | STUB |
+| Safe Harbor → First Mate/Crew context loading | Phase 7C (Safe Harbor) | Phase 8 (First Mate/Crew) | STUB |
+| Safe Harbor → Manifest RAG context | Phase 7C (Safe Harbor) | Phase 9 (Manifest) | STUB |
 
 ---
 

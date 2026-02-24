@@ -3,6 +3,7 @@ import { Plus, Target } from 'lucide-react';
 import { usePageContext } from '../hooks/usePageContext';
 import { useCharts, type ChartsPeriod } from '../hooks/useCharts';
 import { useGoals } from '../hooks/useGoals';
+import { useWheel } from '../hooks/useWheel';
 import { EmptyState, FloatingActionButton } from '../components/shared';
 import { TaskCompletionCard } from '../components/charts/TaskCompletionCard';
 import { ActiveStreaksCard } from '../components/charts/ActiveStreaksCard';
@@ -14,6 +15,7 @@ import { CreateGoal } from '../components/charts/CreateGoal';
 import { GoalDetail } from '../components/charts/GoalDetail';
 import { CreateTracker } from '../components/charts/CreateTracker';
 import { LogTrackerEntry } from '../components/charts/LogTrackerEntry';
+import { WheelProgressCard } from '../components/wheel/WheelProgressCard';
 import './Charts.css';
 
 const PERIOD_LABELS: Record<ChartsPeriod, string> = {
@@ -28,6 +30,7 @@ export default function Charts() {
 
   const { trackers, fetchTrackers } = useCharts();
   const { goals, fetchGoals } = useGoals();
+  const { wheels, fetchWheels } = useWheel();
   const [period, setPeriod] = useState<ChartsPeriod>('week');
   const [showCreateGoal, setShowCreateGoal] = useState(false);
   const [showCreateTracker, setShowCreateTracker] = useState(false);
@@ -41,6 +44,10 @@ export default function Charts() {
   useEffect(() => {
     fetchGoals();
   }, [fetchGoals]);
+
+  useEffect(() => {
+    fetchWheels('active');
+  }, [fetchWheels]);
 
   const handleRefresh = useCallback(() => {
     fetchTrackers();
@@ -79,6 +86,14 @@ export default function Charts() {
         <GoalProgressCard onTap={(id) => setSelectedGoalId(id)} />
         <VictorySummaryCard period={period} />
         <JournalActivityCard period={period} />
+
+        {/* Active Wheels */}
+        {wheels.length > 0 && (
+          <>
+            <h3 className="charts__section-header">Active Wheels</h3>
+            <WheelProgressCard wheels={wheels} />
+          </>
+        )}
 
         {/* Custom trackers */}
         {trackers.length > 0 && (

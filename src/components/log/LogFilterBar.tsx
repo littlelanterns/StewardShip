@@ -4,9 +4,16 @@ import type { LogFilters, LogEntryType } from '../../lib/types';
 import { LIFE_AREA_LABELS } from '../../lib/types';
 import './LogFilterBar.css';
 
+interface LinkedOption {
+  id: string;
+  label: string;
+}
+
 interface LogFilterBarProps {
   filters: LogFilters;
   onFiltersChange: (filters: LogFilters) => void;
+  linkedWheels?: LinkedOption[];
+  linkedPlans?: LinkedOption[];
 }
 
 const DATE_RANGES: { value: LogFilters['dateRange']; label: string }[] = [
@@ -28,7 +35,7 @@ const ENTRY_TYPES: { value: LogEntryType | ''; label: string }[] = [
 
 const LIFE_AREAS = Object.entries(LIFE_AREA_LABELS);
 
-export default function LogFilterBar({ filters, onFiltersChange }: LogFilterBarProps) {
+export default function LogFilterBar({ filters, onFiltersChange, linkedWheels, linkedPlans }: LogFilterBarProps) {
   const [searchOpen, setSearchOpen] = useState(!!filters.searchQuery);
 
   const update = (partial: Partial<LogFilters>) => {
@@ -123,6 +130,39 @@ export default function LogFilterBar({ filters, onFiltersChange }: LogFilterBarP
             {label}
           </button>
         ))}
+
+        {/* Linked filters */}
+        {linkedWheels && linkedWheels.length > 0 && (
+          <>
+            <span className="log-filter-bar__divider" />
+            <select
+              className="log-filter-bar__linked-select"
+              value={filters.relatedWheelId || ''}
+              onChange={(e) => update({ relatedWheelId: e.target.value || null })}
+            >
+              <option value="">All Wheels</option>
+              {linkedWheels.map((w) => (
+                <option key={w.id} value={w.id}>{w.label}</option>
+              ))}
+            </select>
+          </>
+        )}
+
+        {linkedPlans && linkedPlans.length > 0 && (
+          <>
+            <span className="log-filter-bar__divider" />
+            <select
+              className="log-filter-bar__linked-select"
+              value={filters.relatedRiggingPlanId || ''}
+              onChange={(e) => update({ relatedRiggingPlanId: e.target.value || null })}
+            >
+              <option value="">All Plans</option>
+              {linkedPlans.map((p) => (
+                <option key={p.id} value={p.id}>{p.label}</option>
+              ))}
+            </select>
+          </>
+        )}
       </div>
     </div>
   );
