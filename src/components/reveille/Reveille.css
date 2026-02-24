@@ -635,6 +635,39 @@
   margin-bottom: var(--spacing-sm);
 }
 
+/* Manifest Reading */
+.manifest-reading {
+  background: var(--color-bg-card, #fff);
+  border-left: 3px solid var(--color-mid-teal);
+  padding: var(--spacing-md) var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+  border-radius: var(--radius-md);
+}
+
+.manifest-reading__label {
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  color: var(--color-slate-gray);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--spacing-xs);
+}
+
+.manifest-reading__text {
+  font-family: var(--font-heading, Georgia, serif);
+  font-size: var(--font-size-base);
+  color: var(--color-navy);
+  line-height: var(--line-height-relaxed, 1.6);
+  font-style: italic;
+}
+
+.manifest-reading__source {
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  color: var(--color-slate-gray);
+  margin-top: var(--spacing-xs);
+}
+
 /* Date picker inline */
 .date-picker-inline {
   padding: var(--spacing-xs);

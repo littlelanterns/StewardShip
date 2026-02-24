@@ -1,4 +1,4 @@
-import { FileText, Mic, Image, StickyNote, Loader } from 'lucide-react';
+import { FileText, BookOpen, FileCode, Mic, Image, StickyNote, Loader } from 'lucide-react';
 import type { ManifestItem } from '../../lib/types';
 import { MANIFEST_USAGE_LABELS } from '../../lib/types';
 import { Card } from '../shared/Card';
@@ -11,6 +11,10 @@ interface ManifestItemCardProps {
 
 const FILE_TYPE_ICONS = {
   pdf: FileText,
+  epub: BookOpen,
+  docx: FileText,
+  txt: FileText,
+  md: FileCode,
   audio: Mic,
   image: Image,
   text_note: StickyNote,

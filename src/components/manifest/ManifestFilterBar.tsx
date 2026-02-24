@@ -14,9 +14,11 @@ interface ManifestFilterBarProps {
 const TYPE_OPTIONS: { value: ManifestFileType | 'all'; label: string }[] = [
   { value: 'all', label: 'All' },
   { value: 'pdf', label: 'PDF' },
-  { value: 'audio', label: 'Audio' },
-  { value: 'text_note', label: 'Text Note' },
-  { value: 'image', label: 'Image' },
+  { value: 'epub', label: 'EPUB' },
+  { value: 'docx', label: 'Word' },
+  { value: 'txt', label: 'Text' },
+  { value: 'md', label: 'Markdown' },
+  { value: 'text_note', label: 'Notes' },
 ];
 
 const USAGE_OPTIONS: { value: ManifestUsageDesignation | 'all'; label: string }[] = [

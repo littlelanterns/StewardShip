@@ -32,6 +32,8 @@ export async function searchManifest(
   options?: {
     matchThreshold?: number;
     matchCount?: number;
+    manifestItemId?: string;   // Filter to chunks from this specific item
+    excludeItemId?: string;    // Exclude chunks from this item
   },
 ): Promise<ManifestSearchResult[]> {
   const { matchThreshold = 0.7, matchCount = 5 } = options || {};
@@ -40,12 +42,16 @@ export async function searchManifest(
   const embedding = await generateEmbedding(query, userId);
   if (!embedding) return [];
 
-  // Step 2: Call the similarity search RPC
+  // Step 2: Call the similarity search RPC — request more if we'll be filtering
+  const requestCount = (options?.manifestItemId || options?.excludeItemId)
+    ? matchCount * 3  // Over-fetch to compensate for post-filtering
+    : matchCount;
+
   const { data, error } = await supabase.rpc('match_manifest_chunks', {
     query_embedding: embedding,
     p_user_id: userId,
     match_threshold: matchThreshold,
-    match_count: matchCount,
+    match_count: requestCount,
   });
 
   if (error) {
@@ -55,8 +61,23 @@ export async function searchManifest(
 
   if (!data || data.length === 0) return [];
 
-  // Step 3: Fetch source titles for attribution
-  const itemIds = [...new Set(data.map((r: { manifest_item_id: string }) => r.manifest_item_id))];
+  // Step 3: Apply item-level filters
+  let results = data as Array<{ id: string; manifest_item_id: string; chunk_text: string; metadata: Record<string, unknown>; similarity: number }>;
+
+  if (options?.manifestItemId) {
+    results = results.filter((r) => r.manifest_item_id === options.manifestItemId);
+  }
+  if (options?.excludeItemId) {
+    results = results.filter((r) => r.manifest_item_id !== options.excludeItemId);
+  }
+
+  // Trim back to requested count after filtering
+  results = results.slice(0, matchCount);
+
+  if (results.length === 0) return [];
+
+  // Step 4: Fetch source titles for attribution
+  const itemIds = [...new Set(results.map((r) => r.manifest_item_id))];
   const { data: items } = await supabase
     .from('manifest_items')
     .select('id, title')
@@ -64,7 +85,7 @@ export async function searchManifest(
 
   const titleMap = new Map(items?.map((i: { id: string; title: string }) => [i.id, i.title]) || []);
 
-  return data.map((r: { id: string; manifest_item_id: string; chunk_text: string; metadata: Record<string, unknown>; similarity: number }) => ({
+  return results.map((r) => ({
     id: r.id,
     manifest_item_id: r.manifest_item_id,
     chunk_text: r.chunk_text,

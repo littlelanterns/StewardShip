@@ -1050,7 +1050,7 @@ export const CREW_SECTIONS: { key: string; label: string; types: RelationshipTyp
 
 // === PRD-15: The Manifest ===
 
-export type ManifestFileType = 'pdf' | 'audio' | 'image' | 'text_note';
+export type ManifestFileType = 'pdf' | 'epub' | 'docx' | 'txt' | 'md' | 'audio' | 'image' | 'text_note';
 export type ManifestProcessingStatus = 'pending' | 'processing' | 'completed' | 'failed';
 export type ManifestUsageDesignation =
   | 'general_reference'
@@ -1128,6 +1128,10 @@ export interface ManifestSearchResult {
 
 export const MANIFEST_FILE_TYPE_LABELS: Record<ManifestFileType, string> = {
   pdf: 'PDF',
+  epub: 'EPUB',
+  docx: 'Word Doc',
+  txt: 'Text File',
+  md: 'Markdown',
   audio: 'Audio',
   image: 'Image',
   text_note: 'Text Note',

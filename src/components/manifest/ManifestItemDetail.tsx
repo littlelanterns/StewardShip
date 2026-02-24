@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, FileText, Mic, Image, StickyNote, MessageSquare, RefreshCw } from 'lucide-react';
+import { ChevronLeft, FileText, FileCode, Mic, Image, StickyNote, MessageSquare, RefreshCw, BookOpen, Anchor, Compass } from 'lucide-react';
 import type { ManifestItem, ManifestUsageDesignation } from '../../lib/types';
 import { MANIFEST_USAGE_LABELS, MANIFEST_FILE_TYPE_LABELS, MANIFEST_STATUS_LABELS } from '../../lib/types';
 import { useHelmContext } from '../../contexts/HelmContext';
@@ -14,10 +14,17 @@ interface ManifestItemDetailProps {
   onReprocess: (id: string) => Promise<boolean>;
   onArchive: (id: string) => Promise<boolean>;
   onDelete: (id: string) => Promise<boolean>;
+  onExtractFramework?: () => void;
+  onExtractMast?: () => void;
+  onExtractKeel?: () => void;
 }
 
 const FILE_TYPE_ICONS = {
   pdf: FileText,
+  epub: BookOpen,
+  docx: FileText,
+  txt: FileText,
+  md: FileCode,
   audio: Mic,
   image: Image,
   text_note: StickyNote,
@@ -46,6 +53,9 @@ export function ManifestItemDetail({
   onReprocess,
   onArchive,
   onDelete,
+  onExtractFramework,
+  onExtractMast,
+  onExtractKeel,
 }: ManifestItemDetailProps) {
   const navigate = useNavigate();
   const { startGuidedConversation } = useHelmContext();
@@ -115,9 +125,11 @@ export function ManifestItemDetail({
   }, [item.id, onArchive, onBack]);
 
   const handleDiscuss = useCallback(() => {
-    startGuidedConversation('manifest_discuss', item.id);
+    startGuidedConversation('manifest_discuss', null, item.id);
     navigate('/helm');
   }, [startGuidedConversation, item.id, navigate]);
+
+  const isProcessed = item.processing_status === 'completed';
 
   return (
     <div className="manifest-detail">
@@ -224,22 +236,44 @@ export function ManifestItemDetail({
             </button>
           ))}
         </div>
-        {item.usage_designations.includes('framework_source') && (
-          <p className="manifest-detail__usage-note">
-            Framework principle extraction will be available in a future update.
-          </p>
+
+        {/* Extraction action buttons — shown when designation is active and content is processed */}
+        {isProcessed && item.usage_designations.includes('framework_source') && onExtractFramework && (
+          <button
+            type="button"
+            className="manifest-detail__extraction-btn"
+            onClick={onExtractFramework}
+          >
+            <BookOpen size={14} />
+            Extract Framework Principles
+          </button>
         )}
-        {item.usage_designations.includes('mast_extraction') && (
-          <p className="manifest-detail__usage-note">
-            Mast principle extraction will be available in a future update.
-          </p>
+        {isProcessed && item.usage_designations.includes('mast_extraction') && onExtractMast && (
+          <button
+            type="button"
+            className="manifest-detail__extraction-btn"
+            onClick={onExtractMast}
+          >
+            <Anchor size={14} />
+            Extract Mast Entries
+          </button>
+        )}
+        {isProcessed && item.usage_designations.includes('keel_info') && onExtractKeel && (
+          <button
+            type="button"
+            className="manifest-detail__extraction-btn"
+            onClick={onExtractKeel}
+          >
+            <Compass size={14} />
+            Extract Keel Entries
+          </button>
         )}
       </section>
 
       {/* Content Preview */}
       <section className="manifest-detail__section">
         <h3 className="manifest-detail__section-title">Content</h3>
-        {item.file_type === 'text_note' ? (
+        {(item.file_type === 'text_note' || item.file_type === 'txt' || item.file_type === 'md') ? (
           editingContent ? (
             <div className="manifest-detail__content-edit">
               <textarea
@@ -280,7 +314,7 @@ export function ManifestItemDetail({
       {/* Actions */}
       <section className="manifest-detail__section">
         <div className="manifest-detail__actions">
-          {item.processing_status === 'completed' && (
+          {isProcessed && (
             <Button size="sm" onClick={handleDiscuss}>
               <MessageSquare size={14} />
               Discuss This

@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { Upload, FileText, Mic, Image, AlertCircle } from 'lucide-react';
+import { Upload, FileText, BookOpen, FileCode, Mic, Image, AlertCircle } from 'lucide-react';
 import type { ManifestItem } from '../../lib/types';
 import { Button } from '../shared';
 import './UploadFlow.css';
@@ -17,9 +17,14 @@ function formatFileSize(bytes: number): string {
 }
 
 function getFileIcon(file: File) {
-  if (file.type.includes('pdf')) return FileText;
-  if (file.type.includes('audio')) return Mic;
-  if (file.type.includes('image')) return Image;
+  const ext = file.name.split('.').pop()?.toLowerCase();
+  if (file.type.includes('pdf') || ext === 'pdf') return FileText;
+  if (file.type === 'application/epub+zip' || ext === 'epub') return BookOpen;
+  if (ext === 'docx') return FileText;
+  if (ext === 'md') return FileCode;
+  if (ext === 'txt' || file.type === 'text/plain') return FileText;
+  if (file.type.startsWith('audio/')) return Mic;
+  if (file.type.startsWith('image/')) return Image;
   return FileText;
 }
 
@@ -72,7 +77,7 @@ export function UploadFlow({ onUpload, onCheckDuplicate, onClose }: UploadFlowPr
         >
           <Upload size={32} className="upload-flow__dropzone-icon" />
           <p className="upload-flow__dropzone-text">Tap to select a file</p>
-          <p className="upload-flow__dropzone-hint">PDF, audio, or images</p>
+          <p className="upload-flow__dropzone-hint">PDF, EPUB, DOCX, TXT, MD, audio, or images</p>
         </div>
       ) : (
         <div className="upload-flow__preview">
@@ -101,7 +106,7 @@ export function UploadFlow({ onUpload, onCheckDuplicate, onClose }: UploadFlowPr
         ref={fileInputRef}
         type="file"
         className="upload-flow__input"
-        accept=".pdf,audio/*,image/*"
+        accept=".pdf,.epub,.docx,.txt,.md,audio/*,image/*"
         onChange={handleFileSelect}
       />
 

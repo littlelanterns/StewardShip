@@ -3,20 +3,26 @@ import { useNavigate } from 'react-router-dom';
 import { Upload, StickyNote, MessageSquare, Loader } from 'lucide-react';
 import { usePageContext } from '../hooks/usePageContext';
 import { useManifest } from '../hooks/useManifest';
+import { useFrameworks } from '../hooks/useFrameworks';
+import { useMast } from '../hooks/useMast';
+import { useKeel } from '../hooks/useKeel';
 import { useHelmContext } from '../contexts/HelmContext';
-import type { ManifestItem, ManifestFileType, ManifestUsageDesignation } from '../lib/types';
+import type { ManifestItem, ManifestFileType, ManifestUsageDesignation, MastEntryType, KeelCategory } from '../lib/types';
 import { ManifestItemCard } from '../components/manifest/ManifestItemCard';
 import { ManifestItemDetail } from '../components/manifest/ManifestItemDetail';
 import { ManifestFilterBar } from '../components/manifest/ManifestFilterBar';
 import { UploadFlow } from '../components/manifest/UploadFlow';
 import { IntakeFlow } from '../components/manifest/IntakeFlow';
 import { TextNoteModal } from '../components/manifest/TextNoteModal';
+import FrameworkPrinciples from '../components/manifest/FrameworkPrinciples';
+import MastExtractionReview from '../components/manifest/MastExtractionReview';
+import KeelExtractionReview from '../components/manifest/KeelExtractionReview';
 import { CollapsibleGroup } from '../components/shared/CollapsibleGroup';
 import { FloatingActionButton } from '../components/shared/FloatingActionButton';
 import { EmptyState, LoadingSpinner } from '../components/shared';
 import './Manifest.css';
 
-type ViewMode = 'list' | 'detail' | 'upload' | 'intake';
+type ViewMode = 'list' | 'detail' | 'upload' | 'intake' | 'framework' | 'mast_extract' | 'keel_extract';
 
 export default function Manifest() {
   usePageContext({ page: 'manifest' });
@@ -41,11 +47,29 @@ export default function Manifest() {
     checkDuplicate,
   } = useManifest();
 
+  const {
+    extracting,
+    extractFramework,
+    extractMast,
+    extractKeel,
+    saveFramework,
+    toggleFramework,
+    getFrameworkForItem,
+    fetchFrameworks,
+  } = useFrameworks();
+
+  const mast = useMast();
+  const keel = useKeel();
+
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedItem, setSelectedItem] = useState<ManifestItem | null>(null);
   const [intakeItemId, setIntakeItemId] = useState<string | null>(null);
   const [showTextNoteModal, setShowTextNoteModal] = useState(false);
   const [fabExpanded, setFabExpanded] = useState(false);
+
+  // Extraction state
+  const [mastExtractionResults, setMastExtractionResults] = useState<Array<{ text: string; entry_type: string }> | null>(null);
+  const [keelExtractionResults, setKeelExtractionResults] = useState<Array<{ category: string; text: string }> | null>(null);
 
   // Filters
   const [typeFilter, setTypeFilter] = useState<ManifestFileType | 'all'>('all');
@@ -54,7 +78,8 @@ export default function Manifest() {
 
   useEffect(() => {
     fetchItems();
-  }, [fetchItems]);
+    fetchFrameworks();
+  }, [fetchItems, fetchFrameworks]);
 
   // Poll for processing items
   useEffect(() => {
@@ -85,9 +110,17 @@ export default function Manifest() {
 
   const handleBack = useCallback(() => {
     setSelectedItem(null);
+    setMastExtractionResults(null);
+    setKeelExtractionResults(null);
     setViewMode('list');
     fetchItems();
   }, [fetchItems]);
+
+  const handleBackToDetail = useCallback(() => {
+    setMastExtractionResults(null);
+    setKeelExtractionResults(null);
+    setViewMode('detail');
+  }, []);
 
   const handleUpload = useCallback(async (file: File) => {
     const item = await uploadFile(file);
@@ -135,6 +168,54 @@ export default function Manifest() {
     startGuidedConversation('manifest_discuss');
     navigate('/helm');
   }, [startGuidedConversation, navigate]);
+
+  // Extraction handlers
+  const handleExtractFramework = useCallback(() => {
+    if (selectedItem) {
+      setViewMode('framework');
+    }
+  }, [selectedItem]);
+
+  const handleExtractMast = useCallback(async () => {
+    if (!selectedItem) return;
+    setViewMode('mast_extract');
+    const results = await extractMast(selectedItem.id);
+    setMastExtractionResults(results);
+  }, [selectedItem, extractMast]);
+
+  const handleExtractKeel = useCallback(async () => {
+    if (!selectedItem) return;
+    setViewMode('keel_extract');
+    const results = await extractKeel(selectedItem.id);
+    setKeelExtractionResults(results);
+  }, [selectedItem, extractKeel]);
+
+  const handleSaveMastEntries = useCallback(async (
+    entries: Array<{ type: MastEntryType; text: string; source: 'manifest_extraction' }>,
+  ) => {
+    for (const entry of entries) {
+      await mast.createEntry({
+        type: entry.type,
+        text: entry.text,
+        source: 'manifest_extraction',
+      });
+    }
+    handleBackToDetail();
+  }, [mast, handleBackToDetail]);
+
+  const handleSaveKeelEntries = useCallback(async (
+    entries: Array<{ category: KeelCategory; text: string; source: string; source_type: 'manifest_extraction' }>,
+  ) => {
+    for (const entry of entries) {
+      await keel.createEntry({
+        category: entry.category,
+        text: entry.text,
+        source: entry.source,
+        source_type: 'manifest_extraction',
+      });
+    }
+    handleBackToDetail();
+  }, [keel, handleBackToDetail]);
 
   // Filtering
   const filteredItems = useMemo(() => {
@@ -193,6 +274,54 @@ export default function Manifest() {
     );
   }
 
+  // Framework extraction view
+  if (viewMode === 'framework' && selectedItem) {
+    return (
+      <div className="page manifest-page">
+        <FrameworkPrinciples
+          manifestItemId={selectedItem.id}
+          manifestItemTitle={selectedItem.title}
+          framework={getFrameworkForItem(selectedItem.id)}
+          extracting={extracting}
+          onExtract={extractFramework}
+          onSave={saveFramework}
+          onToggle={toggleFramework}
+          onBack={handleBackToDetail}
+        />
+      </div>
+    );
+  }
+
+  // Mast extraction review
+  if (viewMode === 'mast_extract' && selectedItem) {
+    return (
+      <div className="page manifest-page">
+        <MastExtractionReview
+          sourceTitle={selectedItem.title}
+          entries={mastExtractionResults}
+          extracting={extracting}
+          onSave={handleSaveMastEntries}
+          onCancel={handleBackToDetail}
+        />
+      </div>
+    );
+  }
+
+  // Keel extraction review
+  if (viewMode === 'keel_extract' && selectedItem) {
+    return (
+      <div className="page manifest-page">
+        <KeelExtractionReview
+          sourceTitle={selectedItem.title}
+          entries={keelExtractionResults}
+          extracting={extracting}
+          onSave={handleSaveKeelEntries}
+          onCancel={handleBackToDetail}
+        />
+      </div>
+    );
+  }
+
   // Detail view
   if (viewMode === 'detail' && selectedItem) {
     return (
@@ -204,6 +333,9 @@ export default function Manifest() {
           onReprocess={reprocessItem}
           onArchive={archiveItem}
           onDelete={deleteItem}
+          onExtractFramework={handleExtractFramework}
+          onExtractMast={handleExtractMast}
+          onExtractKeel={handleExtractKeel}
         />
       </div>
     );

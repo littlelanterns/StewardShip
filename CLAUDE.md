@@ -1,7 +1,7 @@
 # CLAUDE.md — StewardShip Project Instructions
 
 > This is a living document. It grows as PRDs are written and development progresses.
-> Last updated: February 2026 — Phase 9A (Cost Optimization + Manifest Pipeline) built.
+> Last updated: February 2026 — Phase 9C (Framework Extraction + AI Integration + Stub Wiring) built.
 
 ---
 
@@ -657,8 +657,8 @@ The AI applies this framework naturally when it helps the user understand why ch
 - Victory Review (from PRD-08) embedded in Reckoning evening flow.
 
 ### Phase 6 Stubs & Deferred Wiring
-- **Morning Reading section (Reveille):** Stubbed — requires Manifest (PRD-15) for devotional content and sufficient Log history for breakthroughs. Wire when Manifest is built in Phase 9.
-- **Closing Thought reading sources (Reckoning):** Currently Mast-only. Wire Manifest Devotional and Log Breakthrough sources when Manifest is built in Phase 9.
+- **Morning Reading section (Reveille):** WIRED (Phase 9C) — Manifest Devotional source via RAG. Log Breakthrough source still stubbed (needs sufficient Log history + relevance algorithm).
+- **Closing Thought reading sources (Reckoning):** WIRED (Phase 9C) — Manifest Devotional source via RAG alongside Mast thought. Log Breakthrough source still stubbed.
 - **Upcoming Today section (Reveille):** Hidden — requires Meetings (PRD-17) and Reminders (PRD-18). Wire when built in Phase 10.
 - **AI milestone celebrations in Reckoning:** Stub — wire when full Reckoning + Charts integration is polished.
 - **Tracker entry → auto-increment linked goal progress:** Partially wired — needs `related_goal_id` column on `custom_trackers` table (migration required).
@@ -760,6 +760,9 @@ Five guided conversation modes accessible from the First Mate page, each opening
 
 ### Manifest Conventions
 - **Central knowledge base and file processing pipeline.** RAG retrieval via pgvector similarity search on `manifest_chunks`.
+- **Supported formats:** PDF, EPUB (best for books — Kindle converts via Calibre), DOCX, TXT, MD (direct text read), text notes (typed directly). Audio (Whisper) and image (OCR) planned post-MVP.
+- **EPUB extraction:** ZIP → OPF spine order → XHTML content → stripped HTML. Preserves chapter ordering. Uses fflate for Deno-compatible unzipping.
+- **DOCX extraction:** ZIP → word/document.xml → w:t text runs. Preserves paragraph structure.
 - **Intake flow:** User designates how each upload is used (general reference, framework source, Mast extraction, Keel info, goal/wheel specific, store only). Multiple designations allowed.
 - **RAG retrieval:** Top-k similar chunks (typically 3-5) injected into AI context with source attribution. AI paraphrases, attributes source ("There's a concept from [title] that applies here..."), never quotes at length.
 - **ai_frameworks:** Extracted principles from framework-designated items, loaded alongside Mast in every AI interaction. Not retrieved via RAG — always present. User controls which frameworks are active.
@@ -769,7 +772,7 @@ Five guided conversation modes accessible from the First Mate page, each opening
 - **Duplicate detection:** Warns on same filename + approximate size. Doesn't block — user decides.
 - **Re-process:** Available for failed or completed items. Resets status and re-runs pipeline.
 - **Four Edge Functions:** `manifest-process` (chunking + embedding), `manifest-embed` (thin OpenAI wrapper), `manifest-intake` (AI classification), and future `manifest-extract` (framework extraction, Phase 9C).
-- **Discuss This / Ask Your Library:** Opens Helm in `manifest_discuss` guided mode — item-specific or library-wide. Partial stub in 9B; specialized system prompt and boosted RAG wired in 9C.
+- **Discuss This / Ask Your Library:** Opens Helm in `manifest_discuss` guided mode — item-specific or library-wide. Specialized system prompt with boosted RAG retrieval (8+3 chunks for item-specific, 10 chunks for library-wide). WIRED in Phase 9C.
 - **Cross-feature file routing:** Large files from First Mate/Crew (>~3000 tokens) route to Manifest RAG pipeline with `is_rag_indexed` flag.
 - **Manifest-to-Mast extraction:** AI proposes principles from uploaded material, user reviews and confirms which become Mast entries (source_type = 'manifest_extraction').
 - **Manifest-to-Keel extraction:** AI proposes personality/self-knowledge data, user reviews and confirms (source_type = 'manifest_extraction').
@@ -895,10 +898,10 @@ Tracks placeholder/stub functionality that needs to be wired up when the target 
 | Life Inventory → Onboarding seeding | Phase 7A (Life Inventory) | Future | STUB |
 | Life Inventory → AI notices relevant info in regular Helm conversations | Phase 7A (Life Inventory) | Enhancement | STUB |
 | Rigging → Reveille/Reckoning milestone nudging | Phase 7B (Rigging) | Phase 10 (Reminders) | STUB |
-| Rigging → Manifest RAG for planning sessions | Phase 7B (Rigging) | Phase 9 (Manifest) | STUB |
+| Rigging → Manifest RAG for planning sessions | Phase 7B (Rigging) | Phase 9C (Manifest) | WIRED |
 | Rigging → Victory suggestion on plan completion | Phase 7B (Rigging) | Enhancement | STUB |
 | Safe Harbor → First Mate/Crew context loading | Phase 7C (Safe Harbor) | Phase 8 (First Mate/Crew) | WIRED |
-| Safe Harbor → Manifest RAG context | Phase 7C (Safe Harbor) | Phase 9 (Manifest) | STUB |
+| Safe Harbor → Manifest RAG context | Phase 7C (Safe Harbor) | Phase 9C (Manifest) | WIRED |
 | First Mate → File upload (Manifest pipeline) | Phase 8A (First Mate) | Phase 9 (Manifest) | STUB |
 | First Mate → Couple Meeting integration | Phase 8A (First Mate) | Phase 10 (Meetings) | STUB |
 | First Mate → Spouse prompts in Reveille/Reckoning | Phase 8A (First Mate) | Phase 10 (Reminders) | STUB |

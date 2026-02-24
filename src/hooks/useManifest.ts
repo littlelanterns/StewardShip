@@ -61,13 +61,22 @@ export function useManifest() {
     }
 
     // 2. Determine file type
-    const fileType = file.type.includes('pdf')
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    const fileType = (file.type === 'application/pdf' || ext === 'pdf')
       ? 'pdf'
-      : file.type.includes('audio')
-        ? 'audio'
-        : file.type.includes('image')
-          ? 'image'
-          : 'text_note';
+      : (file.type === 'application/epub+zip' || ext === 'epub')
+        ? 'epub'
+        : (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || ext === 'docx')
+          ? 'docx'
+          : ext === 'md'
+            ? 'md'
+            : (file.type === 'text/plain' || ext === 'txt')
+              ? 'txt'
+              : file.type.startsWith('audio/')
+                ? 'audio'
+                : file.type.startsWith('image/')
+                  ? 'image'
+                  : 'txt' as const;
 
     // 3. Create manifest_items record
     const { data: item, error: insertErr } = await supabase

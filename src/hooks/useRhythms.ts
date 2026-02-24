@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuthContext } from '../contexts/AuthContext';
+import { searchManifest } from '../lib/rag';
 import type {
   DailyRhythmStatus,
   UserSettings,
@@ -21,8 +22,14 @@ function getNextMilestone(current: number): number {
   return current + 365;
 }
 
+export interface ManifestReading {
+  text: string;
+  source: string;
+}
+
 export interface ReveilleData {
   mastThought: MastEntry | null;
+  manifestReading: ManifestReading | null;
   todayTasks: CompassTask[];
   streaks: StreakInfo[];
   trackers: (CustomTracker & { todayEntry?: TrackerEntry })[];
@@ -30,6 +37,7 @@ export interface ReveilleData {
 
 export interface ReckoningData {
   mastThought: MastEntry | null;
+  manifestReading: ManifestReading | null;
   completedTasks: CompassTask[];
   victories: Victory[];
   incompleteTasks: CompassTask[];
@@ -349,8 +357,29 @@ export function useRhythms() {
         }
       }
 
+      // Fetch a Manifest devotional reading (non-blocking — don't fail Reveille if RAG fails)
+      let manifestReading: ManifestReading | null = null;
+      try {
+        const manifestResults = await searchManifest(
+          'devotional spiritual faith morning reflection scripture wisdom',
+          user.id,
+          { matchCount: 1, matchThreshold: 0.6 },
+        );
+        if (manifestResults.length > 0) {
+          const chunk = manifestResults[0];
+          // Trim to a readable passage (~300 chars)
+          const text = chunk.content.length > 300
+            ? chunk.content.substring(0, 300).replace(/\s+\S*$/, '') + '...'
+            : chunk.content;
+          manifestReading = { text, source: chunk.source_title };
+        }
+      } catch {
+        // Silently skip — Manifest reading is optional
+      }
+
       setReveilleData({
         mastThought,
+        manifestReading,
         todayTasks: (tasksResult.data || []) as CompassTask[],
         streaks: streaks.sort((a, b) => b.currentStreak - a.currentStreak),
         trackers: trackersList.map((t) => ({ ...t, todayEntry: trackerEntriesMap[t.id] })),
@@ -558,8 +587,28 @@ export function useRhythms() {
 
       const aiSuggestion = buildAiSuggestion(incompleteTasks, tomorrowTasks);
 
+      // Fetch a Manifest reading for closing thought (non-blocking)
+      let manifestReading: ManifestReading | null = null;
+      try {
+        const manifestResults = await searchManifest(
+          'evening reflection wisdom gratitude peace rest renewal perspective',
+          user.id,
+          { matchCount: 1, matchThreshold: 0.6 },
+        );
+        if (manifestResults.length > 0) {
+          const chunk = manifestResults[0];
+          const text = chunk.content.length > 300
+            ? chunk.content.substring(0, 300).replace(/\s+\S*$/, '') + '...'
+            : chunk.content;
+          manifestReading = { text, source: chunk.source_title };
+        }
+      } catch {
+        // Silently skip
+      }
+
       setReckoningData({
         mastThought,
+        manifestReading,
         completedTasks,
         victories,
         incompleteTasks,

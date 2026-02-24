@@ -4,6 +4,11 @@ import { KEEL_CATEGORY_ORDER, KEEL_CATEGORY_LABELS } from './types';
 import { SPOUSE_INSIGHT_CATEGORY_LABELS, SPOUSE_INSIGHT_CATEGORY_ORDER, CREW_NOTE_CATEGORY_LABELS } from './types';
 import { SPHERE_LEVEL_ORDER, SPHERE_LEVEL_LABELS, SPHERE_ENTITY_CATEGORY_LABELS } from './types';
 
+export interface GuidedModeContext {
+  manifest_item_id?: string;
+  manifest_item_title?: string;
+}
+
 export interface SystemPromptContext {
   displayName: string;
   mastEntries: MastEntry[];
@@ -22,8 +27,10 @@ export interface SystemPromptContext {
   crewContext?: string;
   sphereContext?: string;
   frameworksContext?: string;
+  manifestContext?: string;
   pageContext: string;
   guidedMode?: GuidedMode;
+  guidedModeContext?: GuidedModeContext;
   conversationHistory: HelmMessage[];
   contextBudget: 'short' | 'medium' | 'long';
 }
@@ -562,6 +569,51 @@ export function buildSystemPrompt(context: SystemPromptContext): string {
     }
   }
 
+  if (context.manifestContext) {
+    const isDiscussMode = context.guidedMode === 'manifest_discuss';
+    let manifestSection = '';
+
+    if (isDiscussMode && context.guidedModeContext?.manifest_item_title) {
+      manifestSection = `\n\nREFERENCE MATERIAL — Deep Discussion Mode
+The user wants to explore and discuss "${context.guidedModeContext.manifest_item_title}".
+You have access to passages from this source below, plus any relevant content from other sources in their library.
+
+${context.manifestContext}
+
+INSTRUCTIONS FOR THIS MODE:
+- Help the user explore this content deeply — find specific stories, methods, quotes, frameworks, and examples
+- When the user asks about a concept, search your retrieved passages AND your own training knowledge about this source
+- Compare and contrast with other sources in the user's library when relevant passages appear
+- If the user asks for something not in the retrieved passages, use your general knowledge about this book/author if you have it, and be transparent: "I don't have that specific passage loaded, but from what I know about [author]..."
+- Reference specific sections when possible: "In the passage about [topic]..."
+- The user's other books may also appear below — draw connections across sources when it enriches the conversation`;
+    } else if (isDiscussMode) {
+      manifestSection = `\n\nREFERENCE MATERIAL — Library Discussion Mode
+The user wants to explore their personal knowledge library. You have access to relevant passages from their uploaded books, articles, and notes.
+
+${context.manifestContext}
+
+INSTRUCTIONS FOR THIS MODE:
+- Draw from the retrieved passages AND your own training knowledge to give the richest possible answers
+- When multiple sources address the same topic, compare and synthesize
+- Attribute sources naturally: "From [title]..." or "There's a concept in [title] that..."
+- If the user asks about something not in the retrieved passages, use your general knowledge and note when you're going beyond their library
+- Help the user discover connections across their reading they might not have noticed
+- This is like having a well-read advisor who's read everything the user has read`;
+    } else {
+      manifestSection = `\n\nREFERENCE MATERIAL (from user's Manifest — personal knowledge base):
+${context.manifestContext}
+
+When referencing this material: paraphrase, attribute the source by title, never quote at length.`;
+    }
+
+    const manifestTokens = estimateTokens(manifestSection);
+    if (currentTokens + manifestTokens < budget) {
+      prompt += manifestSection;
+      currentTokens += manifestTokens;
+    }
+  }
+
   return prompt;
 }
 
@@ -823,6 +875,47 @@ export function shouldLoadFrameworks(
   if (pageContext === 'manifest') return true;
   const lower = message.toLowerCase();
   return FRAMEWORK_KEYWORDS.some((kw) => lower.includes(kw));
+}
+
+// --- Manifest context ---
+
+const MANIFEST_KEYWORDS = [
+  'book', 'read', 'chapter', 'author', 'framework', 'principle',
+  'according to', 'it says', 'the concept', 'the idea',
+  'what does', 'reference', 'source', 'material', 'manifest',
+  'uploaded', 'that book', 'that article', 'library',
+];
+
+export function shouldLoadManifest(
+  message: string,
+  pageContext: string,
+  guidedMode?: GuidedMode,
+): boolean {
+  if (pageContext === 'manifest') return true;
+  if (guidedMode === 'manifest_discuss') return true;
+  if (['safe_harbor', 'rigging', 'wheel', 'life_inventory'].includes(guidedMode || '')) return true;
+  const lower = message.toLowerCase();
+  return MANIFEST_KEYWORDS.some((kw) => lower.includes(kw));
+}
+
+export function formatManifestContext(
+  results: Array<{ chunk_text: string; source_title?: string }>,
+): string {
+  if (results.length === 0) return '';
+
+  // Group by source for cleaner attribution
+  const bySource = new Map<string, string[]>();
+  for (const r of results) {
+    const source = r.source_title || 'Unknown';
+    if (!bySource.has(source)) bySource.set(source, []);
+    bySource.get(source)!.push(r.chunk_text);
+  }
+
+  const sections: string[] = [];
+  for (const [source, chunks] of bySource) {
+    sections.push(`[From "${source}"]\n${chunks.join('\n---\n')}`);
+  }
+  return sections.join('\n\n');
 }
 
 export function formatFrameworksContext(

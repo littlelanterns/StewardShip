@@ -63,7 +63,6 @@ serve(async (req: Request) => {
         const arrayBuffer = await fileData.arrayBuffer();
         fullText = extractTextFromPDF(new Uint8Array(arrayBuffer));
 
-        // Save extracted text back to manifest_items
         await supabase
           .from('manifest_items')
           .update({ text_content: fullText })
@@ -76,6 +75,95 @@ serve(async (req: Request) => {
           .eq('id', manifest_item_id);
         return new Response(
           JSON.stringify({ error: `PDF processing failed: ${(pdfErr as Error).message}` }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+    } else if ((item.file_type === 'txt' || item.file_type === 'md') && item.storage_path) {
+      // TXT and MD: direct text read
+      try {
+        const { data: fileData, error: downloadErr } = await supabase
+          .storage
+          .from('manifest-files')
+          .download(item.storage_path);
+
+        if (downloadErr || !fileData) {
+          throw new Error(`Failed to download file: ${downloadErr?.message}`);
+        }
+
+        fullText = await fileData.text();
+
+        await supabase
+          .from('manifest_items')
+          .update({ text_content: fullText })
+          .eq('id', manifest_item_id);
+      } catch (txtErr) {
+        console.error('Text extraction failed:', txtErr);
+        await supabase
+          .from('manifest_items')
+          .update({ processing_status: 'failed' })
+          .eq('id', manifest_item_id);
+        return new Response(
+          JSON.stringify({ error: `Text processing failed: ${(txtErr as Error).message}` }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+    } else if (item.file_type === 'epub' && item.storage_path) {
+      // EPUB: ZIP → OPF spine order → XHTML content → stripped HTML
+      try {
+        const { data: fileData, error: downloadErr } = await supabase
+          .storage
+          .from('manifest-files')
+          .download(item.storage_path);
+
+        if (downloadErr || !fileData) {
+          throw new Error(`Failed to download EPUB: ${downloadErr?.message}`);
+        }
+
+        const arrayBuffer = await fileData.arrayBuffer();
+        fullText = await extractTextFromEPUB(new Uint8Array(arrayBuffer));
+
+        await supabase
+          .from('manifest_items')
+          .update({ text_content: fullText })
+          .eq('id', manifest_item_id);
+      } catch (epubErr) {
+        console.error('EPUB extraction failed:', epubErr);
+        await supabase
+          .from('manifest_items')
+          .update({ processing_status: 'failed' })
+          .eq('id', manifest_item_id);
+        return new Response(
+          JSON.stringify({ error: `EPUB processing failed: ${(epubErr as Error).message}` }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+    } else if (item.file_type === 'docx' && item.storage_path) {
+      // DOCX: ZIP → word/document.xml → w:t text runs
+      try {
+        const { data: fileData, error: downloadErr } = await supabase
+          .storage
+          .from('manifest-files')
+          .download(item.storage_path);
+
+        if (downloadErr || !fileData) {
+          throw new Error(`Failed to download DOCX: ${downloadErr?.message}`);
+        }
+
+        const arrayBuffer = await fileData.arrayBuffer();
+        fullText = await extractTextFromDOCX(new Uint8Array(arrayBuffer));
+
+        await supabase
+          .from('manifest_items')
+          .update({ text_content: fullText })
+          .eq('id', manifest_item_id);
+      } catch (docxErr) {
+        console.error('DOCX extraction failed:', docxErr);
+        await supabase
+          .from('manifest_items')
+          .update({ processing_status: 'failed' })
+          .eq('id', manifest_item_id);
+        return new Response(
+          JSON.stringify({ error: `DOCX processing failed: ${(docxErr as Error).message}` }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         );
       }
@@ -317,4 +405,161 @@ function decodePDFString(str: string): string {
     .replace(/\\\(/g, '(')
     .replace(/\\\)/g, ')')
     .replace(/\\\\/g, '\\');
+}
+
+/**
+ * Extract text from EPUB files.
+ * EPUBs are ZIP archives containing XHTML content files.
+ * Reads the OPF manifest/spine to extract content in reading order.
+ */
+async function extractTextFromEPUB(bytes: Uint8Array): Promise<string> {
+  const { unzipSync } = await import('https://esm.sh/fflate@0.8.2');
+  const files = unzipSync(bytes);
+
+  // Find the container.xml to locate the OPF file
+  const containerBytes = files['META-INF/container.xml'];
+  if (!containerBytes) {
+    throw new Error('Invalid EPUB: no META-INF/container.xml');
+  }
+
+  const containerXml = new TextDecoder().decode(containerBytes);
+  const opfPathMatch = containerXml.match(/full-path="([^"]+)"/);
+  const opfPath = opfPathMatch?.[1] || '';
+
+  if (!opfPath || !files[opfPath]) {
+    throw new Error('Invalid EPUB: cannot locate OPF file');
+  }
+
+  // Read the OPF to find content files in reading order
+  const opfContent = new TextDecoder().decode(files[opfPath]);
+  const opfDir = opfPath.substring(0, opfPath.lastIndexOf('/') + 1);
+
+  // Extract manifest items (id → href mapping for XHTML content)
+  const manifestItems = new Map<string, string>();
+  const itemRegex = /<item\s+([^>]*)\/?\s*>/g;
+  let match;
+
+  while ((match = itemRegex.exec(opfContent)) !== null) {
+    const attrs = match[1];
+    const idMatch = attrs.match(/id="([^"]+)"/);
+    const hrefMatch = attrs.match(/href="([^"]+)"/);
+    const typeMatch = attrs.match(/media-type="([^"]+)"/);
+
+    if (idMatch && hrefMatch && typeMatch) {
+      const mediaType = typeMatch[1];
+      if (mediaType === 'application/xhtml+xml' || mediaType === 'text/html') {
+        manifestItems.set(idMatch[1], hrefMatch[1]);
+      }
+    }
+  }
+
+  // Extract spine order (reading order)
+  const spineRegex = /<itemref\s+idref="([^"]+)"[^>]*\/?>/g;
+  const spineOrder: string[] = [];
+  while ((match = spineRegex.exec(opfContent)) !== null) {
+    spineOrder.push(match[1]);
+  }
+
+  // Read each content file in spine order, extract text
+  const textParts: string[] = [];
+
+  for (const itemId of spineOrder) {
+    const href = manifestItems.get(itemId);
+    if (!href) continue;
+
+    // Resolve href relative to OPF directory, handling URL-encoded paths
+    const filePath = opfDir + decodeURIComponent(href);
+    const fileBytes = files[filePath];
+    if (!fileBytes) continue;
+
+    const html = new TextDecoder().decode(fileBytes);
+    const text = stripHtmlTags(html);
+    if (text.trim().length > 0) {
+      textParts.push(text.trim());
+    }
+  }
+
+  // Fallback: if spine parsing failed, read all XHTML files alphabetically
+  if (textParts.length === 0) {
+    const xhtmlPaths = Object.keys(files)
+      .filter((p) => p.endsWith('.xhtml') || p.endsWith('.html') || p.endsWith('.htm'))
+      .sort();
+
+    for (const path of xhtmlPaths) {
+      const html = new TextDecoder().decode(files[path]);
+      const text = stripHtmlTags(html);
+      if (text.trim().length > 50) {
+        textParts.push(text.trim());
+      }
+    }
+  }
+
+  return textParts.join('\n\n---\n\n');
+}
+
+/**
+ * Extract text from DOCX files.
+ * DOCX files are ZIP archives. Main content is in word/document.xml.
+ * Extracts text from <w:t> tags (Word text runs), preserving paragraph structure.
+ */
+async function extractTextFromDOCX(bytes: Uint8Array): Promise<string> {
+  const { unzipSync } = await import('https://esm.sh/fflate@0.8.2');
+  const files = unzipSync(bytes);
+
+  const documentXml = files['word/document.xml'];
+  if (!documentXml) {
+    throw new Error('Invalid DOCX: no word/document.xml found');
+  }
+
+  const xml = new TextDecoder().decode(documentXml);
+
+  // Extract text from <w:t> tags within <w:p> paragraphs
+  const textParts: string[] = [];
+
+  // Split by paragraphs (<w:p> elements)
+  const paragraphs = xml.split(/<w:p[ >]/);
+
+  for (const para of paragraphs) {
+    // Extract all text runs within this paragraph
+    const textRunRegex = /<w:t[^>]*>([^<]*)<\/w:t>/g;
+    let runMatch;
+    const paraText: string[] = [];
+
+    while ((runMatch = textRunRegex.exec(para)) !== null) {
+      paraText.push(runMatch[1]);
+    }
+
+    if (paraText.length > 0) {
+      textParts.push(paraText.join(''));
+    }
+  }
+
+  return textParts.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+/**
+ * Strip HTML tags from content, preserving basic text structure.
+ * Used for EPUB XHTML content extraction.
+ */
+function stripHtmlTags(html: string): string {
+  return html
+    // Remove script and style blocks entirely
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    // Convert paragraphs and headings to newlines
+    .replace(/<\/?(p|div|br|h[1-6]|li|tr)[^>]*>/gi, '\n')
+    // Remove all remaining tags
+    .replace(/<[^>]+>/g, '')
+    // Decode common HTML entities
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&#x27;/g, "'")
+    .replace(/&#(\d+);/g, (_m, code) => String.fromCharCode(parseInt(code, 10)))
+    // Clean up whitespace
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }

@@ -118,7 +118,14 @@ export function ReveilleScreen() {
           </div>
         )}
 
-        {/* Section 3: Morning Reading — stub until Manifest (PRD-15) is built */}
+        {/* Section 3: Morning Reading from Manifest */}
+        {reveilleData.manifestReading && (
+          <div className="manifest-reading">
+            <div className="manifest-reading__label">From Your Library</div>
+            <div className="manifest-reading__text">{reveilleData.manifestReading.text}</div>
+            <div className="manifest-reading__source">{reveilleData.manifestReading.source}</div>
+          </div>
+        )}
 
         {/* Section 4: Today's Priorities */}
         {hasTasks && (

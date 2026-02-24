@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
-import type { MastEntry, KeelEntry, LogEntry, Victory, CompassTask, GuidedMode, HelmMessage, WheelInstance, LifeInventoryArea, RiggingPlan, Person, SpouseInsight, SphereEntity } from './types';
+import type { MastEntry, KeelEntry, LogEntry, Victory, CompassTask, GuidedMode, HelmMessage, WheelInstance, LifeInventoryArea, RiggingPlan, Person, SpouseInsight, SphereEntity, ManifestSearchResult } from './types';
 import { SPOKE_LABELS, PLANNING_FRAMEWORK_LABELS } from './types';
+import { searchManifest } from './rag';
 import {
   shouldLoadKeel,
   shouldLoadLog,
@@ -17,11 +18,14 @@ import {
   shouldLoadCrew,
   shouldLoadSphere,
   shouldLoadFrameworks,
+  shouldLoadManifest,
   formatFirstMateContext,
   formatCrewContext,
   formatSphereContext,
   formatFrameworksContext,
+  formatManifestContext,
   type SystemPromptContext,
+  type GuidedModeContext,
 } from './systemPrompt';
 
 interface LoadContextOptions {
@@ -29,6 +33,7 @@ interface LoadContextOptions {
   pageContext: string;
   userId: string;
   guidedMode?: GuidedMode;
+  guidedModeContext?: GuidedModeContext;
   conversationHistory: HelmMessage[];
   contextBudget?: 'short' | 'medium' | 'long';
 }
@@ -39,6 +44,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     pageContext,
     userId,
     guidedMode,
+    guidedModeContext,
     conversationHistory,
     contextBudget = 'medium',
   } = options;
@@ -77,6 +83,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
   const needCrew = shouldLoadCrew(message, pageContext, guidedMode);
   const needSphere = shouldLoadSphere(message, pageContext);
   const needFrameworks = shouldLoadFrameworks(message, pageContext, guidedMode);
+  const needManifest = shouldLoadManifest(message, pageContext, guidedMode);
 
   let keelEntries: KeelEntry[] | undefined;
   let recentLogEntries: LogEntry[] | undefined;
@@ -93,6 +100,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
   let crewContext: string | undefined;
   let sphereContext: string | undefined;
   let frameworksContext: string | undefined;
+  let manifestContext: string | undefined;
 
   // Fetch conditional data in parallel
   const keelPromise = needKeel
@@ -221,7 +229,41 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
         .is('archived_at', null)
     : null;
 
-  const [keelResult, logResult, compassResult, victoriesResult, wheelResult, lifeInvResult, riggingResult, firstMateResult, spouseInsightsResult, crewResult, sphereEntitiesResult, frameworksResult] = await Promise.all([
+  // Manifest RAG search — depth varies by mode
+  const isManifestDiscuss = guidedMode === 'manifest_discuss';
+  let manifestPromise: Promise<ManifestSearchResult[]> | null = null;
+
+  if (needManifest && message.trim()) {
+    if (isManifestDiscuss && guidedModeContext?.manifest_item_id) {
+      // "Discuss This" mode: 8 chunks from specific item + 3 from other sources
+      manifestPromise = Promise.all([
+        searchManifest(message, userId, {
+          matchCount: 8,
+          matchThreshold: 0.5,
+          manifestItemId: guidedModeContext.manifest_item_id,
+        }),
+        searchManifest(message, userId, {
+          matchCount: 3,
+          matchThreshold: 0.6,
+          excludeItemId: guidedModeContext.manifest_item_id,
+        }),
+      ]).then(([focused, broader]) => [...focused, ...broader]);
+    } else if (isManifestDiscuss) {
+      // "Ask Your Library" mode: 10 from entire library
+      manifestPromise = searchManifest(message, userId, {
+        matchCount: 10,
+        matchThreshold: 0.5,
+      });
+    } else {
+      // Standard RAG: 3-5 from library, higher threshold
+      manifestPromise = searchManifest(message, userId, {
+        matchCount: 5,
+        matchThreshold: 0.7,
+      });
+    }
+  }
+
+  const [keelResult, logResult, compassResult, victoriesResult, wheelResult, lifeInvResult, riggingResult, firstMateResult, spouseInsightsResult, crewResult, sphereEntitiesResult, frameworksResult, manifestResults] = await Promise.all([
     keelPromise,
     logPromise,
     compassPromise,
@@ -234,6 +276,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     crewPromise,
     sphereEntitiesPromise,
     frameworksPromise,
+    manifestPromise,
   ]);
 
   if (keelResult?.data) {
@@ -285,6 +328,11 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     );
   }
 
+  // Manifest RAG context
+  if (manifestResults && manifestResults.length > 0) {
+    manifestContext = formatManifestContext(manifestResults);
+  }
+
   // Charts context — aggregated summary
   if (needCharts || needDashboard) {
     chartsContext = await buildChartsContext(userId, today);
@@ -326,8 +374,10 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     crewContext,
     sphereContext,
     frameworksContext,
+    manifestContext,
     pageContext,
     guidedMode: guidedMode || null,
+    guidedModeContext,
     conversationHistory,
     contextBudget,
   };

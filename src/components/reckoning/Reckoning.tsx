@@ -528,6 +528,15 @@ export function ReckoningScreen() {
           </div>
         )}
 
+        {/* Manifest reading — evening devotional */}
+        {reckoningData.manifestReading && (
+          <div className="manifest-reading">
+            <div className="manifest-reading__label">From Your Library</div>
+            <div className="manifest-reading__text">{reckoningData.manifestReading.text}</div>
+            <div className="manifest-reading__source">{reckoningData.manifestReading.source}</div>
+          </div>
+        )}
+
         {/* Section 7: Prompted Entries */}
         {hasPrompts && (
           <div className="rhythm-section">

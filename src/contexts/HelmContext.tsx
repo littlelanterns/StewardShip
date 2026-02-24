@@ -53,6 +53,8 @@ function getGuidedModeOpeningMessage(mode: GuidedMode): string | null {
       return "Let's put together a plan. Tell me about what you're working toward — a goal, a project, something you want to accomplish. I'll help you think through it and build a plan you can actually follow.\n\nWhat are you planning?";
     case 'safe_harbor':
       return "I'm here. What's going on?";
+    case 'manifest_discuss':
+      return null; // Opening message varies — set by caller based on specific item vs library
     default:
       return null;
   }
@@ -136,11 +138,22 @@ export function HelmProvider({ children }: { children: ReactNode }) {
       .find((m) => m.role === 'user');
     const messageText = lastUserMessage?.content || '';
 
+    // Build guided mode context for Manifest discuss mode
+    const activeConvo = helmData.activeConversation;
+    let gmContext: { manifest_item_id?: string; manifest_item_title?: string } | undefined;
+    if (activeConvo?.guided_mode === 'manifest_discuss' && activeConvo.guided_mode_reference_id) {
+      gmContext = {
+        manifest_item_id: activeConvo.guided_mode_reference_id,
+        manifest_item_title: activeConvo.title || undefined,
+      };
+    }
+
     const context = await loadContext({
       message: messageText,
       pageContext: pageContext.page,
       userId: user.id,
-      guidedMode: helmData.activeConversation?.guided_mode,
+      guidedMode: activeConvo?.guided_mode,
+      guidedModeContext: gmContext,
       conversationHistory: messagesForContext,
     });
 
@@ -158,7 +171,7 @@ export function HelmProvider({ children }: { children: ReactNode }) {
 
     const guidedMode = helmData.activeConversation?.guided_mode;
     return await sendChatMessage(systemPrompt, apiMessages, 0, user.id, guidedMode);
-  }, [user, pageContext.page, helmData.activeConversation?.guided_mode]);
+  }, [user, pageContext.page, helmData.activeConversation?.guided_mode, helmData.activeConversation?.guided_mode_reference_id, helmData.activeConversation?.title]);
 
   const sendMessage = useCallback(async (content: string) => {
     if (!content.trim() || !user) return;
