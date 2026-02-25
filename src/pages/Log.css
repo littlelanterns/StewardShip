@@ -6,6 +6,31 @@
   margin-bottom: var(--spacing-sm);
 }
 
+.log-page__header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.log-page__export-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--touch-target-min);
+  height: var(--touch-target-min);
+  color: var(--color-text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.log-page__export-btn:hover {
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-secondary);
+}
+
 .log-page__title {
   font-family: var(--font-heading);
   font-size: var(--font-size-xl);

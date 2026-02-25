@@ -1,4 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { Download } from 'lucide-react';
 import { usePageContext } from '../hooks/usePageContext';
 import { useLog } from '../hooks/useLog';
 import type { LogFilters, LogEntryType, LogEntry } from '../lib/types';
@@ -8,6 +10,7 @@ import LogEntryCard from '../components/log/LogEntryCard';
 import CreateEntry from '../components/log/CreateEntry';
 import EntryDetail from '../components/log/EntryDetail';
 import LogArchivedView from '../components/log/LogArchivedView';
+import JournalExportModal from '../components/log/JournalExportModal';
 import './Log.css';
 
 type LogView = 'list' | 'create' | 'detail' | 'archived';
@@ -44,9 +47,19 @@ export default function Log() {
     setSelectedEntry,
   } = useLog();
 
+  const [searchParams, setSearchParams] = useSearchParams();
   const [view, setView] = useState<LogView>('list');
   const [filters, setFilters] = useState<LogFilters>(DEFAULT_FILTERS);
   const [createType, setCreateType] = useState<LogEntryType | undefined>(undefined);
+  const [showExportModal, setShowExportModal] = useState(false);
+
+  // Auto-open export modal from deep link (?export=true)
+  useEffect(() => {
+    if (searchParams.get('export') === 'true') {
+      setShowExportModal(true);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   // Load entries on mount and when filters change
   useEffect(() => {
@@ -126,8 +139,21 @@ export default function Log() {
   return (
     <div className="page log-page">
       <div className="log-page__header">
-        <h1 className="log-page__title">The Log</h1>
-        <p className="log-page__subtitle">A record of the voyage.</p>
+        <div className="log-page__header-row">
+          <div>
+            <h1 className="log-page__title">The Log</h1>
+            <p className="log-page__subtitle">A record of the voyage.</p>
+          </div>
+          <button
+            type="button"
+            className="log-page__export-btn"
+            onClick={() => setShowExportModal(true)}
+            aria-label="Export journal as PDF"
+            title="Export as PDF"
+          >
+            <Download size={20} strokeWidth={1.5} />
+          </button>
+        </div>
       </div>
 
       <LogFilterBar filters={filters} onFiltersChange={setFilters} />
@@ -172,6 +198,11 @@ export default function Log() {
       </div>
 
       <FloatingActionButton onClick={handleCreate} aria-label="New Entry">+</FloatingActionButton>
+
+      <JournalExportModal
+        open={showExportModal}
+        onClose={() => setShowExportModal(false)}
+      />
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../shared';
 
 interface DataPrivacySectionProps {
@@ -10,6 +11,7 @@ export function DataPrivacySection({
   onExportAllData,
   onDownloadBlob,
 }: DataPrivacySectionProps) {
+  const navigate = useNavigate();
   const [exporting, setExporting] = useState(false);
   const [exportDone, setExportDone] = useState(false);
   const [exportError, setExportError] = useState('');
@@ -47,6 +49,17 @@ export function DataPrivacySection({
         {exportError && (
           <div className="settings-field__error">{exportError}</div>
         )}
+      </div>
+
+      {/* Export Journal as PDF */}
+      <div className="settings-field">
+        <label className="settings-field__label">Export Journal as PDF</label>
+        <p className="settings-field__description">
+          Generate a printable PDF of your journal entries with date range and type filters.
+        </p>
+        <Button variant="secondary" onClick={() => navigate('/log?export=true')}>
+          Export Journal
+        </Button>
       </div>
 
       {/* Data Storage Info */}
