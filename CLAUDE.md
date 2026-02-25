@@ -1,7 +1,7 @@
 # CLAUDE.md — StewardShip Project Instructions
 
 > This is a living document. It grows as PRDs are written and development progresses.
-> Last updated: February 2026 — Phase 11B (Voice-to-Text / Whisper Integration) built.
+> Last updated: February 2026 — Phase 11E (Guided Helm Modal) built.
 
 ---
 
@@ -237,6 +237,7 @@ type HelmPageContext =
 - **Topic detection:** AI scans user message for signals — crew member names, relationship words, emotion/stress words, goal/progress words, task words, faith/spiritual words, work/career words — and loads corresponding context automatically. User never manually selects a mode.
 - **Guided mode rules:** Only one guided mode active at a time. Can pause and resume across sessions and devices. Progress saved incrementally per step (each Wheel spoke, each Life Inventory area, each Rigging milestone saves to DB as completed). On return, AI detects in-progress guided mode and offers to resume with summary of completed steps.
 - **Guided modes available:** `'wheel'`, `'life_inventory'`, `'rigging'`, `'declaration'`, `'self_discovery'`, `'meeting'`, `'first_mate_action'` (with `guided_subtype`), `'safe_harbor'`, `'unload_the_hold'`, `'manifest_discuss'`, `null` (free-form default).
+- **Guided Helm Modal (Phase 11E):** All guided conversations open in a modal overlay (`GuidedHelmModal` component) instead of navigating to `/helm`. `startGuidedConversation()` auto-opens the modal via `setGuidedModalOpen(true)` in HelmContext. Callers no longer need `navigate('/helm')` or `expandDrawer()`. Modal: z-index 200, 90vh mobile / 85vh desktop, max-width 600px, slide-up animation, close via X/Escape/backdrop. "Expand to Full Page" button navigates to /helm. Unload the Hold triage (Review & Route + TriageReview) renders within the modal.
 - **Unload the Hold mode** (`guided_mode = 'unload_the_hold'`): Brain dump conversation. AI adapts engagement to the dump — just listens for straightforward items, offers clarifying questions for messy/emotional content (always offers, never imposes). When user signals completion, AI calls the triage Edge Function, presents a conversational summary, then "Review & Route" button opens structured triage screen. After routing, AI confirms and checks in warmly.
 - **Voice input flow:** Record → Whisper transcription → transcribed text appears in input field for editing → user taps send manually. Never auto-send transcribed text.
 - **Conversation storage:** Messages saved to Supabase database as sent/received (not batched or deferred). Local React state for UI responsiveness only — database is source of truth. On app open or refresh, active conversation loaded from DB.
@@ -311,7 +312,7 @@ Build the routing selector as a shared component that can be reused.
 - **AI context from Log:** Last 7 days, top 10 entries, ~200 char truncation per entry. Loaded when user references recent events, Helm opened from Log page, during Reckoning, during reviews, or when AI detects relevant context.
 - **Search:** PostgreSQL built-in full-text search on `text` column. Separate filter controls for entry type, life area tags, and date range.
 - **Archive pattern:** Same as Mast/Keel — `archived_at` timestamp, archived view, restore option. No hard deletes.
-- **Printable export:** Post-MVP. Date range selection, type filtering, PDF/DOCX output with StewardShip branding. Generated server-side or client-side.
+- **Printable export:** Built (Phase 11D). jsPDF client-side PDF generation with date-range/type/life-area filters, nautical title page, date-grouped entries. Accessible from Log page (Download button) and Settings > Data & Privacy. Deep link: `/log?export=true`.
 - **One table:** `log_entries` with entry type enum, life area TEXT[] tags, source tracking, routing tracking, and optional relationships to wheels and meetings.
 
 ---
@@ -987,7 +988,7 @@ _This section collects things still needed. Check items off as they're addressed
 - [ ] Remaining onboarding steps (1-2, 5-7)
 - [x] Notification/push infrastructure details → built in Phase 10B
 - [ ] Google Calendar OAuth flow (post-launch)
-- [ ] Printable journal export implementation details
+- [x] Printable journal export implementation details → built in Phase 11D
 - [x] RAG pipeline: 500-1000 token chunks, ~100 token overlap, OpenAI ada-002 embeddings (1536 dim), top-5 default, 0.7 similarity threshold
 - [x] Cost optimization: Haiku default for chat, Sonnet for guided modes, conversation windowing, conditional framework loading
 

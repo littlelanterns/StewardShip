@@ -1155,9 +1155,11 @@ Every AI interaction includes these context layers (loaded dynamically based on 
 ### Phase 11: Polish
 29. **Stub Wiring** (spouse prompts in Reveille, Log full-text search, AI routing suggestions, Crow's Nest reminders) — **Phase 11A BUILT** ✅
 30. **Voice Input** (Whisper transcription for Helm + Log, VoiceRecordButton shared component, whisper-transcribe Edge Function) — **Phase 11B BUILT** ✅
-31. Printable Journal Export
-32. Cost tracking dashboard
-33. Google Calendar integration (post-launch)
+31. **Gender Dropdown Fix** (removed non_binary/other, kept male/female/prefer_not_to_say) — **Phase 11C BUILT** ✅
+32. **Printable Journal Export** (jsPDF client-side, date/type/life-area filters, Log Download button, Settings deep link) — **Phase 11D BUILT** ✅
+33. **Guided Helm Modal** (all guided conversations open in modal overlay instead of navigating to /helm, GuidedHelmModal component, HelmContext auto-open, 14 entry points rewired, UTH triage within modal) — **Phase 11E BUILT** ✅
+34. Cost tracking dashboard
+35. Google Calendar integration (post-launch)
 
 ---
 

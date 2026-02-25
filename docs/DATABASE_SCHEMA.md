@@ -31,7 +31,7 @@
 | display_name | TEXT | | NOT NULL | User's preferred name for AI greetings |
 | timezone | TEXT | 'America/Chicago' | NOT NULL | IANA timezone string |
 | onboarding_completed | BOOLEAN | false | NOT NULL | Set true after onboarding finishes |
-| gender | TEXT | null | NULL | Enum: 'male', 'female', 'non_binary', 'prefer_not_to_say'. Set during onboarding or Settings. |
+| gender | TEXT | null | NULL | Enum: 'male', 'female', 'prefer_not_to_say'. Set during onboarding or Settings. |
 | relationship_status | TEXT | null | NULL | Enum: 'single', 'dating', 'married', 'divorced', 'widowed'. Set during onboarding or Settings. |
 | created_at | TIMESTAMPTZ | now() | NOT NULL | |
 | updated_at | TIMESTAMPTZ | now() | NOT NULL | Auto-trigger |
