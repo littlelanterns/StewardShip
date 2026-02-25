@@ -136,6 +136,8 @@ export function useFirstMate() {
     source_type?: SpouseInsightSourceType;
     source_label?: string;
     source_reference_id?: string;
+    file_storage_path?: string;
+    is_rag_indexed?: boolean;
   }): Promise<SpouseInsight | null> => {
     if (!user || !spouse) return null;
     setError(null);
@@ -150,7 +152,8 @@ export function useFirstMate() {
           source_type: data.source_type || 'manual',
           source_label: data.source_label || null,
           source_reference_id: data.source_reference_id || null,
-          is_rag_indexed: false,
+          is_rag_indexed: data.is_rag_indexed || false,
+          file_storage_path: data.file_storage_path || null,
         })
         .select()
         .single();
