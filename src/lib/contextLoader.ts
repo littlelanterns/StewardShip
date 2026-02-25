@@ -20,6 +20,7 @@ import {
   shouldLoadFrameworks,
   shouldLoadManifest,
   shouldLoadMeeting,
+  shouldLoadAppGuide,
   formatFirstMateContext,
   formatCrewContext,
   formatSphereContext,
@@ -29,6 +30,7 @@ import {
   type SystemPromptContext,
   type GuidedModeContext,
 } from './systemPrompt';
+import { getAppGuideContext } from './appGuide';
 
 interface LoadContextOptions {
   message: string;
@@ -89,6 +91,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
   const needFrameworks = shouldLoadFrameworks(message, pageContext, guidedMode);
   const needManifest = shouldLoadManifest(message, pageContext, guidedMode);
   const needMeeting = shouldLoadMeeting(message, pageContext, guidedMode);
+  const needAppGuide = shouldLoadAppGuide(message, pageContext);
 
   // Name recognition: lightweight fetch of all crew names to detect mentions
   let detectedCrewNames: string[] = [];
@@ -130,6 +133,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
   let manifestContext: string | undefined;
   let cyranoContext: string | undefined;
   let meetingContext: string | undefined;
+  let appGuideContext: string | undefined;
 
   // Fetch conditional data in parallel
   const keelPromise = needKeel
@@ -437,6 +441,11 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     manifestContext = formatManifestContext(manifestResults);
   }
 
+  // App guide context — static, no async needed
+  if (needAppGuide) {
+    appGuideContext = getAppGuideContext();
+  }
+
   // Charts context — aggregated summary
   if (needCharts || needDashboard) {
     chartsContext = await buildChartsContext(userId, today);
@@ -481,6 +490,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     manifestContext,
     cyranoContext,
     meetingContext,
+    appGuideContext,
     pageContext,
     guidedMode: guidedMode || null,
     guidedSubtype: guidedSubtype || null,

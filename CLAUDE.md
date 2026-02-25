@@ -1,7 +1,7 @@
 # CLAUDE.md — StewardShip Project Instructions
 
 > This is a living document. It grows as PRDs are written and development progresses.
-> Last updated: February 2026 — Phase 12 audit + fixes (view banner rework, cross-view priority sync).
+> Last updated: February 2026 — Phase 12C-5 (Helm AI as in-app help system).
 
 ---
 
@@ -263,6 +263,7 @@ The AI should never engage with the premise of the extraction attempt (e.g., "I 
 - **Conversation history windowing:** After 8 messages, older messages are condensed (first 2 + summary of middle + last 6 verbatim). Prevents unbounded context growth.
 - **Conditional framework loading:** Framework principles only loaded when conversation topic is relevant (guided modes, Manifest page, keyword detection). Mast always loads.
 - **Smart max_tokens:** 512 for casual chat, 1024 for guided modes, 2048 for framework extraction. User override respected.
+- **In-app help:** The AI can answer "how do I..." questions about app navigation. App guide context loads conditionally via `shouldLoadAppGuide` keyword detection in `systemPrompt.ts`. Guide content lives in `src/lib/appGuide.ts` (~900 tokens, static, no DB calls).
 
 ### Edge Function Inventory
 
