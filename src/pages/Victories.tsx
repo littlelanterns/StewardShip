@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Plus, BookOpen } from 'lucide-react';
 import { usePageContext } from '../hooks/usePageContext';
 import { useVictories, type VictoryTimePeriod } from '../hooks/useVictories';
@@ -23,6 +24,7 @@ const PERIOD_LABELS: Record<VictoryTimePeriod, string> = {
 
 export default function Victories() {
   usePageContext({ page: 'victories' });
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, profile } = useAuthContext();
   const {
     victories,
@@ -39,6 +41,18 @@ export default function Victories() {
   const [showRecord, setShowRecord] = useState(false);
   const [showReview, setShowReview] = useState(false);
   const [mastEntries, setMastEntries] = useState<MastEntry[]>([]);
+  const [prefillData, setPrefillData] = useState<{ description: string; source: string } | null>(null);
+
+  // Handle prefill query params from other pages (Rigging, Goals, etc.)
+  useEffect(() => {
+    const prefill = searchParams.get('prefill');
+    const source = searchParams.get('source');
+    if (prefill) {
+      setPrefillData({ description: prefill, source: source || 'manual' });
+      setShowRecord(true);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     fetchVictories(period, lifeAreaFilter);
@@ -155,8 +169,12 @@ export default function Victories() {
 
       {showRecord && (
         <RecordVictory
+          prefill={prefillData ? {
+            description: prefillData.description,
+            source: prefillData.source as import('../lib/types').VictorySource,
+          } : undefined}
           onSave={handleSaveVictory}
-          onClose={() => setShowRecord(false)}
+          onClose={() => { setShowRecord(false); setPrefillData(null); }}
         />
       )}
 

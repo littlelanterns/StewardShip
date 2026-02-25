@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { usePageContext } from '../hooks/usePageContext';
 import { useRigging } from '../hooks/useRigging';
 import { useHelmContext } from '../contexts/HelmContext';
@@ -56,10 +57,12 @@ export default function Rigging() {
     setSelectedPlan,
   } = useRigging();
 
+  const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('active');
   const [sortBy, setSortBy] = useState<SortBy>('updated');
   const [fabExpanded, setFabExpanded] = useState(false);
+  const [victoryPrompt, setVictoryPrompt] = useState<string | null>(null);
 
   useEffect(() => {
     fetchPlans();
@@ -95,9 +98,13 @@ export default function Rigging() {
   }, [startGuidedConversation]);
 
   const handleCompletePlan = useCallback(async (id: string) => {
+    const plan = plans.find((p) => p.id === id) || selectedPlan;
     await completePlan(id);
+    if (plan) {
+      setVictoryPrompt(plan.title);
+    }
     handleBack();
-  }, [completePlan, handleBack]);
+  }, [completePlan, handleBack, plans, selectedPlan]);
 
   const handleArchivePlan = useCallback(async (id: string) => {
     await archivePlan(id);
@@ -166,6 +173,31 @@ export default function Rigging() {
       <h1 className="rigging-page__title">Rigging</h1>
 
       <FeatureGuide {...FEATURE_GUIDES.rigging} />
+
+      {victoryPrompt && (
+        <div className="victory-suggestion-banner">
+          <p>Plan completed! Record this as a victory?</p>
+          <div className="victory-suggestion-banner__actions">
+            <button
+              type="button"
+              className="victory-suggestion-banner__yes"
+              onClick={() => {
+                navigate(`/victories?prefill=${encodeURIComponent(victoryPrompt)}&source=rigging_plan`);
+                setVictoryPrompt(null);
+              }}
+            >
+              Yes
+            </button>
+            <button
+              type="button"
+              className="victory-suggestion-banner__no"
+              onClick={() => setVictoryPrompt(null)}
+            >
+              Not now
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Filter and sort bar */}
       <div className="rigging-page__controls">

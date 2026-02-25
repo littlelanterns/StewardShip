@@ -208,6 +208,7 @@ export function ReckoningScreen() {
   const hasTrackers = reckoningData.trackers.length > 0;
   const hasPrompts = reckoningData.promptsDue.gratitude || reckoningData.promptsDue.joy || reckoningData.promptsDue.anticipation;
   const hasMeetings = reckoningData.completedMeetings.length > 0;
+  const hasMilestones = reckoningData.milestones && reckoningData.milestones.length > 0;
 
   // Accomplishment display
   const visibleAccomplishments = showAllAccomplishments
@@ -298,6 +299,20 @@ export function ReckoningScreen() {
                 );
               })}
             </div>
+          </div>
+        )}
+
+        {/* Section 2c: Milestone Celebrations */}
+        {hasMilestones && (
+          <div className="milestone-celebration-card">
+            <h3 className="milestone-celebration-card__title">Milestones Reached</h3>
+            <ul className="milestone-celebration-card__list">
+              {reckoningData.milestones.map((m, idx) => (
+                <li key={idx} className="milestone-celebration-card__item">
+                  {m.title} — {m.detail}
+                </li>
+              ))}
+            </ul>
           </div>
         )}
 

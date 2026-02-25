@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { X, Trash2, Plus } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useGoals } from '../../hooks/useGoals';
@@ -54,10 +55,13 @@ export function GoalDetail({ goal, onClose, onUpdated }: GoalDetailProps) {
     onClose();
   };
 
+  const navigate = useNavigate();
+  const [victoryPrompt, setVictoryPrompt] = useState(false);
+
   const handleComplete = async () => {
     await updateGoal(goal.id, { status: 'completed' });
     onUpdated?.();
-    onClose();
+    setVictoryPrompt(true);
   };
 
   // Simple progress line data (just current point — future: historical data)
@@ -172,7 +176,32 @@ export function GoalDetail({ goal, onClose, onUpdated }: GoalDetailProps) {
           )}
         </div>
 
-        {!editing && (
+        {!editing && victoryPrompt ? (
+          <div className="chart-modal__footer" style={{ flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
+            <div className="victory-suggestion-banner" style={{ marginBottom: 0 }}>
+              <p>Goal achieved! Record this as a victory?</p>
+              <div className="victory-suggestion-banner__actions">
+                <button
+                  type="button"
+                  className="victory-suggestion-banner__yes"
+                  onClick={() => {
+                    navigate(`/victories?prefill=${encodeURIComponent(goal.title)}&source=goal_completion`);
+                    onClose();
+                  }}
+                >
+                  Yes
+                </button>
+                <button
+                  type="button"
+                  className="victory-suggestion-banner__no"
+                  onClick={onClose}
+                >
+                  Not now
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : !editing && (
           <div className="chart-modal__footer">
             <button type="button" className="chart-btn chart-btn--secondary" onClick={() => setEditing(true)}>
               Edit

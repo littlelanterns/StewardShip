@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -180,6 +180,10 @@ export default function Compass() {
   const [placementLoading, setPlacementLoading] = useState(false);
   const placementDone = useRef<Set<CompassView>>(new Set());
 
+  // View suggestion state (heuristic-based)
+  const [viewSuggestion, setViewSuggestion] = useState<{ text: string; view: CompassView } | null>(null);
+  const viewSuggestionShown = useRef(false);
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -237,6 +241,35 @@ export default function Compass() {
       return next;
     });
   }, [subtaskMap, fetchSubtasks]);
+
+  // Heuristic view suggestion (once per session)
+  useEffect(() => {
+    if (viewSuggestionShown.current) return;
+    if (currentView !== 'simple_list') return;
+    if (loading || tasks.length === 0) return;
+
+    const pending = tasks.filter((t) => t.status === 'pending' && !t.parent_task_id);
+    if (pending.length < 4) return; // Too few tasks — no suggestion needed
+
+    viewSuggestionShown.current = true;
+
+    if (pending.length >= 10) {
+      setViewSuggestion({
+        text: `You have ${pending.length} tasks. Try the Eisenhower view to sort by urgency and importance.`,
+        view: 'eisenhower',
+      });
+    } else if (pending.length >= 7) {
+      setViewSuggestion({
+        text: `With ${pending.length} tasks, the 1/3/9 view can help you focus on what matters most.`,
+        view: 'one_three_nine',
+      });
+    } else if (pending.length <= 6) {
+      setViewSuggestion({
+        text: 'Ivy Lee works best with 6 or fewer tasks — pick your top priorities for today.',
+        view: 'ivy_lee',
+      });
+    }
+  }, [tasks, loading, currentView]);
 
   // AI placement suggestion when switching to a framework view
   useEffect(() => {
@@ -644,6 +677,31 @@ export default function Compass() {
                 onClick={() => setPageView('carry_forward')}
               >
                 Review
+              </button>
+            </div>
+          )}
+
+          {/* View suggestion banner (heuristic) */}
+          {viewSuggestion && currentView === 'simple_list' && (
+            <div className="view-suggestion-banner">
+              <p>{viewSuggestion.text}</p>
+              <button
+                type="button"
+                className="victory-suggestion-banner__yes"
+                onClick={() => {
+                  handleViewChange(viewSuggestion.view);
+                  setViewSuggestion(null);
+                }}
+              >
+                Try it
+              </button>
+              <button
+                type="button"
+                className="view-suggestion-banner__dismiss"
+                onClick={() => setViewSuggestion(null)}
+                aria-label="Dismiss"
+              >
+                <X size={16} />
               </button>
             </div>
           )}

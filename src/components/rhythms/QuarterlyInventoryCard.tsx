@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useRhythmCards, getPeriodKey } from '../../hooks/useRhythmCards';
+import { useHelmContext } from '../../contexts/HelmContext';
 import type { QuarterlyInventoryData } from '../../hooks/useRhythmCards';
 import './Rhythms.css';
 
@@ -9,7 +9,7 @@ interface QuarterlyInventoryCardProps {
 }
 
 export function QuarterlyInventoryCard({ onDismiss }: QuarterlyInventoryCardProps) {
-  const navigate = useNavigate();
+  const { startGuidedConversation } = useHelmContext();
   const { fetchQuarterlyInventoryData, dismissRhythm } = useRhythmCards();
   const [data, setData] = useState<QuarterlyInventoryData | null>(null);
 
@@ -24,8 +24,8 @@ export function QuarterlyInventoryCard({ onDismiss }: QuarterlyInventoryCardProp
 
   const handleStart = useCallback(() => {
     handleDismiss();
-    navigate('/life-inventory');
-  }, [handleDismiss, navigate]);
+    startGuidedConversation('life_inventory');
+  }, [handleDismiss, startGuidedConversation]);
 
   if (!data) return null;
 

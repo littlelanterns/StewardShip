@@ -51,6 +51,12 @@ export interface ReveilleData {
   upcomingMeetings: UpcomingMeetingInfo[];
 }
 
+export interface MilestoneCelebration {
+  type: 'goal_completed' | 'streak_milestone';
+  title: string;
+  detail: string;
+}
+
 export interface ReckoningData {
   mastThought: MastEntry | null;
   manifestReading: ManifestReading | null;
@@ -60,6 +66,7 @@ export interface ReckoningData {
   tomorrowTasks: CompassTask[];
   trackers: (CustomTracker & { todayEntry?: TrackerEntry })[];
   completedMeetings: CompletedMeetingInfo[];
+  milestones: MilestoneCelebration[];
   promptsDue: {
     gratitude: boolean;
     joy: boolean;
@@ -562,6 +569,8 @@ export function useRhythms() {
         tomorrowResult,
         trackersResult,
         meetingsResult,
+        goalsResult,
+        recurringResult,
       ] = await Promise.all([
         supabase
           .from('mast_entries')
@@ -615,6 +624,23 @@ export function useRhythms() {
           .eq('user_id', user.id)
           .eq('meeting_date', today)
           .eq('status', 'completed'),
+        // Goals completed today (for milestones)
+        supabase
+          .from('goals')
+          .select('id, title')
+          .eq('user_id', user.id)
+          .eq('status', 'completed')
+          .gte('updated_at', todayStart)
+          .lte('updated_at', todayEnd),
+        // Recurring tasks for streak milestones
+        supabase
+          .from('compass_tasks')
+          .select('id, title, due_date, status, recurrence_rule')
+          .eq('user_id', user.id)
+          .is('archived_at', null)
+          .is('parent_task_id', null)
+          .not('recurrence_rule', 'is', null)
+          .order('due_date', { ascending: false }),
       ]);
 
       const mastEntries = (mastResult.data || []) as MastEntry[];
@@ -648,6 +674,46 @@ export function useRhythms() {
       ]);
 
       const aiSuggestion = buildAiSuggestion(incompleteTasks, tomorrowTasks);
+
+      // Build milestones list
+      const milestones: MilestoneCelebration[] = [];
+
+      // Goals completed today
+      const completedGoals = (goalsResult.data || []) as { id: string; title: string }[];
+      for (const goal of completedGoals) {
+        milestones.push({
+          type: 'goal_completed',
+          title: goal.title,
+          detail: 'Goal achieved today',
+        });
+      }
+
+      // Streak milestones from recurring tasks
+      const allRecurring = (recurringResult.data || []) as {
+        id: string; title: string; due_date: string; status: string; recurrence_rule: string;
+      }[];
+      const habitMap: Record<string, { title: string; dates: { date: string; completed: boolean }[] }> = {};
+      for (const t of allRecurring) {
+        const key = `${t.title}::${t.recurrence_rule}`;
+        if (!habitMap[key]) habitMap[key] = { title: t.title, dates: [] };
+        habitMap[key].dates.push({ date: t.due_date, completed: t.status === 'completed' });
+      }
+
+      for (const [, habit] of Object.entries(habitMap)) {
+        const sorted = habit.dates.sort((a, b) => b.date.localeCompare(a.date));
+        let streak = 0;
+        for (const entry of sorted) {
+          if (entry.completed) streak++;
+          else break;
+        }
+        if (STREAK_MILESTONES.includes(streak)) {
+          milestones.push({
+            type: 'streak_milestone',
+            title: habit.title,
+            detail: `${streak}-day streak reached`,
+          });
+        }
+      }
 
       // Build completed meetings list
       const meetingsData = (meetingsResult.data || []) as {
@@ -703,6 +769,7 @@ export function useRhythms() {
         tomorrowTasks,
         trackers: trackersList.map((t) => ({ ...t, todayEntry: trackerEntriesMap[t.id] })),
         completedMeetings,
+        milestones,
         promptsDue: {
           gratitude: gratitudeDue,
           joy: joyDue,
