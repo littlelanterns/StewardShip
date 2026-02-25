@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { usePageContext } from '../hooks/usePageContext';
 import { useRigging } from '../hooks/useRigging';
 import { useHelmContext } from '../contexts/HelmContext';
@@ -25,7 +24,6 @@ const FILTER_OPTIONS: { value: FilterStatus; label: string }[] = [
 
 export default function Rigging() {
   usePageContext({ page: 'rigging' });
-  const navigate = useNavigate();
   const { startGuidedConversation } = useHelmContext();
   const {
     plans,
@@ -78,9 +76,8 @@ export default function Rigging() {
   }, [setSelectedPlan, fetchPlans]);
 
   const handleContinueAtHelm = useCallback((plan: RiggingPlan) => {
-    startGuidedConversation('rigging', plan.id);
-    navigate('/helm');
-  }, [startGuidedConversation, navigate]);
+    startGuidedConversation('rigging', undefined, plan.id);
+  }, [startGuidedConversation]);
 
   const handleCreateManual = useCallback(async (data: Partial<RiggingPlan>) => {
     const plan = await createPlan(data);
@@ -94,8 +91,7 @@ export default function Rigging() {
   const handlePlanAtHelm = useCallback(() => {
     setFabExpanded(false);
     startGuidedConversation('rigging');
-    navigate('/helm');
-  }, [startGuidedConversation, navigate]);
+  }, [startGuidedConversation]);
 
   const handleCompletePlan = useCallback(async (id: string) => {
     await completePlan(id);

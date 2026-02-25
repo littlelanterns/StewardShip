@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
   Compass,
@@ -27,13 +27,12 @@ import { useAuthContext } from '../../contexts/AuthContext';
 import './Sidebar.css';
 
 export default function Sidebar() {
-  const { toggleDrawer, drawerState } = useHelm();
+  const { toggleDrawer, drawerState, startGuidedConversation } = useHelm();
   const { profile } = useAuthContext();
   const showFirstMate = profile?.relationship_status && profile.relationship_status !== 'single';
-  const navigate = useNavigate();
 
   const handleUnloadTheHold = () => {
-    navigate('/unload-the-hold');
+    startGuidedConversation('unload_the_hold');
   };
 
   return (

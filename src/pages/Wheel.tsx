@@ -1,5 +1,4 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { usePageContext } from '../hooks/usePageContext';
 import { useWheel } from '../hooks/useWheel';
 import { useHelmContext } from '../contexts/HelmContext';
@@ -14,7 +13,6 @@ type WheelView = 'list' | 'detail';
 
 export default function Wheel() {
   usePageContext({ page: 'wheel' });
-  const navigate = useNavigate();
   const { startGuidedConversation, openDrawer, expandDrawer, switchConversation } = useHelmContext();
 
   const {
@@ -56,28 +54,16 @@ export default function Wheel() {
   }, [setSelectedWheel, fetchWheels]);
 
   const handleStartNew = useCallback(async () => {
-    const conversation = await startGuidedConversation('wheel');
-    if (conversation) {
-      expandDrawer();
-      navigate('/helm');
-    }
-  }, [startGuidedConversation, expandDrawer, navigate]);
+    await startGuidedConversation('wheel');
+  }, [startGuidedConversation]);
 
   const handleContinueAtHelm = useCallback(async (wheel: WheelInstance) => {
-    const conversation = await startGuidedConversation('wheel', undefined, wheel.id);
-    if (conversation) {
-      expandDrawer();
-      navigate('/helm');
-    }
-  }, [startGuidedConversation, expandDrawer, navigate]);
+    await startGuidedConversation('wheel', undefined, wheel.id);
+  }, [startGuidedConversation]);
 
   const handleRimCheckIn = useCallback(async (wheel: WheelInstance) => {
-    const conversation = await startGuidedConversation('wheel', undefined, wheel.id);
-    if (conversation) {
-      expandDrawer();
-      navigate('/helm');
-    }
-  }, [startGuidedConversation, expandDrawer, navigate]);
+    await startGuidedConversation('wheel', undefined, wheel.id);
+  }, [startGuidedConversation]);
 
   const handleConversationClick = useCallback(async (conversationId: string) => {
     await switchConversation(conversationId);

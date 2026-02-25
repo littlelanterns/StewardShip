@@ -1,5 +1,4 @@
 import { useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Heart, Gift, Eye, MessageCircle, Sparkles, Feather } from 'lucide-react';
 import { Card } from '../shared';
 import { useHelmContext } from '../../contexts/HelmContext';
@@ -20,16 +19,11 @@ const TOOLBOX_MODES: { subtype: GuidedSubtype; label: string; desc: string; icon
 ];
 
 export function MarriageToolbox({ spouseId, isMarried }: MarriageToolboxProps) {
-  const navigate = useNavigate();
-  const { startGuidedConversation, expandDrawer } = useHelmContext();
+  const { startGuidedConversation } = useHelmContext();
 
   const handleMode = useCallback(async (subtype: GuidedSubtype) => {
-    const conversation = await startGuidedConversation('first_mate_action', subtype, spouseId);
-    if (conversation) {
-      expandDrawer();
-      navigate('/helm');
-    }
-  }, [startGuidedConversation, expandDrawer, navigate, spouseId]);
+    await startGuidedConversation('first_mate_action', subtype, spouseId);
+  }, [startGuidedConversation, spouseId]);
 
   return (
     <Card className="marriage-toolbox">

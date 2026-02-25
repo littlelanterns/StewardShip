@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { PenLine, MessageSquare } from 'lucide-react';
 import { AddEntryModal } from '../shared/AddEntryModal';
 import { Button } from '../shared/Button';
+import { useHelmContext } from '../../contexts/HelmContext';
 import type { MastEntryType } from '../../lib/types';
 import { MAST_TYPE_LABELS, MAST_TYPE_ORDER } from '../../lib/types';
 
@@ -13,7 +13,7 @@ interface MastAddModalProps {
 }
 
 export function MastAddModal({ onClose, onCreate, preselectedType }: MastAddModalProps) {
-  const navigate = useNavigate();
+  const { startGuidedConversation } = useHelmContext();
   const [mode, setMode] = useState<'select' | 'write'>(preselectedType ? 'write' : 'select');
   const [type, setType] = useState<MastEntryType>(preselectedType || 'value');
   const [text, setText] = useState('');
@@ -49,7 +49,7 @@ export function MastAddModal({ onClose, onCreate, preselectedType }: MastAddModa
               <div className="add-entry-method__desc">Type your principle directly</div>
             </div>
           </button>
-          <button className="add-entry-method" onClick={() => navigate('/helm')}>
+          <button className="add-entry-method" onClick={() => { startGuidedConversation('declaration'); onClose(); }}>
             <MessageSquare size={22} className="add-entry-method__icon" />
             <div className="add-entry-method__content">
               <div className="add-entry-method__label">Craft it at The Helm</div>

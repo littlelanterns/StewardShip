@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Upload, StickyNote, MessageSquare, Loader } from 'lucide-react';
 import { usePageContext } from '../hooks/usePageContext';
 import { useManifest } from '../hooks/useManifest';
@@ -26,7 +25,6 @@ type ViewMode = 'list' | 'detail' | 'upload' | 'intake' | 'framework' | 'mast_ex
 
 export default function Manifest() {
   usePageContext({ page: 'manifest' });
-  const navigate = useNavigate();
   const { startGuidedConversation } = useHelmContext();
   const {
     items,
@@ -166,8 +164,7 @@ export default function Manifest() {
   const handleAskLibrary = useCallback(() => {
     setFabExpanded(false);
     startGuidedConversation('manifest_discuss');
-    navigate('/helm');
-  }, [startGuidedConversation, navigate]);
+  }, [startGuidedConversation]);
 
   // Extraction handlers
   const handleExtractFramework = useCallback(() => {

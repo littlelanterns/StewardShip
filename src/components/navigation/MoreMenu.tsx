@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import {
   BarChart3,
   Trophy,
@@ -20,6 +20,7 @@ import {
   X,
 } from 'lucide-react';
 import { useAuthContext } from '../../contexts/AuthContext';
+import { useHelmContext } from '../../contexts/HelmContext';
 import './MoreMenu.css';
 
 interface MoreMenuProps {
@@ -28,15 +29,15 @@ interface MoreMenuProps {
 }
 
 export default function MoreMenu({ open, onClose }: MoreMenuProps) {
-  const navigate = useNavigate();
   const { profile } = useAuthContext();
+  const { startGuidedConversation } = useHelmContext();
   const showFirstMate = profile?.relationship_status && profile.relationship_status !== 'single';
 
   if (!open) return null;
 
   const handleUnloadTheHold = () => {
     onClose();
-    navigate('/unload-the-hold');
+    startGuidedConversation('unload_the_hold');
   };
 
   return (

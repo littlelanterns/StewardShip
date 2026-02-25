@@ -1,5 +1,4 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { usePageContext } from '../hooks/usePageContext';
 import { useAuthContext } from '../contexts/AuthContext';
@@ -32,7 +31,6 @@ interface HistoryView {
 
 export default function Meetings() {
   usePageContext({ page: 'meetings' });
-  const navigate = useNavigate();
   const { user, profile } = useAuthContext();
   const { startGuidedConversation } = useHelmContext();
   const {
@@ -97,8 +95,7 @@ export default function Meetings() {
 
     const subtype = type as unknown as GuidedSubtype;
     await startGuidedConversation('meeting', subtype, meeting.id);
-    navigate('/helm');
-  }, [createMeeting, startGuidedConversation, navigate]);
+  }, [createMeeting, startGuidedConversation]);
 
   const handleStartFromSchedule = useCallback(async (
     schedule: ScheduleWithPerson,
@@ -139,8 +136,7 @@ export default function Meetings() {
 
   const handleCreateWithAI = useCallback(async () => {
     await startGuidedConversation('meeting', 'template_creation' as GuidedSubtype);
-    navigate('/helm');
-  }, [startGuidedConversation, navigate]);
+  }, [startGuidedConversation]);
 
   const handleSaveTemplate = useCallback(async (data: Parameters<typeof createTemplate>[0]) => {
     await createTemplate({ ...data, source: 'manual' });

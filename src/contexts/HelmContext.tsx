@@ -71,6 +71,11 @@ interface HelmContextValue {
   expandDrawer: () => void;
   setDrawerState: (state: DrawerState) => void;
 
+  // Guided modal state
+  guidedModalOpen: boolean;
+  openGuidedModal: () => void;
+  closeGuidedModal: () => void;
+
   // Page context
   pageContext: HelmPageContext;
   setPageContext: (ctx: HelmPageContext) => void;
@@ -108,6 +113,10 @@ export function HelmProvider({ children }: { children: ReactNode }) {
   const [pageContext, setPageContext] = useState<HelmPageContext>({ page: 'crowsnest' });
   const [showHistory, setShowHistory] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
+  const [guidedModalOpen, setGuidedModalOpen] = useState(false);
+
+  const openGuidedModal = useCallback(() => setGuidedModalOpen(true), []);
+  const closeGuidedModal = useCallback(() => setGuidedModalOpen(false), []);
 
   const helmData = useHelmData();
 
@@ -317,6 +326,9 @@ export function HelmProvider({ children }: { children: ReactNode }) {
       await helmData.addMessage(conversation.id, 'assistant', openingMessage);
     }
 
+    // Auto-open the guided modal
+    setGuidedModalOpen(true);
+
     return conversation;
   }, [user, helmData]);
 
@@ -342,6 +354,9 @@ export function HelmProvider({ children }: { children: ReactNode }) {
         toggleDrawer,
         expandDrawer,
         setDrawerState,
+        guidedModalOpen,
+        openGuidedModal,
+        closeGuidedModal,
         pageContext,
         setPageContext,
         activeConversation: helmData.activeConversation,

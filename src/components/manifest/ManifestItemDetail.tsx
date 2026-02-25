@@ -1,5 +1,4 @@
 import { useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, FileText, FileCode, Mic, Image, StickyNote, MessageSquare, RefreshCw, BookOpen, Anchor, Compass } from 'lucide-react';
 import type { ManifestItem, ManifestUsageDesignation } from '../../lib/types';
 import { MANIFEST_USAGE_LABELS, MANIFEST_FILE_TYPE_LABELS, MANIFEST_STATUS_LABELS } from '../../lib/types';
@@ -57,7 +56,6 @@ export function ManifestItemDetail({
   onExtractMast,
   onExtractKeel,
 }: ManifestItemDetailProps) {
-  const navigate = useNavigate();
   const { startGuidedConversation } = useHelmContext();
 
   const [editingTitle, setEditingTitle] = useState(false);
@@ -125,9 +123,8 @@ export function ManifestItemDetail({
   }, [item.id, onArchive, onBack]);
 
   const handleDiscuss = useCallback(() => {
-    startGuidedConversation('manifest_discuss', null, item.id);
-    navigate('/helm');
-  }, [startGuidedConversation, item.id, navigate]);
+    startGuidedConversation('manifest_discuss', undefined, item.id);
+  }, [startGuidedConversation, item.id]);
 
   const isProcessed = item.processing_status === 'completed';
 

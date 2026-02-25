@@ -1,5 +1,4 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { usePageContext } from '../hooks/usePageContext';
 import { useLifeInventory } from '../hooks/useLifeInventory';
 import { useHelmContext } from '../contexts/HelmContext';
@@ -10,8 +9,7 @@ import './LifeInventory.css';
 
 export default function LifeInventory() {
   usePageContext({ page: 'lifeinventory' });
-  const navigate = useNavigate();
-  const { startGuidedConversation, expandDrawer } = useHelmContext();
+  const { startGuidedConversation } = useHelmContext();
 
   const {
     areas,
@@ -31,20 +29,12 @@ export default function LifeInventory() {
   }, [fetchAreas]);
 
   const handleAssessAtHelm = useCallback(async () => {
-    const conversation = await startGuidedConversation('life_inventory');
-    if (conversation) {
-      expandDrawer();
-      navigate('/helm');
-    }
-  }, [startGuidedConversation, expandDrawer, navigate]);
+    await startGuidedConversation('life_inventory');
+  }, [startGuidedConversation]);
 
   const handleDiscussArea = useCallback(async (area: LifeInventoryArea) => {
-    const conversation = await startGuidedConversation('life_inventory', undefined, area.id);
-    if (conversation) {
-      expandDrawer();
-      navigate('/helm');
-    }
-  }, [startGuidedConversation, expandDrawer, navigate]);
+    await startGuidedConversation('life_inventory', undefined, area.id);
+  }, [startGuidedConversation]);
 
   const handleAddArea = useCallback(async () => {
     if (!newAreaName.trim()) return;

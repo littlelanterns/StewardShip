@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { PenLine, MessageSquare, Upload } from 'lucide-react';
 import { AddEntryModal } from '../shared/AddEntryModal';
 import { Button } from '../shared/Button';
+import { useHelmContext } from '../../contexts/HelmContext';
 import type { KeelCategory } from '../../lib/types';
 import { KEEL_CATEGORY_LABELS, KEEL_CATEGORY_ORDER } from '../../lib/types';
 
@@ -13,7 +13,7 @@ interface KeelAddModalProps {
 }
 
 export function KeelAddModal({ onClose, onCreate, preselectedCategory }: KeelAddModalProps) {
-  const navigate = useNavigate();
+  const { startGuidedConversation } = useHelmContext();
   const [mode, setMode] = useState<'select' | 'write' | 'file'>(preselectedCategory ? 'write' : 'select');
   const [category, setCategory] = useState<KeelCategory>(preselectedCategory || 'personality_assessment');
   const [text, setText] = useState('');
@@ -60,7 +60,7 @@ export function KeelAddModal({ onClose, onCreate, preselectedCategory }: KeelAdd
               <div className="add-entry-method__desc">Upload a personality assessment or document</div>
             </div>
           </button>
-          <button className="add-entry-method" onClick={() => navigate('/helm')}>
+          <button className="add-entry-method" onClick={() => { startGuidedConversation('self_discovery'); onClose(); }}>
             <MessageSquare size={22} className="add-entry-method__icon" />
             <div className="add-entry-method__content">
               <div className="add-entry-method__label">Discover at The Helm</div>
