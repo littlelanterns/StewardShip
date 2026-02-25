@@ -1,7 +1,7 @@
 # CLAUDE.md — StewardShip Project Instructions
 
 > This is a living document. It grows as PRDs are written and development progresses.
-> Last updated: February 2026 — Phase 12C (AI Intelligence) built.
+> Last updated: February 2026 — Phase 12 audit + fixes (view banner rework, cross-view priority sync).
 
 ---
 
@@ -912,7 +912,7 @@ Tracks placeholder/stub functionality that needs to be wired up when the target 
 | Compass → Big Rocks view | Phase 4A (Compass) | Phase 4B (Views) | WIRED |
 | Compass → Ivy Lee view | Phase 4A (Compass) | Phase 4B (Views) | WIRED |
 | Compass → Task Breaker "Break Down" button | Phase 4A (Compass) | Phase 4B (Task Breaker) | WIRED |
-| Compass → AI view suggestion banner | Phase 4B (Views) | Enhancement (polish) | WIRED |
+| Compass → View discovery (educational FeatureGuide) | Phase 4B (Views) | Enhancement (polish) | WIRED (reworked from heuristic to FeatureGuide in Phase 12 audit) |
 | Compass → "Mark as Victory" button | Phase 4A (Compass) | Phase 5 (Victory Recorder) | WIRED |
 | Compass → Carry forward from Reckoning trigger | Phase 4A (Compass) | Phase 6 (Reckoning) | WIRED |
 | Unload the Hold → Crew person_note routing | Phase 4D (Unload the Hold) | Phase 8 (Crew) | WIRED |

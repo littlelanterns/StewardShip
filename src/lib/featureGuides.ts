@@ -42,6 +42,11 @@ export const FEATURE_GUIDES: Record<string, FeatureGuideContent> = {
     description: "Your task management system with seven different ways to view the same tasks. Toggle between Simple List, Eisenhower Matrix, Eat the Frog, and more. Each view applies a different prioritization philosophy.",
     tips: ["Long-press any view toggle for a quick explanation", "Use Task Breaker to decompose big tasks with AI"],
   },
+  compass_views: {
+    featureKey: 'compass_views',
+    title: "Try different views throughout the day",
+    description: "Your tasks stay the same \u2014 views are just different lenses for organizing them. Eisenhower sorts by urgency vs importance. Eat the Frog puts your hardest task first. 1/3/9 helps you focus on just one critical thing. Try switching views to find what works for your energy level right now.",
+  },
   charts: {
     featureKey: 'charts',
     title: "Charts \u2014 Track Your Progress",

@@ -36,6 +36,73 @@ function getTomorrowDate(): string {
   return d.toISOString().split('T')[0];
 }
 
+/**
+ * Lightweight cross-view priority sync.
+ * When the user explicitly sets view-specific metadata (e.g., drags a task to Eisenhower "Do Now"),
+ * this computes reasonable defaults for OTHER views — but only for fields the task doesn't already have set.
+ * The user's explicit choices always win: sync never overwrites existing values.
+ */
+function computeViewSync(task: CompassTask, updates: Partial<CompassTask>): Partial<CompassTask> {
+  const sync: Partial<CompassTask> = {};
+
+  // Helper: only suggest a value if the task doesn't already have one AND it's not in the explicit updates
+  const suggest = <K extends keyof CompassTask>(field: K, value: CompassTask[K]) => {
+    if (task[field] == null && !(field in updates)) {
+      sync[field] = value;
+    }
+  };
+
+  if ('eisenhower_quadrant' in updates) {
+    if (updates.eisenhower_quadrant === 'do_now') {
+      suggest('importance_level', 'critical_1' as CompassTask['importance_level']);
+      if (!task.big_rock && !('big_rock' in updates)) sync.big_rock = true;
+    } else if (updates.eisenhower_quadrant === 'schedule') {
+      suggest('importance_level', 'important_3' as CompassTask['importance_level']);
+    } else if (updates.eisenhower_quadrant === 'delegate' || updates.eisenhower_quadrant === 'eliminate') {
+      suggest('importance_level', 'small_9' as CompassTask['importance_level']);
+      if (task.big_rock && !('big_rock' in updates)) sync.big_rock = false;
+    }
+  }
+
+  if ('importance_level' in updates) {
+    if (updates.importance_level === 'critical_1') {
+      suggest('eisenhower_quadrant', 'do_now' as CompassTask['eisenhower_quadrant']);
+      if (!task.big_rock && !('big_rock' in updates)) sync.big_rock = true;
+    } else if (updates.importance_level === 'important_3') {
+      suggest('eisenhower_quadrant', 'schedule' as CompassTask['eisenhower_quadrant']);
+    } else if (updates.importance_level === 'small_9') {
+      if (task.big_rock && !('big_rock' in updates)) sync.big_rock = false;
+    }
+  }
+
+  if ('big_rock' in updates) {
+    if (updates.big_rock === true) {
+      suggest('importance_level', 'critical_1' as CompassTask['importance_level']);
+      suggest('eisenhower_quadrant', 'do_now' as CompassTask['eisenhower_quadrant']);
+    }
+  }
+
+  if ('frog_rank' in updates) {
+    if (updates.frog_rank === 1) {
+      suggest('eisenhower_quadrant', 'do_now' as CompassTask['eisenhower_quadrant']);
+      suggest('importance_level', 'critical_1' as CompassTask['importance_level']);
+      if (!task.big_rock && !('big_rock' in updates)) sync.big_rock = true;
+    }
+  }
+
+  if ('ivy_lee_rank' in updates && typeof updates.ivy_lee_rank === 'number') {
+    if (updates.ivy_lee_rank <= 2) {
+      suggest('importance_level', 'critical_1' as CompassTask['importance_level']);
+    } else if (updates.ivy_lee_rank <= 4) {
+      suggest('importance_level', 'important_3' as CompassTask['importance_level']);
+    } else {
+      suggest('importance_level', 'small_9' as CompassTask['importance_level']);
+    }
+  }
+
+  return sync;
+}
+
 export function useCompass() {
   const { user } = useAuthContext();
   const [tasks, setTasks] = useState<CompassTask[]>([]);
@@ -146,15 +213,21 @@ export function useCompass() {
     if (!user) return null;
     setError(null);
 
+    // Cross-view priority sync: when view metadata changes, compute reasonable
+    // defaults for other views (only fills nulls, never overwrites explicit values)
+    const task = tasks.find((t) => t.id === id);
+    const viewSync = task ? computeViewSync(task, updates) : {};
+    const mergedUpdates = { ...viewSync, ...updates };
+
     // Optimistic update
     setTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, ...updates } : t))
+      prev.map((t) => (t.id === id ? { ...t, ...mergedUpdates } : t))
     );
 
     try {
       const { data, error: err } = await supabase
         .from('compass_tasks')
-        .update(updates)
+        .update(mergedUpdates)
         .eq('id', id)
         .eq('user_id', user.id)
         .select()
@@ -171,7 +244,7 @@ export function useCompass() {
       fetchTasks();
       return null;
     }
-  }, [user, fetchTasks]);
+  }, [user, tasks, fetchTasks]);
 
   const generateNextRecurrence = useCallback(async (task: CompassTask) => {
     if (!user || !task.recurrence_rule || !task.due_date) return;
