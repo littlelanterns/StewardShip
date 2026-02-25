@@ -74,7 +74,7 @@ serve(async (req: Request) => {
         'X-Title': 'StewardShip',
       },
       body: JSON.stringify({
-        model: 'anthropic/claude-haiku-4-5-20251001',
+        model: 'anthropic/claude-haiku-4.5',
         max_tokens: 512,
         messages: [
           { role: 'system', content: INTAKE_PROMPT },

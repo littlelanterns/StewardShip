@@ -10,3 +10,4 @@ export { AddEntryModal } from './AddEntryModal';
 export { FloatingActionButton } from './FloatingActionButton';
 export { TagChips } from './TagChips';
 export { RoutingSelector } from './RoutingSelector';
+export { VoiceRecordButton } from './VoiceRecordButton';

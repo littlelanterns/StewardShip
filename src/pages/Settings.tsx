@@ -17,7 +17,7 @@ import { LoadingSpinner } from '../components/shared';
 import '../components/settings/Settings.css';
 
 const SECTIONS = [
-  { key: 'account', name: 'Account', description: 'Name, email, timezone, appearance, password' },
+  { key: 'account', name: 'Account', description: 'Name, email, timezone, gender, relationship, appearance, password' },
   { key: 'ai', name: 'AI Assistant', description: 'Provider, model, response length, API key' },
   { key: 'daily-rhythms', name: 'Daily Rhythms', description: 'Reveille, Reckoning, prompted entries' },
   { key: 'notifications', name: 'Notifications', description: 'Push, quiet hours, delivery preferences' },

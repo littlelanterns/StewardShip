@@ -58,7 +58,7 @@ serve(async (req: Request) => {
       model = 'anthropic/claude-sonnet-4';
     } else {
       // Regular chat uses Haiku for cost efficiency
-      model = 'anthropic/claude-haiku-4-5-20251001';
+      model = 'anthropic/claude-haiku-4.5';
     }
 
     // Smart max_tokens: guided modes need more room

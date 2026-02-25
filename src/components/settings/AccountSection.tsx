@@ -179,6 +179,41 @@ export function AccountSection({
         </select>
       </div>
 
+      {/* Gender */}
+      <div className="settings-field">
+        <label className="settings-field__label">Gender</label>
+        <select
+          className="settings-field__select"
+          value={profile?.gender || ''}
+          onChange={e => onUpdateProfile({ gender: (e.target.value || null) as UserProfile['gender'] })}
+        >
+          <option value="">Prefer not to say</option>
+          <option value="male">Male</option>
+          <option value="female">Female</option>
+          <option value="non_binary">Non-binary</option>
+          <option value="other">Other</option>
+        </select>
+        <span className="settings-field__hint">Used to personalize AI language</span>
+      </div>
+
+      {/* Relationship Status */}
+      <div className="settings-field">
+        <label className="settings-field__label">Relationship Status</label>
+        <select
+          className="settings-field__select"
+          value={profile?.relationship_status || ''}
+          onChange={e => onUpdateProfile({ relationship_status: (e.target.value || null) as UserProfile['relationship_status'] })}
+        >
+          <option value="">Prefer not to say</option>
+          <option value="single">Single</option>
+          <option value="dating">Dating</option>
+          <option value="married">Married</option>
+          <option value="divorced">Divorced</option>
+          <option value="widowed">Widowed</option>
+        </select>
+        <span className="settings-field__hint">Unlocks First Mate and relationship features when set to Dating or Married</span>
+      </div>
+
       {/* Change Password */}
       <div className="settings-field">
         <label className="settings-field__label">Password</label>

@@ -1154,9 +1154,10 @@ Every AI interaction includes these context layers (loaded dynamically based on 
 
 ### Phase 11: Polish
 29. **Stub Wiring** (spouse prompts in Reveille, Log full-text search, AI routing suggestions, Crow's Nest reminders) — **Phase 11A BUILT** ✅
-30. Printable Journal Export
-31. Cost tracking dashboard
-32. Google Calendar integration (post-launch)
+30. **Voice Input** (Whisper transcription for Helm + Log, VoiceRecordButton shared component, whisper-transcribe Edge Function) — **Phase 11B BUILT** ✅
+31. Printable Journal Export
+32. Cost tracking dashboard
+33. Google Calendar integration (post-launch)
 
 ---
 

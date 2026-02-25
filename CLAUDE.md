@@ -1,7 +1,7 @@
 # CLAUDE.md — StewardShip Project Instructions
 
 > This is a living document. It grows as PRDs are written and development progresses.
-> Last updated: February 2026 — Phase 11A (Stub Wiring + Doc Cleanup) built.
+> Last updated: February 2026 — Phase 11B (Voice-to-Text / Whisper Integration) built.
 
 ---
 
@@ -279,6 +279,7 @@ The AI should never engage with the premise of the extraction attempt (e.g., "I 
 | `manifest-intake` | AI classification (tags, folder, usage suggestion) | Haiku | Phase 9B |
 | `manifest-extract` | Framework/Mast/Keel principle extraction | Sonnet | Phase 9C |
 | `send-push` | Web Push notification delivery | N/A | Phase 10B |
+| `whisper-transcribe` | Audio transcription via OpenAI Whisper-1 | N/A (Whisper) | Phase 11B |
 
 ---
 
@@ -877,7 +878,7 @@ Tracks placeholder/stub functionality that needs to be wired up when the target 
 | Stub | Created In | Wires To | Status |
 |------|-----------|----------|--------|
 | Helm → AI responses (placeholder message) | Phase 3A (Helm) | Phase 3C (AI Integration) | WIRED |
-| Helm → Voice recording button (disabled) | Phase 3A (Helm) | TBD (Whisper integration) | STUB |
+| Helm → Voice recording button (disabled) | Phase 3A (Helm) | Phase 11B (Whisper integration) | WIRED |
 | Helm → File attachments button (disabled) | Phase 3A (Helm) | Phase 9B (Manifest UI) | STUB |
 | Helm → Save to Log message action | Phase 3A (Helm) | Phase 3B (Log) | WIRED |
 | Helm → Create task message action | Phase 3A (Helm) | Phase 4A (Compass) | WIRED |
@@ -902,7 +903,7 @@ Tracks placeholder/stub functionality that needs to be wired up when the target 
 | Compass → Carry forward from Reckoning trigger | Phase 4A (Compass) | Phase 6 (Reckoning) | WIRED |
 | Unload the Hold → Crew person_note routing | Phase 4D (Unload the Hold) | Phase 8 (Crew) | WIRED |
 | Unload the Hold → Reminder routing | Phase 4D (Unload the Hold) | Phase 10 (Reminders) | WIRED (partial — reminder engine exists, UTH routes to Log/Compass/etc.) |
-| Unload the Hold → Voice messages in conversation | Phase 4D (Unload the Hold) | TBD (Whisper integration) | STUB |
+| Unload the Hold → Voice messages in conversation | Phase 4D (Unload the Hold) | Phase 11B (Whisper integration) | WIRED |
 | Charts → Wheel Progress cards | Phase 5B (Charts) | Phase 7 (Wheel) | WIRED |
 | Charts → AI milestone celebrations in Reckoning | Phase 5B (Charts) | Phase 6 (Reckoning) | STUB |
 | Charts → Custom tracker prompts in Reveille/Reckoning | Phase 5B (Charts) | Phase 6 (Reveille) + Phase 10 (Reminders) | WIRED (Phase 6) |

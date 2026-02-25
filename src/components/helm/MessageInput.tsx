@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
-import { Send, Mic, Paperclip } from 'lucide-react';
+import { Send, Paperclip } from 'lucide-react';
+import { VoiceRecordButton } from '../shared/VoiceRecordButton';
 import './MessageInput.css';
 
 interface MessageInputProps {
@@ -40,6 +41,24 @@ export default function MessageInput({ onSend, disabled }: MessageInputProps) {
     el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
   }, []);
 
+  const handleTranscription = useCallback((transcribedText: string) => {
+    setText(prev => {
+      const separator = prev.trim() ? ' ' : '';
+      return prev + separator + transcribedText;
+    });
+    // Focus the textarea so user can edit before sending
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+      // Auto-grow to fit new text
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.style.height = 'auto';
+          textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
+        }
+      }, 0);
+    }
+  }, []);
+
   const canSend = text.trim().length > 0 && !disabled;
 
   return (
@@ -65,15 +84,11 @@ export default function MessageInput({ onSend, disabled }: MessageInputProps) {
         disabled={disabled}
       />
 
-      <button
-        type="button"
-        className="message-input__icon-btn"
-        disabled
-        title="Voice input coming soon"
-        aria-label="Voice input (coming soon)"
-      >
-        <Mic size={20} strokeWidth={1.5} />
-      </button>
+      <VoiceRecordButton
+        onTranscription={handleTranscription}
+        disabled={disabled}
+        compact
+      />
 
       <button
         type="button"

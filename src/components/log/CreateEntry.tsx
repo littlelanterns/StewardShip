@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect } from 'react';
-import { ArrowLeft, Mic } from 'lucide-react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import type { LogEntryType, LogEntry } from '../../lib/types';
 import { LOG_ENTRY_TYPE_LABELS } from '../../lib/types';
 import { autoTagEntry } from '../../lib/ai';
@@ -8,6 +8,7 @@ import { supabase } from '../../lib/supabase';
 import { Button } from '../shared';
 import { TagChips } from '../shared/TagChips';
 import { RoutingSelector } from '../shared/RoutingSelector';
+import { VoiceRecordButton } from '../shared/VoiceRecordButton';
 import './CreateEntry.css';
 
 interface CreateEntryProps {
@@ -33,6 +34,7 @@ function getHeuristicTags(type: LogEntryType): string[] {
 export default function CreateEntry({ initialType, onSave, onRouted, onBack }: CreateEntryProps) {
   const { user } = useAuthContext();
   const [text, setText] = useState('');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [entryType, setEntryType] = useState<LogEntryType>(initialType || 'journal');
   const [saved, setSaved] = useState(false);
   const [savedEntry, setSavedEntry] = useState<LogEntry | null>(null);
@@ -41,6 +43,16 @@ export default function CreateEntry({ initialType, onSave, onRouted, onBack }: C
   const [tagsLoading, setTagsLoading] = useState(false);
 
   const prompt = TYPE_PROMPTS[entryType];
+
+  const handleTranscription = useCallback((transcribedText: string) => {
+    setText(prev => {
+      const separator = prev.trim() ? ' ' : '';
+      return prev + separator + transcribedText;
+    });
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, []);
 
   const handleSave = useCallback(async () => {
     if (!text.trim() || saving) return;
@@ -192,6 +204,7 @@ export default function CreateEntry({ initialType, onSave, onRouted, onBack }: C
 
       {/* Text area */}
       <textarea
+        ref={textareaRef}
         className="create-entry__textarea"
         value={text}
         onChange={(e) => setText(e.target.value)}
@@ -201,15 +214,7 @@ export default function CreateEntry({ initialType, onSave, onRouted, onBack }: C
 
       {/* Bottom actions */}
       <div className="create-entry__actions">
-        <button
-          type="button"
-          className="create-entry__voice-btn"
-          disabled
-          title="Voice input coming soon"
-          aria-label="Voice input (coming soon)"
-        >
-          <Mic size={20} strokeWidth={1.5} />
-        </button>
+        <VoiceRecordButton onTranscription={handleTranscription} disabled={saving} />
         <Button onClick={handleSave} disabled={!text.trim() || saving}>
           {saving ? 'Saving...' : 'Save'}
         </Button>
