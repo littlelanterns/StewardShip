@@ -1081,7 +1081,7 @@ Every AI interaction includes these context layers (loaded dynamically based on 
 
 ### Phase 1: Foundation ✅
 1. Auth + User Setup
-2. Database Schema (all 37 tables)
+2. Database Schema (all 39 tables)
 3. Design System (CSS variables, themes, shared component library)
 4. Navigation Shell (routing, bottom bar, sidebar, Helm drawer infrastructure)
 
@@ -1144,10 +1144,10 @@ Every AI interaction includes these context layers (loaded dynamically based on 
 24C. Framework Extraction + AI Integration — BUILT (Phase 9C) ✅
 24D. Expanded Format Support (EPUB, DOCX, TXT, MD) — BUILT (Phase 9C Addendum) ✅
 
-### Phase 10: Cadence
+### Phase 10: Cadence ✅
 25. **Meeting Frameworks** (templates, custom scheduling, note integration) — **Phase 10A BUILT** ✅
-26. Reminders (push notifications, scheduling engine)
-27. Rhythms (Friday, Sunday, Monthly, Quarterly triggers, gratitude/joy/anticipation prompts)
+26. **Reminders** (reminder engine with CRUD/snooze/dismiss lifecycle, daily reminder generation from tasks/meetings/dates/Wheel/Rigging/streaks, push notification infrastructure with service worker, VAPID, send-push Edge Function, frequency capping, quiet hours, Log "Set Reminder" routing wired) — **Phase 10B BUILT** ✅
+27. **Rhythms** (Friday Overview, Sunday Reflection, Monthly Review, Quarterly Inventory rhythm cards, Reveille/Reckoning batch delivery) — **Phase 10B BUILT** ✅
 
 ### Phase 11: Polish
 28. Settings (complete panel)
@@ -1273,7 +1273,7 @@ stewardship/
 | PRD-15: The Manifest | Phase 9 Built ✅ |
 | PRD-16: Rigging (Planning Tool) | Phase 7B Built ✅ |
 | PRD-17: Meeting Frameworks | Phase 10A Built |
-| PRD-18: Reminders + Rhythms | PRD Written |
+| PRD-18: Reminders + Rhythms | Phase 10B Built ✅ |
 | PRD-19: Settings | PRD Written |
 | PRD-20: Unload the Hold (Brain Dump) | 4D Built ✅ |
 

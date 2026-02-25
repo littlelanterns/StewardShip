@@ -1,7 +1,7 @@
 # StewardShip: Database Schema
 
 > This is a living document. Updated after each PRD is written.
-> Last updated: After Phase 9 (Manifest + Cost Optimization) — All PRDs complete
+> Last updated: After Phase 10B (Reminders + Rhythms) — All PRDs complete
 
 ---
 

@@ -2,10 +2,12 @@ import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { useRhythms } from '../../hooks/useRhythms';
+import { useReminders } from '../../hooks/useReminders';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { TrackerPrompts } from '../reveille/TrackerPrompts';
+import { ReminderBatchSection } from '../reminders/ReminderBatchSection';
 import { MAST_TYPE_LABELS, LIFE_AREA_LABELS, MEETING_TYPE_LABELS } from '../../lib/types';
-import type { MastEntryType, CompassTask } from '../../lib/types';
+import type { MastEntryType, CompassTask, Reminder, SnoozePreset } from '../../lib/types';
 import '../reveille/Reveille.css';
 
 function getGreeting(timezone: string): string {
@@ -50,8 +52,15 @@ export function ReckoningScreen() {
     saveVictoryReviewNote,
     createTaskFromNote,
   } = useRhythms();
+  const {
+    fetchReckoningReminders,
+    dismissReminder,
+    actOnReminder,
+    snoozeReminder,
+  } = useReminders();
 
   const [showAllAccomplishments, setShowAllAccomplishments] = useState(false);
+  const [reckoningReminders, setReckoningReminders] = useState<Reminder[]>([]);
   const [actionedTasks, setActionedTasks] = useState<Set<string>>(new Set());
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [addingTask, setAddingTask] = useState(false);
@@ -82,6 +91,18 @@ export function ReckoningScreen() {
       setLocalTomorrowTasks(reckoningData.tomorrowTasks);
     }
   }, [reckoningData]);
+
+  // Fetch reckoning-batch reminders (streak at risk, etc.)
+  useEffect(() => {
+    if (!reckoningData) return;
+    let mounted = true;
+
+    fetchReckoningReminders().then((batch) => {
+      if (mounted) setReckoningReminders(batch);
+    });
+
+    return () => { mounted = false; };
+  }, [reckoningData, fetchReckoningReminders]);
 
   const timezone = profile?.timezone || 'America/Chicago';
   const greeting = getGreeting(timezone);
@@ -151,6 +172,21 @@ export function ReckoningScreen() {
     dismissReckoning();
     navigate('/helm');
   }, [dismissReckoning, navigate]);
+
+  const handleReminderDismiss = useCallback(async (id: string) => {
+    await dismissReminder(id);
+    setReckoningReminders((prev) => prev.filter((r) => r.id !== id));
+  }, [dismissReminder]);
+
+  const handleReminderAct = useCallback(async (id: string) => {
+    await actOnReminder(id);
+    setReckoningReminders((prev) => prev.filter((r) => r.id !== id));
+  }, [actOnReminder]);
+
+  const handleReminderSnooze = useCallback(async (id: string, preset: SnoozePreset) => {
+    await snoozeReminder(id, preset);
+    setReckoningReminders((prev) => prev.filter((r) => r.id !== id));
+  }, [snoozeReminder]);
 
   if (loading && !reckoningData) {
     return (
@@ -558,6 +594,17 @@ export function ReckoningScreen() {
             <div className="manifest-reading__text">{reckoningData.manifestReading.text}</div>
             <div className="manifest-reading__source">{reckoningData.manifestReading.source}</div>
           </div>
+        )}
+
+        {/* Section 6b: Before You Close the Day — Reckoning reminders */}
+        {reckoningReminders.length > 0 && (
+          <ReminderBatchSection
+            title="Before You Close the Day"
+            reminders={reckoningReminders}
+            onDismiss={handleReminderDismiss}
+            onAct={handleReminderAct}
+            onSnooze={handleReminderSnooze}
+          />
         )}
 
         {/* Section 7: Prompted Entries */}

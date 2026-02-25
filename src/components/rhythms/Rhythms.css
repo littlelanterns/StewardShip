@@ -1,0 +1,323 @@
+/* Rhythm Card (Friday Overview, etc.) */
+.rhythm-card {
+  background: var(--color-cream, #F5F0E8);
+  border-radius: var(--radius-lg, 12px);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+  position: relative;
+}
+
+.rhythm-card__close {
+  position: absolute;
+  top: var(--spacing-sm);
+  right: var(--spacing-sm);
+  background: none;
+  border: none;
+  color: var(--color-slate-gray);
+  cursor: pointer;
+  padding: var(--spacing-xs);
+}
+
+.rhythm-card__heading {
+  font-family: var(--font-heading, Georgia, serif);
+  font-size: var(--font-size-xl, 1.5rem);
+  color: var(--color-deep-teal);
+  margin-bottom: var(--spacing-md);
+  line-height: 1.3;
+}
+
+.rhythm-card__actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-lg);
+  flex-wrap: wrap;
+}
+
+/* Friday Stats */
+.friday-stats {
+  display: flex;
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.friday-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.friday-stat__number {
+  font-family: var(--font-heading, Georgia, serif);
+  font-size: var(--font-size-2xl, 1.75rem);
+  color: var(--color-deep-teal);
+  font-weight: 600;
+  line-height: 1;
+}
+
+.friday-stat__label {
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  color: var(--color-slate-gray);
+  margin-top: 2px;
+}
+
+/* Friday Victories */
+.friday-victories {
+  margin-bottom: var(--spacing-md);
+}
+
+.friday-victory {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-navy);
+  padding: var(--spacing-xs) 0;
+  border-bottom: 1px solid var(--color-border, #eee);
+}
+
+.friday-victory:last-child {
+  border-bottom: none;
+}
+
+/* Friday Streaks */
+.friday-streaks {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-navy);
+  margin-bottom: var(--spacing-md);
+}
+
+.friday-streaks__label {
+  color: var(--color-slate-gray);
+}
+
+/* Friday Themes */
+.friday-themes {
+  margin-bottom: var(--spacing-md);
+}
+
+.friday-themes__label {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-slate-gray);
+  margin-bottom: var(--spacing-xs);
+}
+
+.friday-themes__tags {
+  display: flex;
+  gap: var(--spacing-xs);
+  flex-wrap: wrap;
+}
+
+.friday-themes__tag {
+  padding: 2px var(--spacing-sm);
+  border-radius: 12px;
+  background: var(--color-bg-secondary, #f0ede5);
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  color: var(--color-deep-teal);
+}
+
+/* Friday Preview */
+.friday-preview {
+  margin-bottom: var(--spacing-md);
+  background: var(--color-bg-card, #fff);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+}
+
+.friday-preview__label {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-slate-gray);
+  margin-bottom: var(--spacing-xs);
+}
+
+.friday-preview__item {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-navy);
+  padding: var(--spacing-xs) 0;
+}
+
+.friday-preview__item--date {
+  color: var(--color-cognac);
+}
+
+/* Friday Reflection */
+.friday-reflection {
+  margin-top: var(--spacing-md);
+}
+
+.friday-reflection__prompt {
+  font-family: var(--font-heading, Georgia, serif);
+  font-size: var(--font-size-base);
+  color: var(--color-deep-teal);
+  margin-bottom: var(--spacing-sm);
+  font-style: italic;
+}
+
+.friday-reflection__textarea {
+  width: 100%;
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-border, #ccc);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  background: var(--color-bg-card, #fff);
+  resize: vertical;
+  min-height: 60px;
+  margin-bottom: var(--spacing-sm);
+}
+
+.friday-reflection__actions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+/* Sunday Reflection — Contemplative Style */
+.sunday-reflection {
+  text-align: center;
+}
+
+.sunday-reflection .rhythm-actions {
+  justify-content: center;
+}
+
+.sunday-reflection__greeting {
+  font-family: var(--font-heading, Georgia, serif);
+  font-size: var(--font-size-xl, 1.5rem);
+  color: var(--color-deep-teal);
+  line-height: 1.4;
+  letter-spacing: 0.01em;
+  margin-bottom: var(--spacing-xl);
+}
+
+/* Sunday Reading */
+.sunday-reading {
+  background: var(--color-bg-card, #fff);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg) var(--spacing-xl, 2rem);
+  margin-bottom: var(--spacing-lg);
+  text-align: center;
+}
+
+.sunday-reading__text {
+  font-family: var(--font-heading, Georgia, serif);
+  font-size: var(--font-size-lg);
+  color: var(--color-navy);
+  line-height: var(--line-height-relaxed, 1.8);
+  font-style: italic;
+  letter-spacing: 0.01em;
+}
+
+.sunday-reading__source {
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  color: var(--color-slate-gray);
+  margin-top: var(--spacing-sm);
+}
+
+/* Sunday Renewal */
+.sunday-renewal {
+  margin-bottom: var(--spacing-lg);
+}
+
+.sunday-renewal__dimension {
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  color: var(--color-cognac);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: var(--spacing-xs);
+}
+
+.sunday-renewal__prompt {
+  font-family: var(--font-heading, Georgia, serif);
+  font-size: var(--font-size-base);
+  color: var(--color-deep-teal);
+  line-height: var(--line-height-relaxed, 1.6);
+}
+
+/* Sunday Intention */
+.sunday-intention {
+  margin-bottom: var(--spacing-lg);
+  text-align: left;
+}
+
+.sunday-intention__question {
+  font-family: var(--font-heading, Georgia, serif);
+  font-size: var(--font-size-base);
+  color: var(--color-deep-teal);
+  margin-bottom: var(--spacing-sm);
+  text-align: center;
+}
+
+.sunday-intention__textarea {
+  width: 100%;
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-border, #ccc);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  background: var(--color-bg-card, #fff);
+  resize: vertical;
+  min-height: 60px;
+  margin-bottom: var(--spacing-sm);
+}
+
+.sunday-intention__actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  justify-content: center;
+}
+
+/* Inline Rhythm Cards (Monthly Review, Quarterly Inventory) */
+.rhythm-inline-card {
+  background: var(--color-bg-card, #fff);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.rhythm-inline-card__content {
+  margin-bottom: var(--spacing-sm);
+}
+
+.rhythm-inline-card__title {
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  color: var(--color-navy);
+  line-height: var(--line-height-relaxed, 1.6);
+}
+
+.rhythm-inline-card__stats {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-slate-gray);
+  margin-top: var(--spacing-xs);
+}
+
+.rhythm-inline-card__actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.rhythm-inline-card__dismiss {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-slate-gray);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  min-height: var(--touch-target-min, 44px);
+}
+
+.rhythm-inline-card__dismiss:hover {
+  color: var(--color-mid-teal);
+}

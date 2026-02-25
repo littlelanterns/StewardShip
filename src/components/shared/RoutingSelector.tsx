@@ -3,11 +3,13 @@ import { supabase } from '../../lib/supabase';
 import { autoTagTask } from '../../lib/ai';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useHelmContext } from '../../contexts/HelmContext';
+import { useReminders } from '../../hooks/useReminders';
 import type { MastEntryType, KeelCategory, List } from '../../lib/types';
 import { MAST_TYPE_LABELS, KEEL_CATEGORY_LABELS } from '../../lib/types';
 import { Button } from './Button';
 import { LoadingSpinner } from './LoadingSpinner';
 import { RecordVictory } from '../victories/RecordVictory';
+import { CustomReminderModal } from '../reminders/CustomReminderModal';
 import { useVictories } from '../../hooks/useVictories';
 import './RoutingSelector.css';
 
@@ -18,12 +20,13 @@ interface RoutingSelectorProps {
   onClose: () => void;
 }
 
-type SubScreen = 'main' | 'mast' | 'keel' | 'lists' | 'victory';
+type SubScreen = 'main' | 'mast' | 'keel' | 'lists' | 'victory' | 'reminder';
 
 export function RoutingSelector({ entryId, entryText, onRouted, onClose }: RoutingSelectorProps) {
   const { user } = useAuthContext();
   const { openDrawer, sendMessage } = useHelmContext();
   const { createVictory } = useVictories();
+  const { createCustomReminder } = useReminders();
   const [subScreen, setSubScreen] = useState<SubScreen>('main');
   const [toast, setToast] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -332,6 +335,31 @@ export function RoutingSelector({ entryId, entryText, onRouted, onClose }: Routi
     );
   }
 
+  if (subScreen === 'reminder') {
+    return (
+      <CustomReminderModal
+        prefillTitle={entryText.split('\n')[0].slice(0, 80)}
+        relatedEntityType="log_entry"
+        relatedEntityId={entryId}
+        onSave={async (data) => {
+          const reminder = await createCustomReminder(
+            data.title,
+            data.body,
+            data.scheduledAt,
+            'log_entry',
+            entryId,
+          );
+          if (reminder) {
+            onRouted('reminder', reminder.id);
+            showToast('Reminder set');
+          }
+          setSubScreen('main');
+        }}
+        onClose={() => setSubScreen('main')}
+      />
+    );
+  }
+
   return (
     <div className="routing-selector">
       <h4 className="routing-selector__title">Do something with this entry?</h4>
@@ -367,7 +395,7 @@ export function RoutingSelector({ entryId, entryText, onRouted, onClose }: Routi
         <button
           type="button"
           className="routing-selector__item"
-          onClick={() => showToast('Reminders coming in a later phase')}
+          onClick={() => setSubScreen('reminder')}
         >
           <span className="routing-selector__item-label">Set a reminder</span>
           <span className="routing-selector__item-desc">Get nudged later</span>

@@ -278,6 +278,7 @@ The AI should never engage with the premise of the extraction attempt (e.g., "I 
 | `manifest-process` | File → text → chunks → embeddings (PDF, EPUB, DOCX, TXT, MD) | N/A (processing) | Phase 9A |
 | `manifest-intake` | AI classification (tags, folder, usage suggestion) | Haiku | Phase 9B |
 | `manifest-extract` | Framework/Mast/Keel principle extraction | Sonnet | Phase 9C |
+| `send-push` | Web Push notification delivery | N/A | Phase 10B |
 
 ---
 
@@ -883,7 +884,7 @@ Tracks placeholder/stub functionality that needs to be wired up when the target 
 | Helm → Regenerate/Shorter/Longer on AI messages | Phase 3A (Helm) | Phase 3C (AI Integration) | WIRED |
 | Log → Route to Compass (create task) | Phase 3B (Log) | Phase 4A (Compass) | WIRED |
 | Log → Route to Lists (add item) | Phase 3B (Log) | Phase 4C (Lists) | WIRED |
-| Log → Route to Reminders | Phase 3B (Log) | Phase 10 (Reminders) | STUB |
+| Log → Route to Reminders | Phase 3B (Log) | Phase 10 (Reminders) | WIRED |
 | Log → Route to Victory Recorder | Phase 3B (Log) | Phase 5 (Victory Recorder) | WIRED |
 | Log → AI auto-tagging (heuristic placeholder) | Phase 3B (Log) | Phase 3C (AI Integration) | WIRED |
 | Log → AI-suggested routing after save | Phase 3B (Log) | Phase 3C (AI Integration) | STUB |
@@ -900,7 +901,7 @@ Tracks placeholder/stub functionality that needs to be wired up when the target 
 | Compass → "Mark as Victory" button | Phase 4A (Compass) | Phase 5 (Victory Recorder) | WIRED |
 | Compass → Carry forward from Reckoning trigger | Phase 4A (Compass) | Phase 6 (Reckoning) | WIRED |
 | Unload the Hold → Crew person_note routing | Phase 4D (Unload the Hold) | Phase 8 (Crew) | WIRED |
-| Unload the Hold → Reminder routing | Phase 4D (Unload the Hold) | Phase 10 (Reminders) | STUB |
+| Unload the Hold → Reminder routing | Phase 4D (Unload the Hold) | Phase 10 (Reminders) | WIRED (partial — reminder engine exists, UTH routes to Log/Compass/etc.) |
 | Unload the Hold → Voice messages in conversation | Phase 4D (Unload the Hold) | TBD (Whisper integration) | STUB |
 | Charts → Wheel Progress cards | Phase 5B (Charts) | Phase 7 (Wheel) | WIRED |
 | Charts → AI milestone celebrations in Reckoning | Phase 5B (Charts) | Phase 6 (Reckoning) | STUB |
@@ -916,24 +917,29 @@ Tracks placeholder/stub functionality that needs to be wired up when the target 
 | Wheel → Crew/Sphere references in Spoke 4 | Phase 7A (Wheel) | Phase 8 (Crew) | WIRED |
 | Life Inventory → Onboarding seeding | Phase 7A (Life Inventory) | Future | STUB |
 | Life Inventory → AI notices relevant info in regular Helm conversations | Phase 7A (Life Inventory) | Enhancement | STUB |
-| Rigging → Reveille/Reckoning milestone nudging | Phase 7B (Rigging) | Phase 10 (Reminders) | STUB |
+| Rigging → Reveille/Reckoning milestone nudging | Phase 7B (Rigging) | Phase 10 (Reminders) | WIRED |
 | Rigging → Manifest RAG for planning sessions | Phase 7B (Rigging) | Phase 9C (Manifest) | WIRED |
 | Rigging → Victory suggestion on plan completion | Phase 7B (Rigging) | Enhancement | STUB |
 | Safe Harbor → First Mate/Crew context loading | Phase 7C (Safe Harbor) | Phase 8 (First Mate/Crew) | WIRED |
 | Safe Harbor → Manifest RAG context | Phase 7C (Safe Harbor) | Phase 9C (Manifest) | WIRED |
 | First Mate → File upload (Manifest pipeline) | Phase 8A (First Mate) | Phase 9 (Manifest) | STUB |
 | First Mate → Couple Meeting integration | Phase 8A (First Mate) | Phase 10 (Meetings) | WIRED (Couple meeting type loads First Mate + Keel context) |
-| First Mate → Spouse prompts in Reveille/Reckoning | Phase 8A (First Mate) | Phase 10 (Reminders) | STUB |
+| First Mate → Spouse prompts in Reveille/Reckoning | Phase 8A (First Mate) | Phase 10 (Reminders) | STUB (reminder engine ready, prompt delivery not yet wired) |
 | Crew → Parent-Child Meeting Notes tab | Phase 8A (Crew) | Phase 10 (Meetings) | WIRED (Parent-Child meeting type loads Crew child context, age-adaptive prompts) |
-| Crew → Important dates → Reminders | Phase 8A (Crew) | Phase 10 (Reminders) | STUB |
+| Crew → Important dates → Reminders | Phase 8A (Crew) | Phase 10 (Reminders) | WIRED |
 | Helm → AI name recognition from Crew in free-form chat | Phase 8A (Crew) | Enhancement (AI context) | STUB |
 | Helm → Offer to save spouse insights from conversation | Phase 8A (First Mate) | Enhancement (AI context) | STUB |
 | Sphere → AI gap coaching in Helm conversations | Phase 8B (Sphere) | Enhancement (AI context) | STUB |
 | Reveille → Manifest Devotional morning reading source | Phase 6 (Reveille) | Phase 9C (Manifest) | WIRED |
 | Reckoning → Manifest Devotional closing thought source | Phase 6 (Reckoning) | Phase 9C (Manifest) | WIRED |
-| Meetings → Push notification reminders | Phase 10A (Meetings) | Phase 10 (Reminders) | STUB |
+| Meetings → Push notification reminders | Phase 10A (Meetings) | Phase 10 (Reminders) | WIRED |
 | Meetings → Pattern recognition AI (5+ meetings) | Phase 10A (Meetings) | Enhancement (AI context) | STUB |
 | Meetings → Quarterly Inventory → Life Inventory guided mode | Phase 10A (Meetings) | Enhancement | STUB |
+| Push → Full VAPID authentication for production | Phase 10B (Push) | Production hardening | STUB |
+| Reminders → Server-side cron for scheduled push delivery | Phase 10B (Reminders) | Post-MVP (server infra) | STUB |
+| Reminders → AI smart reminder suggestions | Phase 10B (Reminders) | Post-MVP | POST-MVP |
+| Reminders → Google Calendar sync | Phase 10B (Reminders) | Post-MVP | POST-MVP |
+| Sphere → Gap check-in nudge reminders | Phase 8B (Sphere) | Post-MVP (Reminders) | POST-MVP |
 | Sphere → Interactive concentric circles visualization | Phase 8B (Sphere) | Post-MVP | POST-MVP |
 
 ---
@@ -978,7 +984,7 @@ _This section collects things still needed. Check items off as they're addressed
 - [x] Edge Function specifications → Edge Function Inventory table added to CLAUDE.md
 - [ ] PWA manifest and service worker configuration
 - [ ] Remaining onboarding steps (1-2, 5-7)
-- [ ] Notification/push infrastructure details
+- [x] Notification/push infrastructure details → built in Phase 10B
 - [ ] Google Calendar OAuth flow (post-launch)
 - [ ] Printable journal export implementation details
 - [x] RAG pipeline: 500-1000 token chunks, ~100 token overlap, OpenAI ada-002 embeddings (1536 dim), top-5 default, 0.7 similarity threshold

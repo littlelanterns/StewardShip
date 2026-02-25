@@ -2,10 +2,16 @@ import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, Check } from 'lucide-react';
 import { useRhythms } from '../../hooks/useRhythms';
+import { useReminders } from '../../hooks/useReminders';
+import { useRhythmCards } from '../../hooks/useRhythmCards';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { TrackerPrompts } from './TrackerPrompts';
+import { ReminderBatchSection } from '../reminders/ReminderBatchSection';
+import { FridayOverview } from '../rhythms/FridayOverview';
+import { MonthlyReviewCard } from '../rhythms/MonthlyReviewCard';
+import { QuarterlyInventoryCard } from '../rhythms/QuarterlyInventoryCard';
 import { MAST_TYPE_LABELS, MEETING_TYPE_LABELS } from '../../lib/types';
-import type { MastEntryType } from '../../lib/types';
+import type { MastEntryType, Reminder, SnoozePreset } from '../../lib/types';
 import './Reveille.css';
 
 function getGreeting(timezone: string): string {
@@ -42,12 +48,82 @@ export function ReveilleScreen() {
     completeTask,
     logTrackerEntry,
   } = useRhythms();
+  const {
+    fetchReveilleReminders,
+    generateDailyReminders,
+    dismissReminder,
+    actOnReminder,
+    snoozeReminder,
+  } = useReminders();
+  const { checkRhythmDue } = useRhythmCards();
 
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set());
+  const [reveilleReminders, setReveilleReminders] = useState<Reminder[]>([]);
+  const [showFriday, setShowFriday] = useState(false);
+  const [showMonthly, setShowMonthly] = useState(false);
+  const [showQuarterly, setShowQuarterly] = useState(false);
+  const [remindersGenerated, setRemindersGenerated] = useState(false);
 
   useEffect(() => {
     fetchReveilleData();
   }, [fetchReveilleData]);
+
+  // Generate daily reminders once and fetch reveille batch
+  useEffect(() => {
+    if (!reveilleData || remindersGenerated) return;
+    let mounted = true;
+
+    const loadReminders = async () => {
+      // Fetch user settings for generation
+      const { data: settings } = await (await import('../../lib/supabase')).supabase
+        .from('user_settings')
+        .select('*')
+        .maybeSingle();
+
+      if (settings && mounted) {
+        await generateDailyReminders(settings);
+      }
+
+      if (mounted) {
+        const batch = await fetchReveilleReminders();
+        setReveilleReminders(batch);
+        setRemindersGenerated(true);
+      }
+    };
+
+    loadReminders();
+    return () => { mounted = false; };
+  }, [reveilleData, remindersGenerated, generateDailyReminders, fetchReveilleReminders]);
+
+  // Check rhythm cards due
+  useEffect(() => {
+    if (!reveilleData) return;
+    let mounted = true;
+
+    const checkRhythms = async () => {
+      const { data: settings } = await (await import('../../lib/supabase')).supabase
+        .from('user_settings')
+        .select('*')
+        .maybeSingle();
+
+      if (!mounted) return;
+
+      const [fridayDue, monthlyDue, quarterlyDue] = await Promise.all([
+        checkRhythmDue('friday_overview', settings),
+        checkRhythmDue('monthly_review', settings),
+        checkRhythmDue('quarterly_inventory', settings),
+      ]);
+
+      if (mounted) {
+        setShowFriday(fridayDue);
+        setShowMonthly(monthlyDue);
+        setShowQuarterly(quarterlyDue);
+      }
+    };
+
+    checkRhythms();
+    return () => { mounted = false; };
+  }, [reveilleData, checkRhythmDue]);
 
   const timezone = profile?.timezone || 'America/Chicago';
   const greeting = getGreeting(timezone);
@@ -68,6 +144,21 @@ export function ReveilleScreen() {
     navigate('/helm');
   }, [dismissReveille, navigate]);
 
+  const handleReminderDismiss = useCallback(async (id: string) => {
+    await dismissReminder(id);
+    setReveilleReminders((prev) => prev.filter((r) => r.id !== id));
+  }, [dismissReminder]);
+
+  const handleReminderAct = useCallback(async (id: string) => {
+    await actOnReminder(id);
+    setReveilleReminders((prev) => prev.filter((r) => r.id !== id));
+  }, [actOnReminder]);
+
+  const handleReminderSnooze = useCallback(async (id: string, preset: SnoozePreset) => {
+    await snoozeReminder(id, preset);
+    setReveilleReminders((prev) => prev.filter((r) => r.id !== id));
+  }, [snoozeReminder]);
+
   if (loading && !reveilleData) {
     return (
       <div className="rhythm-overlay">
@@ -85,6 +176,8 @@ export function ReveilleScreen() {
   const hasTrackers = reveilleData.trackers.length > 0;
   const hasMast = !!reveilleData.mastThought;
   const hasMeetings = reveilleData.upcomingMeetings.length > 0;
+  const hasReminders = reveilleReminders.length > 0;
+  const hasRhythmCards = showFriday || showMonthly || showQuarterly;
 
   return (
     <div className="rhythm-overlay">
@@ -218,6 +311,27 @@ export function ReveilleScreen() {
             trackers={reveilleData.trackers}
             onLog={logTrackerEntry}
           />
+        )}
+
+        {/* Section 8: Reminders for Today */}
+        {hasReminders && (
+          <ReminderBatchSection
+            reminders={reveilleReminders}
+            onDismiss={handleReminderDismiss}
+            onAct={handleReminderAct}
+            onSnooze={handleReminderSnooze}
+          />
+        )}
+
+        {/* Section 9: Rhythm Cards (Friday Overview, Monthly Review, Quarterly Inventory) */}
+        {showFriday && (
+          <FridayOverview onDismiss={() => setShowFriday(false)} />
+        )}
+        {showMonthly && (
+          <MonthlyReviewCard onDismiss={() => setShowMonthly(false)} />
+        )}
+        {showQuarterly && (
+          <QuarterlyInventoryCard onDismiss={() => setShowQuarterly(false)} />
         )}
 
         {/* Bottom Actions */}

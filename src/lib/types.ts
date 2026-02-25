@@ -1313,3 +1313,119 @@ export const MEETING_NOTIFICATION_LABELS: Record<MeetingNotificationType, string
   both: 'Both',
   none: 'None',
 };
+
+// === PRD-18: Reminders + Rhythms ===
+
+export type ReminderType =
+  | 'task_due' | 'task_overdue' | 'streak_at_risk'
+  | 'meeting_due' | 'meeting_day_before'
+  | 'important_date' | 'wheel_rim'
+  | 'rigging_milestone' | 'rigging_overdue'
+  | 'spouse_prompt' | 'gratitude_prompt' | 'joy_prompt' | 'anticipation_prompt'
+  | 'list_item' | 'log_routed' | 'custom'
+  | 'journal_export'
+  | 'friday_overview' | 'sunday_reflection' | 'monthly_review' | 'quarterly_inventory';
+
+export type ReminderDeliveryMethod = 'push' | 'reveille_batch' | 'reckoning_batch' | 'in_app';
+
+export type ReminderStatus = 'pending' | 'delivered' | 'acted_on' | 'dismissed' | 'snoozed' | 'archived';
+
+export type ReminderEntityType =
+  | 'compass_task' | 'meeting' | 'meeting_schedule' | 'person'
+  | 'wheel_instance' | 'rigging_plan' | 'rigging_milestone'
+  | 'list_item' | 'log_entry' | 'spouse_prompt' | null;
+
+export type ReminderSourceFeature =
+  | 'compass' | 'meetings' | 'first_mate' | 'crew' | 'wheel'
+  | 'rigging' | 'charts' | 'lists' | 'log' | 'rhythms' | 'settings' | 'user';
+
+export type RhythmType = 'friday_overview' | 'sunday_reflection' | 'monthly_review' | 'quarterly_inventory';
+
+export type RhythmCardStatus = 'pending' | 'shown' | 'dismissed' | 'completed';
+
+export type SnoozePreset = '1_hour' | 'later_today' | 'tomorrow' | 'next_week';
+
+export type NotificationDeliveryPref =
+  | 'push' | 'reveille_batch' | 'reckoning_batch' | 'in_app' | 'both' | 'off';
+
+export interface Reminder {
+  id: string;
+  user_id: string;
+  reminder_type: ReminderType;
+  title: string;
+  body: string | null;
+  delivery_method: ReminderDeliveryMethod;
+  scheduled_at: string | null;
+  status: ReminderStatus;
+  snoozed_until: string | null;
+  snooze_count: number;
+  related_entity_type: ReminderEntityType;
+  related_entity_id: string | null;
+  source_feature: ReminderSourceFeature;
+  metadata: Record<string, unknown>;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RhythmStatusRecord {
+  id: string;
+  user_id: string;
+  rhythm_type: RhythmType;
+  period_key: string;
+  status: RhythmCardStatus;
+  shown_at: string | null;
+  dismissed_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+}
+
+export interface PushSubscriptionRecord {
+  id: string;
+  user_id: string;
+  endpoint: string;
+  p256dh_key: string;
+  auth_key: string;
+  device_label: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export const SNOOZE_PRESET_LABELS: Record<SnoozePreset, string> = {
+  '1_hour': '1 Hour',
+  'later_today': 'Later Today',
+  'tomorrow': 'Tomorrow',
+  'next_week': 'Next Week',
+};
+
+export const REMINDER_TYPE_LABELS: Record<ReminderType, string> = {
+  task_due: 'Task Due',
+  task_overdue: 'Task Overdue',
+  streak_at_risk: 'Streak at Risk',
+  meeting_due: 'Meeting Due',
+  meeting_day_before: 'Meeting Tomorrow',
+  important_date: 'Important Date',
+  wheel_rim: 'Wheel Check-in',
+  rigging_milestone: 'Milestone Approaching',
+  rigging_overdue: 'Milestone Overdue',
+  spouse_prompt: 'Spouse Prompt',
+  gratitude_prompt: 'Gratitude',
+  joy_prompt: 'Joy',
+  anticipation_prompt: 'Anticipation',
+  list_item: 'List Reminder',
+  log_routed: 'Follow Up',
+  custom: 'Reminder',
+  journal_export: 'Journal Export',
+  friday_overview: 'Friday Overview',
+  sunday_reflection: 'Sunday Reflection',
+  monthly_review: 'Monthly Review',
+  quarterly_inventory: 'Quarterly Inventory',
+};
+
+export const RHYTHM_TYPE_LABELS: Record<RhythmType, string> = {
+  friday_overview: 'Friday Overview',
+  sunday_reflection: 'Sunday Reflection',
+  monthly_review: 'Monthly Review',
+  quarterly_inventory: 'Quarterly Inventory',
+};
