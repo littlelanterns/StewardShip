@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react';
-import Button from '../shared/Button';
-import LoadingSpinner from '../shared/LoadingSpinner';
+import { Button, LoadingSpinner } from '../shared';
 import type { KeelCategory } from '../../lib/types';
 import { KEEL_CATEGORY_LABELS } from '../../lib/types';
 import './ExtractionReview.css';

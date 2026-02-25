@@ -1,7 +1,7 @@
 # StewardShip: Database Schema
 
 > This is a living document. Updated after each PRD is written.
-> Last updated: After Phase 10B (Reminders + Rhythms) — All PRDs complete
+> Last updated: After Phase 10C (Settings) — All PRDs complete
 
 ---
 
@@ -1452,6 +1452,7 @@ All tables across PRDs 01-20 have been defined (39 total). Settings (PRD-19) int
 | 009_manifest_storage.sql | Private `manifest-files` storage bucket + updated `match_manifest_chunks` with `usage_designations` filter |
 | 010_manifest_formats.sql | Expanded `manifest-files` bucket MIME types to include EPUB, DOCX, TXT, MD |
 | 011_cyrano_messages.sql | Dedicated Cyrano Messages table with teaching skill tracking, migrates existing cyrano_draft spouse_insights |
+| 012_delete_user_account.sql | `delete_user_account()` RPC function — SECURITY DEFINER, deletes from `auth.users` where `id = auth.uid()`, cascades to all related tables via FK constraints. Granted to `authenticated` role only. |
 
 ---
 

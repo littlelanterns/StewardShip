@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
 import { GripVertical, Plus, Trash2, RefreshCw } from 'lucide-react';
-import Button from '../shared/Button';
-import LoadingSpinner from '../shared/LoadingSpinner';
+import { Button, LoadingSpinner } from '../shared';
 import type { AIFramework, AIFrameworkPrinciple } from '../../lib/types';
 import './FrameworkPrinciples.css';
 

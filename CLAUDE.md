@@ -1,7 +1,7 @@
 # CLAUDE.md — StewardShip Project Instructions
 
 > This is a living document. It grows as PRDs are written and development progresses.
-> Last updated: February 2026 — Phase 10A (Meeting Frameworks) built.
+> Last updated: February 2026 — Phase 10C (Settings) built.
 
 ---
 

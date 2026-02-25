@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react';
-import Button from '../shared/Button';
-import LoadingSpinner from '../shared/LoadingSpinner';
+import { Button, LoadingSpinner } from '../shared';
 import type { MastEntryType } from '../../lib/types';
 import { MAST_TYPE_LABELS } from '../../lib/types';
 import './ExtractionReview.css';
