@@ -190,8 +190,6 @@ export function AccountSection({
           <option value="">Prefer not to say</option>
           <option value="male">Male</option>
           <option value="female">Female</option>
-          <option value="non_binary">Non-binary</option>
-          <option value="other">Other</option>
         </select>
         <span className="settings-field__hint">Used to personalize AI language</span>
       </div>

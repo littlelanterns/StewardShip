@@ -1,6 +1,6 @@
 // PRD-01: Auth & User Setup
 
-export type Gender = 'male' | 'female' | 'non_binary' | 'prefer_not_to_say';
+export type Gender = 'male' | 'female' | 'prefer_not_to_say';
 export type RelationshipStatus = 'single' | 'dating' | 'married' | 'divorced' | 'widowed';
 
 export interface UserProfile {
