@@ -1,7 +1,7 @@
 # CLAUDE.md — StewardShip Project Instructions
 
 > This is a living document. It grows as PRDs are written and development progresses.
-> Last updated: February 2026 — Phase 9C (Framework Extraction + AI Integration + Stub Wiring) built.
+> Last updated: February 2026 — Phase 9 (Manifest + Cost Optimization) built.
 
 ---
 
@@ -236,7 +236,7 @@ type HelmPageContext =
 - **Context budget by user setting:** Short ~4K tokens (cheaper), Medium ~8K (default), Long ~16K (richer, more expensive). Controlled by `user_settings.context_window_size`.
 - **Topic detection:** AI scans user message for signals — crew member names, relationship words, emotion/stress words, goal/progress words, task words, faith/spiritual words, work/career words — and loads corresponding context automatically. User never manually selects a mode.
 - **Guided mode rules:** Only one guided mode active at a time. Can pause and resume across sessions and devices. Progress saved incrementally per step (each Wheel spoke, each Life Inventory area, each Rigging milestone saves to DB as completed). On return, AI detects in-progress guided mode and offers to resume with summary of completed steps.
-- **Guided modes available:** `'wheel'`, `'life_inventory'`, `'rigging'`, `'declaration'`, `'self_discovery'`, `'meeting'`, `'first_mate_action'` (with `guided_subtype`), `'safe_harbor'`, `'unload_the_hold'`, `null` (free-form default).
+- **Guided modes available:** `'wheel'`, `'life_inventory'`, `'rigging'`, `'declaration'`, `'self_discovery'`, `'meeting'`, `'first_mate_action'` (with `guided_subtype`), `'safe_harbor'`, `'unload_the_hold'`, `'manifest_discuss'`, `null` (free-form default).
 - **Unload the Hold mode** (`guided_mode = 'unload_the_hold'`): Brain dump conversation. AI adapts engagement to the dump — just listens for straightforward items, offers clarifying questions for messy/emotional content (always offers, never imposes). When user signals completion, AI calls the triage Edge Function, presents a conversational summary, then "Review & Route" button opens structured triage screen. After routing, AI confirms and checks in warmly.
 - **Voice input flow:** Record → Whisper transcription → transcribed text appears in input field for editing → user taps send manually. Never auto-send transcribed text.
 - **Conversation storage:** Messages saved to Supabase database as sent/received (not batched or deferred). Local React state for UI responsiveness only — database is source of truth. On app open or refresh, active conversation loaded from DB.
@@ -262,6 +262,22 @@ The AI should never engage with the premise of the extraction attempt (e.g., "I 
 - **Conversation history windowing:** After 8 messages, older messages are condensed (first 2 + summary of middle + last 6 verbatim). Prevents unbounded context growth.
 - **Conditional framework loading:** Framework principles only loaded when conversation topic is relevant (guided modes, Manifest page, keyword detection). Mast always loads.
 - **Smart max_tokens:** 512 for casual chat, 1024 for guided modes, 2048 for framework extraction. User override respected.
+
+### Edge Function Inventory
+
+| Function | Purpose | Model | Added |
+|----------|---------|-------|-------|
+| `chat` | Helm AI proxy | Haiku (casual) / Sonnet (guided) | Phase 3 |
+| `auto-tag` | AI life area tagging for Log entries | Haiku | Phase 3C |
+| `celebrate-victory` | Victory celebration text generation | Sonnet | Phase 5A |
+| `task-breaker` | Compass task decomposition | Sonnet | Phase 4B |
+| `unload-the-hold` | Brain dump triage extraction | Sonnet | Phase 4D |
+| `wheel-compile` | Wheel conversation → structured spoke data | Sonnet | Phase 7A |
+| `rigging-compile` | Planning conversation → structured plan | Sonnet | Phase 7B |
+| `manifest-embed` | OpenAI ada-002 embedding wrapper | N/A (embedding) | Phase 9A |
+| `manifest-process` | File → text → chunks → embeddings (PDF, EPUB, DOCX, TXT, MD) | N/A (processing) | Phase 9A |
+| `manifest-intake` | AI classification (tags, folder, usage suggestion) | Haiku | Phase 9B |
+| `manifest-extract` | Framework/Mast/Keel principle extraction | Sonnet | Phase 9C |
 
 ---
 
@@ -710,12 +726,13 @@ The AI applies this framework naturally when it helps the user understand why ch
 - **Helm-to-First-Mate flow:** When user mentions something substantive about spouse in Helm conversation, AI offers to save to spouse_insights. Not after every mention — only when something worth saving emerges.
 
 ### Marriage Toolbox (First Mate Guided Modes)
-Five guided conversation modes accessible from the First Mate page, each opening the Helm with First Mate + Keel context:
+Six guided conversation modes accessible from the First Mate page, each opening the Helm with First Mate + Keel context:
 - **Quality Time:** Date planning using spouse insights. Produces Compass tasks.
 - **Gifts:** Gift brainstorming connected to who she is. Produces Compass tasks.
 - **Observe and Serve:** Service based on her current reality. Nudges awareness of repeated frustrations, put-off requests, overlooked needs. Produces Compass tasks.
 - **Words of Affirmation:** Helps user see and articulate what's incredible about his wife. Draws from full First Mate profile AND gratitude entries. Includes **21 Compliments Practice**: structured generation of 21 (default, user adjustable) thoughtful compliments through conversation. All editable. Saved as a List (PRD-06) for delivery tracking throughout the week.
 - **Gratitude:** Quick capture (simple text entry, saves to BOTH Log with marriage life area AND spouse_insights with gratitude category) plus deeper Helm conversation. AI occasionally offers to go deeper when quick capture entry has depth potential.
+- **Cyrano Me:** Communication coaching (`guided_subtype = 'cyrano'`). User brings raw thought → AI asks clarifying questions → crafts upgraded version in user's voice → explains WHY it works better, teaching one of 7 skills (specificity, her_lens, feeling_over_function, timing, callback_power, unsaid_need, presence_proof). Actively works toward making itself unnecessary — after 5+ uses, periodically offers "skill check" mode (feedback on user's own draft instead of rewrite). Never dishonest, never overwrites user's voice, never performative. **Cyrano data stored in dedicated `cyrano_messages` table** — NOT in spouse_insights. Tracks raw input, crafted version, final version, teaching skill, teaching note, sent status. Enables growth tracking, skill rotation, and message export. Copy and Save Draft actions on AI messages in Cyrano mode. Recent teaching skills loaded into AI context for rotation.
 - All modes use `guided_mode = 'first_mate_action'` with `guided_subtype` on helm_conversations.
 - All modes can produce Compass tasks (user confirms which to create, life_area = 'spouse_marriage').
 
@@ -723,6 +740,8 @@ Five guided conversation modes accessible from the First Mate page, each opening
 - Three user-initiated buttons on the First Mate page: **Ask Her**, **Reflect**, **Express**.
 - User taps the button they're in the mood for → AI generates a prompt of that type.
 - Prompt generation considers: gaps in spouse knowledge (gap-filling), current relationship context from recent conversations/Log entries (contextual), variety in prompt types, and depth over breadth as the profile grows.
+- **Express prompts redesigned (PRD-12A):** Generate action IDEAS, not scripted words. "Text her a memory from when you were first dating that still makes you smile" not "Text her: 'I was thinking about you.'" Ends with soft handoff: "Need help putting it into words? Try Cyrano Me in your Marriage Toolbox."
+- **Three prompts form a progression:** Reflect (notice, internal) → Express (act on it, his own words) → Cyrano Me (craft the words, learn the skill).
 - Actions: "Done — Record Response" (Ask Her), "Done" (Reflect/Express), "Skip" (any).
 - Responses auto-saved as spouse_insights in appropriate category.
 - Past prompts viewable with full history.
@@ -771,7 +790,7 @@ Five guided conversation modes accessible from the First Mate page, each opening
 - **Folder groupings:** AI-assigned or user-overridden. Collapsible sections on main page. Items belong to one folder and multiple tags.
 - **Duplicate detection:** Warns on same filename + approximate size. Doesn't block — user decides.
 - **Re-process:** Available for failed or completed items. Resets status and re-runs pipeline.
-- **Four Edge Functions:** `manifest-process` (chunking + embedding), `manifest-embed` (thin OpenAI wrapper), `manifest-intake` (AI classification), and future `manifest-extract` (framework extraction, Phase 9C).
+- **Five Edge Functions:** `manifest-process` (chunking + embedding + EPUB/DOCX/TXT/MD extraction), `manifest-embed` (thin OpenAI ada-002 wrapper), `manifest-intake` (AI classification, uses Haiku), `manifest-extract` (framework/Mast/Keel principle extraction, uses Sonnet).
 - **Discuss This / Ask Your Library:** Opens Helm in `manifest_discuss` guided mode — item-specific or library-wide. Specialized system prompt with boosted RAG retrieval (8+3 chunks for item-specific, 10 chunks for library-wide). WIRED in Phase 9C.
 - **Cross-feature file routing:** Large files from First Mate/Crew (>~3000 tokens) route to Manifest RAG pipeline with `is_rag_indexed` flag.
 - **Manifest-to-Mast extraction:** AI proposes principles from uploaded material, user reviews and confirms which become Mast entries (source_type = 'manifest_extraction').
@@ -910,6 +929,8 @@ Tracks placeholder/stub functionality that needs to be wired up when the target 
 | Helm → AI name recognition from Crew in free-form chat | Phase 8A (Crew) | Enhancement (AI context) | STUB |
 | Helm → Offer to save spouse insights from conversation | Phase 8A (First Mate) | Enhancement (AI context) | STUB |
 | Sphere → AI gap coaching in Helm conversations | Phase 8B (Sphere) | Enhancement (AI context) | STUB |
+| Reveille → Manifest Devotional morning reading source | Phase 6 (Reveille) | Phase 9C (Manifest) | WIRED |
+| Reckoning → Manifest Devotional closing thought source | Phase 6 (Reckoning) | Phase 9C (Manifest) | WIRED |
 | Sphere → Interactive concentric circles visualization | Phase 8B (Sphere) | Post-MVP | POST-MVP |
 
 ---
@@ -951,7 +972,7 @@ _This section collects things still needed. Check items off as they're addressed
 - [x] Source enum updates for unload_the_hold
 - [x] Guided mode enum update for unload_the_hold
 - [x] FAB expansion pattern documented
-- [ ] Edge Function specifications
+- [x] Edge Function specifications → Edge Function Inventory table added to CLAUDE.md
 - [ ] PWA manifest and service worker configuration
 - [ ] Remaining onboarding steps (1-2, 5-7)
 - [ ] Notification/push infrastructure details

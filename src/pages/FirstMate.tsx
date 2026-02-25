@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { usePageContext } from '../hooks/usePageContext';
 import { useFirstMate } from '../hooks/useFirstMate';
+import { useCyrano } from '../hooks/useCyrano';
 import { useAuthContext } from '../contexts/AuthContext';
 import type { SpouseInsightCategory } from '../lib/types';
 import { SPOUSE_INSIGHT_CATEGORY_LABELS, SPOUSE_INSIGHT_CATEGORY_ORDER } from '../lib/types';
@@ -8,6 +9,7 @@ import { LoadingSpinner, EmptyState, FloatingActionButton } from '../components/
 import { FirstMateProfile } from '../components/firstmate/FirstMateProfile';
 import { PromptCard } from '../components/firstmate/PromptCard';
 import { MarriageToolbox } from '../components/firstmate/MarriageToolbox';
+import { CyranoDrafts } from '../components/firstmate/CyranoDrafts';
 import { GratitudeCapture } from '../components/firstmate/GratitudeCapture';
 import { InsightCategorySection } from '../components/firstmate/InsightCategorySection';
 import { AddInsightModal } from '../components/firstmate/AddInsightModal';
@@ -19,7 +21,7 @@ type FirstMateView = 'main' | 'past-prompts';
 
 export default function FirstMate() {
   usePageContext({ page: 'firstmate' });
-  const { profile } = useAuthContext();
+  const { profile, user } = useAuthContext();
   const {
     spouse,
     insights,
@@ -40,6 +42,8 @@ export default function FirstMate() {
     skipPrompt,
     saveGratitude,
   } = useFirstMate();
+
+  const { drafts: cyranoDrafts, markSent: markCyranoSent, deleteDraft: deleteCyranoDraft } = useCyrano(user?.id, spouse?.id);
 
   const [view, setView] = useState<FirstMateView>('main');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -134,6 +138,14 @@ export default function FirstMate() {
             <MarriageToolbox
               spouseId={spouse.id}
               isMarried={isMarried}
+            />
+          )}
+
+          {(isMarried || isDating) && (
+            <CyranoDrafts
+              drafts={cyranoDrafts}
+              onMarkSent={markCyranoSent}
+              onDelete={deleteCyranoDraft}
             />
           )}
 

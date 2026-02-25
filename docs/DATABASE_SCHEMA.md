@@ -1,7 +1,7 @@
 # StewardShip: Database Schema
 
 > This is a living document. Updated after each PRD is written.
-> Last updated: After PRD-20 (Unload the Hold) — All PRDs complete
+> Last updated: After Phase 9 (Manifest + Cost Optimization) — All PRDs complete
 
 ---
 
@@ -645,6 +645,39 @@ AI-generated prompts (questions, reflections, actions) and user responses.
 
 ---
 
+#### `cyrano_messages`
+
+Dedicated table for Cyrano Me communication coaching data. Tracks raw user input, AI-crafted versions, teaching skills, and sent status. Enables growth tracking, skill rotation, and message export.
+
+| Column | Type | Default | Nullable | Notes |
+|--------|------|---------|----------|-------|
+| id | UUID | gen_random_uuid() | NOT NULL | PK |
+| user_id | UUID | | NOT NULL | FK → auth.users |
+| people_id | UUID | | NOT NULL | FK → people (the First Mate) |
+| raw_input | TEXT | | NOT NULL | What the user originally typed |
+| crafted_version | TEXT | | NOT NULL | The AI's suggested version |
+| final_version | TEXT | null | NULL | What the user actually sent (after edits) |
+| teaching_skill | TEXT | null | NULL | CHECK: 'specificity', 'her_lens', 'feeling_over_function', 'timing', 'callback_power', 'unsaid_need', 'presence_proof' |
+| teaching_note | TEXT | null | NULL | The AI's explanation of why the changes matter |
+| status | TEXT | 'draft' | NOT NULL | CHECK: 'draft', 'sent', 'saved_for_later' |
+| sent_at | TIMESTAMPTZ | null | NULL | When marked as sent |
+| helm_conversation_id | UUID | null | NULL | FK → helm_conversations (ON DELETE SET NULL) |
+| created_at | TIMESTAMPTZ | now() | NOT NULL | |
+| updated_at | TIMESTAMPTZ | now() | NOT NULL | Auto-trigger |
+
+**RLS:** Users CRUD own cyrano_messages only.
+**Indexes:**
+- `user_id, status` (fetch drafts/saved)
+- `user_id, created_at DESC` (message history)
+- `user_id, teaching_skill` (skill distribution)
+
+**Trigger:**
+```sql
+CREATE TRIGGER set_updated_at BEFORE UPDATE ON cyrano_messages FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
+```
+
+---
+
 ## PRD-13: Crew + Sphere of Influence
 
 #### `crew_notes`
@@ -717,7 +750,7 @@ Metadata for each uploaded file, transcript, or text note in the Manifest.
 | id | UUID | gen_random_uuid() | NOT NULL | PK |
 | user_id | UUID | | NOT NULL | FK → auth.users |
 | title | TEXT | | NOT NULL | Display title (default: filename, user-editable) |
-| file_type | TEXT | | NOT NULL | Enum: 'pdf', 'audio', 'image', 'text_note' |
+| file_type | TEXT | | NOT NULL | Enum: 'pdf', 'epub', 'docx', 'txt', 'md', 'audio', 'image', 'text_note' |
 | file_name | TEXT | null | NULL | Original filename (null for text notes) |
 | storage_path | TEXT | null | NULL | Supabase Storage path (null for text notes) |
 | text_content | TEXT | null | NULL | Full extracted/transcribed text |
@@ -793,6 +826,7 @@ BEGIN
   WHERE mc.user_id = p_user_id
     AND mi.archived_at IS NULL
     AND mi.processing_status = 'completed'
+    AND mi.usage_designations && ARRAY['general_reference', 'framework_source', 'goal_specific']
     AND 1 - (mc.embedding <=> query_embedding) > match_threshold
   ORDER BY similarity DESC
   LIMIT match_count;
@@ -1288,6 +1322,7 @@ auth.users
   ├── ai_framework_principles (user_id → auth.users.id)
   ├── spouse_insights (user_id → auth.users.id)
   ├── spouse_prompts (user_id → auth.users.id)
+  ├── cyrano_messages (user_id → auth.users.id)
   ├── rigging_plans (user_id → auth.users.id)
   ├── rigging_milestones (user_id → auth.users.id)
   ├── rigging_obstacles (user_id → auth.users.id)
@@ -1304,6 +1339,7 @@ helm_conversations
   ├── log_entries (source_reference_id → helm_conversations.id, when source = 'helm_conversation')
   ├── wheel_instances (helm_conversation_id → helm_conversations.id)
   ├── rigging_plans (helm_conversation_id → helm_conversations.id)
+  ├── cyrano_messages (helm_conversation_id → helm_conversations.id)
   └── hold_dumps (conversation_id → helm_conversations.id)
 
 compass_tasks
@@ -1329,6 +1365,7 @@ life_inventory_areas
 people
   ├── spouse_insights (person_id → people.id)
   ├── spouse_prompts (person_id → people.id)
+  ├── cyrano_messages (people_id → people.id)
   ├── crew_notes (person_id → people.id)
   ├── meetings (related_person_id → people.id)
   └── meeting_schedules (related_person_id → people.id)
@@ -1365,7 +1402,7 @@ compass_tasks
 
 ## Tables — All PRDs Complete
 
-All tables across PRDs 01-20 have been defined (38 total). Settings (PRD-19) introduces no new tables. PRD-20 adds `hold_dumps`.
+All tables across PRDs 01-20 have been defined (39 total). Settings (PRD-19) introduces no new tables. PRD-20 adds `hold_dumps`. PRD-12A adds `cyrano_messages`.
 
 | Table | Expected PRD | Purpose |
 |-------|-------------|---------|
@@ -1384,6 +1421,7 @@ All tables across PRDs 01-20 have been defined (38 total). Settings (PRD-19) int
 | people | ~~PRD-12/13~~ DONE (PRD-12) | Crew + First Mate profiles |
 | spouse_insights | ~~PRD-12~~ DONE | Spouse knowledge from all sources |
 | spouse_prompts | ~~PRD-12~~ DONE | AI-generated relationship prompts and responses |
+| cyrano_messages | ~~PRD-12A~~ DONE | Cyrano Me communication coaching data with teaching skill tracking |
 | crew_notes | ~~PRD-13~~ DONE | Categorized context for children and close relationships |
 | sphere_entities | ~~PRD-13~~ DONE | Non-person influences in spheres |
 | ~~people_sphere~~ | ~~PRD-13~~ REPLACED | Sphere data stored as columns on people table instead |
@@ -1402,6 +1440,17 @@ All tables across PRDs 01-20 have been defined (38 total). Settings (PRD-19) int
 | rhythm_status | PRD-18 | DONE (new — tracks weekly/monthly/quarterly rhythm card dismissals) |
 | hold_dumps | PRD-20 | DONE (new — brain dump triage records linking to Helm conversations) |
 | reminder_schedules | PRD-18 | Not needed — scheduling handled within reminders table + server-side Edge Function |
+
+---
+
+## Applied Migrations
+
+| Migration | Description |
+|-----------|-------------|
+| 001-008 | Core schema, auth triggers, RLS policies, all tables through Phase 8B |
+| 009_manifest_storage.sql | Private `manifest-files` storage bucket + updated `match_manifest_chunks` with `usage_designations` filter |
+| 010_manifest_formats.sql | Expanded `manifest-files` bucket MIME types to include EPUB, DOCX, TXT, MD |
+| 011_cyrano_messages.sql | Dedicated Cyrano Messages table with teaching skill tracking, migrates existing cyrano_draft spouse_insights |
 
 ---
 

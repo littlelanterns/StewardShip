@@ -835,11 +835,15 @@ Core data objects referenced by multiple features. Individual PRDs define how ea
 
 ### Manifest Items
 - File name
-- File type: pdf, audio_transcript, text_note
+- File type: pdf, epub, docx, txt, md, audio_transcript, text_note
 - Storage path (Supabase Storage)
-- Usage designation: general_reference, mast_extraction, keel_info, specific_goal, store_only
+- Usage designations (multiple): general_reference, framework_source, mast_extraction, keel_info, goal_specific, store_only
+- Tags (AI auto-assigned, user-editable)
+- Folder group (AI-assigned or user-overridden)
 - Related Wheel ID (optional)
-- Chunk embeddings (stored in pgvector table)
+- Related Goal ID (optional)
+- Chunk embeddings (stored in pgvector table via manifest_chunks)
+- Processing status: pending, processing, completed, failed
 - Upload timestamp
 
 ### Life Inventory Areas
@@ -1134,10 +1138,11 @@ Every AI interaction includes these context layers (loaded dynamically based on 
 22. **8A:** Crew (people profiles, categories, crew_notes, person detail, name search) ✅
 23. **8B:** Sphere of Influence (list-based sphere view, sphere entities CRUD, focus center, gap indicators, AI context) ✅
 
-### Phase 9: Knowledge
+### Phase 9: Knowledge ✅
 24A. Manifest Processing Pipeline (cost optimization, chunking, embedding, storage) — BUILT (Phase 9A) ✅
 24B. Manifest UI + Intake Flow (card grid, detail view, upload, text notes, AI intake classification, folder/tag organization) — BUILT (Phase 9B) ✅
-24C. Framework Extraction + AI Integration — Phase 9C (next)
+24C. Framework Extraction + AI Integration — BUILT (Phase 9C) ✅
+24D. Expanded Format Support (EPUB, DOCX, TXT, MD) — BUILT (Phase 9C Addendum) ✅
 
 ### Phase 10: Cadence
 25. Meeting Frameworks (templates, custom scheduling, note integration)
@@ -1262,9 +1267,10 @@ stewardship/
 | PRD-10: Reveille + Reckoning | Phase 6 Built ✅ |
 | PRD-11: The Wheel + Life Inventory | Phase 7A Built ✅ |
 | PRD-12: First Mate (incl. Spouse Questions) | Phase 8A Built ✅ |
+| PRD-12A: Cyrano Me (Communication Coach) | Built ✅ |
 | PRD-13: Crew + Sphere of Influence | Phase 8A Built ✅ (Sphere = Phase 8B) |
 | PRD-14: Safe Harbor | Phase 7C Built ✅ |
-| PRD-15: The Manifest | PRD Written |
+| PRD-15: The Manifest | Phase 9 Built ✅ |
 | PRD-16: Rigging (Planning Tool) | Phase 7B Built ✅ |
 | PRD-17: Meeting Frameworks | PRD Written |
 | PRD-18: Reminders + Rhythms | PRD Written |

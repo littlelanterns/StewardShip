@@ -272,6 +272,7 @@ export type GuidedSubtype =
   | 'observe_serve'
   | 'words_of_affirmation'
   | 'gratitude'
+  | 'cyrano'
   | null;
 
 export type MessageRole = 'user' | 'assistant' | 'system';
@@ -1014,6 +1015,45 @@ export const SPOUSE_PROMPT_TYPE_LABELS: Record<SpousePromptType, string> = {
   ask_them: 'Ask',
   reflect: 'Reflect',
   express: 'Express',
+};
+
+// === PRD-12A: Cyrano Me ===
+
+export type CyranoTeachingSkill =
+  | 'specificity'
+  | 'her_lens'
+  | 'feeling_over_function'
+  | 'timing'
+  | 'callback_power'
+  | 'unsaid_need'
+  | 'presence_proof';
+
+export type CyranoStatus = 'draft' | 'sent' | 'saved_for_later';
+
+export interface CyranoMessage {
+  id: string;
+  user_id: string;
+  people_id: string;
+  raw_input: string;
+  crafted_version: string;
+  final_version: string | null;
+  teaching_skill: CyranoTeachingSkill | null;
+  teaching_note: string | null;
+  status: CyranoStatus;
+  sent_at: string | null;
+  helm_conversation_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const CYRANO_TEACHING_SKILL_LABELS: Record<CyranoTeachingSkill, string> = {
+  specificity: 'Specificity',
+  her_lens: 'Her Lens',
+  feeling_over_function: 'Feeling over Function',
+  timing: 'Timing & Context',
+  callback_power: 'Callback Power',
+  unsaid_need: 'The Unsaid Need',
+  presence_proof: 'Presence Proof',
 };
 
 export const CREW_NOTE_CATEGORY_LABELS: Record<CrewNoteCategory, string> = {

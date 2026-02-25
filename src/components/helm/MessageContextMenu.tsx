@@ -18,7 +18,7 @@ export default function MessageContextMenu({
   onClose,
 }: MessageContextMenuProps) {
   const { user } = useAuthContext();
-  const { regenerateMessage, resendShorter, resendLonger, isThinking } = useHelmContext();
+  const { regenerateMessage, resendShorter, resendLonger, isThinking, activeConversation } = useHelmContext();
   const menuRef = useRef<HTMLDivElement>(null);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -143,6 +143,34 @@ export default function MessageContextMenu({
   };
 
   const isAiMessage = message.role === 'assistant';
+  const isCyranoMode = activeConversation?.guided_mode === 'first_mate_action'
+    && activeConversation?.guided_subtype === 'cyrano';
+
+  const handleCopyDraft = () => {
+    navigator.clipboard.writeText(message.content);
+    showToast('Draft copied');
+  };
+
+  const handleSaveDraft = async () => {
+    if (!user || !activeConversation?.guided_mode_reference_id) return;
+    try {
+      const { error } = await supabase
+        .from('cyrano_messages')
+        .insert({
+          user_id: user.id,
+          people_id: activeConversation.guided_mode_reference_id,
+          raw_input: message.content,
+          crafted_version: message.content,
+          status: 'draft',
+          helm_conversation_id: activeConversation.id,
+        });
+
+      if (error) throw error;
+      showToast('Draft saved');
+    } catch {
+      showToast('Failed to save draft');
+    }
+  };
 
   return (
     <div
@@ -193,6 +221,27 @@ export default function MessageContextMenu({
                 disabled={isThinking}
               >
                 Longer
+              </button>
+            </>
+          )}
+          {isCyranoMode && isAiMessage && (
+            <>
+              <div className="message-context-menu__divider" />
+              <button
+                type="button"
+                className="message-context-menu__item"
+                role="menuitem"
+                onClick={handleCopyDraft}
+              >
+                Copy draft
+              </button>
+              <button
+                type="button"
+                className="message-context-menu__item"
+                role="menuitem"
+                onClick={handleSaveDraft}
+              >
+                Save draft
               </button>
             </>
           )}

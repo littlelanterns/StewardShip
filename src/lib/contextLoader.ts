@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { MastEntry, KeelEntry, LogEntry, Victory, CompassTask, GuidedMode, HelmMessage, WheelInstance, LifeInventoryArea, RiggingPlan, Person, SpouseInsight, SphereEntity, ManifestSearchResult } from './types';
+import type { MastEntry, KeelEntry, LogEntry, Victory, CompassTask, GuidedMode, GuidedSubtype, HelmMessage, WheelInstance, LifeInventoryArea, RiggingPlan, Person, SpouseInsight, SphereEntity, ManifestSearchResult } from './types';
 import { SPOKE_LABELS, PLANNING_FRAMEWORK_LABELS } from './types';
 import { searchManifest } from './rag';
 import {
@@ -33,6 +33,7 @@ interface LoadContextOptions {
   pageContext: string;
   userId: string;
   guidedMode?: GuidedMode;
+  guidedSubtype?: GuidedSubtype;
   guidedModeContext?: GuidedModeContext;
   conversationHistory: HelmMessage[];
   contextBudget?: 'short' | 'medium' | 'long';
@@ -44,6 +45,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     pageContext,
     userId,
     guidedMode,
+    guidedSubtype,
     guidedModeContext,
     conversationHistory,
     contextBudget = 'medium',
@@ -101,6 +103,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
   let sphereContext: string | undefined;
   let frameworksContext: string | undefined;
   let manifestContext: string | undefined;
+  let cyranoContext: string | undefined;
 
   // Fetch conditional data in parallel
   const keelPromise = needKeel
@@ -305,6 +308,40 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     const insights = (spouseInsightsResult?.data as SpouseInsight[]) || [];
     firstMateContext = formatFirstMateContext(spouse.name, insights);
   }
+
+  // Cyrano context — load recent teaching skills for rotation when in Cyrano mode
+  if (guidedMode === 'first_mate_action' && guidedSubtype === 'cyrano') {
+    const [skillsResult, countResult] = await Promise.all([
+      supabase
+        .from('cyrano_messages')
+        .select('teaching_skill')
+        .eq('user_id', userId)
+        .not('teaching_skill', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(10),
+      supabase
+        .from('cyrano_messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId),
+    ]);
+
+    const recentSkills = (skillsResult.data || [])
+      .map((s: { teaching_skill: string }) => s.teaching_skill)
+      .filter(Boolean);
+    const totalCount = countResult.count || 0;
+
+    let ctx = '\n\nCYRANO COACHING CONTEXT:';
+    if (recentSkills.length > 0) {
+      ctx += `\nRecent teaching skills used (avoid repeating the most recent): ${recentSkills.join(', ')}`;
+    } else {
+      ctx += '\nThis may be their first Cyrano interaction. Start with the basics.';
+    }
+    if (totalCount >= 5) {
+      ctx += `\nThe user has used Cyrano ${totalCount} times. You may occasionally offer "skill check" mode — let them write first, then give feedback instead of rewriting.`;
+    }
+    cyranoContext = ctx;
+  }
+
   if (crewResult?.data && crewResult.data.length > 0) {
     crewContext = formatCrewContext(crewResult.data as Person[]);
   }
@@ -375,6 +412,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     sphereContext,
     frameworksContext,
     manifestContext,
+    cyranoContext,
     pageContext,
     guidedMode: guidedMode || null,
     guidedModeContext,

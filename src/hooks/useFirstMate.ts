@@ -284,8 +284,8 @@ Rules:
 - Be specific and personal based on what you know. No generic prompts. No emoji.
 - For ask_them: A question to ask them in person. Should reveal something meaningful.
 - For reflect: Something to reflect on about their relationship or their spouse.
-- For express: A specific way to express love or appreciation today.
-- Respond with ONLY the prompt text, nothing else. Keep it to 1-3 sentences.`;
+- For express: Generate a specific action IDEA, not scripted words. Give the user a direction — what to express and a nudge toward sincerity — but leave the actual words to him. Good examples: "Text her a memory from when you were first dating that still makes you smile." / "Tonight, tell her how her presence specifically improves one situation in your daily life." / "Think of something she does for the family that nobody ever thanks her for. Thank her for that one thing — out loud, not just in your head." Bad examples (DO NOT generate): "Text her: 'You're the best thing that ever happened to me.'" (scripted) / "Tell her she looks beautiful today." (generic). End express prompts with: "Need help putting it into words? Try Cyrano Me in your Marriage Toolbox."
+- Respond with ONLY the prompt text, nothing else. Keep it to 2-4 sentences (including the Cyrano handoff for express).`;
 
       const { data: aiResponse, error: aiError } = await supabase.functions.invoke('helm-chat', {
         body: {

@@ -153,6 +153,7 @@ export function HelmProvider({ children }: { children: ReactNode }) {
       pageContext: pageContext.page,
       userId: user.id,
       guidedMode: activeConvo?.guided_mode,
+      guidedSubtype: activeConvo?.guided_subtype,
       guidedModeContext: gmContext,
       conversationHistory: messagesForContext,
     });

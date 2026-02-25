@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Heart, Gift, Eye, MessageCircle, Sparkles } from 'lucide-react';
+import { Heart, Gift, Eye, MessageCircle, Sparkles, Feather } from 'lucide-react';
 import { Card } from '../shared';
 import { useHelmContext } from '../../contexts/HelmContext';
 import type { GuidedSubtype } from '../../lib/types';
@@ -16,6 +16,7 @@ const TOOLBOX_MODES: { subtype: GuidedSubtype; label: string; desc: string; icon
   { subtype: 'observe_serve', label: 'Observe and Serve', desc: 'Notice and meet needs', icon: Eye },
   { subtype: 'words_of_affirmation', label: 'Words of Affirmation', desc: 'See and say what matters', icon: MessageCircle },
   { subtype: 'gratitude', label: 'Gratitude', desc: 'Go deeper in thankfulness', icon: Sparkles },
+  { subtype: 'cyrano', label: 'Cyrano Me', desc: 'Help me say what I feel', icon: Feather },
 ];
 
 export function MarriageToolbox({ spouseId, isMarried }: MarriageToolboxProps) {
