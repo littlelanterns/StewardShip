@@ -150,6 +150,7 @@ export function useHelmData() {
     role: 'user' | 'assistant' | 'system',
     content: string,
     pageContext?: string,
+    fileInfo?: { storagePath: string; fileType: string },
   ): Promise<HelmMessage | null> => {
     if (!user) return null;
     setError(null);
@@ -162,6 +163,8 @@ export function useHelmData() {
           role,
           content,
           page_context: pageContext || null,
+          file_storage_path: fileInfo?.storagePath || null,
+          file_type: fileInfo?.fileType || null,
         })
         .select()
         .single();

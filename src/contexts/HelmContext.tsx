@@ -91,7 +91,7 @@ interface HelmContextValue {
   error: string | null;
 
   // Actions
-  sendMessage: (content: string) => Promise<void>;
+  sendMessage: (content: string, attachment?: { storagePath: string; fileType: string; fileName: string }) => Promise<void>;
   startNewConversation: () => Promise<void>;
   startGuidedConversation: (mode: GuidedMode, subtype?: GuidedSubtype, refId?: string) => Promise<HelmConversation | null>;
   switchConversation: (conversationId: string) => Promise<void>;
@@ -141,6 +141,7 @@ export function HelmProvider({ children }: { children: ReactNode }) {
     _conversationId: string,
     messagesForContext: HelmMessage[],
     extraInstruction?: string,
+    fileInfo?: { storagePath: string; fileType: string; fileName: string },
   ): Promise<string> => {
     if (!user) throw new Error('Not authenticated');
 
@@ -182,11 +183,11 @@ export function HelmProvider({ children }: { children: ReactNode }) {
     }
 
     const guidedMode = helmData.activeConversation?.guided_mode;
-    return await sendChatMessage(systemPrompt, apiMessages, 0, user.id, guidedMode);
+    return await sendChatMessage(systemPrompt, apiMessages, 0, user.id, guidedMode, fileInfo);
   }, [user, pageContext.page, helmData.activeConversation?.guided_mode, helmData.activeConversation?.guided_mode_reference_id, helmData.activeConversation?.title]);
 
-  const sendMessage = useCallback(async (content: string) => {
-    if (!content.trim() || !user) return;
+  const sendMessage = useCallback(async (content: string, attachment?: { storagePath: string; fileType: string; fileName: string }) => {
+    if ((!content.trim() && !attachment) || !user) return;
 
     let conversation = helmData.activeConversation;
 
@@ -196,12 +197,13 @@ export function HelmProvider({ children }: { children: ReactNode }) {
       if (!conversation) return;
     }
 
-    // Add user message
+    // Add user message (with file info if attachment exists)
     const userMsg = await helmData.addMessage(
       conversation.id,
       'user',
-      content.trim(),
+      content.trim() || `[Attached: ${attachment?.fileName}]`,
       pageContext.page,
+      attachment ? { storagePath: attachment.storagePath, fileType: attachment.fileType } : undefined,
     );
 
     if (!userMsg) return;
@@ -210,7 +212,7 @@ export function HelmProvider({ children }: { children: ReactNode }) {
     setIsThinking(true);
     try {
       const currentMessages = [...helmData.messages, userMsg];
-      const aiResponse = await callAI(conversation.id, currentMessages);
+      const aiResponse = await callAI(conversation.id, currentMessages, undefined, attachment);
 
       await helmData.addMessage(
         conversation.id,
@@ -221,7 +223,7 @@ export function HelmProvider({ children }: { children: ReactNode }) {
 
       // Auto-title in background after first AI response
       if (!conversation.title) {
-        autoTitleConversation(content.trim(), user.id).then((title) => {
+        autoTitleConversation(content.trim() || `Discussing ${attachment?.fileName}`, user.id).then((title) => {
           if (title) {
             helmData.updateTitle(conversation!.id, title);
           }

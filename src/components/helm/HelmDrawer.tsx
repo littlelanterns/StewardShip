@@ -161,8 +161,8 @@ export default function HelmDrawer() {
     loadHistory(nextOffset);
   }, [historyOffset, loadHistory]);
 
-  const handleSend = useCallback((content: string) => {
-    sendMessage(content);
+  const handleSend = useCallback((content: string, attachment?: { storagePath: string; fileType: string; fileName: string }) => {
+    sendMessage(content, attachment);
   }, [sendMessage]);
 
   // Triage flow: start dump → trigger AI triage → show review

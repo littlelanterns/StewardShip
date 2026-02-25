@@ -1,5 +1,7 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
+import { Paperclip } from 'lucide-react';
 import type { HelmMessage } from '../../lib/types';
+import { supabase } from '../../lib/supabase';
 import MessageContextMenu from './MessageContextMenu';
 import './MessageBubble.css';
 
@@ -38,6 +40,21 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
     }
   }, []);
 
+  // Build attachment preview URL if the message has a file
+  const attachmentUrl = useMemo(() => {
+    if (!message.file_storage_path) return null;
+    const isImage = message.file_type?.startsWith('image/');
+    if (!isImage) return null;
+    const { data } = supabase.storage
+      .from('helm-attachments')
+      .getPublicUrl(message.file_storage_path);
+    return data?.publicUrl || null;
+  }, [message.file_storage_path, message.file_type]);
+
+  const fileName = message.file_storage_path
+    ? message.file_storage_path.split('/').pop()?.replace(/^\d+_[a-z0-9]+\./, '') || 'file'
+    : null;
+
   // Don't render system messages as bubbles
   if (message.role === 'system') return null;
 
@@ -55,6 +72,17 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
         onTouchEnd={handleTouchEnd}
         onTouchMove={handleTouchMove}
       >
+        {message.file_storage_path && (
+          <div className="message-bubble__attachment">
+            {attachmentUrl ? (
+              <img src={attachmentUrl} alt="Attachment" className="message-bubble__attachment-img" />
+            ) : (
+              <span className="message-bubble__attachment-file">
+                <Paperclip size={14} /> {fileName}
+              </span>
+            )}
+          </div>
+        )}
         <p className="message-bubble__text">{message.content}</p>
         <span className="message-bubble__time">{time}</span>
       </div>

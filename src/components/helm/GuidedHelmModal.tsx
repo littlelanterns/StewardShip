@@ -67,8 +67,8 @@ export default function GuidedHelmModal() {
     navigate('/helm');
   }, [closeGuidedModal, navigate]);
 
-  const handleSend = useCallback((content: string) => {
-    sendMessage(content);
+  const handleSend = useCallback((content: string, attachment?: { storagePath: string; fileType: string; fileName: string }) => {
+    sendMessage(content, attachment);
   }, [sendMessage]);
 
   // Triage flow for Unload the Hold

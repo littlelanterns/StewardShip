@@ -12,6 +12,7 @@ export async function sendChatMessage(
   maxTokens: number,
   userId: string,
   guidedMode?: string | null,
+  fileInfo?: { storagePath: string; fileType: string; fileName: string },
 ): Promise<string> {
   const { data, error } = await supabase.functions.invoke('chat', {
     body: {
@@ -20,6 +21,11 @@ export async function sendChatMessage(
       max_tokens: maxTokens,
       user_id: userId,
       guided_mode: guidedMode || undefined,
+      file_attachment: fileInfo ? {
+        storage_path: fileInfo.storagePath,
+        file_type: fileInfo.fileType,
+        file_name: fileInfo.fileName,
+      } : undefined,
     },
   });
 

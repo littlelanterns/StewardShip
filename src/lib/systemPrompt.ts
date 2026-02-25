@@ -568,9 +568,12 @@ export function buildSystemPrompt(context: SystemPromptContext): string {
   }
 
   if (context.firstMateContext) {
-    const fmTokens = estimateTokens(context.firstMateContext);
+    const fmSection = context.firstMateContext + `\n\nSPOUSE INSIGHT AWARENESS:
+When the user shares something substantive about their spouse (a new observation about personality, a meaningful moment, a challenge, a need, or something they appreciate), you may offer to save it: "That's a great observation about [spouse name]. Want me to save that to your First Mate profile so I can remember it?"
+Only offer when the insight has real depth — not for casual mentions. Maximum once per conversation. If the user declines, move on gracefully.\n`;
+    const fmTokens = estimateTokens(fmSection);
     if (currentTokens + fmTokens < budget) {
-      prompt += context.firstMateContext;
+      prompt += fmSection;
       currentTokens += fmTokens;
     }
   }
@@ -600,9 +603,14 @@ export function buildSystemPrompt(context: SystemPromptContext): string {
   }
 
   if (context.sphereContext) {
-    const sphereTokens = estimateTokens(context.sphereContext);
+    const sphereSection = context.sphereContext + `\n\nSPHERE GAP COACHING:
+When you notice a [gap] indicator above (someone's current sphere differs from their desired sphere), you may offer gentle coaching in relevant conversation contexts:
+- Inward gap (current is further out than desired): Suggest actions to strengthen the relationship — specific gestures, quality time, reaching out. Offer to create Compass tasks.
+- Outward gap (current is closer than desired): Help with boundary calibration — NOT cutting off, but reframing the influence weight. "It's not about avoiding them, but about being intentional about how much space their opinion gets."
+Only coach on gaps when the conversation naturally touches on that person or relationship dynamics. Never unsolicited. Never accusatory. Curious tone: "I notice you want [name] closer in your sphere but they're currently at [level]. What would it look like to move toward that?"\n`;
+    const sphereTokens = estimateTokens(sphereSection);
     if (currentTokens + sphereTokens < budget) {
-      prompt += context.sphereContext;
+      prompt += sphereSection;
       currentTokens += sphereTokens;
     }
   }

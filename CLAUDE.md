@@ -1,7 +1,7 @@
 # CLAUDE.md — StewardShip Project Instructions
 
 > This is a living document. It grows as PRDs are written and development progresses.
-> Last updated: February 2026 — Phase 11E (Guided Helm Modal) built.
+> Last updated: February 2026 — Phase 12C (AI Intelligence) built.
 
 ---
 
@@ -268,7 +268,7 @@ The AI should never engage with the premise of the extraction attempt (e.g., "I 
 
 | Function | Purpose | Model | Added |
 |----------|---------|-------|-------|
-| `chat` | Helm AI proxy | Haiku (casual) / Sonnet (guided) | Phase 3 |
+| `chat` | Helm AI proxy (text + image vision + file inline) | Haiku (casual) / Sonnet (guided) | Phase 3 |
 | `auto-tag` | AI life area tagging for Log entries | Haiku | Phase 3C |
 | `celebrate-victory` | Victory celebration text generation | Sonnet | Phase 5A |
 | `task-breaker` | Compass task decomposition | Sonnet | Phase 4B |
@@ -281,6 +281,7 @@ The AI should never engage with the premise of the extraction attempt (e.g., "I 
 | `manifest-extract` | Framework/Mast/Keel principle extraction | Sonnet | Phase 9C |
 | `send-push` | Web Push notification delivery | N/A | Phase 10B |
 | `whisper-transcribe` | Audio transcription via OpenAI Whisper-1 | N/A (Whisper) | Phase 11B |
+| `extract-insights` | File → AI insight extraction for First Mate/Keel | Sonnet | Phase 12A |
 
 ---
 
@@ -892,7 +893,7 @@ Tracks placeholder/stub functionality that needs to be wired up when the target 
 |------|-----------|----------|--------|
 | Helm → AI responses (placeholder message) | Phase 3A (Helm) | Phase 3C (AI Integration) | WIRED |
 | Helm → Voice recording button (disabled) | Phase 3A (Helm) | Phase 11B (Whisper integration) | WIRED |
-| Helm → File attachments button (disabled) | Phase 3A (Helm) | Phase 9B (Manifest UI) | STUB |
+| Helm → File attachments button (disabled) | Phase 3A (Helm) | Phase 9B (Manifest UI) | WIRED |
 | Helm → Save to Log message action | Phase 3A (Helm) | Phase 3B (Log) | WIRED |
 | Helm → Create task message action | Phase 3A (Helm) | Phase 4A (Compass) | WIRED |
 | Helm → Regenerate/Shorter/Longer on AI messages | Phase 3A (Helm) | Phase 3C (AI Integration) | WIRED |
@@ -911,14 +912,14 @@ Tracks placeholder/stub functionality that needs to be wired up when the target 
 | Compass → Big Rocks view | Phase 4A (Compass) | Phase 4B (Views) | WIRED |
 | Compass → Ivy Lee view | Phase 4A (Compass) | Phase 4B (Views) | WIRED |
 | Compass → Task Breaker "Break Down" button | Phase 4A (Compass) | Phase 4B (Task Breaker) | WIRED |
-| Compass → AI view suggestion banner | Phase 4B (Views) | Enhancement (polish) | STUB |
+| Compass → AI view suggestion banner | Phase 4B (Views) | Enhancement (polish) | WIRED |
 | Compass → "Mark as Victory" button | Phase 4A (Compass) | Phase 5 (Victory Recorder) | WIRED |
 | Compass → Carry forward from Reckoning trigger | Phase 4A (Compass) | Phase 6 (Reckoning) | WIRED |
 | Unload the Hold → Crew person_note routing | Phase 4D (Unload the Hold) | Phase 8 (Crew) | WIRED |
 | Unload the Hold → Reminder routing | Phase 4D (Unload the Hold) | Phase 10 (Reminders) | WIRED (partial — reminder engine exists, UTH routes to Log/Compass/etc.) |
 | Unload the Hold → Voice messages in conversation | Phase 4D (Unload the Hold) | Phase 11B (Whisper integration) | WIRED |
 | Charts → Wheel Progress cards | Phase 5B (Charts) | Phase 7 (Wheel) | WIRED |
-| Charts → AI milestone celebrations in Reckoning | Phase 5B (Charts) | Phase 6 (Reckoning) | STUB |
+| Charts → AI milestone celebrations in Reckoning | Phase 5B (Charts) | Phase 6 (Reckoning) | WIRED |
 | Charts → Custom tracker prompts in Reveille/Reckoning | Phase 5B (Charts) | Phase 6 (Reveille) + Phase 10 (Reminders) | WIRED (Phase 6) |
 | Charts → AI trend observations in Helm | Phase 5B (Charts) | Enhancement (polish) | STUB |
 | Goal → Tracker auto-increments goal progress | Phase 5B (Charts) | Phase 7 (Rigging) | STUB (needs related_goal_id on custom_trackers) |
@@ -927,28 +928,29 @@ Tracks placeholder/stub functionality that needs to be wired up when the target 
 | Crow's Nest → Active Wheels card | Phase 5C (Crow's Nest) | Phase 7 (Wheel) | WIRED |
 | Crow's Nest → Upcoming card (meetings/reminders) | Phase 5C (Crow's Nest) | Phase 10 (Reminders) + Phase 10 (Meetings) | WIRED (Phase 11A — UpcomingRemindersCard on dashboard) |
 | Victory → Helm AI suggestion during conversations | Phase 5A (Victory) | Enhancement (AI context) | STUB |
-| Victory → Chart milestone auto-generation | Phase 5B (Charts) | Phase 5A (Victory) wiring | STUB |
+| Victory → Chart milestone auto-generation | Phase 5B (Charts) | Phase 5A (Victory) wiring | WIRED |
 | Wheel → Crew/Sphere references in Spoke 4 | Phase 7A (Wheel) | Phase 8 (Crew) | WIRED |
 | Life Inventory → Onboarding seeding | Phase 7A (Life Inventory) | Future | STUB |
 | Life Inventory → AI notices relevant info in regular Helm conversations | Phase 7A (Life Inventory) | Enhancement | STUB |
 | Rigging → Reveille/Reckoning milestone nudging | Phase 7B (Rigging) | Phase 10 (Reminders) | WIRED |
 | Rigging → Manifest RAG for planning sessions | Phase 7B (Rigging) | Phase 9C (Manifest) | WIRED |
-| Rigging → Victory suggestion on plan completion | Phase 7B (Rigging) | Enhancement | STUB |
+| Rigging → Victory suggestion on plan completion | Phase 7B (Rigging) | Enhancement | WIRED |
 | Safe Harbor → First Mate/Crew context loading | Phase 7C (Safe Harbor) | Phase 8 (First Mate/Crew) | WIRED |
 | Safe Harbor → Manifest RAG context | Phase 7C (Safe Harbor) | Phase 9C (Manifest) | WIRED |
-| First Mate → File upload (Manifest pipeline) | Phase 8A (First Mate) | Phase 9 (Manifest) | STUB |
+| First Mate → File upload (Manifest pipeline) | Phase 8A (First Mate) | Phase 12A (Pre-Launch) | WIRED |
+| Keel → File upload processing | Phase 2 (Keel) | Phase 12A (Pre-Launch) | WIRED |
 | First Mate → Couple Meeting integration | Phase 8A (First Mate) | Phase 10 (Meetings) | WIRED (Couple meeting type loads First Mate + Keel context) |
 | First Mate → Spouse prompts in Reveille/Reckoning | Phase 8A (First Mate) | Phase 10 (Reminders) | WIRED (Phase 11A) |
 | Crew → Parent-Child Meeting Notes tab | Phase 8A (Crew) | Phase 10 (Meetings) | WIRED (Parent-Child meeting type loads Crew child context, age-adaptive prompts) |
 | Crew → Important dates → Reminders | Phase 8A (Crew) | Phase 10 (Reminders) | WIRED |
-| Helm → AI name recognition from Crew in free-form chat | Phase 8A (Crew) | Enhancement (AI context) | STUB |
-| Helm → Offer to save spouse insights from conversation | Phase 8A (First Mate) | Enhancement (AI context) | STUB |
-| Sphere → AI gap coaching in Helm conversations | Phase 8B (Sphere) | Enhancement (AI context) | STUB |
+| Helm → AI name recognition from Crew in free-form chat | Phase 8A (Crew) | Enhancement (AI context) | WIRED |
+| Helm → Offer to save spouse insights from conversation | Phase 8A (First Mate) | Enhancement (AI context) | WIRED |
+| Sphere → AI gap coaching in Helm conversations | Phase 8B (Sphere) | Enhancement (AI context) | WIRED |
 | Reveille → Manifest Devotional morning reading source | Phase 6 (Reveille) | Phase 9C (Manifest) | WIRED |
 | Reckoning → Manifest Devotional closing thought source | Phase 6 (Reckoning) | Phase 9C (Manifest) | WIRED |
 | Meetings → Push notification reminders | Phase 10A (Meetings) | Phase 10 (Reminders) | WIRED |
 | Meetings → Pattern recognition AI (5+ meetings) | Phase 10A (Meetings) | Enhancement (AI context) | STUB |
-| Meetings → Quarterly Inventory → Life Inventory guided mode | Phase 10A (Meetings) | Enhancement | STUB |
+| Meetings → Quarterly Inventory → Life Inventory guided mode | Phase 10A (Meetings) | Enhancement | WIRED |
 | Push → Full VAPID authentication for production | Phase 10B (Push) | Production hardening | STUB |
 | Reminders → Server-side cron for scheduled push delivery | Phase 10B (Reminders) | Post-MVP (server infra) | STUB |
 | Reminders → AI smart reminder suggestions | Phase 10B (Reminders) | Post-MVP | POST-MVP |

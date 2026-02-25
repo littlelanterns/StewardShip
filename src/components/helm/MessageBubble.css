@@ -59,3 +59,23 @@
 .message-bubble--assistant .message-bubble__time {
   color: var(--color-text-secondary);
 }
+
+/* Attachment display */
+.message-bubble__attachment {
+  margin-bottom: var(--spacing-xs);
+}
+
+.message-bubble__attachment-img {
+  max-width: 100%;
+  max-height: 200px;
+  border-radius: var(--radius-sm);
+  object-fit: contain;
+}
+
+.message-bubble__attachment-file {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-sm);
+  opacity: 0.8;
+}

@@ -12,7 +12,7 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { messages, system_prompt, max_tokens, user_id, guided_mode } = await req.json();
+    const { messages, system_prompt, max_tokens, user_id, guided_mode, file_attachment } = await req.json();
 
     if (!messages || !system_prompt || !user_id) {
       return new Response(
@@ -65,6 +65,68 @@ serve(async (req: Request) => {
     const smartMaxTokens = guided_mode ? 1024 : 512;
     const tokens = max_tokens || settings?.max_tokens || smartMaxTokens;
 
+    // Process file attachment if present
+    let processedMessages = [...messages];
+    if (file_attachment) {
+      const { storage_path, file_type, file_name } = file_attachment;
+      const isImage = file_type.startsWith('image/');
+      const isText = file_type === 'text/plain' || file_type === 'text/markdown' ||
+                     file_name.endsWith('.txt') || file_name.endsWith('.md');
+      const isPdf = file_type === 'application/pdf' || file_name.endsWith('.pdf');
+
+      if (isImage) {
+        // For images, get a signed URL and use OpenRouter vision format
+        const { data: signedData } = await supabase.storage
+          .from('helm-attachments')
+          .createSignedUrl(storage_path, 600); // 10 min expiry
+
+        if (signedData?.signedUrl) {
+          // Find the last user message and convert to multimodal format
+          const lastIdx = processedMessages.length - 1;
+          if (lastIdx >= 0 && processedMessages[lastIdx].role === 'user') {
+            const textContent = processedMessages[lastIdx].content;
+            processedMessages[lastIdx] = {
+              role: 'user',
+              content: [
+                { type: 'text', text: textContent },
+                { type: 'image_url', image_url: { url: signedData.signedUrl } },
+              ],
+            };
+          }
+        }
+      } else if (isText) {
+        // For text files, download and inline the content
+        const { data: fileData } = await supabase.storage
+          .from('helm-attachments')
+          .download(storage_path);
+
+        if (fileData) {
+          const textContent = await fileData.text();
+          const truncated = textContent.length > 8000
+            ? textContent.slice(0, 8000) + '\n\n[Content truncated — full file available in storage]'
+            : textContent;
+
+          // Append to the last user message
+          const lastIdx = processedMessages.length - 1;
+          if (lastIdx >= 0 && processedMessages[lastIdx].role === 'user') {
+            processedMessages[lastIdx] = {
+              ...processedMessages[lastIdx],
+              content: `${processedMessages[lastIdx].content}\n\n--- Attached file: ${file_name} ---\n${truncated}`,
+            };
+          }
+        }
+      } else if (isPdf) {
+        // For PDFs, note the attachment — full extraction requires manifest-process pipeline
+        const lastIdx = processedMessages.length - 1;
+        if (lastIdx >= 0 && processedMessages[lastIdx].role === 'user') {
+          processedMessages[lastIdx] = {
+            ...processedMessages[lastIdx],
+            content: `${processedMessages[lastIdx].content}\n\n[Attached PDF: ${file_name}. PDF text extraction is available through the Manifest. For now, I can see the filename but not the PDF content. You can upload this to the Manifest for full processing, or describe what you'd like to discuss from it.]`,
+          };
+        }
+      }
+    }
+
     // Call OpenRouter
     const openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -79,7 +141,7 @@ serve(async (req: Request) => {
         max_tokens: tokens,
         messages: [
           { role: 'system', content: system_prompt },
-          ...messages,
+          ...processedMessages,
         ],
       }),
     });

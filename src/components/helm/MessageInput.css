@@ -87,3 +87,51 @@
 .message-input__send-btn--active:hover {
   background-color: var(--color-dark-teal);
 }
+
+/* Wrapper for attachment preview + input bar */
+.message-input-wrapper {
+  flex-shrink: 0;
+}
+
+/* Attachment preview */
+.message-input__attachment-preview {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-md);
+  background-color: var(--color-bg-secondary);
+  border-top: 1px solid var(--color-border);
+}
+
+.message-input__attachment-thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+}
+
+.message-input__attachment-name {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.message-input__attachment-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-full);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.message-input__attachment-remove:hover {
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+}

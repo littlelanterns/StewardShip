@@ -84,11 +84,33 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
   const needLifeInventory = shouldLoadLifeInventory(message, pageContext);
   const needRigging = shouldLoadRigging(message, pageContext);
   const needFirstMate = shouldLoadFirstMate(message, pageContext, guidedMode);
-  const needCrew = shouldLoadCrew(message, pageContext, guidedMode);
+  let needCrew = shouldLoadCrew(message, pageContext, guidedMode);
   const needSphere = shouldLoadSphere(message, pageContext);
   const needFrameworks = shouldLoadFrameworks(message, pageContext, guidedMode);
   const needManifest = shouldLoadManifest(message, pageContext, guidedMode);
   const needMeeting = shouldLoadMeeting(message, pageContext, guidedMode);
+
+  // Name recognition: lightweight fetch of all crew names to detect mentions
+  let detectedCrewNames: string[] = [];
+  if (!needCrew && message.trim()) {
+    const { data: crewNames } = await supabase
+      .from('people')
+      .select('name')
+      .eq('user_id', userId)
+      .is('archived_at', null);
+    if (crewNames && crewNames.length > 0) {
+      const messageLower = message.toLowerCase();
+      detectedCrewNames = (crewNames as { name: string }[])
+        .filter((p) => {
+          const nameRegex = new RegExp(`\\b${p.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+          return nameRegex.test(messageLower);
+        })
+        .map((p) => p.name);
+      if (detectedCrewNames.length > 0) {
+        needCrew = true;
+      }
+    }
+  }
 
   let keelEntries: KeelEntry[] | undefined;
   let recentLogEntries: LogEntry[] | undefined;
@@ -385,6 +407,10 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
 
   if (crewResult?.data && crewResult.data.length > 0) {
     crewContext = formatCrewContext(crewResult.data as Person[]);
+    // Annotate crew context with detected names so AI knows which people were mentioned
+    if (detectedCrewNames.length > 0) {
+      crewContext += `\nThe user just mentioned: ${detectedCrewNames.join(', ')}. Pay special attention to context about these people.\n`;
+    }
   }
 
   // Sphere context — needs crew data for people sphere assignments

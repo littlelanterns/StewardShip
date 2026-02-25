@@ -84,8 +84,8 @@ export default function Helm() {
     loadHistory(nextOffset);
   }, [historyOffset, loadHistory]);
 
-  const handleSend = useCallback((content: string) => {
-    sendMessage(content);
+  const handleSend = useCallback((content: string, attachment?: { storagePath: string; fileType: string; fileName: string }) => {
+    sendMessage(content, attachment);
   }, [sendMessage]);
 
   const handleSaveToLog = useCallback(() => {
