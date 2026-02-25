@@ -229,6 +229,42 @@
   font-style: italic;
 }
 
+/* === Upcoming Reminders === */
+.cn-reminders {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cn-reminder {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  padding: 4px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.cn-reminder:last-child {
+  border-bottom: none;
+}
+
+.cn-reminder__title {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cn-reminder__type {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
 /* === Mast Thought === */
 .cn-mast__text {
   font-size: var(--font-size-sm);

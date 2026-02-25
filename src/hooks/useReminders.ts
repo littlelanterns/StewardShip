@@ -624,6 +624,69 @@ export function useReminders() {
         }
       }
 
+      // === Spouse prompt reminders (2-3x per week) ===
+      if (settings.notification_people !== 'off') {
+        // Check if First Mate exists
+        const { data: spouse } = await supabase
+          .from('people')
+          .select('id, name')
+          .eq('user_id', user.id)
+          .eq('is_first_mate', true)
+          .is('archived_at', null)
+          .maybeSingle();
+
+        if (spouse) {
+          // Count spouse_prompt reminders created this week
+          const weekStart = new Date();
+          const dayOfWeek = weekStart.getDay();
+          weekStart.setDate(weekStart.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+          const weekStartStr = weekStart.toISOString();
+
+          const { count: weekPromptCount } = await supabase
+            .from('reminders')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', user.id)
+            .eq('reminder_type', 'spouse_prompt')
+            .gte('created_at', weekStartStr);
+
+          // Generate if fewer than 2 this week (target 2-3 per week)
+          if ((weekPromptCount || 0) < 2) {
+            // Check for existing pending/delivered spouse_prompt for today
+            const hasTodayPrompt = await checkDuplicate('spouse_prompt', 'spouse_prompt', spouse.id);
+
+            if (!hasTodayPrompt) {
+              // Pick a recent unanswered prompt or create a generic one
+              const { data: recentPrompt } = await supabase
+                .from('spouse_prompts')
+                .select('id, prompt_text, prompt_type')
+                .eq('user_id', user.id)
+                .eq('status', 'pending')
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+              const promptText = recentPrompt?.prompt_text
+                || 'Take a moment to think about your spouse today.';
+
+              await createReminder({
+                reminder_type: 'spouse_prompt',
+                title: `For ${spouse.name}`,
+                body: promptText,
+                delivery_method: 'reveille_batch',
+                related_entity_type: 'spouse_prompt',
+                related_entity_id: recentPrompt?.id || spouse.id,
+                source_feature: 'first_mate',
+                metadata: {
+                  person_name: spouse.name,
+                  prompt_type: recentPrompt?.prompt_type || 'reflect',
+                  spouse_prompt_id: recentPrompt?.id || null,
+                },
+              });
+            }
+          }
+        }
+      }
+
       // === Journal export (monthly) ===
       if (settings.journal_export_reminder && today.endsWith('-01')) {
         await createReminder({

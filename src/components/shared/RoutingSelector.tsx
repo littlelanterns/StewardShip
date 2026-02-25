@@ -22,6 +22,34 @@ interface RoutingSelectorProps {
 
 type SubScreen = 'main' | 'mast' | 'keel' | 'lists' | 'victory' | 'reminder';
 
+type RouteKey = 'compass' | 'victory' | 'reminder' | 'mast' | 'keel' | 'list';
+
+function getSuggestedRoutes(text: string): RouteKey[] {
+  const suggestions: RouteKey[] = [];
+  const lower = text.toLowerCase();
+
+  if (/\b(need to|should|have to|must|todo|deadline|by friday|this week|get done|take care of)\b/.test(lower)) {
+    suggestions.push('compass');
+  }
+  if (/\b(accomplished|achieved|finished|completed|proud|victory|milestone|success|nailed|crushed it)\b/.test(lower)) {
+    suggestions.push('victory');
+  }
+  if (/\b(remind me|don't forget|remember to|next week|tomorrow|on monday|don't let me)\b/.test(lower)) {
+    suggestions.push('reminder');
+  }
+  if (/\b(i believe|i value|my principle|i commit|i will always|i stand for|i choose to)\b/.test(lower)) {
+    suggestions.push('mast');
+  }
+  if (/\b(i tend to|i'm the type|my personality|i realize about myself|pattern|i notice that i)\b/.test(lower)) {
+    suggestions.push('keel');
+  }
+  if (/\b(buy|pick up|grocery|shopping|list of|items|supplies)\b/.test(lower)) {
+    suggestions.push('list');
+  }
+
+  return suggestions;
+}
+
 export function RoutingSelector({ entryId, entryText, onRouted, onClose }: RoutingSelectorProps) {
   const { user } = useAuthContext();
   const { openDrawer, sendMessage } = useHelmContext();
@@ -360,82 +388,39 @@ export function RoutingSelector({ entryId, entryText, onRouted, onClose }: Routi
     );
   }
 
+  const suggestions = getSuggestedRoutes(entryText);
+
+  const routeItems: { key: RouteKey | 'save' | 'helm'; label: string; desc: string; action: () => void }[] = [
+    { key: 'save', label: 'Just save it', desc: 'Entry stays in the Log', action: onClose },
+    { key: 'compass', label: 'Create a task', desc: 'Add to your Compass', action: handleRouteToCompass },
+    { key: 'list', label: 'Add to a list', desc: 'Save to a flexible list', action: handleOpenLists },
+    { key: 'reminder', label: 'Set a reminder', desc: 'Get nudged later', action: () => setSubScreen('reminder') },
+    { key: 'mast', label: 'Save to Mast', desc: 'Add as a guiding principle', action: () => setSubScreen('mast') },
+    { key: 'keel', label: 'Save to Keel', desc: 'Add as self-knowledge', action: () => setSubScreen('keel') },
+    { key: 'victory', label: 'This is a victory', desc: 'Record an accomplishment', action: () => setSubScreen('victory') },
+    { key: 'helm', label: 'Do something else with it', desc: 'Process at The Helm', action: handleHelmProcess },
+  ];
+
   return (
     <div className="routing-selector">
       <h4 className="routing-selector__title">Do something with this entry?</h4>
 
+      {suggestions.length > 0 && (
+        <p className="routing-selector__suggested-label">Suggested</p>
+      )}
+
       <div className="routing-selector__list">
-        <button
-          type="button"
-          className="routing-selector__item"
-          onClick={onClose}
-        >
-          <span className="routing-selector__item-label">Just save it</span>
-          <span className="routing-selector__item-desc">Entry stays in the Log</span>
-        </button>
-
-        <button
-          type="button"
-          className="routing-selector__item"
-          onClick={handleRouteToCompass}
-        >
-          <span className="routing-selector__item-label">Create a task</span>
-          <span className="routing-selector__item-desc">Add to your Compass</span>
-        </button>
-
-        <button
-          type="button"
-          className="routing-selector__item"
-          onClick={handleOpenLists}
-        >
-          <span className="routing-selector__item-label">Add to a list</span>
-          <span className="routing-selector__item-desc">Save to a flexible list</span>
-        </button>
-
-        <button
-          type="button"
-          className="routing-selector__item"
-          onClick={() => setSubScreen('reminder')}
-        >
-          <span className="routing-selector__item-label">Set a reminder</span>
-          <span className="routing-selector__item-desc">Get nudged later</span>
-        </button>
-
-        <button
-          type="button"
-          className="routing-selector__item"
-          onClick={() => setSubScreen('mast')}
-        >
-          <span className="routing-selector__item-label">Save to Mast</span>
-          <span className="routing-selector__item-desc">Add as a guiding principle</span>
-        </button>
-
-        <button
-          type="button"
-          className="routing-selector__item"
-          onClick={() => setSubScreen('keel')}
-        >
-          <span className="routing-selector__item-label">Save to Keel</span>
-          <span className="routing-selector__item-desc">Add as self-knowledge</span>
-        </button>
-
-        <button
-          type="button"
-          className="routing-selector__item"
-          onClick={() => setSubScreen('victory')}
-        >
-          <span className="routing-selector__item-label">This is a victory</span>
-          <span className="routing-selector__item-desc">Record an accomplishment</span>
-        </button>
-
-        <button
-          type="button"
-          className="routing-selector__item"
-          onClick={handleHelmProcess}
-        >
-          <span className="routing-selector__item-label">Do something else with it</span>
-          <span className="routing-selector__item-desc">Process at The Helm</span>
-        </button>
+        {routeItems.map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            className={`routing-selector__item ${suggestions.includes(item.key as RouteKey) ? 'routing-selector__item--suggested' : ''}`}
+            onClick={item.action}
+          >
+            <span className="routing-selector__item-label">{item.label}</span>
+            <span className="routing-selector__item-desc">{item.desc}</span>
+          </button>
+        ))}
       </div>
 
       {toast && <div className="routing-selector__toast">{toast}</div>}

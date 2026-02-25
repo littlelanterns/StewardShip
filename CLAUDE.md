@@ -1,7 +1,7 @@
 # CLAUDE.md — StewardShip Project Instructions
 
 > This is a living document. It grows as PRDs are written and development progresses.
-> Last updated: February 2026 — Phase 10C (Settings) built.
+> Last updated: February 2026 — Phase 11A (Stub Wiring + Doc Cleanup) built.
 
 ---
 
@@ -887,8 +887,8 @@ Tracks placeholder/stub functionality that needs to be wired up when the target 
 | Log → Route to Reminders | Phase 3B (Log) | Phase 10 (Reminders) | WIRED |
 | Log → Route to Victory Recorder | Phase 3B (Log) | Phase 5 (Victory Recorder) | WIRED |
 | Log → AI auto-tagging (heuristic placeholder) | Phase 3B (Log) | Phase 3C (AI Integration) | WIRED |
-| Log → AI-suggested routing after save | Phase 3B (Log) | Phase 3C (AI Integration) | STUB |
-| Log → Full-text search | Phase 3B (Log) | Phase 3B (verify) | STUB |
+| Log → AI-suggested routing after save | Phase 3B (Log) | Phase 3C (AI Integration) | WIRED (Phase 11A — keyword heuristic suggestions in RoutingSelector) |
+| Log → Full-text search | Phase 3B (Log) | Phase 3B (verify) | WIRED (Phase 11A — GIN index exists, textSearch wired, debounced UI) |
 | AI → Streaming responses | Phase 3C (AI) | Post-MVP | POST-MVP |
 | AI → Token usage cost tracking | Phase 3C (AI) | Phase 11 (Settings/Polish) | POST-MVP |
 | Compass → Eisenhower view | Phase 4A (Compass) | Phase 4B (Views) | WIRED |
@@ -911,7 +911,7 @@ Tracks placeholder/stub functionality that needs to be wired up when the target 
 | Goal → Tracker entry auto-completes linked Compass task | Phase 5B (Charts) | Phase 7 (Rigging) | WIRED (title-match heuristic) |
 | Helm → Natural language hour/activity logging to tracker + task + goal | Phase 5B (Charts) | Enhancement (AI context) | STUB |
 | Crow's Nest → Active Wheels card | Phase 5C (Crow's Nest) | Phase 7 (Wheel) | WIRED |
-| Crow's Nest → Upcoming card (meetings/reminders) | Phase 5C (Crow's Nest) | Phase 10 (Reminders) + Phase 10 (Meetings) | PARTIAL (Reveille meetings wired, Crow's Nest + Reminders still STUB) |
+| Crow's Nest → Upcoming card (meetings/reminders) | Phase 5C (Crow's Nest) | Phase 10 (Reminders) + Phase 10 (Meetings) | WIRED (Phase 11A — UpcomingRemindersCard on dashboard) |
 | Victory → Helm AI suggestion during conversations | Phase 5A (Victory) | Enhancement (AI context) | STUB |
 | Victory → Chart milestone auto-generation | Phase 5B (Charts) | Phase 5A (Victory) wiring | STUB |
 | Wheel → Crew/Sphere references in Spoke 4 | Phase 7A (Wheel) | Phase 8 (Crew) | WIRED |
@@ -924,7 +924,7 @@ Tracks placeholder/stub functionality that needs to be wired up when the target 
 | Safe Harbor → Manifest RAG context | Phase 7C (Safe Harbor) | Phase 9C (Manifest) | WIRED |
 | First Mate → File upload (Manifest pipeline) | Phase 8A (First Mate) | Phase 9 (Manifest) | STUB |
 | First Mate → Couple Meeting integration | Phase 8A (First Mate) | Phase 10 (Meetings) | WIRED (Couple meeting type loads First Mate + Keel context) |
-| First Mate → Spouse prompts in Reveille/Reckoning | Phase 8A (First Mate) | Phase 10 (Reminders) | STUB (reminder engine ready, prompt delivery not yet wired) |
+| First Mate → Spouse prompts in Reveille/Reckoning | Phase 8A (First Mate) | Phase 10 (Reminders) | WIRED (Phase 11A) |
 | Crew → Parent-Child Meeting Notes tab | Phase 8A (Crew) | Phase 10 (Meetings) | WIRED (Parent-Child meeting type loads Crew child context, age-adaptive prompts) |
 | Crew → Important dates → Reminders | Phase 8A (Crew) | Phase 10 (Reminders) | WIRED |
 | Helm → AI name recognition from Crew in free-form chat | Phase 8A (Crew) | Enhancement (AI context) | STUB |

@@ -1153,9 +1153,10 @@ Every AI interaction includes these context layers (loaded dynamically based on 
 28. Settings (complete configuration panel, 9 sections, deep linking, delete account) — **Phase 10C BUILT** ✅
 
 ### Phase 11: Polish
-29. Printable Journal Export
-30. Cost tracking dashboard
-31. Google Calendar integration (post-launch)
+29. **Stub Wiring** (spouse prompts in Reveille, Log full-text search, AI routing suggestions, Crow's Nest reminders) — **Phase 11A BUILT** ✅
+30. Printable Journal Export
+31. Cost tracking dashboard
+32. Google Calendar integration (post-launch)
 
 ---
 
@@ -1274,7 +1275,7 @@ stewardship/
 | PRD-14: Safe Harbor | Phase 7C Built ✅ |
 | PRD-15: The Manifest | Phase 9 Built ✅ |
 | PRD-16: Rigging (Planning Tool) | Phase 7B Built ✅ |
-| PRD-17: Meeting Frameworks | Phase 10A Built |
+| PRD-17: Meeting Frameworks | Phase 10A Built ✅ |
 | PRD-18: Reminders + Rhythms | Phase 10B Built ✅ |
 | PRD-19: Settings | Phase 10C Built ✅ |
 | PRD-20: Unload the Hold (Brain Dump) | 4D Built ✅ |

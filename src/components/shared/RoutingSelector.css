@@ -51,6 +51,22 @@
   margin-top: 2px;
 }
 
+/* Suggested routes */
+.routing-selector__suggested-label {
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  color: var(--color-mid-teal);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 var(--spacing-xs) var(--spacing-md);
+  font-weight: 600;
+}
+
+.routing-selector__item--suggested {
+  border-left: 3px solid var(--color-mid-teal);
+  background-color: color-mix(in srgb, var(--color-mid-teal) 6%, transparent);
+}
+
 /* Sub-screen options (Mast type, Keel category) */
 .routing-selector__options {
   display: flex;

@@ -13,6 +13,7 @@ import { GoalsCard } from '../components/crowsnest/GoalsCard';
 import { JournalSnapshotCard } from '../components/crowsnest/JournalSnapshotCard';
 import { MastThoughtCard } from '../components/crowsnest/MastThoughtCard';
 import { WheelProgressCard } from '../components/wheel/WheelProgressCard';
+import { UpcomingRemindersCard } from '../components/crowsnest/UpcomingRemindersCard';
 import './CrowsNest.css';
 
 function getGreeting(timezone: string): string {
@@ -93,7 +94,8 @@ export default function CrowsNest() {
   const hasJournal = data && (data.journalThisWeek > 0 || data.lastJournalPreview);
   const hasMast = data && data.mastThought;
   const hasWheels = data && data.activeWheels.length > 0;
-  const hasAnyData = hasTaskData || hasStreaks || hasVictories || hasGoals || hasJournal || hasMast || hasWheels;
+  const hasReminders = data && data.upcomingReminders.length > 0;
+  const hasAnyData = hasTaskData || hasStreaks || hasVictories || hasGoals || hasJournal || hasMast || hasWheels || hasReminders;
 
   return (
     <div className="page crowsnest" onTouchEnd={handleRefresh}>
@@ -153,6 +155,10 @@ export default function CrowsNest() {
               completed={data.todayTasks.completed}
               pending={data.todayTasks.pending}
             />
+          )}
+
+          {hasReminders && (
+            <UpcomingRemindersCard reminders={data.upcomingReminders} />
           )}
 
           {hasStreaks && (

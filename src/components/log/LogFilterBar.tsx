@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { Search, X } from 'lucide-react';
 import type { LogFilters, LogEntryType } from '../../lib/types';
 import { LIFE_AREA_LABELS } from '../../lib/types';
@@ -37,10 +37,20 @@ const LIFE_AREAS = Object.entries(LIFE_AREA_LABELS);
 
 export default function LogFilterBar({ filters, onFiltersChange, linkedWheels, linkedPlans }: LogFilterBarProps) {
   const [searchOpen, setSearchOpen] = useState(!!filters.searchQuery);
+  const [localSearch, setLocalSearch] = useState(filters.searchQuery);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const update = (partial: Partial<LogFilters>) => {
     onFiltersChange({ ...filters, ...partial });
   };
+
+  const handleSearchChange = useCallback((value: string) => {
+    setLocalSearch(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      onFiltersChange({ ...filters, searchQuery: value });
+    }, 300);
+  }, [filters, onFiltersChange]);
 
   return (
     <div className="log-filter-bar">
@@ -51,14 +61,16 @@ export default function LogFilterBar({ filters, onFiltersChange, linkedWheels, l
             type="text"
             className="log-filter-bar__search-input"
             placeholder="Search entries..."
-            value={filters.searchQuery}
-            onChange={(e) => update({ searchQuery: e.target.value })}
+            value={localSearch}
+            onChange={(e) => handleSearchChange(e.target.value)}
             autoFocus
           />
           <button
             type="button"
             className="log-filter-bar__search-clear"
             onClick={() => {
+              setLocalSearch('');
+              if (debounceRef.current) clearTimeout(debounceRef.current);
               update({ searchQuery: '' });
               setSearchOpen(false);
             }}

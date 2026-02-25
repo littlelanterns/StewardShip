@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuthContext } from '../contexts/AuthContext';
-import type { MastEntry, Victory, StreakInfo, CompassTask, WheelInstance } from '../lib/types';
+import type { MastEntry, Victory, StreakInfo, CompassTask, WheelInstance, Reminder } from '../lib/types';
 
 interface DashboardData {
   todayTasks: { total: number; completed: number; pending: CompassTask[] };
@@ -14,6 +14,7 @@ interface DashboardData {
   lastJournalPreview: string | null;
   mastThought: MastEntry | null;
   activeWheels: WheelInstance[];
+  upcomingReminders: Reminder[];
 }
 
 const STREAK_MILESTONES = [7, 30, 90, 365];
@@ -51,6 +52,7 @@ export function useCrowsNest() {
         lastJournalResult,
         mastResult,
         wheelsResult,
+        remindersResult,
       ] = await Promise.all([
         // Today's tasks
         supabase
@@ -123,6 +125,15 @@ export function useCrowsNest() {
           .in('status', ['in_progress', 'active'])
           .order('updated_at', { ascending: false })
           .limit(3),
+        // Today's pending reminders
+        supabase
+          .from('reminders')
+          .select('*')
+          .eq('user_id', user.id)
+          .in('status', ['pending', 'delivered'])
+          .is('archived_at', null)
+          .order('created_at', { ascending: true })
+          .limit(5),
       ]);
 
       // Process tasks
@@ -210,6 +221,7 @@ export function useCrowsNest() {
         lastJournalPreview: lastJournal ? (lastJournal.text.length > 100 ? lastJournal.text.slice(0, 97) + '...' : lastJournal.text) : null,
         mastThought,
         activeWheels: (wheelsResult.data as WheelInstance[]) || [],
+        upcomingReminders: (remindersResult.data as Reminder[]) || [],
       });
     } catch {
       // Silently fail — dashboard is read-only, stale data is acceptable
