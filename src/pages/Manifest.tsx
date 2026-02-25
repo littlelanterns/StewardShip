@@ -18,7 +18,8 @@ import MastExtractionReview from '../components/manifest/MastExtractionReview';
 import KeelExtractionReview from '../components/manifest/KeelExtractionReview';
 import { CollapsibleGroup } from '../components/shared/CollapsibleGroup';
 import { FloatingActionButton } from '../components/shared/FloatingActionButton';
-import { EmptyState, LoadingSpinner } from '../components/shared';
+import { EmptyState, LoadingSpinner, FeatureGuide } from '../components/shared';
+import { FEATURE_GUIDES } from '../lib/featureGuides';
 import './Manifest.css';
 
 type ViewMode = 'list' | 'detail' | 'upload' | 'intake' | 'framework' | 'mast_extract' | 'keel_extract';
@@ -345,6 +346,8 @@ export default function Manifest() {
         <h1 className="manifest-page__title">The Manifest</h1>
         <p className="manifest-page__subtitle">Your personal knowledge base</p>
       </div>
+
+      <FeatureGuide {...FEATURE_GUIDES.manifest} />
 
       {/* Action buttons */}
       <div className="manifest-page__actions">

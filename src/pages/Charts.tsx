@@ -4,7 +4,8 @@ import { usePageContext } from '../hooks/usePageContext';
 import { useCharts, type ChartsPeriod } from '../hooks/useCharts';
 import { useGoals } from '../hooks/useGoals';
 import { useWheel } from '../hooks/useWheel';
-import { EmptyState, FloatingActionButton } from '../components/shared';
+import { EmptyState, FloatingActionButton, FeatureGuide } from '../components/shared';
+import { FEATURE_GUIDES } from '../lib/featureGuides';
 import { TaskCompletionCard } from '../components/charts/TaskCompletionCard';
 import { ActiveStreaksCard } from '../components/charts/ActiveStreaksCard';
 import { GoalProgressCard } from '../components/charts/GoalProgressCard';
@@ -65,6 +66,8 @@ export default function Charts() {
         <h1>Charts</h1>
         <p className="charts__subtitle">Where you've been and where you're going.</p>
       </div>
+
+      <FeatureGuide {...FEATURE_GUIDES.charts} />
 
       <div className="charts__period-toggle">
         {(Object.keys(PERIOD_LABELS) as ChartsPeriod[]).map((p) => (

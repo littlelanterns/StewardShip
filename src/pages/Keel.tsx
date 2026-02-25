@@ -17,7 +17,8 @@ import {
   arrayMove,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { CollapsibleGroup, EntryCard, EmptyState, LoadingSpinner, ArchivedView, FloatingActionButton, Button } from '../components/shared';
+import { CollapsibleGroup, EntryCard, EmptyState, LoadingSpinner, ArchivedView, FloatingActionButton, Button, FeatureGuide } from '../components/shared';
+import { FEATURE_GUIDES } from '../lib/featureGuides';
 import { KeelAddModal } from '../components/keel/KeelAddModal';
 import { useKeel } from '../hooks/useKeel';
 import { usePageContext } from '../hooks/usePageContext';
@@ -209,6 +210,8 @@ export default function Keel() {
       <p className="keel-subtitle">
         What you're made of.
       </p>
+
+      <FeatureGuide {...FEATURE_GUIDES.keel} />
 
       {totalEntries === 0 ? (
         <EmptyState

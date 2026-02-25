@@ -11,3 +11,4 @@ export { FloatingActionButton } from './FloatingActionButton';
 export { TagChips } from './TagChips';
 export { RoutingSelector } from './RoutingSelector';
 export { VoiceRecordButton } from './VoiceRecordButton';
+export { FeatureGuide } from './FeatureGuide';

@@ -17,7 +17,8 @@ import {
   arrayMove,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { CollapsibleGroup, EntryCard, EmptyState, LoadingSpinner, ArchivedView, FloatingActionButton, Button } from '../components/shared';
+import { CollapsibleGroup, EntryCard, EmptyState, LoadingSpinner, ArchivedView, FloatingActionButton, Button, FeatureGuide } from '../components/shared';
+import { FEATURE_GUIDES } from '../lib/featureGuides';
 import { MastAddModal } from '../components/mast/MastAddModal';
 import { useMast } from '../hooks/useMast';
 import { usePageContext } from '../hooks/usePageContext';
@@ -210,6 +211,8 @@ export default function Mast() {
       <p className="mast-subtitle">
         What holds everything up.
       </p>
+
+      <FeatureGuide {...FEATURE_GUIDES.mast} />
 
       {totalEntries === 0 ? (
         <EmptyState

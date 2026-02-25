@@ -13,7 +13,8 @@ import { MeetingSchedulesSection } from '../components/settings/MeetingSchedules
 import { CompassSection } from '../components/settings/CompassSection';
 import { DataPrivacySection } from '../components/settings/DataPrivacySection';
 import { AboutSection } from '../components/settings/AboutSection';
-import { LoadingSpinner } from '../components/shared';
+import { LoadingSpinner, FeatureGuide } from '../components/shared';
+import { FEATURE_GUIDES } from '../lib/featureGuides';
 import '../components/settings/Settings.css';
 
 const SECTIONS = [
@@ -105,6 +106,8 @@ export default function Settings() {
         <SettingsIcon size={22} strokeWidth={1.5} color="var(--color-deep-teal)" />
         <h1 className="settings-page__title">Settings</h1>
       </div>
+
+      <FeatureGuide {...FEATURE_GUIDES.settings} />
 
       {SECTIONS.map((section, index) => {
         const isExpanded = expandedSections.has(index);

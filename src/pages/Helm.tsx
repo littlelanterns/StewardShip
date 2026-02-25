@@ -9,7 +9,8 @@ import MessageList from '../components/helm/MessageList';
 import MessageInput from '../components/helm/MessageInput';
 import ConversationHistory from '../components/helm/ConversationHistory';
 import TriageReview from '../components/helm/TriageReview';
-import { LoadingSpinner } from '../components/shared';
+import { LoadingSpinner, FeatureGuide } from '../components/shared';
+import { FEATURE_GUIDES } from '../lib/featureGuides';
 import './Helm.css';
 
 export default function Helm() {
@@ -215,6 +216,8 @@ export default function Helm() {
           </div>
         </div>
       </div>
+
+      <FeatureGuide {...FEATURE_GUIDES.helm} />
 
       {/* Content */}
       <div className="helm-page__content">

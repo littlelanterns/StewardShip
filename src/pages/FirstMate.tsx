@@ -5,7 +5,8 @@ import { useCyrano } from '../hooks/useCyrano';
 import { useAuthContext } from '../contexts/AuthContext';
 import type { SpouseInsightCategory } from '../lib/types';
 import { SPOUSE_INSIGHT_CATEGORY_LABELS, SPOUSE_INSIGHT_CATEGORY_ORDER } from '../lib/types';
-import { LoadingSpinner, EmptyState, FloatingActionButton } from '../components/shared';
+import { LoadingSpinner, EmptyState, FloatingActionButton, FeatureGuide } from '../components/shared';
+import { FEATURE_GUIDES } from '../lib/featureGuides';
 import { FirstMateProfile } from '../components/firstmate/FirstMateProfile';
 import { PromptCard } from '../components/firstmate/PromptCard';
 import { MarriageToolbox } from '../components/firstmate/MarriageToolbox';
@@ -114,6 +115,8 @@ export default function FirstMate() {
       <div className="firstmate-page__header">
         <h1 className="firstmate-page__title">First Mate</h1>
       </div>
+
+      <FeatureGuide {...FEATURE_GUIDES.firstmate} />
 
       <FirstMateProfile
         spouse={spouse}

@@ -3,7 +3,8 @@ import { usePageContext } from '../hooks/usePageContext';
 import { useCrew } from '../hooks/useCrew';
 import { useSphere } from '../hooks/useSphere';
 import type { Person } from '../lib/types';
-import { LoadingSpinner, EmptyState, FloatingActionButton } from '../components/shared';
+import { LoadingSpinner, EmptyState, FloatingActionButton, FeatureGuide } from '../components/shared';
+import { FEATURE_GUIDES } from '../lib/featureGuides';
 import { CrewCategoryView } from '../components/crew/CrewCategoryView';
 import { PersonDetail } from '../components/crew/PersonDetail';
 import { AddCrewmateModal } from '../components/crew/AddCrewmateModal';
@@ -106,6 +107,8 @@ export default function Crew() {
           </button>
         </div>
       </div>
+
+      <FeatureGuide {...FEATURE_GUIDES.crew} />
 
       {isSphere ? (
         <div className="crew-page__content">

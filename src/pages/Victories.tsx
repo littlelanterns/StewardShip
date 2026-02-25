@@ -6,7 +6,8 @@ import { useAuthContext } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import type { Victory, MastEntry } from '../lib/types';
 import { LIFE_AREA_LABELS } from '../lib/types';
-import { EmptyState, FloatingActionButton } from '../components/shared';
+import { EmptyState, FloatingActionButton, FeatureGuide } from '../components/shared';
+import { FEATURE_GUIDES } from '../lib/featureGuides';
 import { VictoryCard } from '../components/victories/VictoryCard';
 import { VictoryDetail } from '../components/victories/VictoryDetail';
 import { RecordVictory } from '../components/victories/RecordVictory';
@@ -71,6 +72,8 @@ export default function Victories() {
         <h1>Victory Recorder</h1>
         <p className="victories__subtitle">Evidence of the {genderWord} you're becoming.</p>
       </div>
+
+      <FeatureGuide {...FEATURE_GUIDES.victories} />
 
       {victories.length > 0 && (
         <div className="victories__summary">

@@ -3,7 +3,8 @@ import { usePageContext } from '../hooks/usePageContext';
 import { useLifeInventory } from '../hooks/useLifeInventory';
 import { useHelmContext } from '../contexts/HelmContext';
 import type { LifeInventoryArea } from '../lib/types';
-import { FloatingActionButton, LoadingSpinner, Button, Input } from '../components/shared';
+import { FloatingActionButton, LoadingSpinner, Button, Input, FeatureGuide } from '../components/shared';
+import { FEATURE_GUIDES } from '../lib/featureGuides';
 import { AreaCard } from '../components/lifeinventory/AreaCard';
 import './LifeInventory.css';
 
@@ -51,6 +52,8 @@ export default function LifeInventory() {
           An honest look at where you are — and where you want to be.
         </p>
       </div>
+
+      <FeatureGuide {...FEATURE_GUIDES.lifeinventory} />
 
       {loading && areas.length === 0 ? (
         <div className="life-inventory-page__loading">

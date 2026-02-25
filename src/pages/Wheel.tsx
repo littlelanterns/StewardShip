@@ -3,7 +3,8 @@ import { usePageContext } from '../hooks/usePageContext';
 import { useWheel } from '../hooks/useWheel';
 import { useHelmContext } from '../contexts/HelmContext';
 import type { WheelInstance } from '../lib/types';
-import { FloatingActionButton, LoadingSpinner, EmptyState, Button } from '../components/shared';
+import { FloatingActionButton, LoadingSpinner, EmptyState, Button, FeatureGuide } from '../components/shared';
+import { FEATURE_GUIDES } from '../lib/featureGuides';
 import { CollapsibleGroup } from '../components/shared/CollapsibleGroup';
 import { WheelCard } from '../components/wheel/WheelCard';
 import { WheelDetail } from '../components/wheel/WheelDetail';
@@ -102,6 +103,8 @@ export default function Wheel() {
           For the big changes — character, identity, deep patterns.
         </p>
       </div>
+
+      <FeatureGuide {...FEATURE_GUIDES.wheel} />
 
       {loading && wheels.length === 0 ? (
         <div className="wheel-page__loading">

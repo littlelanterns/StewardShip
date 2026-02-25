@@ -23,7 +23,9 @@ import {
   FloatingActionButton,
   Button,
   CollapsibleGroup,
+  FeatureGuide,
 } from '../components/shared';
+import { FEATURE_GUIDES } from '../lib/featureGuides';
 import { TaskCard } from '../components/compass/TaskCard';
 import { VictoryPrompt } from '../components/compass/VictoryPrompt';
 import { RecordVictory } from '../components/victories/RecordVictory';
@@ -557,6 +559,8 @@ export default function Compass() {
         <h1 className="compass-page__title">The Compass</h1>
         <p className="compass-page__subtitle">What to do right now to stay on course.</p>
       </div>
+
+      <FeatureGuide {...FEATURE_GUIDES.compass} />
 
       {/* Tasks / Lists tab toggle */}
       <div className="compass-page__tab-bar">

@@ -5,7 +5,8 @@ import { useAuthContext } from '../contexts/AuthContext';
 import { useHelmContext } from '../contexts/HelmContext';
 import { useMeetings } from '../hooks/useMeetings';
 import type { ScheduleWithPerson } from '../hooks/useMeetings';
-import { EmptyState, FloatingActionButton, LoadingSpinner } from '../components/shared';
+import { EmptyState, FloatingActionButton, LoadingSpinner, FeatureGuide } from '../components/shared';
+import { FEATURE_GUIDES } from '../lib/featureGuides';
 import { UpcomingMeetings } from '../components/meetings/UpcomingMeetings';
 import { MeetingTypeSection } from '../components/meetings/MeetingTypeSection';
 import { MeetingHistory } from '../components/meetings/MeetingHistory';
@@ -219,6 +220,8 @@ export default function Meetings() {
           Structured conversations with follow-through
         </p>
       </div>
+
+      <FeatureGuide {...FEATURE_GUIDES.meetings} />
 
       {/* Upcoming Meetings */}
       <UpcomingMeetings

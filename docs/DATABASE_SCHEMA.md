@@ -86,6 +86,8 @@
 | notification_streaks | TEXT | 'reckoning_batch' | NOT NULL | Enum: 'reckoning_batch', 'off' |
 | notification_rhythms | TEXT | 'push' | NOT NULL | Enum: 'push', 'in_app', 'off' |
 | notification_custom | TEXT | 'push' | NOT NULL | Enum: 'push', 'reveille_batch' |
+| show_feature_guides | BOOLEAN | true | NOT NULL | Global toggle for feature introduction cards |
+| dismissed_guides | TEXT[] | '{}' | NOT NULL | Array of feature keys the user has dismissed |
 | google_calendar_token | TEXT | null | NULL | OAuth token, encrypted. Post-launch. |
 | created_at | TIMESTAMPTZ | now() | NOT NULL | |
 | updated_at | TIMESTAMPTZ | now() | NOT NULL | Auto-trigger |
@@ -1453,6 +1455,8 @@ All tables across PRDs 01-20 have been defined (39 total). Settings (PRD-19) int
 | 010_manifest_formats.sql | Expanded `manifest-files` bucket MIME types to include EPUB, DOCX, TXT, MD |
 | 011_cyrano_messages.sql | Dedicated Cyrano Messages table with teaching skill tracking, migrates existing cyrano_draft spouse_insights |
 | 012_delete_user_account.sql | `delete_user_account()` RPC function — SECURITY DEFINER, deletes from `auth.users` where `id = auth.uid()`, cascades to all related tables via FK constraints. Granted to `authenticated` role only. |
+| 013_repair_prompt_period.sql | Fix prompt_period column on custom_trackers |
+| 014_feature_guides.sql | Add `show_feature_guides` (BOOLEAN) and `dismissed_guides` (TEXT[]) columns to `user_settings` for Feature Guide System |
 
 ---
 

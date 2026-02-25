@@ -103,7 +103,7 @@ stewardship/
 ### Shared Component Library
 - **Location:** `src/components/shared/`
 - **Purpose:** Themed base components that all features import. These consume CSS variables so they automatically adapt to any theme.
-- **Core components:** Button, Card, Input, TextArea, Modal, Tooltip, Badge, EmptyState, LoadingSpinner, IconButton
+- **Core components:** Button, Card, Input, TextArea, Modal, Tooltip, Badge, EmptyState, LoadingSpinner, IconButton, FeatureGuide
 - **Every feature component should import from shared/ rather than creating its own base elements.**
 - **All shared components must use CSS variables exclusively — zero hardcoded colors, fonts, or spacing values.**
 - **Naming convention:** PascalCase component files (e.g., `Button.tsx`, `Card.tsx`)
@@ -856,6 +856,18 @@ Six guided conversation modes accessible from the First Mate page, each opening 
 
 ---
 
+### Feature Guide Conventions
+- **One guide per feature page.** Appears at the top of the page, above main content.
+- **Non-blocking** — a card, not a modal. Users can interact with the page immediately.
+- **Dismissable per-feature** via "Got it" button. Global toggle in Settings (Account section).
+- **Content in `src/lib/featureGuides.ts`** — centralized, not scattered across pages.
+- **Tone:** Warm, brief, orienting. Like a wise captain explaining part of the ship. 2-4 sentences max description, 2-3 optional tips.
+- **Not shown on:** Onboarding, Auth, Reveille, Reckoning, or within modals/drawers.
+- **Settings columns:** `user_settings.show_feature_guides` (boolean, default true) + `user_settings.dismissed_guides` (text array).
+- **Cache:** `useFeatureGuide` hook uses module-level cache so settings are fetched once per session. Call `resetFeatureGuideCache()` when updating guide settings from Settings page.
+
+---
+
 
 ### User Flexibility (Gender & Relationship Status)
 - AI reads `user_profiles.gender` and `user_profiles.relationship_status` to adapt language.
@@ -991,6 +1003,7 @@ _This section collects things still needed. Check items off as they're addressed
 - [x] Printable journal export implementation details → built in Phase 11D
 - [x] RAG pipeline: 500-1000 token chunks, ~100 token overlap, OpenAI ada-002 embeddings (1536 dim), top-5 default, 0.7 similarity threshold
 - [x] Cost optimization: Haiku default for chat, Sonnet for guided modes, conversation windowing, conditional framework loading
+- [x] Feature guide system → built in Phase 11F
 
 ---
 

@@ -1158,8 +1158,9 @@ Every AI interaction includes these context layers (loaded dynamically based on 
 31. **Gender Dropdown Fix** (removed non_binary/other, kept male/female/prefer_not_to_say) — **Phase 11C BUILT** ✅
 32. **Printable Journal Export** (jsPDF client-side, date/type/life-area filters, Log Download button, Settings deep link) — **Phase 11D BUILT** ✅
 33. **Guided Helm Modal** (all guided conversations open in modal overlay instead of navigating to /helm, GuidedHelmModal component, HelmContext auto-open, 14 entry points rewired, UTH triage within modal) — **Phase 11E BUILT** ✅
-34. Cost tracking dashboard
-35. Google Calendar integration (post-launch)
+34. **Feature Guide System** (contextual intro cards on first feature visit, per-feature dismiss, global Settings toggle, useFeatureGuide hook with session cache) — **Phase 11F BUILT** ✅
+35. Cost tracking dashboard
+36. Google Calendar integration (post-launch)
 
 ---
 

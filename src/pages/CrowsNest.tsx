@@ -4,7 +4,8 @@ import { Plus, BookOpen, Award, MessageSquare, Moon } from 'lucide-react';
 import { useAuthContext } from '../contexts/AuthContext';
 import { usePageContext } from '../hooks/usePageContext';
 import { useCrowsNest } from '../hooks/useCrowsNest';
-import { Button, Card } from '../components/shared';
+import { Button, Card, FeatureGuide } from '../components/shared';
+import { FEATURE_GUIDES } from '../lib/featureGuides';
 import { supabase } from '../lib/supabase';
 import { TodaysCompassCard } from '../components/crowsnest/TodaysCompassCard';
 import { ActiveStreaksCard } from '../components/crowsnest/ActiveStreaksCard';
@@ -109,6 +110,8 @@ export default function CrowsNest() {
           </p>
         )}
       </Card>
+
+      <FeatureGuide {...FEATURE_GUIDES.crowsnest} />
 
       {/* Quick Actions Bar */}
       <div className="crowsnest__actions">

@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Button } from '../shared';
 import { useTheme } from '../../contexts/ThemeContext';
+import { resetFeatureGuideCache } from '../../hooks/useFeatureGuide';
 import type { UserProfile, UserSettings } from '../../lib/types';
 import type { User } from '@supabase/supabase-js';
 
@@ -210,6 +211,35 @@ export function AccountSection({
           <option value="widowed">Widowed</option>
         </select>
         <span className="settings-field__hint">Unlocks First Mate and relationship features when set to Dating or Married</span>
+      </div>
+
+      {/* Feature Guides */}
+      <div className="settings-field">
+        <label className="settings-field__label">Feature Guides</label>
+        <div className="settings-field__toggle-row">
+          <label className="settings-field__toggle-label">
+            <input
+              type="checkbox"
+              checked={settings?.show_feature_guides ?? true}
+              onChange={e => {
+                onUpdateSetting('show_feature_guides', e.target.checked);
+                resetFeatureGuideCache();
+              }}
+            />
+            Show introduction cards when visiting features for the first time
+          </label>
+        </div>
+        {settings?.show_feature_guides && (settings?.dismissed_guides?.length ?? 0) > 0 && (
+          <Button
+            variant="text"
+            onClick={() => {
+              onUpdateSetting('dismissed_guides', []);
+              resetFeatureGuideCache();
+            }}
+          >
+            Reset All Guides
+          </Button>
+        )}
       </div>
 
       {/* Change Password */}

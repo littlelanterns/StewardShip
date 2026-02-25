@@ -4,7 +4,8 @@ import { Download } from 'lucide-react';
 import { usePageContext } from '../hooks/usePageContext';
 import { useLog } from '../hooks/useLog';
 import type { LogFilters, LogEntryType, LogEntry } from '../lib/types';
-import { FloatingActionButton, LoadingSpinner, EmptyState, Button } from '../components/shared';
+import { FloatingActionButton, LoadingSpinner, EmptyState, Button, FeatureGuide } from '../components/shared';
+import { FEATURE_GUIDES } from '../lib/featureGuides';
 import LogFilterBar from '../components/log/LogFilterBar';
 import LogEntryCard from '../components/log/LogEntryCard';
 import CreateEntry from '../components/log/CreateEntry';
@@ -155,6 +156,8 @@ export default function Log() {
           </button>
         </div>
       </div>
+
+      <FeatureGuide {...FEATURE_GUIDES.log} />
 
       <LogFilterBar filters={filters} onFiltersChange={setFilters} />
 

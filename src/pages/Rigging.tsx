@@ -8,7 +8,8 @@ import { PlanDetail } from '../components/rigging/PlanDetail';
 import { ManualPlanForm } from '../components/rigging/ManualPlanForm';
 import { FloatingActionButton } from '../components/shared/FloatingActionButton';
 import { CollapsibleGroup } from '../components/shared/CollapsibleGroup';
-import { EmptyState, LoadingSpinner } from '../components/shared';
+import { EmptyState, LoadingSpinner, FeatureGuide } from '../components/shared';
+import { FEATURE_GUIDES } from '../lib/featureGuides';
 import './Rigging.css';
 
 type ViewMode = 'list' | 'detail' | 'create';
@@ -163,6 +164,8 @@ export default function Rigging() {
   return (
     <div className="page rigging-page">
       <h1 className="rigging-page__title">Rigging</h1>
+
+      <FeatureGuide {...FEATURE_GUIDES.rigging} />
 
       {/* Filter and sort bar */}
       <div className="rigging-page__controls">
