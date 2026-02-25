@@ -4,7 +4,7 @@ import { X, Check } from 'lucide-react';
 import { useRhythms } from '../../hooks/useRhythms';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { TrackerPrompts } from './TrackerPrompts';
-import { MAST_TYPE_LABELS } from '../../lib/types';
+import { MAST_TYPE_LABELS, MEETING_TYPE_LABELS } from '../../lib/types';
 import type { MastEntryType } from '../../lib/types';
 import './Reveille.css';
 
@@ -84,6 +84,7 @@ export function ReveilleScreen() {
   const hasStreaks = reveilleData.streaks.length > 0;
   const hasTrackers = reveilleData.trackers.length > 0;
   const hasMast = !!reveilleData.mastThought;
+  const hasMeetings = reveilleData.upcomingMeetings.length > 0;
 
   return (
     <div className="rhythm-overlay">
@@ -182,7 +183,34 @@ export function ReveilleScreen() {
           </div>
         )}
 
-        {/* Section 6: Upcoming Today — stub until Meetings (PRD-17) and Reminders (PRD-18) */}
+        {/* Section 6: Upcoming Today — Meetings */}
+        {hasMeetings && (
+          <div className="rhythm-section">
+            <h3 className="rhythm-section__title">Meetings Today</h3>
+            <div className="rhythm-task-list">
+              {reveilleData.upcomingMeetings.map((m) => {
+                const label = MEETING_TYPE_LABELS[m.meetingType] || m.meetingType.replace(/_/g, ' ');
+                return (
+                  <div
+                    key={m.scheduleId}
+                    className="rhythm-task"
+                    onClick={() => { dismissReveille(); navigate('/meetings'); }}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { dismissReveille(); navigate('/meetings'); } }}
+                  >
+                    <span className="rhythm-task__title">
+                      {m.personName ? `${label} with ${m.personName}` : label}
+                    </span>
+                    {m.isOverdue && (
+                      <span className="rhythm-task__tag" style={{ color: 'var(--color-cognac)' }}>overdue</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Section 7: Custom Tracker Prompts (Morning) */}
         {hasTrackers && (

@@ -1011,6 +1011,7 @@ Individual meeting records — one row per completed or in-progress meeting.
 | helm_conversation_id | UUID | null | NULL | FK → helm_conversations |
 | log_entry_id | UUID | null | NULL | FK → log_entries (if notes saved to Log) |
 | meeting_date | DATE | CURRENT_DATE | NOT NULL | The date of the meeting |
+| pattern_note | TEXT | null | NULL | AI-generated pattern observation (after 5+ meetings of same type) |
 | completed_at | TIMESTAMPTZ | null | NULL | When the meeting was marked complete |
 | created_at | TIMESTAMPTZ | now() | NOT NULL | |
 | updated_at | TIMESTAMPTZ | now() | NOT NULL | Auto-trigger |

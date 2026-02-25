@@ -273,6 +273,13 @@ export type GuidedSubtype =
   | 'words_of_affirmation'
   | 'gratitude'
   | 'cyrano'
+  | 'couple'
+  | 'parent_child'
+  | 'weekly_review'
+  | 'monthly_review'
+  | 'business'
+  | 'custom'
+  | 'template_creation'
   | null;
 
 export type MessageRole = 'user' | 'assistant' | 'system';
@@ -1191,4 +1198,118 @@ export const MANIFEST_STATUS_LABELS: Record<ManifestProcessingStatus, string> = 
   processing: 'Processing...',
   completed: 'Ready',
   failed: 'Failed',
+};
+
+// === PRD-17: Meeting Frameworks ===
+
+export type MeetingType = 'couple' | 'parent_child' | 'weekly_review' | 'monthly_review' | 'quarterly_inventory' | 'business' | 'custom';
+
+export type MeetingStatus = 'in_progress' | 'completed' | 'skipped';
+
+export type MeetingEntryMode = 'live' | 'record_after';
+
+export type MeetingFrequency = 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'custom';
+
+export type MeetingNotificationType = 'reveille' | 'day_before' | 'both' | 'none';
+
+export type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+
+export type MeetingTemplateSource = 'manual' | 'ai_generated' | 'uploaded_file';
+
+export interface MeetingAgendaSection {
+  title: string;
+  ai_prompt_text: string;
+  sort_order: number;
+}
+
+export interface Meeting {
+  id: string;
+  user_id: string;
+  meeting_type: MeetingType;
+  template_id: string | null;
+  related_person_id: string | null;
+  status: MeetingStatus;
+  entry_mode: MeetingEntryMode;
+  summary: string | null;
+  impressions: string | null;
+  pattern_note: string | null;
+  helm_conversation_id: string | null;
+  log_entry_id: string | null;
+  meeting_date: string;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MeetingSchedule {
+  id: string;
+  user_id: string;
+  meeting_type: MeetingType;
+  template_id: string | null;
+  related_person_id: string | null;
+  frequency: MeetingFrequency;
+  custom_interval_days: number | null;
+  preferred_day: DayOfWeek | null;
+  preferred_time: string | null;
+  notification_type: MeetingNotificationType;
+  is_active: boolean;
+  last_completed_date: string | null;
+  next_due_date: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MeetingTemplate {
+  id: string;
+  user_id: string;
+  name: string;
+  description: string | null;
+  default_frequency: MeetingFrequency;
+  default_related_person_id: string | null;
+  agenda_sections: MeetingAgendaSection[];
+  source: MeetingTemplateSource;
+  file_storage_path: string | null;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const MEETING_TYPE_LABELS: Record<MeetingType, string> = {
+  couple: 'Couple Meeting',
+  parent_child: 'Parent-Child Mentor Meeting',
+  weekly_review: 'Weekly Review',
+  monthly_review: 'Monthly Review',
+  quarterly_inventory: 'Quarterly Inventory',
+  business: 'Business Review',
+  custom: 'Custom Meeting',
+};
+
+export const MEETING_FREQUENCY_LABELS: Record<MeetingFrequency, string> = {
+  weekly: 'Weekly',
+  biweekly: 'Bi-weekly',
+  monthly: 'Monthly',
+  quarterly: 'Quarterly',
+  custom: 'Custom',
+};
+
+export const DAY_OF_WEEK_LABELS: Record<DayOfWeek, string> = {
+  monday: 'Monday',
+  tuesday: 'Tuesday',
+  wednesday: 'Wednesday',
+  thursday: 'Thursday',
+  friday: 'Friday',
+  saturday: 'Saturday',
+  sunday: 'Sunday',
+};
+
+export const MEETING_ENTRY_MODE_LABELS: Record<MeetingEntryMode, string> = {
+  live: 'Live Mode',
+  record_after: 'Record After',
+};
+
+export const MEETING_NOTIFICATION_LABELS: Record<MeetingNotificationType, string> = {
+  reveille: 'Morning Briefing',
+  day_before: 'Day Before',
+  both: 'Both',
+  none: 'None',
 };

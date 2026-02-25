@@ -53,6 +53,8 @@ function getGuidedModeOpeningMessage(mode: GuidedMode): string | null {
       return "Let's put together a plan. Tell me about what you're working toward — a goal, a project, something you want to accomplish. I'll help you think through it and build a plan you can actually follow.\n\nWhat are you planning?";
     case 'safe_harbor':
       return "I'm here. What's going on?";
+    case 'meeting':
+      return "Let's set up this meeting. I'll walk us through a structured agenda — we'll cover what matters, capture action items, and make sure nothing important gets missed.\n\nReady when you are.";
     case 'manifest_discuss':
       return null; // Opening message varies — set by caller based on specific item vs library
     default:

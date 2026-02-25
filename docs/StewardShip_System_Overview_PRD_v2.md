@@ -1145,7 +1145,7 @@ Every AI interaction includes these context layers (loaded dynamically based on 
 24D. Expanded Format Support (EPUB, DOCX, TXT, MD) — BUILT (Phase 9C Addendum) ✅
 
 ### Phase 10: Cadence
-25. Meeting Frameworks (templates, custom scheduling, note integration)
+25. **Meeting Frameworks** (templates, custom scheduling, note integration) — **Phase 10A BUILT** ✅
 26. Reminders (push notifications, scheduling engine)
 27. Rhythms (Friday, Sunday, Monthly, Quarterly triggers, gratitude/joy/anticipation prompts)
 
@@ -1272,7 +1272,7 @@ stewardship/
 | PRD-14: Safe Harbor | Phase 7C Built ✅ |
 | PRD-15: The Manifest | Phase 9 Built ✅ |
 | PRD-16: Rigging (Planning Tool) | Phase 7B Built ✅ |
-| PRD-17: Meeting Frameworks | PRD Written |
+| PRD-17: Meeting Frameworks | Phase 10A Built |
 | PRD-18: Reminders + Rhythms | PRD Written |
 | PRD-19: Settings | PRD Written |
 | PRD-20: Unload the Hold (Brain Dump) | 4D Built ✅ |

@@ -11,7 +11,9 @@ import type {
   CustomTracker,
   TrackerEntry,
   StreakInfo,
+  MeetingType,
 } from '../lib/types';
+import { MEETING_TYPE_LABELS } from '../lib/types';
 
 const STREAK_MILESTONES = [7, 30, 90, 365];
 
@@ -27,12 +29,26 @@ export interface ManifestReading {
   source: string;
 }
 
+export interface UpcomingMeetingInfo {
+  scheduleId: string;
+  meetingType: MeetingType;
+  personName: string | null;
+  isOverdue: boolean;
+}
+
+export interface CompletedMeetingInfo {
+  meetingType: MeetingType;
+  personName: string | null;
+  summary: string | null;
+}
+
 export interface ReveilleData {
   mastThought: MastEntry | null;
   manifestReading: ManifestReading | null;
   todayTasks: CompassTask[];
   streaks: StreakInfo[];
   trackers: (CustomTracker & { todayEntry?: TrackerEntry })[];
+  upcomingMeetings: UpcomingMeetingInfo[];
 }
 
 export interface ReckoningData {
@@ -43,6 +59,7 @@ export interface ReckoningData {
   incompleteTasks: CompassTask[];
   tomorrowTasks: CompassTask[];
   trackers: (CustomTracker & { todayEntry?: TrackerEntry })[];
+  completedMeetings: CompletedMeetingInfo[];
   promptsDue: {
     gratitude: boolean;
     joy: boolean;
@@ -257,7 +274,7 @@ export function useRhythms() {
 
       const today = getUserLocalDate(timezone);
 
-      const [mastResult, tasksResult, recurringResult, trackersResult] = await Promise.all([
+      const [mastResult, tasksResult, recurringResult, trackersResult, meetingSchedulesResult] = await Promise.all([
         supabase
           .from('mast_entries')
           .select('*')
@@ -289,6 +306,14 @@ export function useRhythms() {
           .eq('user_id', user.id)
           .is('archived_at', null)
           .in('prompt_period', ['morning', 'both']),
+        // Meeting schedules due today or overdue
+        supabase
+          .from('meeting_schedules')
+          .select('id, meeting_type, related_person_id, next_due_date, notification_type')
+          .eq('user_id', user.id)
+          .eq('is_active', true)
+          .lte('next_due_date', today)
+          .in('notification_type', ['reveille', 'both']),
       ]);
 
       const mastEntries = (mastResult.data || []) as MastEntry[];
@@ -357,6 +382,34 @@ export function useRhythms() {
         }
       }
 
+      // Build upcoming meetings list
+      const meetingSchedules = (meetingSchedulesResult.data || []) as {
+        id: string; meeting_type: string; related_person_id: string | null; next_due_date: string; notification_type: string;
+      }[];
+      let upcomingMeetings: UpcomingMeetingInfo[] = [];
+      if (meetingSchedules.length > 0) {
+        // Resolve person names for person-linked meetings
+        const personIds = meetingSchedules
+          .map((s) => s.related_person_id)
+          .filter((id): id is string => !!id);
+        let personMap: Record<string, string> = {};
+        if (personIds.length > 0) {
+          const { data: people } = await supabase
+            .from('people')
+            .select('id, name')
+            .in('id', personIds);
+          for (const p of (people || []) as { id: string; name: string }[]) {
+            personMap[p.id] = p.name;
+          }
+        }
+        upcomingMeetings = meetingSchedules.map((s) => ({
+          scheduleId: s.id,
+          meetingType: s.meeting_type as MeetingType,
+          personName: s.related_person_id ? (personMap[s.related_person_id] || null) : null,
+          isOverdue: s.next_due_date < today,
+        }));
+      }
+
       // Fetch a Manifest devotional reading (non-blocking — don't fail Reveille if RAG fails)
       let manifestReading: ManifestReading | null = null;
       try {
@@ -383,6 +436,7 @@ export function useRhythms() {
         todayTasks: (tasksResult.data || []) as CompassTask[],
         streaks: streaks.sort((a, b) => b.currentStreak - a.currentStreak),
         trackers: trackersList.map((t) => ({ ...t, todayEntry: trackerEntriesMap[t.id] })),
+        upcomingMeetings,
       });
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to load Reveille data');
@@ -507,6 +561,7 @@ export function useRhythms() {
         incompleteResult,
         tomorrowResult,
         trackersResult,
+        meetingsResult,
       ] = await Promise.all([
         supabase
           .from('mast_entries')
@@ -553,6 +608,13 @@ export function useRhythms() {
           .eq('user_id', user.id)
           .is('archived_at', null)
           .in('prompt_period', ['evening', 'both']),
+        // Meetings completed today
+        supabase
+          .from('meetings')
+          .select('meeting_type, related_person_id, summary')
+          .eq('user_id', user.id)
+          .eq('meeting_date', today)
+          .eq('status', 'completed'),
       ]);
 
       const mastEntries = (mastResult.data || []) as MastEntry[];
@@ -587,6 +649,32 @@ export function useRhythms() {
 
       const aiSuggestion = buildAiSuggestion(incompleteTasks, tomorrowTasks);
 
+      // Build completed meetings list
+      const meetingsData = (meetingsResult.data || []) as {
+        meeting_type: string; related_person_id: string | null; summary: string | null;
+      }[];
+      let completedMeetings: CompletedMeetingInfo[] = [];
+      if (meetingsData.length > 0) {
+        const personIds = meetingsData
+          .map((m) => m.related_person_id)
+          .filter((id): id is string => !!id);
+        let personMap: Record<string, string> = {};
+        if (personIds.length > 0) {
+          const { data: people } = await supabase
+            .from('people')
+            .select('id, name')
+            .in('id', personIds);
+          for (const p of (people || []) as { id: string; name: string }[]) {
+            personMap[p.id] = p.name;
+          }
+        }
+        completedMeetings = meetingsData.map((m) => ({
+          meetingType: m.meeting_type as MeetingType,
+          personName: m.related_person_id ? (personMap[m.related_person_id] || null) : null,
+          summary: m.summary,
+        }));
+      }
+
       // Fetch a Manifest reading for closing thought (non-blocking)
       let manifestReading: ManifestReading | null = null;
       try {
@@ -614,6 +702,7 @@ export function useRhythms() {
         incompleteTasks,
         tomorrowTasks,
         trackers: trackersList.map((t) => ({ ...t, todayEntry: trackerEntriesMap[t.id] })),
+        completedMeetings,
         promptsDue: {
           gratitude: gratitudeDue,
           joy: joyDue,

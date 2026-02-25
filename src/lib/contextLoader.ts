@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { MastEntry, KeelEntry, LogEntry, Victory, CompassTask, GuidedMode, GuidedSubtype, HelmMessage, WheelInstance, LifeInventoryArea, RiggingPlan, Person, SpouseInsight, SphereEntity, ManifestSearchResult } from './types';
+import type { MastEntry, KeelEntry, LogEntry, Victory, CompassTask, GuidedMode, GuidedSubtype, HelmMessage, WheelInstance, LifeInventoryArea, RiggingPlan, Person, SpouseInsight, SphereEntity, ManifestSearchResult, Meeting } from './types';
 import { SPOKE_LABELS, PLANNING_FRAMEWORK_LABELS } from './types';
 import { searchManifest } from './rag';
 import {
@@ -19,11 +19,13 @@ import {
   shouldLoadSphere,
   shouldLoadFrameworks,
   shouldLoadManifest,
+  shouldLoadMeeting,
   formatFirstMateContext,
   formatCrewContext,
   formatSphereContext,
   formatFrameworksContext,
   formatManifestContext,
+  formatMeetingContext,
   type SystemPromptContext,
   type GuidedModeContext,
 } from './systemPrompt';
@@ -86,6 +88,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
   const needSphere = shouldLoadSphere(message, pageContext);
   const needFrameworks = shouldLoadFrameworks(message, pageContext, guidedMode);
   const needManifest = shouldLoadManifest(message, pageContext, guidedMode);
+  const needMeeting = shouldLoadMeeting(message, pageContext, guidedMode);
 
   let keelEntries: KeelEntry[] | undefined;
   let recentLogEntries: LogEntry[] | undefined;
@@ -104,6 +107,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
   let frameworksContext: string | undefined;
   let manifestContext: string | undefined;
   let cyranoContext: string | undefined;
+  let meetingContext: string | undefined;
 
   // Fetch conditional data in parallel
   const keelPromise = needKeel
@@ -232,6 +236,17 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
         .is('archived_at', null)
     : null;
 
+  // Meeting context — previous meetings for the current type/person
+  const meetingPromise = needMeeting
+    ? supabase
+        .from('meetings')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'completed')
+        .order('meeting_date', { ascending: false })
+        .limit(3)
+    : null;
+
   // Manifest RAG search — depth varies by mode
   const isManifestDiscuss = guidedMode === 'manifest_discuss';
   let manifestPromise: Promise<ManifestSearchResult[]> | null = null;
@@ -266,7 +281,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     }
   }
 
-  const [keelResult, logResult, compassResult, victoriesResult, wheelResult, lifeInvResult, riggingResult, firstMateResult, spouseInsightsResult, crewResult, sphereEntitiesResult, frameworksResult, manifestResults] = await Promise.all([
+  const [keelResult, logResult, compassResult, victoriesResult, wheelResult, lifeInvResult, riggingResult, firstMateResult, spouseInsightsResult, crewResult, sphereEntitiesResult, frameworksResult, manifestResults, meetingResult] = await Promise.all([
     keelPromise,
     logPromise,
     compassPromise,
@@ -280,6 +295,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     sphereEntitiesPromise,
     frameworksPromise,
     manifestPromise,
+    meetingPromise,
   ]);
 
   if (keelResult?.data) {
@@ -303,6 +319,31 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
   if (riggingResult?.data && riggingResult.data.length > 0) {
     riggingContext = buildRiggingContext(riggingResult.data as RiggingPlan[]);
   }
+  // Meeting context — format previous meetings
+  if (meetingResult?.data && meetingResult.data.length > 0) {
+    const recentMeetings = meetingResult.data as Meeting[];
+    // Resolve person names for meetings
+    const meetingPersonIds = [...new Set(recentMeetings.filter(m => m.related_person_id).map(m => m.related_person_id!))];
+    let meetingPersonMap: Record<string, string> = {};
+    if (meetingPersonIds.length > 0) {
+      const { data: mPeople } = await supabase
+        .from('people')
+        .select('id, name')
+        .in('id', meetingPersonIds);
+      for (const p of (mPeople || []) as { id: string; name: string }[]) {
+        meetingPersonMap[p.id] = p.name;
+      }
+    }
+    meetingContext = formatMeetingContext(
+      recentMeetings.map(m => ({
+        meeting_type: m.meeting_type,
+        meeting_date: m.meeting_date,
+        summary: m.summary,
+        person_name: m.related_person_id ? meetingPersonMap[m.related_person_id] : undefined,
+      })),
+    );
+  }
+
   if (firstMateResult?.data) {
     const spouse = firstMateResult.data as Person;
     const insights = (spouseInsightsResult?.data as SpouseInsight[]) || [];
@@ -413,8 +454,10 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     frameworksContext,
     manifestContext,
     cyranoContext,
+    meetingContext,
     pageContext,
     guidedMode: guidedMode || null,
+    guidedSubtype: guidedSubtype || null,
     guidedModeContext,
     conversationHistory,
     contextBudget,

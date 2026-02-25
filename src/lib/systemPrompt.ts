@@ -29,8 +29,10 @@ export interface SystemPromptContext {
   frameworksContext?: string;
   manifestContext?: string;
   cyranoContext?: string;
+  meetingContext?: string;
   pageContext: string;
   guidedMode?: GuidedMode;
+  guidedSubtype?: string | null;
   guidedModeContext?: GuidedModeContext;
   conversationHistory: HelmMessage[];
   contextBudget: 'short' | 'medium' | 'long';
@@ -149,7 +151,7 @@ function formatRecentLogEntries(entries: LogEntry[]): string {
   return result;
 }
 
-function getGuidedModePrompt(mode: GuidedMode): string {
+function getGuidedModePrompt(mode: GuidedMode, context?: SystemPromptContext): string {
   if (!mode) return '';
 
   switch (mode) {
@@ -369,6 +371,9 @@ RULES:
 - "Journal" is the merciful default — if unsure, suggest journal rather than discard.
 - Never discard something the user clearly put effort into articulating.`;
 
+    case 'meeting':
+      return getMeetingGuidedPrompt(context);
+
     case 'first_mate_action':
       return `\n\nGUIDED MODE: FIRST MATE — MARRIAGE TOOLBOX
 You are guiding the user through a relationship-focused conversation about their spouse/partner.
@@ -465,7 +470,7 @@ export function buildSystemPrompt(context: SystemPromptContext): string {
   prompt += formatPageContext(context.pageContext);
 
   if (context.guidedMode) {
-    prompt += getGuidedModePrompt(context.guidedMode);
+    prompt += getGuidedModePrompt(context.guidedMode, context);
   }
 
   // Conditional sections — check budget before adding
@@ -575,6 +580,14 @@ export function buildSystemPrompt(context: SystemPromptContext): string {
     if (currentTokens + cyranoTokens < budget) {
       prompt += context.cyranoContext;
       currentTokens += cyranoTokens;
+    }
+  }
+
+  if (context.meetingContext) {
+    const meetingTokens = estimateTokens(context.meetingContext);
+    if (currentTokens + meetingTokens < budget) {
+      prompt += context.meetingContext;
+      currentTokens += meetingTokens;
     }
   }
 
@@ -875,6 +888,142 @@ export function formatCrewContext(people: Person[], notes?: CrewNote[]): string 
   return result;
 }
 
+// --- Meeting context ---
+
+const MEETING_KEYWORDS = [
+  'meeting', 'couple meeting', 'mentor meeting', 'review',
+  'weekly review', 'monthly review', 'business review',
+  'agenda', 'meeting notes', 'check-in', 'parent-child',
+];
+
+export function shouldLoadMeeting(message: string, pageContext: string, guidedMode?: GuidedMode): boolean {
+  if (pageContext === 'meetings') return true;
+  if (guidedMode === 'meeting') return true;
+  const lower = message.toLowerCase();
+  return MEETING_KEYWORDS.some(kw => lower.includes(kw));
+}
+
+export function formatMeetingContext(
+  meetings: Array<{ meeting_type: string; meeting_date: string; summary: string | null; person_name?: string }>,
+): string {
+  if (meetings.length === 0) return '';
+
+  let result = '\n\nPREVIOUS MEETINGS (last 2-3):\n';
+  for (const m of meetings.slice(0, 3)) {
+    const date = new Date(m.meeting_date).toLocaleDateString();
+    const person = m.person_name ? ` with ${m.person_name}` : '';
+    const summary = m.summary
+      ? (m.summary.length > 200 ? m.summary.slice(0, 197) + '...' : m.summary)
+      : 'No summary recorded';
+    result += `- [${date}] ${m.meeting_type}${person}: ${summary}\n`;
+  }
+  return result;
+}
+
+function getMeetingGuidedPrompt(context?: SystemPromptContext): string {
+  const subtype = context?.guidedSubtype || 'weekly_review';
+
+  const subtypePrompts: Record<string, string> = {
+    couple: `\n\nGUIDED MODE: COUPLE MEETING
+You are guiding a structured Couple Meeting. Walk through these sections conversationally:
+1. Opening prayer/centering (2-5 min)
+2. Appreciation and connection — ask what they appreciated about their spouse this week
+3. Review previous commitments — reference action items from last couple meeting if available
+4. State of the Union — emotional/mental/spiritual check-in for both partners. Empathetic listening first.
+5. Goals and planning — Quadrant II focus. Reference Mast shared principles.
+6. Calendar and logistics — light section
+7. Recording impressions — ask for insights/promptings to hold onto
+8. Closing prayer/reflection
+
+RULES: Spend more time where the user engages deeply. Move quickly through sections they want to skip. Never rush. Never guilt about skipped sections. Reference First Mate context naturally. Three-tier relationship safety applies.
+After completion, summarize the meeting, list action items for Compass confirmation, and offer to save insights to First Mate/Log/Keel.
+When presenting summary, format: MEETING_SUMMARY:{"summary": "...", "action_items": ["..."], "impressions": "..."}`,
+
+    parent_child: `\n\nGUIDED MODE: PARENT-CHILD MENTOR MEETING
+You are guiding a mentor meeting between the user and their child.
+Adapt your approach based on the child's age:
+- Ages 0-8 (Core Phase): Simple habits, fun goals, parent reflection
+- Ages 8-12 (Love of Learning): Explore interests, set exploration goals
+- Ages 12+ (Scholar Phase): Structured goals across areas
+
+Sections:
+1. Opening prayer (2 min)
+2. Connection and exciting news — what happened this week that was fun/interesting?
+3. Review previous goals — celebrate effort, not just completion
+4. Goal setting (age-adapted) — always include one fun goal
+5. Skill building discussion — reference crew_notes for context
+6. Recording impressions and plan
+7. Closing prayer
+
+RULES: Reference the child's personality and interests from Crew context. Coach the parent to listen actively. Never judgmental about unmet goals.
+After completion, save notes to crew_notes, create Compass tasks, save to Log.
+When presenting summary, format: MEETING_SUMMARY:{"summary": "...", "action_items": ["..."], "impressions": "..."}`,
+
+    weekly_review: `\n\nGUIDED MODE: PERSONAL WEEKLY REVIEW
+Structured reflection partner for a weekly review. Pull real data:
+1. Opening prayer/centering (5 min)
+2. Review the past week — present task completion stats, victories, active streaks, Log themes. Ask what went well and what was hard.
+3. Roles and goals — walk through life roles (husband, father, professional, individual). For each: one important-but-not-urgent focus. Reference Mast, Life Inventory, active Wheels, Rigging plans.
+4. Organize the week — convert goals to Compass tasks
+5. Recording impressions
+6. Closing prayer
+
+RULES: Ground reflection in real data, not just feelings. Suggest 1-3 Big Rock goals. Reference active plans and Wheels naturally.
+When presenting summary, format: MEETING_SUMMARY:{"summary": "...", "action_items": ["..."], "impressions": "..."}`,
+
+    monthly_review: `\n\nGUIDED MODE: PERSONAL MONTHLY REVIEW
+Deeper strategic review. Total target: 60-90 minutes.
+1. Opening prayer/centering
+2. Review the past month — trends, themes, patterns from Charts, Log, Victories, Compass
+3. Life Inventory mini-check — pulse check on each life area. Not a full rebuild.
+4. Mast review — are principles still aligned? Anything to adjust?
+5. Set monthly goals — connected to Life Inventory and active plans
+6. Recording impressions
+7. Closing prayer
+
+RULES: Deeper than weekly. Reference monthly trends, not just recent days.
+When presenting summary, format: MEETING_SUMMARY:{"summary": "...", "action_items": ["..."], "impressions": "..."}`,
+
+    business: `\n\nGUIDED MODE: BUSINESS REVIEW
+For professional stewardship. Frame work as meaningful service.
+1. Opening prayer/vision review — reconnect with purpose. Reference Mast work/stewardship principles.
+2. Review the past week — business-tagged tasks, trackers, Log entries
+3. Strategic focus — Quadrant II. Distinguish urgent-reactive from important-strategic. Reference Rigging plans.
+4. Organize the week — Big Rock business goals to Compass
+5. Recording impressions
+6. Closing prayer
+
+RULES: Manifest RAG available for business framework content. Keep strategic, not just tactical.
+When presenting summary, format: MEETING_SUMMARY:{"summary": "...", "action_items": ["..."], "impressions": "..."}`,
+
+    custom: `\n\nGUIDED MODE: CUSTOM MEETING
+Follow the template's agenda sections. Present each section's prompt conversationally. The eight core elements (prayer, review, goals, etc.) are available but not required for custom meetings. Adapt to whatever the user has designed.
+When presenting summary, format: MEETING_SUMMARY:{"summary": "...", "action_items": ["..."], "impressions": "..."}`,
+
+    template_creation: `\n\nGUIDED MODE: CUSTOM TEMPLATE CREATION
+Help the user design a custom meeting template. Ask these questions conversationally:
+1. "What kind of meeting is this? Who is it with?"
+2. "What's the purpose — what should this meeting accomplish?"
+3. "How often should it happen?"
+4. "What topics or sections should the agenda cover?"
+
+Based on their answers, generate a structured template with ordered agenda sections. Each section should have a clear title and an AI prompt text (what the AI would say to guide that section).
+
+Present the full template for review. The user can adjust section names, prompts, and order. When they confirm, format: TEMPLATE_SAVE:{"name": "...", "description": "...", "default_frequency": "weekly", "agenda_sections": [{"title": "...", "ai_prompt_text": "...", "sort_order": 0}]}
+
+The eight core elements (opening prayer, review previous, current state, vision alignment, goal setting, action planning, recording impressions, closing prayer) are available as suggested sections but NOT required.`,
+  };
+
+  let prompt = subtypePrompts[subtype] || subtypePrompts.weekly_review;
+
+  // Add meeting context if available
+  if (context?.meetingContext) {
+    prompt += context.meetingContext;
+  }
+
+  return prompt;
+}
+
 const SPHERE_KEYWORDS = [
   'sphere', 'influence', 'boundary', 'boundaries', 'distance',
   'too close', 'too involved', 'toxic', 'energy drain',
@@ -902,7 +1051,7 @@ export function shouldLoadFrameworks(
   pageContext: string,
   guidedMode?: GuidedMode,
 ): boolean {
-  if (['wheel', 'life_inventory', 'rigging', 'safe_harbor', 'first_mate_action'].includes(guidedMode || '')) {
+  if (['wheel', 'life_inventory', 'rigging', 'safe_harbor', 'first_mate_action', 'meeting'].includes(guidedMode || '')) {
     return true;
   }
   if (pageContext === 'manifest') return true;

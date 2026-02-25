@@ -4,7 +4,7 @@ import { X, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { useRhythms } from '../../hooks/useRhythms';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { TrackerPrompts } from '../reveille/TrackerPrompts';
-import { MAST_TYPE_LABELS, LIFE_AREA_LABELS } from '../../lib/types';
+import { MAST_TYPE_LABELS, LIFE_AREA_LABELS, MEETING_TYPE_LABELS } from '../../lib/types';
 import type { MastEntryType, CompassTask } from '../../lib/types';
 import '../reveille/Reveille.css';
 
@@ -171,6 +171,7 @@ export function ReckoningScreen() {
   const hasMast = !!reckoningData.mastThought;
   const hasTrackers = reckoningData.trackers.length > 0;
   const hasPrompts = reckoningData.promptsDue.gratitude || reckoningData.promptsDue.joy || reckoningData.promptsDue.anticipation;
+  const hasMeetings = reckoningData.completedMeetings.length > 0;
 
   // Accomplishment display
   const visibleAccomplishments = showAllAccomplishments
@@ -239,6 +240,28 @@ export function ReckoningScreen() {
             <p className="accomplishment-empty">
               No tasks were checked off today. Some days are like that.
             </p>
+          </div>
+        )}
+
+        {/* Section 2b: Completed Meetings */}
+        {hasMeetings && (
+          <div className="rhythm-section">
+            <h3 className="rhythm-section__title">Meetings Completed</h3>
+            <div className="rhythm-task-list">
+              {reckoningData.completedMeetings.map((m, idx) => {
+                const label = MEETING_TYPE_LABELS[m.meetingType] || m.meetingType.replace(/_/g, ' ');
+                return (
+                  <div key={idx} className="rhythm-task rhythm-task--completed">
+                    <span className="rhythm-task__checkbox rhythm-task__checkbox--checked">
+                      <Check size={14} />
+                    </span>
+                    <span className="rhythm-task__title rhythm-task__title--completed">
+                      {m.personName ? `${label} with ${m.personName}` : label}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
