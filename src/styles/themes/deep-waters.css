@@ -52,24 +52,71 @@
   --color-victory: #D4A84B;
 }
 
-/* Sidebar — teal-tinted hover/active instead of flat gray */
+/* Sidebar — teal-tinted hover/active with readable text */
 .theme-deep-waters .sidebar__link:hover {
   background-color: rgba(25, 147, 150, 0.1);
+  color: #E8E4DD;
 }
 
 .theme-deep-waters .sidebar__link.active,
 .theme-deep-waters .sidebar__link--active {
   background-color: rgba(25, 147, 150, 0.15);
+  color: #E8E4DD;
 }
 
-/* MoreMenu — teal-tinted hover */
+/* MoreMenu — teal-tinted hover with readable text */
 .theme-deep-waters .more-menu__link:hover,
 .theme-deep-waters .more-menu__close:hover {
   background-color: rgba(25, 147, 150, 0.1);
+  color: #E8E4DD;
 }
 
-/* Feature guide card — translucent glass panel on dark background */
+.theme-deep-waters .more-menu__link.active {
+  background-color: rgba(25, 147, 150, 0.15);
+  color: #E8E4DD;
+}
+
+/* Feature guide — force readable text on dark theme */
 .theme-deep-waters .feature-guide {
-  background-color: rgba(25, 147, 150, 0.08);
-  border: 1px solid rgba(25, 147, 150, 0.2);
+  background: rgba(25, 147, 150, 0.12);
+  border: 1px solid rgba(25, 147, 150, 0.25);
+  color: #E8E4DD;
+}
+
+.theme-deep-waters .feature-guide__title {
+  color: #9FD3CD;
+}
+
+.theme-deep-waters .feature-guide__description {
+  color: #E8E4DD;
+  opacity: 1;
+}
+
+.theme-deep-waters .feature-guide__tip {
+  color: #9FD3CD;
+  opacity: 1;
+}
+
+.theme-deep-waters .feature-guide__dismiss {
+  color: #E8E4DD;
+  opacity: 0.7;
+}
+
+.theme-deep-waters .feature-guide__got-it {
+  background: rgba(159, 211, 205, 0.15);
+  border-color: rgba(159, 211, 205, 0.3);
+  color: #E8E4DD;
+}
+
+.theme-deep-waters .feature-guide__got-it:hover {
+  background: rgba(159, 211, 205, 0.25);
+}
+
+.theme-deep-waters .feature-guide__hide-all {
+  color: #9FD3CD;
+  opacity: 0.6;
+}
+
+.theme-deep-waters .feature-guide__hide-all:hover {
+  opacity: 0.9;
 }
