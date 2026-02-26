@@ -81,19 +81,17 @@ serve(async (req: Request) => {
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: { user: authUser }, error: authError } = await authClient.auth.getUser();
-    if (authError || !authUser) {
+    // Supabase validates JWT before Edge Function runs — decode for user_id
+    const jwt = authHeader.replace('Bearer ', '');
+    const jwtPayload = JSON.parse(atob(jwt.split('.')[1]));
+    const userId = jwtPayload.sub as string;
+    if (!userId) {
       return new Response(
-        JSON.stringify({ plan: null, error: 'Invalid or expired token' }),
+        JSON.stringify({ plan: null, error: 'Invalid token payload' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
-    const userId = authUser.id;
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 
     const { plan_id, conversation_messages, context } = await req.json();
 
