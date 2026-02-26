@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuthContext } from '../contexts/AuthContext';
-import type { AIFramework, AIFrameworkPrinciple } from '../lib/types';
+import type { AIFramework } from '../lib/types';
 
 export interface FrameworkExtractionResult {
   framework_name: string;

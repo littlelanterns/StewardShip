@@ -23,7 +23,7 @@ export function MoscowView({ plan, onUpdate }: MoscowViewProps) {
   const [addingTo, setAddingTo] = useState<MoscowCategory | null>(null);
   const [newItem, setNewItem] = useState('');
 
-  const handleAdd = (category: MoscowCategory, field: keyof RiggingPlan) => {
+  const handleAdd = (_category: MoscowCategory, field: keyof RiggingPlan) => {
     if (!newItem.trim()) return;
     const current = (plan[field] as string[]) || [];
     onUpdate(plan.id, { [field]: [...current, newItem.trim()] });

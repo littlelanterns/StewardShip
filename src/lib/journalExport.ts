@@ -48,16 +48,6 @@ const CONTENT_WIDTH = PAGE_WIDTH - MARGIN * 2;
 const FOOTER_HEIGHT = 15;
 const MAX_Y = PAGE_HEIGHT - MARGIN - FOOTER_HEIGHT;
 
-function formatDate(dateStr: string): string {
-  const d = new Date(dateStr);
-  return d.toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
-}
-
 function formatTime(dateStr: string): string {
   const d = new Date(dateStr);
   return d.toLocaleTimeString('en-US', {
@@ -306,13 +296,14 @@ export function generateJournalPDF(options: JournalExportOptions): Blob {
       isFirstDate = false;
     }
 
-    let y = doc.internal.getCurrentPageInfo().pageNumber > 1
+    const pageInfo = (doc.internal as unknown as { getCurrentPageInfo?: () => { pageNumber: number } }).getCurrentPageInfo?.();
+    let y = (pageInfo?.pageNumber ?? 1) > 1
       ? (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY || MARGIN
       : MARGIN;
 
     // If we're at the very top of a new page, use MARGIN
     // Otherwise check if we need a new page for the date header
-    const currentPage = doc.internal.getCurrentPageInfo().pageNumber;
+    const currentPage = pageInfo?.pageNumber ?? 1;
     if (currentPage > 1) {
       // Get current Y position — jsPDF doesn't track this well so we use our own
     }

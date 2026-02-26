@@ -146,7 +146,7 @@ export function ReckoningScreen() {
   }, [newTaskTitle, addTomorrowTask]);
 
   const handleTriageSave = useCallback(async () => {
-    if (!triageText.trim() || !triageSelection) return;
+    if (!triageText.trim() || !triageSelection || triageSelection === 'smooth_sailing') return;
     setTriageSaving(true);
     await saveVictoryReviewNote(triageText.trim(), triageSelection, triageLifeArea || undefined);
     setTriageSaved(true);
@@ -703,7 +703,7 @@ export function ReckoningScreen() {
 
 // Inline sub-component for prompted entries
 function PromptedEntry({
-  type,
+  type: _type,
   question,
   text,
   onTextChange,

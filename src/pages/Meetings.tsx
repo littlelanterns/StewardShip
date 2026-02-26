@@ -17,6 +17,8 @@ import { supabase } from '../lib/supabase';
 import type {
   MeetingType,
   MeetingEntryMode,
+  MeetingFrequency,
+  MeetingAgendaSection,
   Person,
   GuidedSubtype,
 } from '../lib/types';
@@ -139,8 +141,8 @@ export default function Meetings() {
     await startGuidedConversation('meeting', 'template_creation' as GuidedSubtype);
   }, [startGuidedConversation]);
 
-  const handleSaveTemplate = useCallback(async (data: Parameters<typeof createTemplate>[0]) => {
-    await createTemplate({ ...data, source: 'manual' });
+  const handleSaveTemplate = useCallback(async (data: { name: string; description: string; default_frequency: MeetingFrequency; agenda_sections: MeetingAgendaSection[] }) => {
+    await createTemplate({ ...data, source: 'manual', agenda_sections: data.agenda_sections });
     setViewMode('main');
   }, [createTemplate]);
 
@@ -342,10 +344,11 @@ export default function Meetings() {
       </div>
 
       <FloatingActionButton
-        icon={<Plus size={24} />}
-        onPress={handleFabPress}
-        label="Create Custom Meeting"
-      />
+        onClick={handleFabPress}
+        aria-label="Create Custom Meeting"
+      >
+        <Plus size={24} />
+      </FloatingActionButton>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { ChevronLeft, FileText, FileCode, Mic, Image, StickyNote, MessageSquare, RefreshCw, BookOpen, Anchor, Compass } from 'lucide-react';
 import type { ManifestItem, ManifestUsageDesignation } from '../../lib/types';
-import { MANIFEST_USAGE_LABELS, MANIFEST_FILE_TYPE_LABELS, MANIFEST_STATUS_LABELS } from '../../lib/types';
+import { MANIFEST_FILE_TYPE_LABELS, MANIFEST_STATUS_LABELS } from '../../lib/types';
 import { useHelmContext } from '../../contexts/HelmContext';
 import { Button } from '../shared';
 import './ManifestItemDetail.css';

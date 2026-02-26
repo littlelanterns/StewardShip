@@ -952,7 +952,7 @@ Tracks placeholder/stub functionality that needs to be wired up when the target 
 | Meetings → Push notification reminders | Phase 10A (Meetings) | Phase 10 (Reminders) | WIRED |
 | Meetings → Pattern recognition AI (5+ meetings) | Phase 10A (Meetings) | Enhancement (AI context) | STUB |
 | Meetings → Quarterly Inventory → Life Inventory guided mode | Phase 10A (Meetings) | Enhancement | WIRED |
-| Push → Full VAPID authentication for production | Phase 10B (Push) | Production hardening | STUB |
+| Push → Full VAPID authentication for production | Phase 10B (Push) | Production hardening | PARTIAL (VAPID JWT signing wired, payload encryption per RFC 8291 still needed) |
 | Reminders → Server-side cron for scheduled push delivery | Phase 10B (Reminders) | Post-MVP (server infra) | STUB |
 | Reminders → AI smart reminder suggestions | Phase 10B (Reminders) | Post-MVP | POST-MVP |
 | Reminders → Google Calendar sync | Phase 10B (Reminders) | Post-MVP | POST-MVP |

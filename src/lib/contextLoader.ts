@@ -594,8 +594,8 @@ async function buildChartsContext(userId: string, today: string): Promise<string
 }
 
 async function buildDashboardContext(
-  userId: string,
-  today: string,
+  _userId: string,
+  _today: string,
   todayTasks?: CompassTask[],
   victories?: Victory[],
 ): Promise<string | undefined> {
@@ -623,7 +623,7 @@ async function buildDashboardContext(
 
 function buildReveilleContext(
   todayTasks?: CompassTask[],
-  mastEntries?: MastEntry[],
+  _mastEntries?: MastEntry[],
 ): string | undefined {
   try {
     const dayOfWeek = new Date().toLocaleDateString('en-US', { weekday: 'long' });
@@ -751,8 +751,9 @@ function buildWheelContext(wheels: WheelInstance[]): string {
       const truncated = w.spoke_1_why.length > 100 ? w.spoke_1_why.slice(0, 97) + '...' : w.spoke_1_why;
       result += `  Why: ${truncated}\n`;
     }
-    if (w.spoke_6_becoming_text) {
-      const truncated = w.spoke_6_becoming_text.length > 100 ? w.spoke_6_becoming_text.slice(0, 97) + '...' : w.spoke_6_becoming_text;
+    if (w.spoke_6_becoming && w.spoke_6_becoming.length > 0) {
+      const becomingText = w.spoke_6_becoming.map((a) => a.text).join(', ');
+      const truncated = becomingText.length > 100 ? becomingText.slice(0, 97) + '...' : becomingText;
       result += `  Becoming: ${truncated}\n`;
     }
   }
@@ -788,10 +789,10 @@ function buildRiggingContext(plans: RiggingPlan[]): string {
 
   let result = '\n\nACTIVE PLANS (Rigging):\n';
   for (const p of plans) {
-    const framework = PLANNING_FRAMEWORK_LABELS[p.planning_framework] || p.planning_framework;
-    result += `- "${p.title}" (${p.status}, ${framework})`;
-    if (p.target_date) {
-      result += ` — target: ${p.target_date}`;
+    const framework = p.planning_framework ? PLANNING_FRAMEWORK_LABELS[p.planning_framework] : p.planning_framework;
+    result += `- "${p.title}" (${p.status}, ${framework || 'unset'})`;
+    if (p.completed_at) {
+      result += ` — completed: ${p.completed_at}`;
     }
     result += '\n';
     if (p.description) {

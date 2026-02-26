@@ -44,7 +44,8 @@ export function TaskCompletionCard({ period, onTap }: TaskCompletionCardProps) {
               <YAxis hide />
               <Tooltip
                 contentStyle={{ fontSize: 12, borderRadius: 8 }}
-                formatter={(value: number, name: string) => [value, name === 'completed' ? 'Completed' : 'Remaining']}
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                formatter={((value: number, name: string) => [value, name === 'completed' ? 'Completed' : 'Remaining']) as any}
               />
               <Bar dataKey="completed" stackId="a" radius={[0, 0, 0, 0]}>
                 {chartData.map((_, i) => (

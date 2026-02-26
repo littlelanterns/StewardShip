@@ -52,7 +52,7 @@ export async function subscribeToPush(userId: string): Promise<boolean> {
     // Subscribe to push
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as BufferSource,
     });
 
     const subscriptionJson = subscription.toJSON();
@@ -103,7 +103,7 @@ export async function unsubscribeFromPush(userId: string): Promise<boolean> {
   }
 }
 
-export async function getSubscriptionStatus(userId: string): Promise<{
+export async function getSubscriptionStatus(_userId: string): Promise<{
   supported: boolean;
   permission: NotificationPermission | 'unsupported';
   subscribed: boolean;

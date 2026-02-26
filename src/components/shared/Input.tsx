@@ -1,20 +1,22 @@
 import { type InputHTMLAttributes, forwardRef } from 'react';
 import './Input.css';
 
-interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
-  label: string;
+export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
+  label?: string;
   error?: string;
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   function Input({ label, error, id, className = '', ...props }, ref) {
-    const inputId = id || label.toLowerCase().replace(/\s+/g, '-');
+    const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
 
     return (
       <div className={`input-group ${error ? 'input-group--error' : ''} ${className}`.trim()}>
-        <label htmlFor={inputId} className="input-group__label">
-          {label}
-        </label>
+        {label && (
+          <label htmlFor={inputId} className="input-group__label">
+            {label}
+          </label>
+        )}
         <input
           ref={ref}
           id={inputId}
@@ -24,7 +26,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           {...props}
         />
         {error && (
-          <p id={`${inputId}-error`} className="input-group__error" role="alert">
+          <p id={inputId ? `${inputId}-error` : undefined} className="input-group__error" role="alert">
             {error}
           </p>
         )}

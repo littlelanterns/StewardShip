@@ -10,7 +10,7 @@ interface ObstacleListProps {
   obstacles: RiggingObstacle[];
   onUpdate: (id: string, updates: Partial<RiggingObstacle>) => void;
   onDelete: (id: string) => void;
-  onCreate: (planId: string, data: { risk: string; mitigation: string }) => void;
+  onCreate: (planId: string, data: { risk_description: string; mitigation_plan: string }) => void;
   planId: string;
 }
 
@@ -23,7 +23,7 @@ export function ObstacleList({ obstacles, onUpdate, onDelete, onCreate, planId }
 
   const handleAdd = () => {
     if (!newRisk.trim()) return;
-    onCreate(planId, { risk: newRisk.trim(), mitigation: newMitigation.trim() });
+    onCreate(planId, { risk_description: newRisk.trim(), mitigation_plan: newMitigation.trim() });
     setNewRisk('');
     setNewMitigation('');
     setShowAdd(false);
@@ -55,11 +55,11 @@ export function ObstacleList({ obstacles, onUpdate, onDelete, onCreate, planId }
           <div className="obstacle-list__item-body">
             <div className="obstacle-list__field">
               <span className="obstacle-list__field-label">Risk</span>
-              <p className="obstacle-list__field-text">{obstacle.risk}</p>
+              <p className="obstacle-list__field-text">{obstacle.risk_description}</p>
             </div>
             <div className="obstacle-list__field">
               <span className="obstacle-list__field-label">Mitigation</span>
-              <p className="obstacle-list__field-text">{obstacle.mitigation}</p>
+              <p className="obstacle-list__field-text">{obstacle.mitigation_plan}</p>
             </div>
           </div>
         </Card>

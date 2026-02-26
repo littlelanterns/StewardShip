@@ -82,7 +82,6 @@ export default function HelmDrawer() {
   const [showTriageReview, setShowTriageReview] = useState(false);
   const [triageLoading, setTriageLoading] = useState(false);
 
-  const isUnloadMode = activeConversation?.guided_mode === 'unload_the_hold';
   const hasUserMessages = messages.some((m) => m.role === 'user');
 
   const guidedModeLabel = activeConversation?.guided_mode

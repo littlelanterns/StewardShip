@@ -17,7 +17,6 @@ import {
   arrayMove,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Card } from '../../shared/Card';
 import { Button } from '../../shared/Button';
 import type { List, ListItem } from '../../../lib/types';
 import { LIST_TYPE_LABELS } from '../../../lib/types';

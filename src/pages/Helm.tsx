@@ -54,7 +54,6 @@ export default function Helm() {
   const [showTriageReview, setShowTriageReview] = useState(false);
   const [triageLoading, setTriageLoading] = useState(false);
 
-  const isUnloadMode = activeConversation?.guided_mode === 'unload_the_hold';
   const hasUserMessages = messages.some((m) => m.role === 'user');
 
   // Reset triage state when conversation changes

@@ -183,7 +183,7 @@ export function HelmProvider({ children }: { children: ReactNode }) {
     }
 
     const guidedMode = helmData.activeConversation?.guided_mode;
-    return await sendChatMessage(systemPrompt, apiMessages, 0, user.id, guidedMode, fileInfo);
+    return await sendChatMessage(systemPrompt, apiMessages as Array<{ role: 'user' | 'assistant' | 'system'; content: string }>, 0, user.id, guidedMode, fileInfo);
   }, [user, pageContext.page, helmData.activeConversation?.guided_mode, helmData.activeConversation?.guided_mode_reference_id, helmData.activeConversation?.title]);
 
   const sendMessage = useCallback(async (content: string, attachment?: { storagePath: string; fileType: string; fileName: string }) => {

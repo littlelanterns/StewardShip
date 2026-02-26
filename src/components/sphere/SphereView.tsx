@@ -21,7 +21,7 @@ interface SphereViewProps {
 export function SphereView({ people, onPersonTap, onUpdatePerson }: SphereViewProps) {
   const navigate = useNavigate();
   const {
-    sphereEntities,
+    sphereEntities: _sphereEntities,
     loading,
     fetchSphereEntities,
     updateSphereEntity,

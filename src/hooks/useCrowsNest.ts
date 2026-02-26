@@ -39,7 +39,6 @@ export function useCrowsNest() {
     const weekStart = new Date();
     const dayOfWeek = weekStart.getDay();
     weekStart.setDate(weekStart.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-    const weekStartStr = weekStart.toISOString().split('T')[0];
 
     try {
       const [

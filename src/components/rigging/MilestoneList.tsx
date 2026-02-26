@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, Trash2, Plus } from 'lucide-react';
+import { Trash2, Plus } from 'lucide-react';
 import type { RiggingMilestone, MilestoneStatus } from '../../lib/types';
 import { MILESTONE_STATUS_LABELS } from '../../lib/types';
 import { Card } from '../shared/Card';

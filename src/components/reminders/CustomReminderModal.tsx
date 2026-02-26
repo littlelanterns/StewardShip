@@ -18,8 +18,8 @@ interface CustomReminderModalProps {
 
 export function CustomReminderModal({
   prefillTitle = '',
-  relatedEntityType,
-  relatedEntityId,
+  relatedEntityType: _relatedEntityType,
+  relatedEntityId: _relatedEntityId,
   onSave,
   onClose,
 }: CustomReminderModalProps) {

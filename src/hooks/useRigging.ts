@@ -282,7 +282,7 @@ export function useRigging() {
 
   const createObstacle = useCallback(async (
     planId: string,
-    data: { risk: string; mitigation: string },
+    data: { risk_description: string; mitigation_plan: string },
   ): Promise<RiggingObstacle | null> => {
     if (!user) return null;
     setError(null);
@@ -292,8 +292,8 @@ export function useRigging() {
         .insert({
           plan_id: planId,
           user_id: user.id,
-          risk: data.risk,
-          mitigation: data.mitigation,
+          risk_description: data.risk_description,
+          mitigation_plan: data.mitigation_plan,
           status: 'watching',
         })
         .select()

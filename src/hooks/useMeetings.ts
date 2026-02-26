@@ -461,7 +461,6 @@ export function useMeetings() {
 
   const fetchUpcomingMeetings = useCallback(async (): Promise<ScheduleWithPerson[]> => {
     if (!user) return [];
-    const today = new Date().toISOString().split('T')[0];
     const nextWeek = new Date();
     nextWeek.setDate(nextWeek.getDate() + 7);
     const nextWeekStr = nextWeek.toISOString().split('T')[0];

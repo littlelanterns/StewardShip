@@ -5,11 +5,8 @@ import { searchManifest } from '../lib/rag';
 import type {
   RhythmType,
   RhythmCardStatus,
-  RhythmStatusRecord,
   UserSettings,
   MastEntry,
-  CompassTask,
-  Victory,
 } from '../lib/types';
 
 // === Period Key Helpers ===
@@ -57,10 +54,6 @@ function getStartOfWeek(today: string): string {
   const diff = day === 0 ? -6 : 1 - day; // Monday as start of week
   d.setDate(d.getDate() + diff);
   return d.toISOString().split('T')[0];
-}
-
-function getStartOfMonth(today: string): string {
-  return today.substring(0, 7) + '-01';
 }
 
 // === Reflection Prompt Rotation ===
@@ -462,10 +455,10 @@ export function useRhythmCards() {
         );
         if (results.length > 0) {
           const chunk = results[0];
-          const text = chunk.content.length > 300
-            ? chunk.content.substring(0, 300).replace(/\s+\S*$/, '') + '...'
-            : chunk.content;
-          manifestReading = { text, source: chunk.source_title };
+          const text = chunk.chunk_text.length > 300
+            ? chunk.chunk_text.substring(0, 300).replace(/\s+\S*$/, '') + '...'
+            : chunk.chunk_text;
+          manifestReading = { text, source: chunk.source_title || '' };
         }
       } catch {
         // Silently skip

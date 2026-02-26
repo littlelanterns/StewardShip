@@ -804,7 +804,7 @@ export function shouldLoadRigging(message: string, pageContext: string): boolean
   return RIGGING_KEYWORDS.some((kw) => lower.includes(kw));
 }
 
-export function shouldLoadDashboard(message: string, pageContext: string): boolean {
+export function shouldLoadDashboard(_message: string, pageContext: string): boolean {
   return pageContext === 'crowsnest';
 }
 
@@ -1151,7 +1151,7 @@ const APP_GUIDE_KEYWORDS = [
   'tutorial', 'walkthrough', 'getting started',
 ];
 
-export function shouldLoadAppGuide(message: string, pageContext: string): boolean {
+export function shouldLoadAppGuide(message: string, _pageContext: string): boolean {
   const lower = message.toLowerCase();
   return APP_GUIDE_KEYWORDS.some((kw) => lower.includes(kw));
 }

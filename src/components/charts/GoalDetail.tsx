@@ -22,19 +22,31 @@ export function GoalDetail({ goal, onClose, onUpdated }: GoalDetailProps) {
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [title, setTitle] = useState(goal.title);
   const [description, setDescription] = useState(goal.description || '');
-  const [progressValue, setProgressValue] = useState(String(goal.progress_current));
+  const [progressValue, setProgressValue] = useState('');
+  const [progressMode, setProgressMode] = useState<'add' | 'set'>('add');
   const [saving, setSaving] = useState(false);
 
   const pct = goal.progress_target
     ? Math.min(Math.round((goal.progress_current / goal.progress_target) * 100), 100)
     : goal.progress_current;
 
+  const progressTotal = progressMode === 'add'
+    ? goal.progress_current + (Number(progressValue) || 0)
+    : Number(progressValue) || 0;
+
+  const cappedTotal = goal.progress_target
+    ? Math.min(progressTotal, goal.progress_target)
+    : progressTotal;
+
+  const willComplete = goal.progress_target != null && cappedTotal >= goal.progress_target;
+
   const handleUpdateProgress = async () => {
-    const val = Number(progressValue);
+    const val = cappedTotal;
     if (isNaN(val) || val < 0) return;
     setSaving(true);
     await updateProgress(goal.id, val);
     setSaving(false);
+    setProgressValue('');
     onUpdated?.();
   };
 
@@ -150,8 +162,26 @@ export function GoalDetail({ goal, onClose, onUpdated }: GoalDetailProps) {
               )}
 
               <div className="goal-detail__update">
-                <label className="chart-field">
-                  <span className="chart-field__label">Update Progress</span>
+                <div className="chart-field">
+                  <div className="add-set-toggle">
+                    <button
+                      type="button"
+                      className={`add-set-toggle__btn ${progressMode === 'add' ? 'add-set-toggle__btn--active' : ''}`}
+                      onClick={() => setProgressMode('add')}
+                    >
+                      + Add
+                    </button>
+                    <button
+                      type="button"
+                      className={`add-set-toggle__btn ${progressMode === 'set' ? 'add-set-toggle__btn--active' : ''}`}
+                      onClick={() => setProgressMode('set')}
+                    >
+                      Set total
+                    </button>
+                  </div>
+                  <span className="chart-field__label">
+                    {progressMode === 'add' ? '+ Add progress' : 'Set progress to'}
+                  </span>
                   <div className="goal-detail__update-row">
                     <input
                       type="number"
@@ -159,18 +189,29 @@ export function GoalDetail({ goal, onClose, onUpdated }: GoalDetailProps) {
                       value={progressValue}
                       onChange={(e) => setProgressValue(e.target.value)}
                       min="0"
-                      max={goal.progress_target ?? undefined}
+                      placeholder={progressMode === 'add' ? 'Amount to add' : String(goal.progress_current)}
                     />
                     <button
                       type="button"
                       className="chart-btn chart-btn--primary"
                       onClick={handleUpdateProgress}
-                      disabled={saving}
+                      disabled={saving || !progressValue}
                     >
                       Update
                     </button>
                   </div>
-                </label>
+                  {progressMode === 'add' && progressValue && (
+                    <span className="chart-field__helper">
+                      {goal.progress_current} + {Number(progressValue) || 0} = {cappedTotal}
+                      {goal.progress_target != null && ` / ${goal.progress_target}`}
+                    </span>
+                  )}
+                  {willComplete && progressValue && (
+                    <span className="chart-field__helper" style={{ color: 'var(--color-mid-teal)' }}>
+                      This will complete the goal!
+                    </span>
+                  )}
+                </div>
               </div>
             </>
           )}

@@ -13,7 +13,6 @@ import type {
   StreakInfo,
   MeetingType,
 } from '../lib/types';
-import { MEETING_TYPE_LABELS } from '../lib/types';
 
 const STREAK_MILESTONES = [7, 30, 90, 365];
 
@@ -428,10 +427,10 @@ export function useRhythms() {
         if (manifestResults.length > 0) {
           const chunk = manifestResults[0];
           // Trim to a readable passage (~300 chars)
-          const text = chunk.content.length > 300
-            ? chunk.content.substring(0, 300).replace(/\s+\S*$/, '') + '...'
-            : chunk.content;
-          manifestReading = { text, source: chunk.source_title };
+          const text = chunk.chunk_text.length > 300
+            ? chunk.chunk_text.substring(0, 300).replace(/\s+\S*$/, '') + '...'
+            : chunk.chunk_text;
+          manifestReading = { text, source: chunk.source_title || '' };
         }
       } catch {
         // Silently skip — Manifest reading is optional
@@ -751,10 +750,10 @@ export function useRhythms() {
         );
         if (manifestResults.length > 0) {
           const chunk = manifestResults[0];
-          const text = chunk.content.length > 300
-            ? chunk.content.substring(0, 300).replace(/\s+\S*$/, '') + '...'
-            : chunk.content;
-          manifestReading = { text, source: chunk.source_title };
+          const text = chunk.chunk_text.length > 300
+            ? chunk.chunk_text.substring(0, 300).replace(/\s+\S*$/, '') + '...'
+            : chunk.chunk_text;
+          manifestReading = { text, source: chunk.source_title || '' };
         }
       } catch {
         // Silently skip
@@ -895,7 +894,7 @@ export function useRhythms() {
 
   const saveVictoryReviewNote = useCallback(async (
     text: string,
-    triageType: 'course_correcting' | 'rough_waters',
+    _triageType: 'course_correcting' | 'rough_waters',
     lifeAreaTag?: string,
   ): Promise<{ logEntryId?: string; taskId?: string }> => {
     if (!user) return {};

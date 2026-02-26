@@ -1,7 +1,38 @@
 /* eslint-disable no-restricted-globals */
 
-// StewardShip Service Worker — Push Notifications
+// StewardShip Service Worker — Push Notifications + Offline Fallback
 
+const CACHE_NAME = 'stewardship-v1';
+const APP_SHELL = ['/', '/index.html'];
+
+// Cache app shell on install for basic offline support
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL))
+  );
+  self.skipWaiting();
+});
+
+// Clean up old caches on activate
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+    )
+  );
+  self.clients.claim();
+});
+
+// Serve cached app shell when offline (navigation requests only)
+self.addEventListener('fetch', (event) => {
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match('/index.html'))
+    );
+  }
+});
+
+// Push notification handler
 self.addEventListener('push', (event) => {
   if (!event.data) return;
 

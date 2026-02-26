@@ -6,7 +6,7 @@ import { LoadingSpinner } from '../shared/LoadingSpinner';
 import { useHelmContext } from '../../contexts/HelmContext';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
-import type { KeelCategory } from '../../lib/types';
+import type { KeelCategory, KeelSourceType } from '../../lib/types';
 import { KEEL_CATEGORY_LABELS, KEEL_CATEGORY_ORDER } from '../../lib/types';
 
 interface ExtractedInsight {
@@ -19,7 +19,7 @@ interface ExtractedInsight {
 
 interface KeelAddModalProps {
   onClose: () => void;
-  onCreate: (data: { category: KeelCategory; text: string; source?: string; source_type?: string }) => Promise<unknown>;
+  onCreate: (data: { category: KeelCategory; text: string; source?: string; source_type?: KeelSourceType }) => Promise<unknown>;
   preselectedCategory?: KeelCategory | null;
 }
 

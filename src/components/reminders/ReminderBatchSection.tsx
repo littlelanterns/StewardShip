@@ -37,7 +37,6 @@ export function ReminderBatchSection({ reminders, onDismiss, onAct, onSnooze, ti
 
   // Show top 5 unless expanded
   const flatReminders = grouped.flatMap((g) => g.items);
-  const visibleCount = expanded ? flatReminders.length : Math.min(5, flatReminders.length);
   const hiddenCount = flatReminders.length - 5;
 
   // If all fit in 5, just show them flat

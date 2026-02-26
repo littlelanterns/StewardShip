@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Settings as SettingsIcon, ChevronRight } from 'lucide-react';
 import { usePageContext } from '../hooks/usePageContext';

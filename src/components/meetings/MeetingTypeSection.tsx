@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { Calendar, Users, BarChart3, Briefcase, Layout, ChevronDown } from 'lucide-react';
 import type { MeetingType, MeetingEntryMode, Person } from '../../lib/types';
 import { MEETING_TYPE_LABELS, MEETING_FREQUENCY_LABELS } from '../../lib/types';
-import type { ScheduleWithPerson, MeetingWithPerson } from '../../hooks/useMeetings';
+import type { ScheduleWithPerson } from '../../hooks/useMeetings';
 
 const TYPE_ICONS: Record<MeetingType, typeof Calendar> = {
   couple: Calendar,

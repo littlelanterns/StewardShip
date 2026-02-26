@@ -53,7 +53,7 @@ export default function AddTaskModal({ onSave, onBack, prefill }: AddTaskModalPr
   const [saving, setSaving] = useState(false);
   const [tagging, setTagging] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
-  const tagDebounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const tagDebounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
     titleRef.current?.focus();

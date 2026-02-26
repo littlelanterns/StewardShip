@@ -91,7 +91,7 @@ export function NotificationsSection({
   userId,
   settings,
   onUpdateSetting,
-  onUpdateSettings,
+  onUpdateSettings: _onUpdateSettings,
 }: NotificationsSectionProps) {
   const [pushStatus, setPushStatus] = useState<'enabled' | 'not_setup' | 'blocked' | 'unsupported'>('not_setup');
   const [subscribing, setSubscribing] = useState(false);
@@ -210,7 +210,7 @@ export function NotificationsSection({
             <span className="settings-delivery-row__label">{cat.label}</span>
             <select
               className="settings-field__select settings-field__select--compact"
-              value={(settings as Record<string, unknown>)?.[cat.settingKey] as string || cat.defaultValue}
+              value={(settings as unknown as Record<string, unknown>)?.[cat.settingKey] as string || cat.defaultValue}
               onChange={e => onUpdateSetting(cat.settingKey, e.target.value)}
             >
               {cat.options.map(opt => (

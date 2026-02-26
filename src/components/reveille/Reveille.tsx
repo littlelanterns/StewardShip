@@ -177,8 +177,6 @@ export function ReveilleScreen() {
   const hasMast = !!reveilleData.mastThought;
   const hasMeetings = reveilleData.upcomingMeetings.length > 0;
   const hasReminders = reveilleReminders.length > 0;
-  const hasRhythmCards = showFriday || showMonthly || showQuarterly;
-
   return (
     <div className="rhythm-overlay">
       <div className="rhythm-container">

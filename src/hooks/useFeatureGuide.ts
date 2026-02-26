@@ -34,11 +34,13 @@ export function useFeatureGuide(featureKey: string) {
 
     // Deduplicate concurrent fetches
     if (!fetchPromise) {
-      fetchPromise = supabase
-        .from('user_settings')
-        .select('show_feature_guides, dismissed_guides')
-        .eq('user_id', user.id)
-        .single()
+      fetchPromise = Promise.resolve(
+        supabase
+          .from('user_settings')
+          .select('show_feature_guides, dismissed_guides')
+          .eq('user_id', user.id)
+          .single()
+      )
         .then(({ data }) => {
           const result: FeatureGuideState = {
             show_feature_guides: data?.show_feature_guides ?? true,
@@ -55,7 +57,7 @@ export function useFeatureGuide(featureKey: string) {
         });
     }
 
-    fetchPromise.then((result) => {
+    fetchPromise!.then((result) => {
       if (result && mountedRef.current) {
         setState(result);
       }

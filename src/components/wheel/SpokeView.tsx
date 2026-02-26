@@ -3,7 +3,6 @@ import { Copy, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import type { WheelInstance, WheelSupportPerson, WheelEvidenceSource, WheelBecomingAction } from '../../lib/types';
 import { SPOKE_LABELS } from '../../lib/types';
 import { Card } from '../shared/Card';
-import { Button } from '../shared';
 import './SpokeView.css';
 
 interface SpokeViewProps {
@@ -12,7 +11,7 @@ interface SpokeViewProps {
   onEdit?: (spokeNumber: number, field: string, value: string) => void;
 }
 
-export function SpokeView({ wheel, spokeNumber, onEdit }: SpokeViewProps) {
+export function SpokeView({ wheel, spokeNumber }: SpokeViewProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(true);
 
@@ -47,9 +46,9 @@ export function SpokeView({ wheel, spokeNumber, onEdit }: SpokeViewProps) {
         return (
           <div className="spoke-view__section">
             <p className="spoke-view__always">The answer is always: as soon as possible.</p>
-            {wheel.spoke_2_when && (
+            {wheel.spoke_2_notes && (
               <div className="spoke-view__text-block">
-                <p>{wheel.spoke_2_when}</p>
+                <p>{wheel.spoke_2_notes}</p>
               </div>
             )}
             {(wheel.spoke_2_start_date || wheel.spoke_2_checkpoint_date) && (
@@ -112,21 +111,21 @@ export function SpokeView({ wheel, spokeNumber, onEdit }: SpokeViewProps) {
           </div>
         );
 
-      case 3: // Support
+      case 3: { // Support
+        const supportPeople: { role: string; person: WheelSupportPerson }[] = [];
+        if (wheel.spoke_4_supporter) supportPeople.push({ role: 'Supporter', person: wheel.spoke_4_supporter });
+        if (wheel.spoke_4_reminder) supportPeople.push({ role: 'Reminder', person: wheel.spoke_4_reminder });
+        if (wheel.spoke_4_observer) supportPeople.push({ role: 'Observer', person: wheel.spoke_4_observer });
+
         return (
           <div className="spoke-view__section">
-            {wheel.spoke_4_support_text && (
-              <div className="spoke-view__text-block">
-                <p>{wheel.spoke_4_support_text}</p>
-              </div>
-            )}
-            {wheel.spoke_4_support_people && (wheel.spoke_4_support_people as WheelSupportPerson[]).length > 0 && (
+            {supportPeople.length > 0 && (
               <div className="spoke-view__roles">
-                {(wheel.spoke_4_support_people as WheelSupportPerson[]).map((person, i) => (
+                {supportPeople.map(({ role, person }, i) => (
                   <Card key={i} className="spoke-view__role-card">
                     <div className="spoke-view__role-header">
                       <strong>{person.name}</strong>
-                      <span className="spoke-view__role-badge">{person.role_description}</span>
+                      <span className="spoke-view__role-badge">{role}{person.role_description ? ` — ${person.role_description}` : ''}</span>
                     </div>
                     {person.conversation_script && (
                       <>
@@ -151,18 +150,14 @@ export function SpokeView({ wheel, spokeNumber, onEdit }: SpokeViewProps) {
             )}
           </div>
         );
+      }
 
       case 4: // Evidence
         return (
           <div className="spoke-view__section">
-            {wheel.spoke_5_evidence_text && (
-              <div className="spoke-view__text-block">
-                <p>{wheel.spoke_5_evidence_text}</p>
-              </div>
-            )}
-            {wheel.spoke_5_evidence_sources && (wheel.spoke_5_evidence_sources as WheelEvidenceSource[]).length > 0 && (
+            {wheel.spoke_5_evidence && wheel.spoke_5_evidence.length > 0 && (
               <div className="spoke-view__evidence-list">
-                {(wheel.spoke_5_evidence_sources as WheelEvidenceSource[]).map((source, i) => (
+                {wheel.spoke_5_evidence.map((source: WheelEvidenceSource, i: number) => (
                   <div key={i} className="spoke-view__evidence-item">
                     <span className="spoke-view__evidence-type">{source.type.replace(/_/g, ' ')}</span>
                     <span className="spoke-view__evidence-desc">{source.description}</span>
@@ -179,14 +174,9 @@ export function SpokeView({ wheel, spokeNumber, onEdit }: SpokeViewProps) {
       case 5: // Becoming
         return (
           <div className="spoke-view__section">
-            {wheel.spoke_6_becoming_text && (
-              <div className="spoke-view__text-block">
-                <p>{wheel.spoke_6_becoming_text}</p>
-              </div>
-            )}
-            {wheel.spoke_6_becoming_actions && (wheel.spoke_6_becoming_actions as WheelBecomingAction[]).length > 0 && (
+            {wheel.spoke_6_becoming && wheel.spoke_6_becoming.length > 0 && (
               <div className="spoke-view__actions-list">
-                {(wheel.spoke_6_becoming_actions as WheelBecomingAction[]).map((action, i) => (
+                {wheel.spoke_6_becoming.map((action: WheelBecomingAction, i: number) => (
                   <div key={i} className="spoke-view__action-item">
                     <span>{action.text}</span>
                     {action.compass_task_id && (
@@ -207,11 +197,11 @@ export function SpokeView({ wheel, spokeNumber, onEdit }: SpokeViewProps) {
   const hasContent = (() => {
     switch (spokeNumber) {
       case 0: return !!wheel.spoke_1_why;
-      case 1: return !!wheel.spoke_2_when;
+      case 1: return !!wheel.spoke_2_notes || !!wheel.spoke_2_start_date || !!wheel.spoke_2_checkpoint_date;
       case 2: return !!wheel.spoke_3_who_i_am || !!wheel.spoke_3_who_i_want_to_be;
-      case 3: return !!wheel.spoke_4_support_text || !!(wheel.spoke_4_support_people as WheelSupportPerson[])?.length;
-      case 4: return !!wheel.spoke_5_evidence_text || !!(wheel.spoke_5_evidence_sources as WheelEvidenceSource[])?.length;
-      case 5: return !!wheel.spoke_6_becoming_text || !!(wheel.spoke_6_becoming_actions as WheelBecomingAction[])?.length;
+      case 3: return !!wheel.spoke_4_supporter || !!wheel.spoke_4_reminder || !!wheel.spoke_4_observer;
+      case 4: return !!(wheel.spoke_5_evidence && wheel.spoke_5_evidence.length > 0);
+      case 5: return !!(wheel.spoke_6_becoming && wheel.spoke_6_becoming.length > 0);
       default: return false;
     }
   })();

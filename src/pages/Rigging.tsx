@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { usePageContext } from '../hooks/usePageContext';
 import { useRigging } from '../hooks/useRigging';
 import { useHelmContext } from '../contexts/HelmContext';
-import type { RiggingPlan, RiggingPlanStatus } from '../lib/types';
+import type { RiggingPlan } from '../lib/types';
 import { PlanCard } from '../components/rigging/PlanCard';
 import { PlanDetail } from '../components/rigging/PlanDetail';
 import { ManualPlanForm } from '../components/rigging/ManualPlanForm';
@@ -53,7 +53,6 @@ export default function Rigging() {
     deleteObstacle,
     getLinkedLogEntries,
     getLinkedConversations,
-    getLinkedTasks,
     setSelectedPlan,
   } = useRigging();
 
@@ -241,8 +240,9 @@ export default function Rigging() {
           )}
           {completedPlans.length > 0 && (
             <CollapsibleGroup
-              title={`Completed (${completedPlans.length})`}
-              defaultCollapsed
+              label="Completed"
+              count={completedPlans.length}
+              defaultExpanded={false}
             >
               <div className="rigging-page__plan-list">
                 {completedPlans.map((plan) => (
@@ -282,8 +282,9 @@ export default function Rigging() {
         )}
         <FloatingActionButton
           onClick={() => setFabExpanded(!fabExpanded)}
-          label={fabExpanded ? 'Close' : 'New Plan'}
-        />
+        >
+          {fabExpanded ? 'Close' : 'New Plan'}
+        </FloatingActionButton>
       </div>
     </div>
   );

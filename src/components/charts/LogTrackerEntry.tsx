@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import type { CustomTracker } from '../../lib/types';
 import { useCharts } from '../../hooks/useCharts';
+import { supabase } from '../../lib/supabase';
 import './ChartCards.css';
 
 interface LogTrackerEntryProps {
@@ -17,13 +18,39 @@ export function LogTrackerEntry({ tracker, onClose, onLogged }: LogTrackerEntryP
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [saving, setSaving] = useState(false);
 
+  // "Add to" mode for count and duration trackers
+  const supportsAddMode = tracker.tracking_type === 'count' || tracker.tracking_type === 'duration';
+  const [mode, setMode] = useState<'add' | 'set'>(supportsAddMode ? 'add' : 'set');
+  const [existingValue, setExistingValue] = useState<number | null>(null);
+
+  // Fetch existing entry for the selected date
+  useEffect(() => {
+    if (!supportsAddMode) return;
+    let cancelled = false;
+    async function fetchExisting() {
+      const { data } = await supabase
+        .from('tracker_entries')
+        .select('value_numeric')
+        .eq('tracker_id', tracker.id)
+        .eq('entry_date', date)
+        .maybeSingle();
+      if (!cancelled) setExistingValue(data?.value_numeric ?? null);
+    }
+    fetchExisting();
+    return () => { cancelled = true; };
+  }, [tracker.id, date, supportsAddMode]);
+
+  const computedTotal = mode === 'add'
+    ? (existingValue ?? 0) + (Number(value) || 0)
+    : Number(value) || 0;
+
   const handleSave = async () => {
     setSaving(true);
     if (tracker.tracking_type === 'yes_no') {
       if (boolValue === null) { setSaving(false); return; }
       await logTrackerEntry(tracker.id, { boolean: boolValue }, date);
     } else {
-      const num = Number(value);
+      const num = mode === 'add' ? computedTotal : Number(value);
       if (isNaN(num)) { setSaving(false); return; }
       await logTrackerEntry(tracker.id, { numeric: num }, date);
     }
@@ -31,6 +58,8 @@ export function LogTrackerEntry({ tracker, onClose, onLogged }: LogTrackerEntryP
     onLogged?.();
     onClose();
   };
+
+  const unitLabel = tracker.tracking_type === 'duration' ? 'min' : '';
 
   return (
     <div className="chart-modal-overlay" onClick={onClose}>
@@ -74,9 +103,30 @@ export function LogTrackerEntry({ tracker, onClose, onLogged }: LogTrackerEntryP
               </div>
             </div>
           ) : (
-            <label className="chart-field">
+            <div className="chart-field">
+              {supportsAddMode && (
+                <div className="add-set-toggle">
+                  <button
+                    type="button"
+                    className={`add-set-toggle__btn ${mode === 'add' ? 'add-set-toggle__btn--active' : ''}`}
+                    onClick={() => setMode('add')}
+                  >
+                    + Add
+                  </button>
+                  <button
+                    type="button"
+                    className={`add-set-toggle__btn ${mode === 'set' ? 'add-set-toggle__btn--active' : ''}`}
+                    onClick={() => setMode('set')}
+                  >
+                    Set total
+                  </button>
+                </div>
+              )}
               <span className="chart-field__label">
-                {tracker.tracking_type === 'duration' ? 'Minutes' : tracker.tracking_type === 'rating' ? 'Rating (1-10)' : 'Value'}
+                {mode === 'add'
+                  ? `+ Add ${tracker.tracking_type === 'duration' ? 'minutes' : 'value'}`
+                  : tracker.tracking_type === 'duration' ? 'Minutes' : tracker.tracking_type === 'rating' ? 'Rating (1-10)' : 'Value'
+                }
               </span>
               <input
                 type="number"
@@ -88,7 +138,12 @@ export function LogTrackerEntry({ tracker, onClose, onLogged }: LogTrackerEntryP
                 placeholder={tracker.target_value ? `Target: ${tracker.target_value}` : ''}
                 autoFocus
               />
-            </label>
+              {supportsAddMode && mode === 'add' && value && (
+                <span className="chart-field__helper">
+                  {existingValue ?? 0}{unitLabel} + {Number(value) || 0}{unitLabel} = {computedTotal}{unitLabel}
+                </span>
+              )}
+            </div>
           )}
         </div>
 

@@ -30,7 +30,7 @@ interface PlanDetailProps {
   onCreateMilestone: (planId: string, data: Partial<RiggingMilestone>) => void;
   onUpdateMilestone: (id: string, updates: Partial<RiggingMilestone>) => void;
   onDeleteMilestone: (id: string) => void;
-  onCreateObstacle: (planId: string, data: { risk: string; mitigation: string }) => void;
+  onCreateObstacle: (planId: string, data: { risk_description: string; mitigation_plan: string }) => void;
   onUpdateObstacle: (id: string, updates: Partial<RiggingObstacle>) => void;
   onDeleteObstacle: (id: string) => void;
   onLoadMilestones: (planId: string) => void;

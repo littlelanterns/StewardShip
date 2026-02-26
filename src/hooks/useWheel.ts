@@ -5,8 +5,6 @@ import type {
   WheelInstance,
   WheelRimEntry,
   WheelStatus,
-  WheelSupportPerson,
-  WheelEvidenceSource,
   WheelBecomingAction,
   LogEntry,
   HelmConversation,

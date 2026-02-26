@@ -163,7 +163,7 @@ export default function Compass() {
   const [selectedTask, setSelectedTask] = useState<CompassTask | null>(null);
   const [overdueCount, setOverdueCount] = useState(0);
   const [tooltip, setTooltip] = useState<{ text: string; x: number; y: number } | null>(null);
-  const tooltipTimeout = useRef<ReturnType<typeof setTimeout>>();
+  const tooltipTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   // Subtask tracking
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());

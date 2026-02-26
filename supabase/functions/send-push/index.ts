@@ -170,16 +170,25 @@ serve(async (req) => {
 
     for (const sub of subscriptions) {
       try {
-        // For MVP, use simple fetch-based Web Push without VAPID JWT
-        // (Full VAPID JWT signing requires the web-push library or manual crypto)
-        // This is a simplified implementation — for production, use the web-push npm equivalent
+        // VAPID JWT authentication — required by all push services in production
+        const vapidJwt = await createVapidJwt(sub.endpoint);
+
+        // NOTE: Web Push spec requires payload encryption using the subscriber's
+        // p256dh and auth keys (RFC 8291 / aes128gcm). Without encryption, push
+        // services will reject the payload with 400/403. Full implementation needs:
+        //   1. ECDH key agreement with subscriber's p256dh key
+        //   2. HKDF key derivation for content encryption key + nonce
+        //   3. AES-128-GCM encryption of the payload
+        // For production, use a Deno-compatible web-push library or implement
+        // the encryption per RFC 8291. Until then, push delivery will fail for
+        // most browsers (subscription and VAPID auth work correctly).
         const response = await fetch(sub.endpoint, {
           method: "POST",
           headers: {
             "Content-Type": "application/octet-stream",
+            "Content-Encoding": "aes128gcm",
             TTL: "86400",
-            // Note: Full VAPID authentication would be added here in production
-            // For MVP with self-hosted endpoints, this works for testing
+            Authorization: `vapid t=${vapidJwt}, k=${VAPID_PUBLIC_KEY}`,
           },
           body: new TextEncoder().encode(pushPayload),
         });
