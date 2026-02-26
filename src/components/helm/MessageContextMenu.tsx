@@ -65,6 +65,20 @@ export default function MessageContextMenu({
     showToast('Copied');
   };
 
+  const handleSelectText = () => {
+    const messageEl = document.querySelector(
+      `[data-message-id="${message.id}"] .message-bubble__text`
+    );
+    if (messageEl) {
+      const selection = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(messageEl);
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+    }
+    onClose();
+  };
+
   const handleSaveToLog = async () => {
     if (!user) return;
     try {
@@ -185,6 +199,9 @@ export default function MessageContextMenu({
         <>
           <button type="button" className="message-context-menu__item" role="menuitem" onClick={handleCopy}>
             Copy text
+          </button>
+          <button type="button" className="message-context-menu__item" role="menuitem" onClick={handleSelectText}>
+            Select text
           </button>
           <button type="button" className="message-context-menu__item" role="menuitem" onClick={handleSaveToLog}>
             Save to Log

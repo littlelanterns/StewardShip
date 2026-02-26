@@ -64,7 +64,7 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
   });
 
   return (
-    <div className={`message-bubble ${isUser ? 'message-bubble--user' : 'message-bubble--assistant'}`}>
+    <div className={`message-bubble ${isUser ? 'message-bubble--user' : 'message-bubble--assistant'}`} data-message-id={message.id}>
       <div
         className="message-bubble__content"
         onContextMenu={handleContextMenu}

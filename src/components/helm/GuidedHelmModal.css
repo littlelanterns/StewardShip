@@ -30,6 +30,8 @@
   box-shadow: var(--shadow-lg);
   display: flex;
   flex-direction: column;
+  user-select: none;
+  -webkit-user-select: none;
   overflow: hidden;
   animation: guided-helm-slide-up 250ms ease;
 }
