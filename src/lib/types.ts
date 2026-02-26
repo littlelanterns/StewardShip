@@ -100,7 +100,8 @@ export type TaskSource =
   | 'rigging_output'
   | 'wheel_commitment'
   | 'recurring_generated'
-  | 'unload_the_hold';
+  | 'unload_the_hold'
+  | 'list_converted';
 
 export interface CompassTask {
   id: string;

@@ -457,15 +457,19 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
 
   // Reflections context
   if (reflectionsResult?.data && reflectionsResult.data.length > 0) {
-    const formatted = (reflectionsResult.data as Array<{
+    const formatted = (reflectionsResult.data as unknown as Array<{
       response_text: string;
       response_date: string;
-      reflection_questions: { question_text: string } | null;
-    }>).map((r) => ({
-      question_text: r.reflection_questions?.question_text || 'Unknown question',
-      response_text: r.response_text,
-      response_date: r.response_date,
-    }));
+      reflection_questions: Array<{ question_text: string }> | { question_text: string } | null;
+    }>).map((r) => {
+      const q = r.reflection_questions;
+      const questionText = Array.isArray(q) ? q[0]?.question_text : q?.question_text;
+      return {
+        question_text: questionText || 'Unknown question',
+        response_text: r.response_text,
+        response_date: r.response_date,
+      };
+    });
     reflectionsContext = formatReflectionsContext(formatted);
   }
 

@@ -5,14 +5,8 @@ import type {
   ReportConfig,
   ReportData,
   ReportPeriod,
-  ReportSection,
   ReportTaskData,
-  ReportRoutineData,
   ReportJournalData,
-  ReportVictoryData,
-  ReportReflectionData,
-  ReportGoalData,
-  ReportStreakData,
 } from '../lib/types';
 
 function computeDateRange(period: ReportPeriod, dateFrom?: string, dateTo?: string): { from: string; to: string } {

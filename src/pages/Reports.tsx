@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FeatureGuide, LoadingSpinner, EmptyState } from '../components/shared';
+import { FeatureGuide, LoadingSpinner } from '../components/shared';
 import { Button } from '../components/shared/Button';
 import { Card } from '../components/shared/Card';
 import { FEATURE_GUIDES } from '../lib/featureGuides';

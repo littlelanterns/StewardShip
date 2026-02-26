@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuthContext } from '../contexts/AuthContext';
-import type { List, ListItem, ListType, ListAiAction, ResetSchedule } from '../lib/types';
+import type { List, ListItem, ListType, ListAiAction } from '../lib/types';
 
 export function useLists() {
   const { user } = useAuthContext();

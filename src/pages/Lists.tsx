@@ -60,7 +60,7 @@ export default function Lists() {
 
   const handleConvertToTasks = useCallback(async (
     listItems: ListItem[],
-    listTitle: string,
+    _listTitle: string,
     listId: string,
   ): Promise<number> => {
     const unchecked = listItems.filter((i) => !i.checked);
@@ -81,7 +81,7 @@ export default function Lists() {
 
   const handleConvertToRecurringTasks = useCallback(async (
     listItems: ListItem[],
-    listTitle: string,
+    _listTitle: string,
     listId: string,
     recurrenceRule: string,
   ): Promise<number> => {
@@ -95,8 +95,7 @@ export default function Lists() {
         description: item.notes || undefined,
         source: 'list_converted',
         source_reference_id: listId,
-        is_recurring: true,
-        recurrence_rule: recurrenceRule,
+        recurrence_rule: recurrenceRule as 'daily' | 'weekdays' | 'weekly' | null,
       });
       if (task) created++;
     }
