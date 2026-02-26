@@ -141,12 +141,18 @@ export function useCompass() {
     setLoading(true);
     setError(null);
     try {
+      // Show all pending tasks + completed tasks from last 7 days only
+      // This prevents old completed tasks from cluttering framework views
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - 7);
+      const cutoffStr = cutoff.toISOString();
+
       const { data, error: err } = await supabase
         .from('compass_tasks')
         .select('*')
         .eq('user_id', user.id)
         .is('archived_at', null)
-        .in('status', ['pending', 'completed'])
+        .or(`status.eq.pending,and(status.eq.completed,completed_at.gte.${cutoffStr})`)
         .order('sort_order', { ascending: true });
 
       if (err) throw err;
@@ -287,14 +293,14 @@ export function useCompass() {
     }
   }, [user, tasks]);
 
-  const completeTask = useCallback(async (id: string) => {
+  const completeTask = useCallback(async (id: string): Promise<{ completedChildIds?: string[] } | void> => {
     if (!user) return;
     setError(null);
 
     const task = tasks.find((t) => t.id === id);
     const now = new Date().toISOString();
 
-    // Optimistic update
+    // Optimistic update for the task itself
     setTasks((prev) =>
       prev.map((t) => (t.id === id ? { ...t, status: 'completed' as TaskStatus, completed_at: now } : t))
     );
@@ -308,16 +314,113 @@ export function useCompass() {
 
       if (err) throw err;
 
+      // Cascade: if parent task → complete all pending children
+      let completedChildIds: string[] = [];
+      if (task && !task.parent_task_id) {
+        const { data: children } = await supabase
+          .from('compass_tasks')
+          .select('id')
+          .eq('parent_task_id', id)
+          .eq('user_id', user.id)
+          .eq('status', 'pending')
+          .is('archived_at', null);
+
+        if (children && children.length > 0) {
+          completedChildIds = children.map((c) => c.id);
+          await supabase
+            .from('compass_tasks')
+            .update({ status: 'completed', completed_at: now })
+            .in('id', completedChildIds)
+            .eq('user_id', user.id);
+        }
+      }
+
       // Generate next recurrence if applicable
       if (task?.recurrence_rule) {
         await generateNextRecurrence(task);
       }
+
+      return { completedChildIds };
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Failed to complete task';
       setError(msg);
       fetchTasks();
     }
   }, [user, tasks, generateNextRecurrence, fetchTasks]);
+
+  const uncompleteTask = useCallback(async (id: string) => {
+    if (!user) return;
+    setError(null);
+
+    const task = tasks.find((t) => t.id === id);
+
+    // Optimistic update
+    setTasks((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, status: 'pending' as TaskStatus, completed_at: null } : t))
+    );
+
+    try {
+      const { error: err } = await supabase
+        .from('compass_tasks')
+        .update({ status: 'pending', completed_at: null })
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (err) throw err;
+
+      // Cascade: if child task → uncomplete parent too
+      if (task?.parent_task_id) {
+        const parent = tasks.find((t) => t.id === task.parent_task_id);
+        if (parent && parent.status === 'completed') {
+          setTasks((prev) =>
+            prev.map((t) => (t.id === parent.id ? { ...t, status: 'pending' as TaskStatus, completed_at: null } : t))
+          );
+          await supabase
+            .from('compass_tasks')
+            .update({ status: 'pending', completed_at: null })
+            .eq('id', parent.id)
+            .eq('user_id', user.id);
+        }
+      }
+
+      // Cascade: if parent task → uncomplete all children
+      if (task && !task.parent_task_id) {
+        const { data: completedChildren } = await supabase
+          .from('compass_tasks')
+          .select('id')
+          .eq('parent_task_id', id)
+          .eq('user_id', user.id)
+          .eq('status', 'completed')
+          .is('archived_at', null);
+
+        if (completedChildren && completedChildren.length > 0) {
+          const childIds = completedChildren.map((c) => c.id);
+          await supabase
+            .from('compass_tasks')
+            .update({ status: 'pending', completed_at: null })
+            .in('id', childIds)
+            .eq('user_id', user.id);
+        }
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Failed to uncomplete task';
+      setError(msg);
+      fetchTasks();
+    }
+  }, [user, tasks, fetchTasks]);
+
+  const checkAllSubtasksComplete = useCallback(async (parentId: string): Promise<boolean> => {
+    if (!user) return false;
+    const { data: siblings } = await supabase
+      .from('compass_tasks')
+      .select('id, status')
+      .eq('parent_task_id', parentId)
+      .eq('user_id', user.id)
+      .is('archived_at', null);
+
+    if (!siblings || siblings.length === 0) return false;
+    return siblings.every((s) => s.status === 'completed');
+  }, [user]);
 
   const archiveTask = useCallback(async (id: string) => {
     if (!user) return;
@@ -592,6 +695,8 @@ export function useCompass() {
     createTask,
     updateTask,
     completeTask,
+    uncompleteTask,
+    checkAllSubtasksComplete,
     archiveTask,
     fetchArchivedTasks,
     restoreTask,

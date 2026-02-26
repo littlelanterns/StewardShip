@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { ArrowLeft, MoreVertical, Trash2, GripVertical, ChevronDown, ChevronUp, History, RotateCcw } from 'lucide-react';
+import { ArrowLeft, MoreVertical, Trash2, GripVertical, ChevronDown, ChevronUp, ChevronRight, History, RotateCcw, Plus } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -19,7 +19,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { Button } from '../../shared/Button';
 import { Card } from '../../shared/Card';
-import type { List, ListItem, RoutineCompletionHistory } from '../../../lib/types';
+import type { List, ListItem, RoutineCompletionHistory, RoutineAssignment } from '../../../lib/types';
 import { LIST_TYPE_LABELS, RESET_SCHEDULE_LABELS } from '../../../lib/types';
 import type { ResetSchedule } from '../../../lib/types';
 import './ListDetail.css';
@@ -31,7 +31,7 @@ interface ListDetailProps {
   onUpdateList: (id: string, updates: Partial<List>) => Promise<List | null>;
   onArchiveList: (id: string) => void;
   onFetchItems: (listId: string) => Promise<ListItem[]>;
-  onAddItem: (listId: string, text: string) => Promise<ListItem | null>;
+  onAddItem: (listId: string, text: string, parentItemId?: string) => Promise<ListItem | null>;
   onToggleItem: (id: string) => void;
   onDeleteItem: (id: string) => void;
   onReorderItems: (listId: string, orderedIds: string[]) => void;
@@ -43,6 +43,14 @@ interface ListDetailProps {
   shouldAutoReset?: (list: List) => boolean;
   onConvertToTasks?: (items: ListItem[], listTitle: string, listId: string) => Promise<number>;
   onConvertToRecurringTasks?: (items: ListItem[], listTitle: string, listId: string, recurrenceRule: string) => Promise<number>;
+  getItemHierarchy?: (items: ListItem[]) => { topLevel: ListItem[]; childMap: Record<string, ListItem[]> };
+  routineStats?: { avgCompletion: number; totalResets: number; streak: number };
+  onShowBulkAdd?: () => void;
+  assignment?: RoutineAssignment;
+  onAssignToCompass?: () => void;
+  onPauseAssignment?: (id: string) => void;
+  onResumeAssignment?: (id: string) => void;
+  onRemoveAssignment?: (id: string) => void;
 }
 
 function SortableListItemRow({
@@ -164,6 +172,14 @@ export default function ListDetail({
   shouldAutoReset,
   onConvertToTasks,
   onConvertToRecurringTasks,
+  getItemHierarchy,
+  routineStats,
+  onShowBulkAdd,
+  assignment,
+  onAssignToCompass,
+  onPauseAssignment,
+  onResumeAssignment,
+  onRemoveAssignment,
 }: ListDetailProps) {
   const [title, setTitle] = useState(list.title);
   const [editingTitle, setEditingTitle] = useState(false);
@@ -173,7 +189,11 @@ export default function ListDetail({
   const [shareMessage, setShareMessage] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [resetBanner, setResetBanner] = useState(false);
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  const [addingSubItemFor, setAddingSubItemFor] = useState<string | null>(null);
+  const [subItemText, setSubItemText] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const subItemRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const isRoutine = list.list_type === 'routine';
@@ -186,6 +206,13 @@ export default function ListDetail({
   useEffect(() => {
     onFetchItems(list.id);
   }, [list.id, onFetchItems]);
+
+  // Auto-fetch routine history on mount so streak is available
+  useEffect(() => {
+    if (isRoutine && onFetchHistory) {
+      onFetchHistory(list.id);
+    }
+  }, [isRoutine, list.id, onFetchHistory]);
 
   // Check auto-reset on mount
   useEffect(() => {
@@ -281,6 +308,8 @@ export default function ListDetail({
     if (onResetRoutine) {
       await onResetRoutine(list.id, items);
       await onFetchItems(list.id);
+      // Refresh history so streak updates
+      if (onFetchHistory) onFetchHistory(list.id);
       setResetBanner(false);
       setShareMessage('Routine reset - items unchecked');
       setTimeout(() => setShareMessage(null), 3000);
@@ -332,6 +361,28 @@ export default function ListDetail({
       onUpdateItem(id, { notes });
     }
   }, [onUpdateItem]);
+
+  const handleToggleExpandItem = useCallback((itemId: string) => {
+    setExpandedItems((prev) => {
+      const next = new Set(prev);
+      if (next.has(itemId)) {
+        next.delete(itemId);
+      } else {
+        next.add(itemId);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleAddSubItem = useCallback(async (parentId: string) => {
+    const text = subItemText.trim();
+    if (!text) return;
+    await onAddItem(list.id, text, parentId);
+    setSubItemText('');
+    setAddingSubItemFor(null);
+    // Auto-expand parent to show the new sub-item
+    setExpandedItems((prev) => new Set(prev).add(parentId));
+  }, [subItemText, onAddItem, list.id]);
 
   const uncheckedItems = items.filter((i) => !i.checked);
   const checkedItems = items.filter((i) => i.checked);
@@ -399,6 +450,16 @@ export default function ListDetail({
                   Reset Routine
                 </button>
               )}
+              {onShowBulkAdd && (
+                <button type="button" className="list-detail__menu-item" onClick={() => { onShowBulkAdd(); setShowMenu(false); }}>
+                  Bulk Add Items
+                </button>
+              )}
+              {isRoutine && onAssignToCompass && !assignment && (
+                <button type="button" className="list-detail__menu-item" onClick={() => { onAssignToCompass(); setShowMenu(false); }}>
+                  Assign to Compass
+                </button>
+              )}
               {isRoutine && onFetchHistory && (
                 <button type="button" className="list-detail__menu-item" onClick={handleShowHistory}>
                   {showHistory ? 'Hide History' : 'View History'}
@@ -421,12 +482,44 @@ export default function ListDetail({
         <div className="list-detail__routine-stats">
           <span className="list-detail__routine-progress">
             {checkedItems.length}/{items.length} ({completionPct}%)
+            {routineStats && routineStats.streak > 0 && (
+              <span className={`list-detail__streak-badge${routineStats.streak >= 30 ? ' list-detail__streak-badge--milestone' : ''}`}>
+                {routineStats.streak} day streak
+              </span>
+            )}
           </span>
           {list.reset_schedule && (
             <span className="list-detail__routine-schedule">
               Resets {RESET_SCHEDULE_LABELS[list.reset_schedule as ResetSchedule]}
             </span>
           )}
+        </div>
+      )}
+
+      {/* Assignment status */}
+      {isRoutine && assignment && (
+        <div className="list-detail__assignment-bar">
+          <span className="list-detail__assignment-status">
+            Assigned to Compass — {assignment.recurrence_rule}{assignment.ends_at ? `, until ${new Date(assignment.ends_at).toLocaleDateString()}` : ', ongoing'}
+            {assignment.status === 'paused' && ' (paused)'}
+          </span>
+          <div className="list-detail__assignment-actions">
+            {assignment.status === 'active' && onPauseAssignment && (
+              <button type="button" className="list-detail__assignment-btn" onClick={() => onPauseAssignment(assignment.id)}>
+                Pause
+              </button>
+            )}
+            {assignment.status === 'paused' && onResumeAssignment && (
+              <button type="button" className="list-detail__assignment-btn" onClick={() => onResumeAssignment(assignment.id)}>
+                Resume
+              </button>
+            )}
+            {onRemoveAssignment && (
+              <button type="button" className="list-detail__assignment-btn list-detail__assignment-btn--danger" onClick={() => onRemoveAssignment(assignment.id)}>
+                End
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -458,67 +551,164 @@ export default function ListDetail({
         </div>
       )}
 
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={handleDragEnd}
-      >
-        <SortableContext
-          items={uncheckedItems.map((i) => i.id)}
-          strategy={verticalListSortingStrategy}
-        >
-          <div className="list-detail__items">
-            {uncheckedItems.map((item) => (
-              <SortableListItemRow
-                key={item.id}
-                item={item}
-                onToggle={onToggleItem}
-                onDelete={onDeleteItem}
-                onUpdateNotes={onUpdateItem ? handleUpdateNotes : undefined}
-              />
-            ))}
-          </div>
-        </SortableContext>
-      </DndContext>
+      {(() => {
+        // Use hierarchy if available, otherwise flat list
+        const hierarchy = getItemHierarchy ? getItemHierarchy(items) : null;
+        const topUnchecked = hierarchy
+          ? hierarchy.topLevel.filter((i) => !i.checked)
+          : uncheckedItems;
+        const topChecked = hierarchy
+          ? hierarchy.topLevel.filter((i) => i.checked)
+          : checkedItems;
+        const childMap = hierarchy ? hierarchy.childMap : {};
 
-      {checkedItems.length > 0 && (
-        <div className="list-detail__checked-section">
-          <span className="list-detail__checked-label">
-            Checked ({checkedItems.length})
-          </span>
-          {checkedItems.map((item) => (
-            <div key={item.id} className="list-detail__item-wrapper">
-              <div className="list-detail__item-row list-detail__item-row--checked">
-                <label className="list-detail__item-check-wrapper">
-                  <input
-                    type="checkbox"
-                    className="list-detail__item-checkbox"
-                    checked={item.checked}
-                    onChange={() => onToggleItem(item.id)}
-                  />
-                  <span className="list-detail__item-checkmark" />
-                </label>
-                <span className="list-detail__item-text list-detail__item-text--checked">
-                  {item.text}
-                </span>
-                <button
-                  type="button"
-                  className="list-detail__item-delete"
-                  onClick={() => onDeleteItem(item.id)}
-                  aria-label="Delete item"
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-              {item.notes && (
-                <div className="list-detail__item-notes list-detail__item-notes--static">
-                  <span className="list-detail__notes-display">{item.notes}</span>
+        return (
+          <>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={topUnchecked.map((i) => i.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="list-detail__items">
+                  {topUnchecked.map((item) => {
+                    const children = childMap[item.id] || [];
+                    const hasChildren = children.length > 0;
+                    const isExpanded = expandedItems.has(item.id);
+
+                    return (
+                      <div key={item.id} className="list-detail__item-group">
+                        <div className="list-detail__item-with-expand">
+                          {hasChildren && (
+                            <button
+                              type="button"
+                              className="list-detail__expand-btn"
+                              onClick={() => handleToggleExpandItem(item.id)}
+                              aria-label={isExpanded ? 'Collapse' : 'Expand'}
+                            >
+                              {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                            </button>
+                          )}
+                          <div className={`list-detail__item-flex ${!hasChildren ? 'list-detail__item-flex--no-expand' : ''}`}>
+                            <SortableListItemRow
+                              item={item}
+                              onToggle={onToggleItem}
+                              onDelete={onDeleteItem}
+                              onUpdateNotes={onUpdateItem ? handleUpdateNotes : undefined}
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            className="list-detail__add-sub-btn"
+                            onClick={() => { setAddingSubItemFor(addingSubItemFor === item.id ? null : item.id); setSubItemText(''); }}
+                            aria-label="Add sub-item"
+                            title="Add sub-item"
+                          >
+                            <Plus size={12} />
+                          </button>
+                        </div>
+
+                        {/* Sub-items */}
+                        {isExpanded && children.length > 0 && (
+                          <div className="list-detail__sub-items">
+                            {children.map((child) => (
+                              <div key={child.id} className="list-detail__sub-item-row">
+                                <div className="list-detail__item-row">
+                                  <label className="list-detail__item-check-wrapper">
+                                    <input
+                                      type="checkbox"
+                                      className="list-detail__item-checkbox"
+                                      checked={child.checked}
+                                      onChange={() => onToggleItem(child.id)}
+                                    />
+                                    <span className="list-detail__item-checkmark" />
+                                  </label>
+                                  <span className={`list-detail__item-text ${child.checked ? 'list-detail__item-text--checked' : ''}`}>
+                                    {child.text}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    className="list-detail__item-delete"
+                                    onClick={() => onDeleteItem(child.id)}
+                                    aria-label="Delete item"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Inline sub-item input */}
+                        {addingSubItemFor === item.id && (
+                          <div className="list-detail__sub-item-add">
+                            <input
+                              ref={subItemRef}
+                              type="text"
+                              className="list-detail__add-input list-detail__add-input--sub"
+                              value={subItemText}
+                              onChange={(e) => setSubItemText(e.target.value)}
+                              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddSubItem(item.id); } if (e.key === 'Escape') setAddingSubItemFor(null); }}
+                              placeholder="Add sub-item..."
+                              autoFocus
+                            />
+                            <Button onClick={() => handleAddSubItem(item.id)} disabled={!subItemText.trim()}>
+                              Add
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+              </SortableContext>
+            </DndContext>
+
+            {topChecked.length > 0 && (
+              <div className="list-detail__checked-section">
+                <span className="list-detail__checked-label">
+                  Checked ({topChecked.length})
+                </span>
+                {topChecked.map((item) => (
+                  <div key={item.id} className="list-detail__item-wrapper">
+                    <div className="list-detail__item-row list-detail__item-row--checked">
+                      <label className="list-detail__item-check-wrapper">
+                        <input
+                          type="checkbox"
+                          className="list-detail__item-checkbox"
+                          checked={item.checked}
+                          onChange={() => onToggleItem(item.id)}
+                        />
+                        <span className="list-detail__item-checkmark" />
+                      </label>
+                      <span className="list-detail__item-text list-detail__item-text--checked">
+                        {item.text}
+                      </span>
+                      <button
+                        type="button"
+                        className="list-detail__item-delete"
+                        onClick={() => onDeleteItem(item.id)}
+                        aria-label="Delete item"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                    {item.notes && (
+                      <div className="list-detail__item-notes list-detail__item-notes--static">
+                        <span className="list-detail__notes-display">{item.notes}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        );
+      })()}
 
       <div className="list-detail__add-item">
         <input

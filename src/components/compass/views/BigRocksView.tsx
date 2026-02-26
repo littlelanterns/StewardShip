@@ -7,6 +7,7 @@ import './BigRocksView.css';
 interface BigRocksViewProps {
   tasks: CompassTask[];
   onComplete: (id: string) => void;
+  onUncomplete?: (id: string) => void;
   onTaskClick: (task: CompassTask) => void;
   onUpdateTask: (id: string, updates: Partial<CompassTask>) => Promise<CompassTask | null>;
 }
@@ -14,6 +15,7 @@ interface BigRocksViewProps {
 export default function BigRocksView({
   tasks,
   onComplete,
+  onUncomplete,
   onTaskClick,
   onUpdateTask,
 }: BigRocksViewProps) {
@@ -44,6 +46,7 @@ export default function BigRocksView({
               <TaskCard
                 task={task}
                 onComplete={onComplete}
+                onUncomplete={onUncomplete}
                 onClick={onTaskClick}
               />
               <button
@@ -74,6 +77,7 @@ export default function BigRocksView({
               <TaskCard
                 task={task}
                 onComplete={onComplete}
+                onUncomplete={onUncomplete}
                 onClick={onTaskClick}
               />
               <button
@@ -96,6 +100,7 @@ export default function BigRocksView({
               key={task.id}
               task={task}
               onComplete={onComplete}
+              onUncomplete={onUncomplete}
               onClick={onTaskClick}
             />
           ))}

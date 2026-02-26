@@ -150,11 +150,16 @@ export function useLists() {
   const addListItem = useCallback(async (
     listId: string,
     text: string,
+    parentItemId?: string,
   ): Promise<ListItem | null> => {
     if (!user) return null;
     setError(null);
     try {
-      const maxSort = items.reduce((max, i) => Math.max(max, i.sort_order), -1);
+      // For sub-items, compute sort_order among siblings only
+      const siblings = parentItemId
+        ? items.filter((i) => i.parent_item_id === parentItemId)
+        : items.filter((i) => !i.parent_item_id);
+      const maxSort = siblings.reduce((max, i) => Math.max(max, i.sort_order), -1);
 
       const { data, error: err } = await supabase
         .from('list_items')
@@ -164,6 +169,7 @@ export function useLists() {
           text,
           checked: false,
           sort_order: maxSort + 1,
+          parent_item_id: parentItemId || null,
         })
         .select()
         .single();
@@ -214,7 +220,45 @@ export function useLists() {
   const toggleListItem = useCallback(async (id: string) => {
     const item = items.find((i) => i.id === id);
     if (!item) return;
-    await updateListItem(id, { checked: !item.checked });
+
+    const newChecked = !item.checked;
+
+    // Toggle the item itself
+    await updateListItem(id, { checked: newChecked });
+
+    if (newChecked) {
+      // Checking: also check all children
+      const children = items.filter((i) => i.parent_item_id === id && !i.checked);
+      for (const child of children) {
+        await updateListItem(child.id, { checked: true });
+      }
+
+      // Check if all siblings under the same parent are now checked → auto-check parent
+      if (item.parent_item_id) {
+        const siblings = items.filter((i) => i.parent_item_id === item.parent_item_id && i.id !== id);
+        const allSiblingsChecked = siblings.every((s) => s.checked);
+        if (allSiblingsChecked) {
+          const parent = items.find((i) => i.id === item.parent_item_id);
+          if (parent && !parent.checked) {
+            await updateListItem(parent.id, { checked: true });
+          }
+        }
+      }
+    } else {
+      // Unchecking: also uncheck all children
+      const children = items.filter((i) => i.parent_item_id === id && i.checked);
+      for (const child of children) {
+        await updateListItem(child.id, { checked: false });
+      }
+
+      // Uncheck parent if this item has a parent
+      if (item.parent_item_id) {
+        const parent = items.find((i) => i.id === item.parent_item_id);
+        if (parent && parent.checked) {
+          await updateListItem(parent.id, { checked: false });
+        }
+      }
+    }
   }, [items, updateListItem]);
 
   const deleteListItem = useCallback(async (id: string) => {
@@ -294,6 +338,25 @@ export function useLists() {
     }
   }, [user, currentList]);
 
+  // Hierarchy helper: group items into top-level + children map
+  const getItemHierarchy = useCallback((listItems: ListItem[]) => {
+    const topLevel = listItems
+      .filter((i) => !i.parent_item_id)
+      .sort((a, b) => a.sort_order - b.sort_order);
+    const childMap: Record<string, ListItem[]> = {};
+    for (const item of listItems) {
+      if (item.parent_item_id) {
+        if (!childMap[item.parent_item_id]) childMap[item.parent_item_id] = [];
+        childMap[item.parent_item_id].push(item);
+      }
+    }
+    // Sort children within each group
+    for (const key of Object.keys(childMap)) {
+      childMap[key].sort((a, b) => a.sort_order - b.sort_order);
+    }
+    return { topLevel, childMap };
+  }, []);
+
   // Count checked/total for a list (derived from items state)
   const itemCounts = useCallback((listItems: ListItem[]) => {
     const checked = listItems.filter((i) => i.checked).length;
@@ -318,6 +381,7 @@ export function useLists() {
     deleteListItem,
     reorderListItems,
     generateShareToken,
+    getItemHierarchy,
     itemCounts,
   };
 }

@@ -170,6 +170,20 @@
   text-decoration: underline;
 }
 
+.compass-page__routines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-md);
+}
+
+.compass-page__routines-title {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-base);
+  color: var(--color-text-heading);
+  margin: 0;
+}
+
 .compass-page__tooltip {
   position: fixed;
   z-index: 1000;

@@ -8,6 +8,7 @@ import './TaskCard.css';
 interface TaskCardProps {
   task: CompassTask;
   onComplete: (id: string) => void;
+  onUncomplete?: (id: string) => void;
   onClick: (task: CompassTask) => void;
   showDueDate?: boolean;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -31,6 +32,7 @@ const SOURCE_LABELS: Record<string, string> = {
 export function TaskCard({
   task,
   onComplete,
+  onUncomplete,
   onClick,
   showDueDate = false,
   dragHandleProps,
@@ -77,9 +79,12 @@ export function TaskCard({
               className="task-card__checkbox"
               checked={isCompleted}
               onChange={() => {
-                if (!isCompleted) onComplete(task.id);
+                if (isCompleted && onUncomplete) {
+                  onUncomplete(task.id);
+                } else if (!isCompleted) {
+                  onComplete(task.id);
+                }
               }}
-              disabled={isCompleted}
             />
             <span className="task-card__checkmark" />
           </label>
@@ -134,6 +139,7 @@ export function TaskCard({
               key={sub.id}
               task={sub}
               onComplete={onComplete}
+              onUncomplete={onUncomplete}
               onClick={onClick}
             />
           ))}
@@ -146,10 +152,12 @@ export function TaskCard({
 function SubtaskCard({
   task,
   onComplete,
+  onUncomplete,
   onClick,
 }: {
   task: CompassTask;
   onComplete: (id: string) => void;
+  onUncomplete?: (id: string) => void;
   onClick: (task: CompassTask) => void;
 }) {
   const isCompleted = task.status === 'completed';
@@ -163,9 +171,12 @@ function SubtaskCard({
             className="task-card__checkbox"
             checked={isCompleted}
             onChange={() => {
-              if (!isCompleted) onComplete(task.id);
+              if (isCompleted && onUncomplete) {
+                onUncomplete(task.id);
+              } else if (!isCompleted) {
+                onComplete(task.id);
+              }
             }}
-            disabled={isCompleted}
           />
           <span className="task-card__checkmark" />
         </label>

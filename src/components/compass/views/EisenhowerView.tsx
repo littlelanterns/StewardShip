@@ -27,6 +27,7 @@ import './EisenhowerView.css';
 interface EisenhowerViewProps {
   tasks: CompassTask[];
   onComplete: (id: string) => void;
+  onUncomplete?: (id: string) => void;
   onTaskClick: (task: CompassTask) => void;
   onUpdateTask: (id: string, updates: Partial<CompassTask>) => Promise<CompassTask | null>;
 }
@@ -44,6 +45,7 @@ function DroppableQuadrant({
   subtitle,
   tasks,
   onComplete,
+  onUncomplete,
   onTaskClick,
 }: {
   quadrant: EisenhowerQuadrant;
@@ -51,6 +53,7 @@ function DroppableQuadrant({
   subtitle: string;
   tasks: CompassTask[];
   onComplete: (id: string) => void;
+  onUncomplete?: (id: string) => void;
   onTaskClick: (task: CompassTask) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: quadrant });
@@ -71,6 +74,7 @@ function DroppableQuadrant({
               key={task.id}
               task={task}
               onComplete={onComplete}
+              onUncomplete={onUncomplete}
               onClick={onTaskClick}
             />
           ))}
@@ -86,10 +90,12 @@ function DroppableQuadrant({
 function SortableEisenhowerCard({
   task,
   onComplete,
+  onUncomplete,
   onClick,
 }: {
   task: CompassTask;
   onComplete: (id: string) => void;
+  onUncomplete?: (id: string) => void;
   onClick: (task: CompassTask) => void;
 }) {
   const {
@@ -111,6 +117,7 @@ function SortableEisenhowerCard({
       <TaskCard
         task={task}
         onComplete={onComplete}
+        onUncomplete={onUncomplete}
         onClick={onClick}
         dragHandleProps={{ attributes, listeners }}
         isDragging={isDragging}
@@ -122,6 +129,7 @@ function SortableEisenhowerCard({
 export default function EisenhowerView({
   tasks,
   onComplete,
+  onUncomplete,
   onTaskClick,
   onUpdateTask,
 }: EisenhowerViewProps) {
@@ -194,6 +202,7 @@ export default function EisenhowerView({
               subtitle={subtitle}
               tasks={tasksByQuadrant[key]}
               onComplete={onComplete}
+              onUncomplete={onUncomplete}
               onTaskClick={onTaskClick}
             />
           ))}
@@ -218,6 +227,7 @@ export default function EisenhowerView({
               key={task.id}
               task={task}
               onComplete={onComplete}
+              onUncomplete={onUncomplete}
               onClick={onTaskClick}
             />
           ))}
@@ -231,6 +241,7 @@ export default function EisenhowerView({
               key={task.id}
               task={task}
               onComplete={onComplete}
+              onUncomplete={onUncomplete}
               onClick={onTaskClick}
             />
           ))}

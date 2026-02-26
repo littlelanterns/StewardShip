@@ -1,0 +1,119 @@
+.bulk-add {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  background: var(--color-white);
+  border: 1px solid var(--color-warm-sand);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+}
+
+.bulk-add__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.bulk-add__title {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-lg);
+  color: var(--color-text-heading);
+  margin: 0;
+}
+
+.bulk-add__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: none;
+  border: none;
+  color: var(--color-slate-gray);
+  cursor: pointer;
+}
+
+.bulk-add__hint {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-slate-gray);
+  margin: 0;
+}
+
+.bulk-add__textarea {
+  width: 100%;
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  color: var(--color-navy);
+  background: var(--color-cream);
+  border: 1px solid var(--color-warm-sand);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-sm);
+  outline: none;
+  resize: vertical;
+  min-height: 120px;
+}
+
+.bulk-add__textarea:focus {
+  border-color: var(--color-mid-teal);
+}
+
+.bulk-add__actions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.bulk-add__preview-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.bulk-add__preview-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.bulk-add__preview-input {
+  flex: 1;
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-navy);
+  background: var(--color-cream);
+  border: 1px solid var(--color-warm-sand);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  outline: none;
+  min-height: 36px;
+}
+
+.bulk-add__preview-input:focus {
+  border-color: var(--color-mid-teal);
+}
+
+.bulk-add__preview-delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 36px;
+  background: none;
+  border: none;
+  color: var(--color-slate-gray);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.bulk-add__preview-delete:hover {
+  color: var(--color-cognac);
+}
+
+.bulk-add__input-step,
+.bulk-add__preview-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}

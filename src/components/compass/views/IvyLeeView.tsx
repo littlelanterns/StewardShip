@@ -25,6 +25,7 @@ import './IvyLeeView.css';
 interface IvyLeeViewProps {
   tasks: CompassTask[];
   onComplete: (id: string) => void;
+  onUncomplete?: (id: string) => void;
   onTaskClick: (task: CompassTask) => void;
   onUpdateTask: (id: string, updates: Partial<CompassTask>) => Promise<CompassTask | null>;
 }
@@ -33,11 +34,13 @@ function SortableIvyLeeCard({
   task,
   rank,
   onComplete,
+  onUncomplete,
   onClick,
 }: {
   task: CompassTask;
   rank: number;
   onComplete: (id: string) => void;
+  onUncomplete?: (id: string) => void;
   onClick: (task: CompassTask) => void;
 }) {
   const {
@@ -64,6 +67,7 @@ function SortableIvyLeeCard({
           <TaskCard
             task={task}
             onComplete={onComplete}
+            onUncomplete={onUncomplete}
             onClick={onClick}
             dragHandleProps={{ attributes, listeners }}
             isDragging={isDragging}
@@ -77,6 +81,7 @@ function SortableIvyLeeCard({
 export default function IvyLeeView({
   tasks,
   onComplete,
+  onUncomplete,
   onTaskClick,
   onUpdateTask,
 }: IvyLeeViewProps) {
@@ -149,6 +154,7 @@ export default function IvyLeeView({
                   task={task}
                   rank={i + 1}
                   onComplete={onComplete}
+                  onUncomplete={onUncomplete}
                   onClick={onTaskClick}
                 />
                 <button
@@ -177,6 +183,7 @@ export default function IvyLeeView({
               <TaskCard
                 task={task}
                 onComplete={onComplete}
+                onUncomplete={onUncomplete}
                 onClick={onTaskClick}
               />
               {rankedTasks.length < 6 && (
@@ -200,6 +207,7 @@ export default function IvyLeeView({
               key={task.id}
               task={task}
               onComplete={onComplete}
+              onUncomplete={onUncomplete}
               onClick={onTaskClick}
             />
           ))}

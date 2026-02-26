@@ -452,7 +452,24 @@ export interface ListItem {
   text: string;
   checked: boolean;
   notes: string | null;
+  parent_item_id: string | null;
   sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export type RoutineAssignmentStatus = 'active' | 'paused' | 'expired' | 'removed';
+
+export interface RoutineAssignment {
+  id: string;
+  user_id: string;
+  list_id: string;
+  recurrence_rule: string;
+  custom_days: number[] | null;
+  started_at: string;
+  ends_at: string | null;
+  status: RoutineAssignmentStatus;
+  paused_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -549,7 +566,7 @@ export interface HoldDump {
 
 // === PRD-08: Victory Recorder ===
 
-export type VictorySource = 'manual' | 'compass_task' | 'log_entry' | 'helm_conversation' | 'chart_milestone' | 'unload_the_hold';
+export type VictorySource = 'manual' | 'compass_task' | 'log_entry' | 'helm_conversation' | 'chart_milestone' | 'unload_the_hold' | 'routine_completion';
 
 export interface Victory {
   id: string;
@@ -573,6 +590,7 @@ export const VICTORY_SOURCE_LABELS: Record<VictorySource, string> = {
   helm_conversation: 'Helm Conversation',
   chart_milestone: 'Chart Milestone',
   unload_the_hold: 'Unload the Hold',
+  routine_completion: 'Routine Completion',
 };
 
 // === PRD-07: Charts ===

@@ -1,0 +1,115 @@
+.routine-card {
+  border-left: 3px solid var(--color-cognac);
+}
+
+.routine-card__header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: var(--spacing-xs) 0;
+  min-height: 44px;
+}
+
+.routine-card__expand-icon {
+  display: flex;
+  align-items: center;
+  color: var(--color-slate-gray);
+  flex-shrink: 0;
+}
+
+.routine-card__title {
+  flex: 1;
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  color: var(--color-navy);
+  text-align: left;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.routine-card__progress {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-mid-teal);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.routine-card__streak {
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  color: var(--color-cognac);
+  background: color-mix(in srgb, var(--color-cognac) 10%, var(--color-cream));
+  border-radius: var(--radius-full);
+  padding: 1px var(--spacing-xs);
+  flex-shrink: 0;
+}
+
+.routine-card__items {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-top: var(--spacing-xs);
+  border-top: 1px solid var(--color-warm-sand);
+  margin-top: var(--spacing-xs);
+}
+
+.routine-card__item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-2xs) 0;
+  cursor: pointer;
+  min-height: 36px;
+  position: relative;
+}
+
+.routine-card__item-checkbox {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.routine-card__item-checkmark {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--color-mid-teal);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  flex-shrink: 0;
+  transition: background var(--transition-fast);
+}
+
+.routine-card__item-checkbox:checked + .routine-card__item-checkmark {
+  background: var(--color-mid-teal);
+  border-color: var(--color-mid-teal);
+}
+
+.routine-card__item-checkbox:checked + .routine-card__item-checkmark::after {
+  content: '';
+  display: block;
+  width: 4px;
+  height: 9px;
+  border: solid var(--color-white);
+  border-width: 0 2px 2px 0;
+  transform: translate(5px, 1px) rotate(45deg);
+}
+
+.routine-card__item-text {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-navy);
+}
+
+.routine-card__item-text--checked {
+  text-decoration: line-through;
+  color: var(--color-slate-gray);
+}

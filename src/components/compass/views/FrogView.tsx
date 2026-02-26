@@ -7,6 +7,7 @@ import './FrogView.css';
 interface FrogViewProps {
   tasks: CompassTask[];
   onComplete: (id: string) => void;
+  onUncomplete?: (id: string) => void;
   onTaskClick: (task: CompassTask) => void;
   onUpdateTask: (id: string, updates: Partial<CompassTask>) => Promise<CompassTask | null>;
 }
@@ -14,6 +15,7 @@ interface FrogViewProps {
 export default function FrogView({
   tasks,
   onComplete,
+  onUncomplete,
   onTaskClick,
   onUpdateTask,
 }: FrogViewProps) {
@@ -52,6 +54,7 @@ export default function FrogView({
           <TaskCard
             task={frogTask}
             onComplete={onComplete}
+            onUncomplete={onUncomplete}
             onClick={onTaskClick}
           />
         </Card>
@@ -70,6 +73,7 @@ export default function FrogView({
             <TaskCard
               task={task}
               onComplete={onComplete}
+              onUncomplete={onUncomplete}
               onClick={onTaskClick}
             />
             <button
@@ -91,6 +95,7 @@ export default function FrogView({
               key={task.id}
               task={task}
               onComplete={onComplete}
+              onUncomplete={onUncomplete}
               onClick={onTaskClick}
             />
           ))}

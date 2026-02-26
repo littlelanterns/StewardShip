@@ -1,18 +1,22 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Plus } from 'lucide-react';
 import { usePageContext } from '../hooks/usePageContext';
 import { useLists } from '../hooks/useLists';
 import { useRoutineReset } from '../hooks/useRoutineReset';
+import { useRoutineAssignment } from '../hooks/useRoutineAssignment';
 import { useCompass } from '../hooks/useCompass';
+import { useVictories } from '../hooks/useVictories';
 import { FloatingActionButton, FeatureGuide } from '../components/shared';
 import { FEATURE_GUIDES } from '../lib/featureGuides';
 import ListsMain from '../components/compass/lists/ListsMain';
 import ListDetail from '../components/compass/lists/ListDetail';
 import CreateListModal from '../components/compass/lists/CreateListModal';
+import BulkAddItems from '../components/compass/lists/BulkAddItems';
+import AssignRoutineModal from '../components/compass/lists/AssignRoutineModal';
 import type { List, ListItem } from '../lib/types';
 import './Lists.css';
 
-type ListsPageView = 'main' | 'detail' | 'create';
+type ListsPageView = 'main' | 'detail' | 'create' | 'bulk_add' | 'assign_routine';
 
 export default function Lists() {
   usePageContext({ page: 'lists' });
@@ -33,6 +37,7 @@ export default function Lists() {
     deleteListItem,
     reorderListItems,
     generateShareToken,
+    getItemHierarchy,
   } = useLists();
 
   const {
@@ -40,12 +45,20 @@ export default function Lists() {
     shouldAutoReset,
     resetRoutine,
     fetchHistory,
+    getCompletionStats,
   } = useRoutineReset();
 
+  const { createAssignment, getAssignmentForList, fetchAssignments, pauseAssignment, resumeAssignment, removeAssignment } = useRoutineAssignment();
   const { createTask } = useCompass();
+  const { createVictory } = useVictories();
 
   const [pageView, setPageView] = useState<ListsPageView>('main');
   const [selectedList, setSelectedList] = useState<List | null>(null);
+
+  // Fetch assignments so getAssignmentForList works
+  useEffect(() => {
+    fetchAssignments();
+  }, [fetchAssignments]);
 
   const handleListClick = useCallback((list: List) => {
     setSelectedList(list);
@@ -78,6 +91,51 @@ export default function Lists() {
     }
     return created;
   }, [createTask]);
+
+  // Wrap resetRoutine to auto-create victory (Feature 6)
+  const handleResetRoutine = useCallback(async (listId: string, listItems: ListItem[]) => {
+    const result = await resetRoutine(listId, listItems);
+    if (result) {
+      const completedItems = listItems.filter((i) => i.checked);
+      if (completedItems.length > 0) {
+        const listTitle = selectedList?.title || 'Routine';
+        const allDone = completedItems.length === listItems.length;
+        const description = allDone
+          ? `Completed all steps of ${listTitle}!`
+          : `Completed ${completedItems.map((i) => i.text).join(', ')} of ${listTitle}`;
+
+        await createVictory({
+          description,
+          celebration_text: null,
+          source: 'routine_completion',
+          source_reference_id: result.id,
+        });
+      }
+    }
+    return result;
+  }, [resetRoutine, selectedList, createVictory]);
+
+  const handleBulkAddItems = useCallback(async (itemTexts: string[]) => {
+    if (!selectedList) return;
+    for (const text of itemTexts) {
+      await addListItem(selectedList.id, text);
+    }
+  }, [selectedList, addListItem]);
+
+  const handleAssignRoutine = useCallback(async (data: {
+    recurrence_rule: string;
+    custom_days?: number[] | null;
+    ends_at?: string | null;
+  }) => {
+    if (!selectedList) return;
+    await createAssignment({
+      list_id: selectedList.id,
+      recurrence_rule: data.recurrence_rule,
+      custom_days: data.custom_days,
+      ends_at: data.ends_at,
+    });
+    setPageView('detail');
+  }, [selectedList, createAssignment]);
 
   const handleConvertToRecurringTasks = useCallback(async (
     listItems: ListItem[],
@@ -119,6 +177,30 @@ export default function Lists() {
     );
   }
 
+  if (pageView === 'bulk_add' && selectedList) {
+    return (
+      <div className="page lists-page">
+        <BulkAddItems
+          listTitle={selectedList.title}
+          onAddItems={handleBulkAddItems}
+          onClose={() => setPageView('detail')}
+        />
+      </div>
+    );
+  }
+
+  if (pageView === 'assign_routine' && selectedList) {
+    return (
+      <div className="page lists-page">
+        <AssignRoutineModal
+          listTitle={selectedList.title}
+          onSave={handleAssignRoutine}
+          onBack={() => setPageView('detail')}
+        />
+      </div>
+    );
+  }
+
   if (pageView === 'detail' && selectedList) {
     return (
       <div className="page lists-page">
@@ -135,12 +217,20 @@ export default function Lists() {
           onReorderItems={reorderListItems}
           onGenerateShareToken={generateShareToken}
           onUpdateItem={updateListItem}
-          onResetRoutine={resetRoutine}
+          onResetRoutine={handleResetRoutine}
           onFetchHistory={fetchHistory}
           routineHistory={routineHistory}
           shouldAutoReset={shouldAutoReset}
           onConvertToTasks={handleConvertToTasks}
           onConvertToRecurringTasks={handleConvertToRecurringTasks}
+          getItemHierarchy={getItemHierarchy}
+          routineStats={routineHistory.length > 0 ? getCompletionStats(routineHistory, selectedList.reset_schedule || undefined) : undefined}
+          onShowBulkAdd={() => setPageView('bulk_add')}
+          assignment={getAssignmentForList(selectedList.id)}
+          onAssignToCompass={() => setPageView('assign_routine')}
+          onPauseAssignment={pauseAssignment}
+          onResumeAssignment={resumeAssignment}
+          onRemoveAssignment={removeAssignment}
         />
       </div>
     );

@@ -7,6 +7,7 @@ import './OneThreeNineView.css';
 interface OneThreeNineViewProps {
   tasks: CompassTask[];
   onComplete: (id: string) => void;
+  onUncomplete?: (id: string) => void;
   onTaskClick: (task: CompassTask) => void;
   onUpdateTask: (id: string, updates: Partial<CompassTask>) => Promise<CompassTask | null>;
 }
@@ -20,6 +21,7 @@ const SECTIONS: { level: ImportanceLevel; label: string; max: number }[] = [
 export default function OneThreeNineView({
   tasks,
   onComplete,
+  onUncomplete,
   onTaskClick,
   onUpdateTask,
 }: OneThreeNineViewProps) {
@@ -58,6 +60,7 @@ export default function OneThreeNineView({
                 <TaskCard
                   task={task}
                   onComplete={onComplete}
+                  onUncomplete={onUncomplete}
                   onClick={onTaskClick}
                 />
               </Card>
@@ -78,6 +81,7 @@ export default function OneThreeNineView({
               <TaskCard
                 task={task}
                 onComplete={onComplete}
+                onUncomplete={onUncomplete}
                 onClick={onTaskClick}
               />
               <div className="one-three-nine__assign-btns">
@@ -104,6 +108,7 @@ export default function OneThreeNineView({
               key={task.id}
               task={task}
               onComplete={onComplete}
+              onUncomplete={onUncomplete}
               onClick={onTaskClick}
             />
           ))}

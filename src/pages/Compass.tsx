@@ -39,11 +39,16 @@ import OneThreeNineView from '../components/compass/views/OneThreeNineView';
 import BigRocksView from '../components/compass/views/BigRocksView';
 import IvyLeeView from '../components/compass/views/IvyLeeView';
 import { useCompass } from '../hooks/useCompass';
+import { useRoutineAssignment } from '../hooks/useRoutineAssignment';
+import { useRoutineReset } from '../hooks/useRoutineReset';
+import { useLists } from '../hooks/useLists';
 import { usePageContext } from '../hooks/usePageContext';
 import { suggestTaskPlacements } from '../lib/aiPlacement';
+import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../contexts/AuthContext';
-import type { CompassTask, CompassView, CompassLifeArea } from '../lib/types';
+import { RoutineCard } from '../components/compass/RoutineCard';
+import type { CompassTask, CompassView, CompassLifeArea, ListItem } from '../lib/types';
 import { COMPASS_VIEW_LABELS, COMPASS_VIEW_DESCRIPTIONS, COMPASS_LIFE_AREA_LABELS } from '../lib/types';
 import './Compass.css';
 
@@ -54,6 +59,7 @@ const VIEW_ORDER: CompassView[] = [
 function SortableTaskCard({
   task,
   onComplete,
+  onUncomplete,
   onClick,
   subtaskCount,
   onToggleExpand,
@@ -62,6 +68,7 @@ function SortableTaskCard({
 }: {
   task: CompassTask;
   onComplete: (id: string) => void;
+  onUncomplete?: (id: string) => void;
   onClick: (task: CompassTask) => void;
   subtaskCount?: number;
   onToggleExpand?: (taskId: string) => void;
@@ -87,6 +94,7 @@ function SortableTaskCard({
       <TaskCard
         task={task}
         onComplete={onComplete}
+        onUncomplete={onUncomplete}
         onClick={onClick}
         dragHandleProps={{ attributes, listeners }}
         isDragging={isDragging}
@@ -124,6 +132,8 @@ export default function Compass() {
     createTask,
     updateTask,
     completeTask,
+    uncompleteTask,
+    checkAllSubtasksComplete,
     archiveTask,
     carryForwardTask,
     reorderTasks,
@@ -133,6 +143,14 @@ export default function Compass() {
     createSubtasks,
     fetchSubtasks,
   } = useCompass();
+
+  // Routine assignments on Compass
+  const { fetchAssignments, getTodayAssignments, assignments } = useRoutineAssignment();
+  const { fetchListItems: fetchRoutineItems } = useLists();
+  const { getStreakForList } = useRoutineReset();
+  const [routineItemsMap, setRoutineItemsMap] = useState<Record<string, ListItem[]>>({});
+  const [routineLists, setRoutineLists] = useState<Record<string, { title: string }>>({});
+  const [routineStreaks, setRoutineStreaks] = useState<Record<string, number>>({});
 
   const [pageView, setPageView] = useState<PageView>('list');
   const [selectedTask, setSelectedTask] = useState<CompassTask | null>(null);
@@ -174,6 +192,43 @@ export default function Compass() {
   useEffect(() => {
     getOverdueTasks().then((overdue) => setOverdueCount(overdue.length));
   }, [getOverdueTasks]);
+
+  // Fetch routine assignments + their items
+  useEffect(() => {
+    fetchAssignments();
+  }, [fetchAssignments]);
+
+  useEffect(() => {
+    const todayAssigns = getTodayAssignments();
+    if (todayAssigns.length === 0) return;
+
+    // Fetch list items, list metadata, and streaks for each assignment
+    Promise.all(
+      todayAssigns.map(async (a) => {
+        const items = await fetchRoutineItems(a.list_id);
+        // Also fetch list title + reset_schedule for streak calc
+        const { data: listData } = await supabase
+          .from('lists')
+          .select('title, reset_schedule')
+          .eq('id', a.list_id)
+          .single();
+        const streak = await getStreakForList(a.list_id, listData?.reset_schedule || undefined);
+        return { listId: a.list_id, items, title: listData?.title || 'Routine', streak };
+      })
+    ).then((results) => {
+      const itemsMap: Record<string, ListItem[]> = {};
+      const listsMap: Record<string, { title: string }> = {};
+      const streaksMap: Record<string, number> = {};
+      for (const r of results) {
+        itemsMap[r.listId] = r.items;
+        listsMap[r.listId] = { title: r.title };
+        streaksMap[r.listId] = r.streak;
+      }
+      setRoutineItemsMap(itemsMap);
+      setRoutineLists(listsMap);
+      setRoutineStreaks(streaksMap);
+    });
+  }, [assignments, getTodayAssignments, fetchRoutineItems, getStreakForList]);
 
   // Fetch subtask counts for parent tasks
   useEffect(() => {
@@ -240,17 +295,74 @@ export default function Compass() {
       .finally(() => setPlacementLoading(false));
   }, [currentView, tasks, user, placementLoading, updateTask]);
 
-  // Wrap completeTask to show victory prompt after
+  // Complete a task (parent or subtask) with full cascade behavior
   const handleCompleteTask = useCallback(async (id: string) => {
     const task = tasks.find((t) => t.id === id);
     await completeTask(id);
-    // Show subtle victory prompt for completed tasks (not subtasks)
+
     if (task && !task.parent_task_id) {
+      // Parent/top-level task — show victory prompt
       setVictoryPromptTask(task);
-      // Auto-dismiss after 8 seconds
       setTimeout(() => setVictoryPromptTask((prev) => prev?.id === id ? null : prev), 8000);
+
+      // Refresh subtask map so expanded children show as completed
+      if (subtaskMap[id]) {
+        fetchSubtasks(id).then((subs) => {
+          setSubtaskMap((prev) => ({ ...prev, [id]: subs }));
+        });
+      }
+    } else if (task?.parent_task_id) {
+      // Subtask completed — refresh subtask map
+      const subs = await fetchSubtasks(task.parent_task_id);
+      setSubtaskMap((prev) => ({ ...prev, [task.parent_task_id!]: subs }));
+
+      // Check if all subtasks now complete → auto-complete parent
+      const allDone = await checkAllSubtasksComplete(task.parent_task_id);
+      if (allDone) {
+        const parent = tasks.find((t) => t.id === task.parent_task_id);
+        if (parent && parent.status === 'pending') {
+          await completeTask(parent.id);
+          setVictoryPromptTask(parent);
+          setTimeout(() => setVictoryPromptTask((prev) => prev?.id === parent.id ? null : prev), 8000);
+        }
+      }
     }
-  }, [tasks, completeTask]);
+  }, [tasks, completeTask, subtaskMap, fetchSubtasks, checkAllSubtasksComplete]);
+
+  const handleUncompleteTask = useCallback(async (id: string) => {
+    await uncompleteTask(id);
+    // Refresh subtask map for any parent whose children changed
+    const task = tasks.find((t) => t.id === id);
+    if (task?.parent_task_id && subtaskMap[task.parent_task_id]) {
+      fetchSubtasks(task.parent_task_id).then((subs) => {
+        setSubtaskMap((prev) => ({ ...prev, [task.parent_task_id!]: subs }));
+      });
+    }
+    if (!task?.parent_task_id && subtaskMap[id]) {
+      fetchSubtasks(id).then((subs) => {
+        setSubtaskMap((prev) => ({ ...prev, [id]: subs }));
+      });
+    }
+  }, [uncompleteTask, tasks, subtaskMap, fetchSubtasks]);
+
+  // Toggle routine item from Compass (same DB record as Lists)
+  const handleToggleRoutineItem = useCallback(async (itemId: string) => {
+    // Find item in routineItemsMap
+    for (const [listId, items] of Object.entries(routineItemsMap)) {
+      const item = items.find((i) => i.id === itemId);
+      if (item) {
+        const newChecked = !item.checked;
+        // Optimistic update
+        setRoutineItemsMap((prev) => ({
+          ...prev,
+          [listId]: prev[listId].map((i) => (i.id === itemId ? { ...i, checked: newChecked } : i)),
+        }));
+        // Update DB
+        await supabase.from('list_items').update({ checked: newChecked }).eq('id', itemId);
+        return;
+      }
+    }
+  }, [routineItemsMap]);
 
   const handleViewChange = (view: CompassView) => {
     setCurrentView(view);
@@ -372,6 +484,7 @@ export default function Compass() {
           <EisenhowerView
             tasks={tasks}
             onComplete={handleCompleteTask}
+            onUncomplete={handleUncompleteTask}
             onTaskClick={handleTaskClick}
             onUpdateTask={updateTask}
           />
@@ -382,6 +495,7 @@ export default function Compass() {
           <FrogView
             tasks={tasks}
             onComplete={handleCompleteTask}
+            onUncomplete={handleUncompleteTask}
             onTaskClick={handleTaskClick}
             onUpdateTask={updateTask}
           />
@@ -392,6 +506,7 @@ export default function Compass() {
           <OneThreeNineView
             tasks={tasks}
             onComplete={handleCompleteTask}
+            onUncomplete={handleUncompleteTask}
             onTaskClick={handleTaskClick}
             onUpdateTask={updateTask}
           />
@@ -402,6 +517,7 @@ export default function Compass() {
           <BigRocksView
             tasks={tasks}
             onComplete={handleCompleteTask}
+            onUncomplete={handleUncompleteTask}
             onTaskClick={handleTaskClick}
             onUpdateTask={updateTask}
           />
@@ -412,6 +528,7 @@ export default function Compass() {
           <IvyLeeView
             tasks={tasks}
             onComplete={handleCompleteTask}
+            onUncomplete={handleUncompleteTask}
             onTaskClick={handleTaskClick}
             onUpdateTask={updateTask}
           />
@@ -422,6 +539,7 @@ export default function Compass() {
           <ByCategoryView
             tasksByCategory={tasksByCategory}
             onComplete={handleCompleteTask}
+            onUncomplete={handleUncompleteTask}
             onTaskClick={handleTaskClick}
           />
         );
@@ -453,6 +571,7 @@ export default function Compass() {
                           key={task.id}
                           task={task}
                           onComplete={handleCompleteTask}
+                          onUncomplete={handleUncompleteTask}
                           onClick={handleTaskClick}
                           subtaskCount={subtaskCounts[task.id] || 0}
                           onToggleExpand={handleToggleExpand}
@@ -475,6 +594,7 @@ export default function Compass() {
                         key={task.id}
                         task={task}
                         onComplete={handleCompleteTask}
+                        onUncomplete={handleUncompleteTask}
                         onClick={handleTaskClick}
                       />
                     ))}
@@ -531,9 +651,19 @@ export default function Compass() {
             </div>
           )}
 
-          {/* Task count */}
+          {/* Task count (includes routine items) */}
           <div className="compass-page__task-count">
-            {taskCount.completed} of {taskCount.total} tasks completed today
+            {(() => {
+              let totalRoutineItems = 0;
+              let checkedRoutineItems = 0;
+              for (const items of Object.values(routineItemsMap)) {
+                totalRoutineItems += items.length;
+                checkedRoutineItems += items.filter((i) => i.checked).length;
+              }
+              const totalAll = taskCount.total + totalRoutineItems;
+              const completedAll = taskCount.completed + checkedRoutineItems;
+              return `${completedAll} of ${totalAll} items completed today`;
+            })()}
           </div>
 
           {/* AI placement banner */}
@@ -574,6 +704,31 @@ export default function Compass() {
 
           {/* Educational view tip — dismissable via FeatureGuide system */}
           <FeatureGuide {...FEATURE_GUIDES.compass_views} />
+
+          {/* Today's Routines */}
+          {(() => {
+            const todayAssigns = getTodayAssignments();
+            if (todayAssigns.length === 0) return null;
+            return (
+              <div className="compass-page__routines">
+                <h3 className="compass-page__routines-title">Today's Routines</h3>
+                {todayAssigns.map((a) => {
+                  const items = routineItemsMap[a.list_id] || [];
+                  const listInfo = routineLists[a.list_id];
+                  if (!listInfo) return null;
+                  return (
+                    <RoutineCard
+                      key={a.id}
+                      list={{ id: a.list_id, title: listInfo.title } as import('../lib/types').List}
+                      items={items}
+                      streak={routineStreaks[a.list_id]}
+                      onToggleItem={handleToggleRoutineItem}
+                    />
+                  );
+                })}
+              </div>
+            );
+          })()}
 
           {renderCurrentView()}
 
@@ -626,10 +781,12 @@ function needsPlacement(task: CompassTask, view: CompassView): boolean {
 function ByCategoryView({
   tasksByCategory,
   onComplete,
+  onUncomplete,
   onTaskClick,
 }: {
   tasksByCategory: Record<string, CompassTask[]>;
   onComplete: (id: string) => void;
+  onUncomplete?: (id: string) => void;
   onTaskClick: (task: CompassTask) => void;
 }) {
   const categoryLabel = (key: string): string => {
@@ -661,6 +818,7 @@ function ByCategoryView({
               key={task.id}
               task={task}
               onComplete={onComplete}
+              onUncomplete={onUncomplete}
               onClick={onTaskClick}
             />
           ))}

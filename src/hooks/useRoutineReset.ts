@@ -122,32 +122,101 @@ export function useRoutineReset() {
     }
   }, [user]);
 
-  const getCompletionStats = useCallback((historyData: RoutineCompletionHistory[]) => {
-    if (historyData.length === 0) return { avgCompletion: 0, totalResets: 0, streak: 0 };
+  const getCompletionStats = useCallback((historyData: RoutineCompletionHistory[], resetSchedule?: string) => {
+    if (historyData.length === 0) return { avgCompletion: 0, totalResets: 0, streak: 0, isAtMilestone: false, nextMilestone: 7 };
 
     const total = historyData.reduce((sum, h) => sum + (h.total_items > 0 ? h.completed_items / h.total_items : 0), 0);
     const avgCompletion = Math.round((total / historyData.length) * 100);
 
-    // Streak: consecutive days with completion records
+    // Schedule-aware streak calculation
     let streak = 0;
     const today = new Date();
-    for (let i = 0; i < historyData.length; i++) {
-      const recordDate = new Date(historyData[i].completed_at);
-      const expectedDate = new Date(today);
-      expectedDate.setDate(expectedDate.getDate() - i);
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
-      const recordDay = new Date(recordDate.getFullYear(), recordDate.getMonth(), recordDate.getDate());
-      const expectedDay = new Date(expectedDate.getFullYear(), expectedDate.getMonth(), expectedDate.getDate());
+    if (resetSchedule === 'weekly') {
+      // Weekly: consecutive weeks with a completion record
+      for (let i = 0; i < historyData.length; i++) {
+        const recordDate = new Date(historyData[i].completed_at);
+        const expectedWeekStart = new Date(todayStart);
+        expectedWeekStart.setDate(expectedWeekStart.getDate() - (i * 7));
 
-      if (recordDay.getTime() === expectedDay.getTime()) {
-        streak++;
-      } else {
-        break;
+        const recordDay = new Date(recordDate.getFullYear(), recordDate.getMonth(), recordDate.getDate());
+        const diffDays = Math.abs(
+          Math.round((recordDay.getTime() - expectedWeekStart.getTime()) / (1000 * 60 * 60 * 24))
+        );
+
+        if (diffDays <= 7) {
+          streak++;
+        } else {
+          break;
+        }
+      }
+    } else if (resetSchedule === 'weekdays') {
+      // Weekdays: consecutive weekdays with records (skip weekends)
+      let expectedDate = new Date(todayStart);
+      for (let i = 0; i < historyData.length; i++) {
+        // Skip weekends backward
+        while (expectedDate.getDay() === 0 || expectedDate.getDay() === 6) {
+          expectedDate.setDate(expectedDate.getDate() - 1);
+        }
+
+        const recordDate = new Date(historyData[i].completed_at);
+        const recordDay = new Date(recordDate.getFullYear(), recordDate.getMonth(), recordDate.getDate());
+        const expectedDay = new Date(expectedDate.getFullYear(), expectedDate.getMonth(), expectedDate.getDate());
+
+        if (recordDay.getTime() === expectedDay.getTime()) {
+          streak++;
+          expectedDate.setDate(expectedDate.getDate() - 1);
+        } else {
+          break;
+        }
+      }
+    } else {
+      // Daily or default: consecutive calendar days
+      for (let i = 0; i < historyData.length; i++) {
+        const recordDate = new Date(historyData[i].completed_at);
+        const expectedDate = new Date(todayStart);
+        expectedDate.setDate(expectedDate.getDate() - i);
+
+        const recordDay = new Date(recordDate.getFullYear(), recordDate.getMonth(), recordDate.getDate());
+        const expectedDay = new Date(expectedDate.getFullYear(), expectedDate.getMonth(), expectedDate.getDate());
+
+        if (recordDay.getTime() === expectedDay.getTime()) {
+          streak++;
+        } else {
+          break;
+        }
       }
     }
 
-    return { avgCompletion, totalResets: historyData.length, streak };
+    const milestones = [7, 30, 90, 365];
+    const isAtMilestone = milestones.includes(streak);
+    const nextMilestone = milestones.find((m) => m > streak) || 365;
+
+    return { avgCompletion, totalResets: historyData.length, streak, isAtMilestone, nextMilestone };
   }, []);
+
+  /** Stateless streak lookup — fetches history and computes streak without setting state.
+   *  Safe for concurrent calls across multiple lists (e.g. Compass page). */
+  const getStreakForList = useCallback(async (listId: string, resetSchedule?: string): Promise<number> => {
+    if (!user) return 0;
+    try {
+      const { data, error: err } = await supabase
+        .from('routine_completion_history')
+        .select('*')
+        .eq('list_id', listId)
+        .eq('user_id', user.id)
+        .order('completed_at', { ascending: false })
+        .limit(30);
+
+      if (err) throw err;
+      const records = (data as RoutineCompletionHistory[]) || [];
+      if (records.length === 0) return 0;
+      return getCompletionStats(records, resetSchedule).streak;
+    } catch {
+      return 0;
+    }
+  }, [user, getCompletionStats]);
 
   return {
     history,
@@ -156,5 +225,6 @@ export function useRoutineReset() {
     resetRoutine,
     fetchHistory,
     getCompletionStats,
+    getStreakForList,
   };
 }
