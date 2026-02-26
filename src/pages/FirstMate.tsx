@@ -15,6 +15,7 @@ import { GratitudeCapture } from '../components/firstmate/GratitudeCapture';
 import { InsightCategorySection } from '../components/firstmate/InsightCategorySection';
 import { AddInsightModal } from '../components/firstmate/AddInsightModal';
 import { PastPrompts } from '../components/firstmate/PastPrompts';
+import { Plus } from 'lucide-react';
 import '../components/firstmate/FirstMate.css';
 import './FirstMate.css';
 
@@ -61,6 +62,11 @@ export default function FirstMate() {
     fetchSpouse();
   }, [fetchSpouse]);
 
+  const handleAddFromSection = useCallback((category: SpouseInsightCategory) => {
+    setAddCategory(category);
+    setShowAddModal(true);
+  }, []);
+
   useEffect(() => {
     if (spouse) {
       fetchInsights();
@@ -104,11 +110,6 @@ export default function FirstMate() {
   for (const cat of SPOUSE_INSIGHT_CATEGORY_ORDER) {
     insightsByCategory[cat] = insights.filter((i) => i.category === cat);
   }
-
-  const handleAddFromSection = useCallback((category: SpouseInsightCategory) => {
-    setAddCategory(category);
-    setShowAddModal(true);
-  }, []);
 
   return (
     <div className="page firstmate-page">
@@ -185,7 +186,7 @@ export default function FirstMate() {
 
       {spouse && (
         <FloatingActionButton onClick={() => { setAddCategory(undefined); setShowAddModal(true); }} aria-label="Add Insight">
-          +
+          <Plus size={24} />
         </FloatingActionButton>
       )}
 
