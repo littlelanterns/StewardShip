@@ -70,6 +70,7 @@ function SignUpView({ onNavigate }: { onNavigate: (v: AuthView) => void }) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [sent, setSent] = useState(false);
 
   function validate(): boolean {
     const next: Record<string, string> = {};
@@ -95,56 +96,80 @@ function SignUpView({ onNavigate }: { onNavigate: (v: AuthView) => void }) {
 
     if (error) {
       setErrors({ form: error });
+    } else {
+      setSent(true);
     }
   }
 
   return (
     <Card>
       <h2 className="auth-form__heading">Create Your Account</h2>
-      <form onSubmit={handleSubmit} className="auth-form" noValidate>
-        <Input
-          label="Display Name"
-          value={displayName}
-          onChange={(e) => setDisplayName(e.target.value)}
-          error={errors.displayName}
-          autoComplete="name"
-        />
-        <Input
-          label="Email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          error={errors.email}
-          autoComplete="email"
-        />
-        <Input
-          label="Password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          error={errors.password}
-          autoComplete="new-password"
-        />
-        <p className="auth-form__hint">Minimum 8 characters</p>
-        <Input
-          label="Confirm Password"
-          type="password"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          error={errors.confirmPassword}
-          autoComplete="new-password"
-        />
-        {errors.form && <p className="auth-form__error" role="alert">{errors.form}</p>}
-        <Button type="submit" fullWidth disabled={submitting}>
-          {submitting ? <LoadingSpinner size="sm" /> : 'Create Account'}
-        </Button>
-      </form>
-      <p className="auth-form__footer">
-        Already have an account?{' '}
-        <Button variant="text" onClick={() => onNavigate('signin')}>
-          Sign In
-        </Button>
-      </p>
+      {sent ? (
+        <div className="auth-form">
+          <p className="auth-form__success">
+            Check your email
+          </p>
+          <p className="auth-form__description">
+            We sent a confirmation link to <strong>{email}</strong>. Click the link to activate your account.
+          </p>
+          <p className="auth-form__hint">
+            Didn't receive it? Check your spam folder, or make sure you entered the right email.
+          </p>
+          <p className="auth-form__footer">
+            Already have an account?{' '}
+            <Button variant="text" onClick={() => onNavigate('signin')}>
+              Sign In
+            </Button>
+          </p>
+        </div>
+      ) : (
+        <>
+          <form onSubmit={handleSubmit} className="auth-form" noValidate>
+            <Input
+              label="Display Name"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              error={errors.displayName}
+              autoComplete="name"
+            />
+            <Input
+              label="Email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              error={errors.email}
+              autoComplete="email"
+            />
+            <Input
+              label="Password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              error={errors.password}
+              autoComplete="new-password"
+            />
+            <p className="auth-form__hint">Minimum 8 characters</p>
+            <Input
+              label="Confirm Password"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              error={errors.confirmPassword}
+              autoComplete="new-password"
+            />
+            {errors.form && <p className="auth-form__error" role="alert">{errors.form}</p>}
+            <Button type="submit" fullWidth disabled={submitting}>
+              {submitting ? <LoadingSpinner size="sm" /> : 'Create Account'}
+            </Button>
+          </form>
+          <p className="auth-form__footer">
+            Already have an account?{' '}
+            <Button variant="text" onClick={() => onNavigate('signin')}>
+              Sign In
+            </Button>
+          </p>
+        </>
+      )}
     </Card>
   );
 }

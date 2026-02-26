@@ -278,7 +278,7 @@
 | id | UUID | gen_random_uuid() | NOT NULL | PK |
 | user_id | UUID | | NOT NULL | FK → auth.users |
 | title | TEXT | | NOT NULL | List title |
-| list_type | TEXT | 'custom' | NOT NULL | Enum: 'shopping', 'wishlist', 'expenses', 'todo', 'custom' |
+| list_type | TEXT | 'custom' | NOT NULL | Enum: 'shopping', 'wishlist', 'expenses', 'todo', 'custom', 'routine' |
 | ai_action | TEXT | 'store_only' | NOT NULL | Enum: 'store_only', 'remind', 'schedule', 'prioritize' |
 | share_token | TEXT | null | NULL | Unique token for sharing. Null = not shared. |
 | archived_at | TIMESTAMPTZ | null | NULL | Soft delete |
@@ -302,12 +302,15 @@
 | text | TEXT | | NOT NULL | Item text |
 | checked | BOOLEAN | false | NOT NULL | Checked off |
 | sort_order | INTEGER | 0 | NOT NULL | Order within list |
+| parent_item_id | UUID | null | NULL | FK → list_items.id, self-referential for sub-items. Added migration 017. |
+| notes | TEXT | null | NULL | Optional item notes. Added migration 016. |
 | created_at | TIMESTAMPTZ | now() | NOT NULL | |
 | updated_at | TIMESTAMPTZ | now() | NOT NULL | Auto-trigger |
 
 **RLS:** Users CRUD own items.
 **Indexes:**
 - `list_id, sort_order` (items in order)
+- `parent_item_id` (sub-item lookup)
 
 ---
 
@@ -397,7 +400,7 @@
 | description | TEXT | | NOT NULL | What was accomplished |
 | celebration_text | TEXT | null | NULL | AI-generated, user-editable |
 | life_area_tag | TEXT | null | NULL | AI auto-assigned |
-| source | TEXT | 'manual' | NOT NULL | Enum: 'manual', 'compass_task', 'log_entry', 'helm_conversation', 'chart_milestone', 'unload_the_hold' |
+| source | TEXT | 'manual' | NOT NULL | Enum: 'manual', 'compass_task', 'log_entry', 'helm_conversation', 'chart_milestone', 'unload_the_hold', 'routine_completion', 'routine_streak_milestone' |
 | source_reference_id | UUID | null | NULL | FK → source record |
 | related_mast_entry_id | UUID | null | NULL | FK → mast_entries |
 | related_wheel_id | UUID | null | NULL | FK → wheel_instances |
@@ -1289,6 +1292,7 @@ CREATE TRIGGER set_updated_at BEFORE UPDATE ON meeting_templates FOR EACH ROW EX
 CREATE TRIGGER set_updated_at BEFORE UPDATE ON reminders FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
 CREATE TRIGGER set_updated_at BEFORE UPDATE ON push_subscriptions FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
 CREATE TRIGGER set_updated_at BEFORE UPDATE ON hold_dumps FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
+CREATE TRIGGER set_updated_at BEFORE UPDATE ON routine_assignments FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
 ```
 
 ---
@@ -1335,6 +1339,7 @@ auth.users
   ├── reminders (user_id → auth.users.id)
   ├── push_subscriptions (user_id → auth.users.id)
   ├── rhythm_status (user_id → auth.users.id)
+  ├── routine_assignments (user_id → auth.users.id)
   └── hold_dumps (user_id → auth.users.id)
 
 helm_conversations
@@ -1349,7 +1354,12 @@ compass_tasks
   └── compass_tasks (parent_task_id → compass_tasks.id, self-referential for subtasks)
 
 lists
-  └── list_items (list_id → lists.id)
+  ├── list_items (list_id → lists.id)
+  ├── routine_assignments (list_id → lists.id)
+  └── routine_completion_history (list_id → lists.id)
+
+list_items
+  └── list_items (parent_item_id → list_items.id, self-referential for sub-items)
 
 goals
   ├── related_mast_entry_id → mast_entries.id
@@ -1405,7 +1415,7 @@ compass_tasks
 
 ## Tables — All PRDs Complete
 
-All tables across PRDs 01-20 have been defined (39 total). Settings (PRD-19) introduces no new tables. PRD-20 adds `hold_dumps`. PRD-12A adds `cyrano_messages`.
+All tables across PRDs 01-20 have been defined (40 total). Settings (PRD-19) introduces no new tables. PRD-20 adds `hold_dumps`. PRD-12A adds `cyrano_messages`. Phase 9.5+ adds `routine_assignments`.
 
 | Table | Expected PRD | Purpose |
 |-------|-------------|---------|
@@ -1442,6 +1452,7 @@ All tables across PRDs 01-20 have been defined (39 total). Settings (PRD-19) int
 | push_subscriptions | PRD-18 | DONE (new — Web Push API device subscription records) |
 | rhythm_status | PRD-18 | DONE (new — tracks weekly/monthly/quarterly rhythm card dismissals) |
 | hold_dumps | PRD-20 | DONE (new — brain dump triage records linking to Helm conversations) |
+| routine_assignments | Phase 9.5+ | DONE (new — routine-to-Compass assignment with recurrence rules, pause/resume) |
 | reminder_schedules | PRD-18 | Not needed — scheduling handled within reminders table + server-side Edge Function |
 
 ---
@@ -1459,6 +1470,7 @@ All tables across PRDs 01-20 have been defined (39 total). Settings (PRD-19) int
 | 014_feature_guides.sql | Add `show_feature_guides` (BOOLEAN) and `dismissed_guides` (TEXT[]) columns to `user_settings` for Feature Guide System |
 | 015_helm_attachments.sql | `helm-attachments` storage bucket + `file_storage_path` column on `helm_messages` |
 | 016_routines_reflections.sql | Routine list support (`reset_schedule`, `reset_custom_days`, `last_reset_at` on `lists`; `notes` on `list_items`), `routine_completion_history` table, `reflection_questions` table, `reflection_responses` table |
+| 017_list_nesting_and_routine_assignments.sql | `parent_item_id` column on `list_items` (self-referential FK for sub-items), `routine_assignments` table (recurrence rules, status lifecycle, pause/resume) with indexes + RLS + auto-update trigger |
 
 ---
 
@@ -1508,6 +1520,26 @@ Indexes: user_id, list_id, completed_at DESC. RLS: users own data only.
 | updated_at | TIMESTAMPTZ | Auto-trigger |
 
 Indexes: user_id, question_id, response_date DESC, (user_id, response_date). RLS: users own data only.
+
+---
+
+### routine_assignments
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | UUID | PK |
+| user_id | UUID | FK → auth.users |
+| list_id | UUID | FK → lists |
+| recurrence_rule | TEXT | Not null, default 'daily'. Values: 'daily', 'weekdays', 'weekly', 'custom' |
+| custom_days | INTEGER[] | Day-of-week numbers for custom rule (0=Sun..6=Sat) |
+| started_at | TIMESTAMPTZ | Default now() |
+| ends_at | TIMESTAMPTZ | Nullable. Null = ongoing |
+| status | TEXT | Not null, default 'active'. Values: 'active', 'paused', 'expired', 'removed' |
+| paused_at | TIMESTAMPTZ | Nullable. Set when status becomes 'paused' |
+| created_at | TIMESTAMPTZ | |
+| updated_at | TIMESTAMPTZ | Auto-trigger |
+
+Indexes: user_id, list_id, status. RLS: users own data only.
 
 ---
 

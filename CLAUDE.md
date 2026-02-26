@@ -507,12 +507,20 @@ The AI applies this framework naturally when it helps the user understand why ch
 
 ### Task Breaker Pattern
 - Subtasks are regular `compass_tasks` records with `parent_task_id` set — NOT a separate table.
-- Completing all subtasks does NOT auto-complete the parent. User must explicitly check off the parent.
 - Subtasks inherit parent's due date, life area, and goal/Wheel links unless overridden.
 
+### Parent/Child Auto-Check Cascade (Universal)
+One consistent rule across the entire app — applies to Compass task/subtask AND list item/sub-item:
+- **Check all children → parent auto-completes.** Victory prompt fires once for the parent, not per child.
+- **Check the parent → all children auto-complete.**
+- **Uncheck parent → all children uncheck.**
+- **Uncheck one child → parent unchecks** (since not all children are done anymore).
+- UI optimistically updates all affected items immediately. Database updates in a single operation where possible.
+
 ### Victory Prompt Pattern
-- When a task is completed, a subtle dismissible prompt asks "Is this a victory worth recording?"
+- When a task is completed (including via parent auto-check cascade), a subtle dismissible prompt asks "Is this a victory worth recording?"
 - Never blocking, never forced. User can dismiss with no consequence.
+- Routine completion victories are auto-generated (no prompt) — factual summaries only, no AI celebration text.
 
 ### Mast Conventions
 - **The Mast is the structural center of StewardShip.** Everything else hangs from it. It contains core values, faith foundations, life declarations, key scriptures/quotes, and vision statements.
@@ -614,7 +622,7 @@ The AI applies this framework naturally when it helps the user understand why ch
 - **Detail levels:** Quick = 3-5 high-level steps. Detailed = substeps within steps. Granular = very small concrete first actions ("Open laptop. Create new document. Title it X.")
 - **Subtask creation:** Subtasks are regular `compass_tasks` with `parent_task_id` set, `task_breaker_level` recording which level, `source` = 'manual'.
 - **Preview before save:** AI generates subtasks, user sees editable preview. Can edit text, delete, reorder, add more before confirming.
-- **Parent-child display:** Parent tasks with subtasks show expandable arrow. Checking all subtasks does NOT auto-complete parent.
+- **Parent-child display:** Parent tasks with subtasks show expandable arrow. Checking all subtasks auto-completes the parent + fires victory prompt. Checking parent auto-completes all children. Unchecking parent uncompletes all children. Unchecking a child uncompletes the parent. Checkbox is always interactive (completed tasks can be unchecked).
 - **Inheritance:** Subtasks inherit parent's `due_date`, `life_area_tag`, and goal/Wheel links unless user overrides.
 
 #### Lists Conventions (Phase 4C + Phase 9.5)
@@ -625,7 +633,11 @@ The AI applies this framework naturally when it helps the user understand why ch
 - **Convert to tasks:** Any list's unchecked items can be converted to Compass tasks (`source = 'list_converted'`). For routines, items can also be converted to recurring tasks mapping `reset_schedule` to `recurrence_rule`.
 - **AI action on list creation:** "What should I do with this?" — store_only (default), remind, schedule, prioritize. Remind/schedule/prioritize open Helm with list context. Hidden for routine type.
 - **Share token:** Generated on demand, stored on `lists.share_token`. For future multi-user support. MVP: generate token, show "link copied" — actual shared access is post-MVP.
-- **List items:** Simple checkable rows with drag reorder. Quick-add input at bottom. Optional notes per item.
+- **List items:** Checkable rows with drag reorder. Quick-add input at bottom. Optional notes per item. Supports sub-items via `parent_item_id` (one level deep). Sub-items expand/collapse under parent. Check cascading: check parent → check all children; uncheck child → uncheck parent; check all children → auto-check parent.
+- **Bulk add:** AI-powered bulk item parsing via `bulkParse.ts` (calls `chat` Edge Function for structured parsing, fallback to line splitting). Textarea input → preview → edit → add all.
+- **Routine-to-Compass assignment:** Routine lists can be assigned to Compass via `routine_assignments` table. Assignment has recurrence rule (daily/weekdays/weekly/custom), optional end date, status lifecycle (active/paused/expired/removed). RoutineCard renders in ALL Compass framework views showing progress fraction and streak badge. List item toggles in Compass write to same DB records as Lists page.
+- **Auto victory on routine reset:** When a routine is reset with completed items, a Victory is auto-created (`source = 'routine_completion'`). Description lists completed item names. No celebration_text (factual only).
+- **Schedule-aware streak tracking:** `getCompletionStats` in `useRoutineReset` calculates streaks based on reset schedule (daily = consecutive days, weekdays = skip weekends, weekly = consecutive weeks). Milestones at 7/30/90/365. Streak displayed on ListDetail header and RoutineCard in Compass.
 
 ### Reflections Conventions (Phase 9.5)
 - **Daily reflection practice** with rotating questions. NOT in sidebar nav — accessed from Life Inventory, Reckoning, Crow's Nest, and direct URL only.
@@ -978,6 +990,9 @@ Tracks placeholder/stub functionality that needs to be wired up when the target 
 | Reminders → Google Calendar sync | Phase 10B (Reminders) | Post-MVP | POST-MVP |
 | Sphere → Gap check-in nudge reminders | Phase 8B (Sphere) | Post-MVP (Reminders) | POST-MVP |
 | Sphere → Interactive concentric circles visualization | Phase 8B (Sphere) | Post-MVP | POST-MVP |
+| Routine assignment expiration → Reckoning notification | Phase 9.5+ (Routine Enhancements) | Reckoning evening flow | STUB |
+| Routine assignment expiration → Weekly review notification | Phase 9.5+ (Routine Enhancements) | Weekly review (PRD-17/18) | STUB |
+| Routine streak milestone → Reckoning note | Phase 9.5+ (Routine Enhancements) | Reckoning evening flow | STUB |
 
 ---
 

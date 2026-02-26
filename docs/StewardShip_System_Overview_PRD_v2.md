@@ -970,6 +970,22 @@ When Unload the Hold routes items to their destinations, all standard rules for 
 - The user always confirms before any routing occurs
 - The original conversation is preserved in the Helm
 
+### Rule 18: Parent/Child Auto-Check Cascade
+When checking or unchecking tasks, subtasks, list items, or sub-items, the universal cascade rule applies:
+- Check all children → parent auto-completes (victory prompt fires for parent)
+- Check parent → all children auto-complete
+- Uncheck parent → all children uncheck
+- Uncheck one child → parent unchecks
+This rule is consistent across Compass tasks/subtasks AND list items/sub-items.
+
+### Rule 19: Routine-to-Compass Assignment
+Routine lists can be assigned to appear as cards in all Compass framework views via `routine_assignments`:
+- RoutineCard is NOT a `compass_tasks` record — it renders above framework views as a separate card showing title, progress fraction, and streak badge
+- Item toggles in Compass update `list_items.checked` directly — single source of truth shared with the Lists page
+- Assignment lifecycle: active → paused / expired / completed. Time-bounded assignments auto-expire
+- Auto-victory on routine reset when at least 1 item was completed — factual summary only, no AI celebration text
+- Streak tracking is schedule-aware (daily = consecutive days, weekdays = skip weekends, weekly = one per week) and calculated on-the-fly from `routine_completion_history`
+
 ---
 
 ## Navigation Structure
@@ -1053,7 +1069,7 @@ Every AI interaction includes these context layers (loaded dynamically based on 
 ### Always Included
 1. **Base personality:** Warm, empathetic, direct processing partner. Not a friend, not clinical. Boundaried.
 2. **Framework awareness:** Straight Line Leadership contrasts, Atomic Habits, Change Wheel, 5 Levels of Consciousness, Covey/7 Habits/Divine Center, Thou Shall Prosper, TSG/TJEd, Sphere of Influence
-3. **Behavioral rules:** All 17 cross-feature rules
+3. **Behavioral rules:** All 19 cross-feature rules
 4. **User's Mast entries**
 
 ### Included When Relevant
@@ -1166,6 +1182,15 @@ Every AI interaction includes these context layers (loaded dynamically based on 
 37. **Routine Lists** (new `routine` list type with reset schedules, completion history tracking, item notes, convert-to-tasks including recurring, standalone /lists page) — **Phase 9.5 BUILT** ✅
 38. **Daily Reflections** (12 default questions, daily response tracking, routing to Log/Victory, Reckoning/CrowsNest/LifeInventory integrations, AI context loading) — **Phase 9.5 BUILT** ✅
 39. **Report Generator** (client-side report generation, period selection, section toggles, inline preview, PDF/Markdown export via jsPDF) — **Phase 9.5 BUILT** ✅
+
+### Phase 9.5+ Enhancements: Routine & List Enhancements ✅
+40. **List item nesting** (sub-items via `parent_item_id`, expand/collapse, check cascade) — **BUILT** ✅
+41. **AI bulk add items** (`bulkParse.ts`, textarea → AI parse → preview → add all) — **BUILT** ✅
+42. **Routine-to-Compass assignment** (`routine_assignments` table, RoutineCard in all Compass views, Pause/Resume/End lifecycle) — **BUILT** ✅
+43. **Auto victory on routine reset** (factual description from completed items, `source = 'routine_completion'`) — **BUILT** ✅
+44. **Schedule-aware routine streak tracking** (daily/weekdays/weekly streak calculation, milestones, display on ListDetail + RoutineCard) — **BUILT** ✅
+45. **Parent/child task cascade** (Compass tasks: completing all subtasks auto-completes parent + victory prompt, parent→children cascade, bidirectional uncheck) — **BUILT** ✅
+46. **Completed task 7-day filter** (fetchTasksByCategory filters completed tasks to last 7 days in framework views) — **BUILT** ✅
 
 ---
 
@@ -1289,6 +1314,7 @@ stewardship/
 | PRD-19: Settings | Phase 10C Built ✅ |
 | PRD-20: Unload the Hold (Brain Dump) | 4D Built ✅ |
 | Phase 9.5: Routines, Reflections & Reports | Phase 9.5 Built ✅ |
+| Phase 9.5+: Routine & List Enhancements | Built ✅ |
 
 ---
 
