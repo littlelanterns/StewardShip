@@ -43,11 +43,25 @@
   --color-success: #5B8C5A;
   --color-accent: #B0694D;
 
+  /* Dusty rose — subtle accent for borders and card touches */
+  --color-dusty-rose: #C4898A;
+
   /* Overlay & focus ring */
   --color-overlay: rgba(0, 0, 0, 0.4);
-  --color-focus-ring: rgba(91, 127, 131, 0.2);
+  --color-focus-ring: rgba(196, 137, 138, 0.2);
   --color-error-ring: rgba(192, 57, 43, 0.2);
 
   /* Gold — victories only */
   --color-victory: #C9A84C;
+}
+
+/* Sidebar active indicator — dusty rose instead of cognac */
+.theme-hearthstone .sidebar__link.active,
+.theme-hearthstone .sidebar__link--active {
+  border-right-color: #C4898A;
+}
+
+/* Feature guide card — rose left-border accent */
+.theme-hearthstone .feature-guide {
+  border-left: 3px solid #C4898A;
 }

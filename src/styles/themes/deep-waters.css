@@ -51,3 +51,25 @@
   /* Gold — victories only */
   --color-victory: #D4A84B;
 }
+
+/* Sidebar — teal-tinted hover/active instead of flat gray */
+.theme-deep-waters .sidebar__link:hover {
+  background-color: rgba(25, 147, 150, 0.1);
+}
+
+.theme-deep-waters .sidebar__link.active,
+.theme-deep-waters .sidebar__link--active {
+  background-color: rgba(25, 147, 150, 0.15);
+}
+
+/* MoreMenu — teal-tinted hover */
+.theme-deep-waters .more-menu__link:hover,
+.theme-deep-waters .more-menu__close:hover {
+  background-color: rgba(25, 147, 150, 0.1);
+}
+
+/* Feature guide card — translucent glass panel on dark background */
+.theme-deep-waters .feature-guide {
+  background-color: rgba(25, 147, 150, 0.08);
+  border: 1px solid rgba(25, 147, 150, 0.2);
+}

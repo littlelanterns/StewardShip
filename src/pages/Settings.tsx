@@ -20,14 +20,15 @@ import '../components/settings/Settings.css';
 
 const SECTIONS = [
   { key: 'account', name: 'Account', description: 'Name, email, timezone, gender, relationship, appearance, password' },
-  { key: 'ai', name: 'AI Assistant', description: 'Provider, model, response length, API key' },
+  { key: 'ai', name: 'BYOK (Bring Your Own Key)', description: 'Use your own AI API key for customized model access' },
   { key: 'daily-rhythms', name: 'Daily Rhythms', description: 'Reveille, Reckoning, prompted entries' },
   { key: 'notifications', name: 'Notifications', description: 'Push, quiet hours, delivery preferences' },
   { key: 'rhythms', name: 'Rhythms', description: 'Friday Overview, Sunday Reflection, monthly, quarterly' },
   { key: 'meetings', name: 'Meeting Schedules', description: 'Recurring meeting configuration' },
   { key: 'compass', name: 'Compass', description: 'Default task view' },
   { key: 'data', name: 'Data & Privacy', description: 'Export data, storage info' },
-  { key: 'about', name: 'About StewardShip', description: 'Version, acknowledgments' },
+  // About section hidden for now — re-enable when ready
+  // { key: 'about', name: 'About StewardShip', description: 'Version, acknowledgments' },
 ];
 
 const SECTION_INDEX: Record<string, number> = {};
@@ -150,7 +151,15 @@ export default function Settings() {
                   onDeleteAccount={deleteAccount}
                 />
               )}
+              {/* BYOK coming soon — full AIConfigSection preserved below, re-enable when ready */}
               {index === 1 && (
+                <div className="settings-section__body">
+                  <p className="settings-section__helper">
+                    Coming soon — this feature will let you use your own API key for customized AI model, response length, and context depth.
+                  </p>
+                </div>
+              )}
+              {false && index === 1 && (
                 <AIConfigSection
                   settings={settings}
                   onUpdateSetting={updateSetting}
@@ -194,9 +203,11 @@ export default function Settings() {
                   onDownloadBlob={downloadBlob}
                 />
               )}
+              {/* About section hidden — re-enable when ready
               {index === 8 && (
                 <AboutSection />
               )}
+              */}
             </div>
           </div>
         );
