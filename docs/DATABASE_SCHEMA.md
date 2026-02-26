@@ -57,7 +57,8 @@
 | reckoning_enabled | BOOLEAN | true | NOT NULL | Show evening review |
 | reckoning_time | TIME | '21:00' | NOT NULL | When to trigger Reckoning |
 | default_compass_view | TEXT | 'simple_list' | NOT NULL | Enum: 'simple_list', 'eisenhower', 'eat_the_frog', 'one_three_nine', 'big_rocks', 'ivy_lee', 'by_category' |
-| theme | TEXT | 'captains_quarters' | NOT NULL | Active UI theme. Default: 'captains_quarters'. Additional themes defined in frontend. |
+| theme | TEXT | 'captains_quarters' | NOT NULL | Enum: 'captains_quarters', 'deep_waters', 'hearthstone'. Active UI theme. |
+| font_scale | TEXT | 'default' | NOT NULL | Enum: 'default', 'large', 'extra_large'. Controls root font-size for accessibility. |
 | push_notifications_enabled | BOOLEAN | true | NOT NULL | Master toggle |
 | gratitude_prompt_frequency | TEXT | 'daily' | NOT NULL | Enum: 'daily', 'every_other_day', 'weekly', 'off' |
 | joy_prompt_frequency | TEXT | 'every_few_days' | NOT NULL | Enum: 'every_few_days', 'weekly', 'off' |
@@ -1471,6 +1472,7 @@ All tables across PRDs 01-20 have been defined (40 total). Settings (PRD-19) int
 | 015_helm_attachments.sql | `helm-attachments` storage bucket + `file_storage_path` column on `helm_messages` |
 | 016_routines_reflections.sql | Routine list support (`reset_schedule`, `reset_custom_days`, `last_reset_at` on `lists`; `notes` on `list_items`), `routine_completion_history` table, `reflection_questions` table, `reflection_responses` table |
 | 017_list_nesting_and_routine_assignments.sql | `parent_item_id` column on `list_items` (self-referential FK for sub-items), `routine_assignments` table (recurrence rules, status lifecycle, pause/resume) with indexes + RLS + auto-update trigger |
+| 018_font_scale.sql | Add `font_scale` TEXT column to `user_settings` for accessibility text sizing ('default', 'large', 'extra_large') |
 
 ---
 

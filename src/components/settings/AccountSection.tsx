@@ -21,11 +21,16 @@ const TIMEZONE_OPTIONS = [
 ];
 
 const THEME_OPTIONS = [
-  { value: 'captains-quarters', label: "Captain's Quarters (Default)" },
-  { value: 'deep-ocean', label: 'Deep Ocean' },
-  { value: 'morning-watch', label: 'Morning Watch' },
-  { value: 'night-helm', label: 'Night Helm' },
+  { value: 'captains-quarters', label: "Captain's Quarters", subtitle: 'Warm & Classic' },
+  { value: 'deep-waters', label: 'Deep Waters', subtitle: 'Dark & Oceanic' },
+  { value: 'hearthstone', label: 'Hearthstone', subtitle: 'Soft & Earthy' },
 ];
+
+const FONT_SCALE_OPTIONS = [
+  { value: 'default', label: 'Default', hint: 'Standard text size' },
+  { value: 'large', label: 'Large', hint: 'Easier to read' },
+  { value: 'extra_large', label: 'Extra Large', hint: 'Maximum readability' },
+] as const;
 
 interface AccountSectionProps {
   user: User;
@@ -48,7 +53,7 @@ export function AccountSection({
   onChangePassword,
   onDeleteAccount,
 }: AccountSectionProps) {
-  const { setTheme } = useTheme();
+  const { setTheme, fontScale, setFontScale } = useTheme();
   const [displayName, setDisplayName] = useState(profile?.display_name || '');
   const [tzFilter, setTzFilter] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -104,6 +109,11 @@ export function AccountSection({
   const handleThemeChange = (themeValue: string) => {
     setTheme(themeValue);
     onUpdateSetting('theme', themeValue);
+  };
+
+  const handleFontScaleChange = (scale: 'default' | 'large' | 'extra_large') => {
+    setFontScale(scale);
+    onUpdateSetting('font_scale', scale);
   };
 
   const handleDelete = async () => {
@@ -168,14 +178,28 @@ export function AccountSection({
 
       {/* Theme */}
       <div className="settings-field">
-        <label className="settings-field__label">Appearance</label>
+        <label className="settings-field__label">Theme</label>
         <select
           className="settings-field__select"
           value={settings?.theme || 'captains-quarters'}
           onChange={e => handleThemeChange(e.target.value)}
         >
           {THEME_OPTIONS.map(opt => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
+            <option key={opt.value} value={opt.value}>{opt.label} — {opt.subtitle}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Font Scale */}
+      <div className="settings-field">
+        <label className="settings-field__label">Text Size</label>
+        <select
+          className="settings-field__select"
+          value={fontScale}
+          onChange={e => handleFontScaleChange(e.target.value as 'default' | 'large' | 'extra_large')}
+        >
+          {FONT_SCALE_OPTIONS.map(opt => (
+            <option key={opt.value} value={opt.value}>{opt.label} — {opt.hint}</option>
           ))}
         </select>
       </div>

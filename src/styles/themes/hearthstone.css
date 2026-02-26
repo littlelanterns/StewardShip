@@ -1,0 +1,53 @@
+.theme-hearthstone {
+  /* Core palette */
+  --color-deep-teal: #4A5D4F;
+  --color-dark-teal: #5B6F5E;
+  --color-mid-teal: #8B9E82;
+  --color-slate-gray: #A8B5A0;
+  --color-cognac: #B0694D;
+  --color-deep-brown: #7A3B2E;
+  --color-gold: #C9A84C;
+  --color-cream: #F7F3ED;
+  --color-warm-sand: #EDE5D8;
+  --color-navy: #3D3632;
+  --color-white: #FFFFFF;
+  --color-light-gray: #F2EDE6;
+
+  /* Semantic colors */
+  --color-bg-primary: #F7F3ED;
+  --color-bg-secondary: #EDE5D8;
+  --color-bg-card: #FFFFFF;
+  --color-bg-nav: #4A5D4F;
+  --color-bg-input: #FFFFFF;
+  --color-bg-input-focus: #F2EDE6;
+
+  --color-text-primary: #3D3632;
+  --color-text-secondary: #8B8178;
+  --color-text-heading: #4A5D4F;
+  --color-text-on-dark: #F7F3ED;
+  --color-text-link: #5B7F83;
+
+  --color-border: #DDD5C8;
+  --color-border-focus: #5B7F83;
+  --color-border-error: #C0392B;
+
+  --color-btn-primary-bg: #5B7F83;
+  --color-btn-primary-text: #FFFFFF;
+  --color-btn-primary-hover: #4A6B6F;
+  --color-btn-secondary-bg: transparent;
+  --color-btn-secondary-text: #5B7F83;
+  --color-btn-secondary-border: #5B7F83;
+  --color-btn-secondary-hover: #F7F3ED;
+
+  --color-error: #C0392B;
+  --color-success: #5B8C5A;
+  --color-accent: #B0694D;
+
+  /* Overlay & focus ring */
+  --color-overlay: rgba(0, 0, 0, 0.4);
+  --color-focus-ring: rgba(91, 127, 131, 0.2);
+  --color-error-ring: rgba(192, 57, 43, 0.2);
+
+  /* Gold — victories only */
+  --color-victory: #C9A84C;
+}

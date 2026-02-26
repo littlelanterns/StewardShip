@@ -902,6 +902,21 @@ Six guided conversation modes accessible from the First Mate page, each opening 
 
 ---
 
+### Themes
+- Three themes available: `captains_quarters` (default), `deep_waters` (dark-leaning), `hearthstone` (soft/earthy).
+- Theme files: `src/styles/themes/deep-waters.css`, `src/styles/themes/hearthstone.css`.
+- Each theme overrides all CSS custom properties. Components must NEVER hardcode colors.
+- Deep Waters is dark-leaning (dark backgrounds, light text). Test all components for contrast/readability when adding new features.
+- Gold effects rule applies across ALL themes — gold reserved for victories only.
+
+### Accessibility
+- `user_settings.font_scale` controls root font-size on `<html>`: 'default' (16px), 'large' (18px), 'extra_large' (20px).
+- Applied via CSS class on document root (same pattern as theme). All rem-based font sizes scale automatically.
+- Fixed-px layout values (nav-height, touch-target-min, drawer-handle-height) intentionally do NOT scale.
+- Both theme and font scale settings live in Settings > Account > Appearance section.
+
+---
+
 
 ### User Flexibility (Gender & Relationship Status)
 - AI reads `user_profiles.gender` and `user_profiles.relationship_status` to adapt language.

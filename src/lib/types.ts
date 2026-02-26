@@ -57,6 +57,7 @@ export interface UserSettings {
   notification_streaks: 'reckoning_batch' | 'off';
   notification_rhythms: 'push' | 'in_app' | 'off';
   notification_custom: 'push' | 'reveille_batch';
+  font_scale: 'default' | 'large' | 'extra_large';
   show_feature_guides: boolean;
   dismissed_guides: string[];
   google_calendar_token: string | null;

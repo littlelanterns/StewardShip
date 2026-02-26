@@ -4,6 +4,7 @@ import { Settings as SettingsIcon, ChevronRight } from 'lucide-react';
 import { usePageContext } from '../hooks/usePageContext';
 import { useSettings } from '../hooks/useSettings';
 import { useAuthContext } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { AccountSection } from '../components/settings/AccountSection';
 import { AIConfigSection } from '../components/settings/AIConfigSection';
 import { DailyRhythmsSection } from '../components/settings/DailyRhythmsSection';
@@ -36,6 +37,7 @@ export default function Settings() {
   usePageContext({ page: 'settings' });
   const [searchParams] = useSearchParams();
   const { user } = useAuthContext();
+  const { setTheme, setFontScale } = useTheme();
   const {
     profile,
     settings,
@@ -60,6 +62,12 @@ export default function Settings() {
   useEffect(() => {
     fetchSettings();
   }, [fetchSettings]);
+
+  // Sync DB settings → ThemeContext (handles cross-device login)
+  useEffect(() => {
+    if (settings?.theme) setTheme(settings.theme);
+    if (settings?.font_scale) setFontScale(settings.font_scale);
+  }, [settings?.theme, settings?.font_scale, setTheme, setFontScale]);
 
   // Deep link: auto-expand section from URL query param
   useEffect(() => {

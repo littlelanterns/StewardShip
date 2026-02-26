@@ -1,0 +1,53 @@
+.theme-deep-waters {
+  /* Core palette */
+  --color-deep-teal: #044550;
+  --color-dark-teal: #086E77;
+  --color-mid-teal: #199396;
+  --color-slate-gray: #4FB3AE;
+  --color-cognac: #B87333;
+  --color-deep-brown: #8B5A2B;
+  --color-gold: #D4A84B;
+  --color-cream: #1A2F35;
+  --color-warm-sand: #243D44;
+  --color-navy: #E8E4DD;
+  --color-white: #0F2027;
+  --color-light-gray: #162A30;
+
+  /* Semantic colors */
+  --color-bg-primary: #0F2027;
+  --color-bg-secondary: #1A2F35;
+  --color-bg-card: #162A30;
+  --color-bg-nav: #061A1F;
+  --color-bg-input: #1A2F35;
+  --color-bg-input-focus: #243D44;
+
+  --color-text-primary: #E8E4DD;
+  --color-text-secondary: #4FB3AE;
+  --color-text-heading: #9FD3CD;
+  --color-text-on-dark: #9FD3CD;
+  --color-text-link: #199396;
+
+  --color-border: #243D44;
+  --color-border-focus: #199396;
+  --color-border-error: #E74C3C;
+
+  --color-btn-primary-bg: #199396;
+  --color-btn-primary-text: #FFFFFF;
+  --color-btn-primary-hover: #086E77;
+  --color-btn-secondary-bg: transparent;
+  --color-btn-secondary-text: #199396;
+  --color-btn-secondary-border: #199396;
+  --color-btn-secondary-hover: #1A2F35;
+
+  --color-error: #E74C3C;
+  --color-success: #2ECC71;
+  --color-accent: #B87333;
+
+  /* Overlay & focus ring */
+  --color-overlay: rgba(0, 0, 0, 0.6);
+  --color-focus-ring: rgba(25, 147, 150, 0.3);
+  --color-error-ring: rgba(231, 76, 60, 0.3);
+
+  /* Gold — victories only */
+  --color-victory: #D4A84B;
+}
