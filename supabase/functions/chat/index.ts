@@ -7,6 +7,11 @@ const corsHeaders = {
 };
 
 serve(async (req: Request) => {
+  console.log('=== CHAT FUNCTION HIT ===');
+  console.log('Method:', req.method);
+  console.log('Auth header present:', !!req.headers.get('Authorization'));
+  console.log('Auth header prefix:', req.headers.get('Authorization')?.substring(0, 30));
+
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -22,7 +27,22 @@ serve(async (req: Request) => {
     }
     // Supabase validates JWT before Edge Function runs — decode for user_id
     const jwt = authHeader.replace('Bearer ', '');
-    const jwtPayload = JSON.parse(atob(jwt.split('.')[1]));
+    console.log('JWT length:', jwt.length);
+    console.log('JWT parts:', jwt.split('.').length);
+    let jwtPayload: Record<string, unknown>;
+    try {
+      const payloadB64 = jwt.split('.')[1];
+      // Convert base64url to base64
+      const b64 = payloadB64.replace(/-/g, '+').replace(/_/g, '/');
+      jwtPayload = JSON.parse(atob(b64));
+      console.log('JWT decoded successfully, sub:', jwtPayload.sub);
+    } catch (decodeErr) {
+      console.error('JWT decode failed:', decodeErr);
+      return new Response(
+        JSON.stringify({ error: 'Failed to decode token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
     const userId = jwtPayload.sub as string;
     if (!userId) {
       return new Response(

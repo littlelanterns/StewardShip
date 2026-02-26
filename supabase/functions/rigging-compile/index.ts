@@ -83,7 +83,9 @@ serve(async (req: Request) => {
     }
     // Supabase validates JWT before Edge Function runs — decode for user_id
     const jwt = authHeader.replace('Bearer ', '');
-    const jwtPayload = JSON.parse(atob(jwt.split('.')[1]));
+    const payloadB64 = jwt.split('.')[1];
+    const b64 = payloadB64.replace(/-/g, '+').replace(/_/g, '/');
+    const jwtPayload = JSON.parse(atob(b64));
     const userId = jwtPayload.sub as string;
     if (!userId) {
       return new Response(
