@@ -11,7 +11,6 @@ const corsHeaders = {
 };
 
 interface PushPayload {
-  user_id: string;
   title: string;
   body?: string;
   url?: string;
@@ -72,23 +71,36 @@ serve(async (req) => {
   }
 
   try {
+    // Validate JWT
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Missing authorization" }), {
+      return new Response(JSON.stringify({ error: "Missing authorization header" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
+    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: { user: authUser }, error: authError } = await authClient.auth.getUser();
+    if (authError || !authUser) {
+      return new Response(JSON.stringify({ error: "Invalid or expired token" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const userId = authUser.id;
+
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { user_id, title, body, url, tag, reminder_id } =
+    const { title, body, url, tag, reminder_id } =
       (await req.json()) as PushPayload;
 
-    if (!user_id || !title) {
-      return new Response(JSON.stringify({ error: "user_id and title required" }), {
+    if (!title) {
+      return new Response(JSON.stringify({ error: "title required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -98,14 +110,14 @@ serve(async (req) => {
     const { data: settings } = await supabase
       .from("user_settings")
       .select("quiet_hours_start, quiet_hours_end")
-      .eq("user_id", user_id)
+      .eq("user_id", userId)
       .maybeSingle();
 
     if (settings) {
       const { data: profile } = await supabase
         .from("user_profiles")
         .select("timezone")
-        .eq("id", user_id)
+        .eq("id", userId)
         .maybeSingle();
 
       const tz = profile?.timezone || "America/Chicago";
@@ -138,7 +150,7 @@ serve(async (req) => {
     const { count: todayCount } = await supabase
       .from("reminders")
       .select("id", { count: "exact", head: true })
-      .eq("user_id", user_id)
+      .eq("user_id", userId)
       .eq("delivery_method", "push")
       .eq("status", "delivered")
       .gte("updated_at", todayStart.toISOString());
@@ -154,7 +166,7 @@ serve(async (req) => {
     const { data: subscriptions } = await supabase
       .from("push_subscriptions")
       .select("endpoint, p256dh_key, auth_key")
-      .eq("user_id", user_id)
+      .eq("user_id", userId)
       .eq("is_active", true);
 
     if (!subscriptions || subscriptions.length === 0) {
@@ -200,7 +212,7 @@ serve(async (req) => {
           await supabase
             .from("push_subscriptions")
             .delete()
-            .eq("user_id", user_id)
+            .eq("user_id", userId)
             .eq("endpoint", sub.endpoint);
           errors.push(`Removed expired subscription: ${sub.endpoint.substring(0, 50)}`);
         } else {
@@ -217,7 +229,7 @@ serve(async (req) => {
         .from("reminders")
         .update({ status: "delivered" })
         .eq("id", reminder_id)
-        .eq("user_id", user_id);
+        .eq("user_id", userId);
     }
 
     return new Response(

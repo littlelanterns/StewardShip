@@ -28,9 +28,31 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { text, user_id, tag_type } = await req.json();
+    // Validate JWT
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ tags: [] }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: { user: authUser }, error: authError } = await authClient.auth.getUser();
+    if (authError || !authUser) {
+      return new Response(
+        JSON.stringify({ tags: [] }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+    const userId = authUser.id;
 
-    if (!text || !user_id) {
+    const { text, tag_type } = await req.json();
+
+    if (!text) {
       return new Response(
         JSON.stringify({ tags: [] }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
@@ -38,14 +60,13 @@ serve(async (req: Request) => {
     }
 
     // Get API key
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { data: settings } = await supabase
       .from('user_settings')
       .select('ai_api_key_encrypted, ai_model')
-      .eq('user_id', user_id)
+      .eq('user_id', userId)
       .maybeSingle();
 
     let apiKey = Deno.env.get('OPENROUTER_API_KEY') || '';

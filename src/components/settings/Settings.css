@@ -228,6 +228,17 @@
   margin-top: 0.25rem;
 }
 
+.settings-field__hint--locked {
+  margin-top: var(--spacing-sm);
+  color: var(--color-mid-teal);
+  font-style: normal;
+}
+
+.settings-field__select--locked {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .settings-field__description {
   font-size: 0.85rem;
   color: var(--color-slate-gray);

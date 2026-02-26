@@ -337,6 +337,65 @@ export function useCompass() {
     }
   }, [user]);
 
+  const fetchArchivedTasks = useCallback(async () => {
+    if (!user) return [];
+    try {
+      const { data, error: err } = await supabase
+        .from('compass_tasks')
+        .select('*')
+        .eq('user_id', user.id)
+        .not('archived_at', 'is', null)
+        .order('archived_at', { ascending: false });
+
+      if (err) throw err;
+      return (data as CompassTask[]) || [];
+    } catch {
+      return [];
+    }
+  }, [user]);
+
+  const restoreTask = useCallback(async (id: string) => {
+    if (!user) return;
+    setError(null);
+    try {
+      const { error: err } = await supabase
+        .from('compass_tasks')
+        .update({ archived_at: null })
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (err) throw err;
+      fetchTasks();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Failed to restore task';
+      setError(msg);
+    }
+  }, [user, fetchTasks]);
+
+  const permanentlyDelete = useCallback(async (id: string) => {
+    if (!user) return;
+    setError(null);
+    try {
+      // Delete subtasks first (parent_task_id is ON DELETE SET NULL, not CASCADE)
+      await supabase
+        .from('compass_tasks')
+        .delete()
+        .eq('parent_task_id', id)
+        .eq('user_id', user.id);
+
+      const { error: err } = await supabase
+        .from('compass_tasks')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (err) throw err;
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Failed to delete task';
+      setError(msg);
+    }
+  }, [user]);
+
   const carryForwardTask = useCallback(async (
     id: string,
     option: 'tomorrow' | 'reschedule' | 'cancel' | 'keep',
@@ -534,6 +593,9 @@ export function useCompass() {
     updateTask,
     completeTask,
     archiveTask,
+    fetchArchivedTasks,
+    restoreTask,
+    permanentlyDelete,
     carryForwardTask,
     reorderTasks,
     getOverdueTasks,

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { X } from 'lucide-react';
 import { Button } from './Button';
 import { EmptyState } from './EmptyState';
@@ -13,6 +14,7 @@ interface ArchivedItem {
 interface ArchivedViewProps {
   items: ArchivedItem[];
   onRestore: (id: string) => void;
+  onDelete?: (id: string) => void;
   onClose: () => void;
   loading?: boolean;
 }
@@ -23,7 +25,18 @@ function formatDate(dateStr: string | null): string {
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-export function ArchivedView({ items, onRestore, onClose, loading }: ArchivedViewProps) {
+export function ArchivedView({ items, onRestore, onDelete, onClose, loading }: ArchivedViewProps) {
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+
+  function handleDelete(id: string) {
+    if (confirmingId === id) {
+      onDelete?.(id);
+      setConfirmingId(null);
+    } else {
+      setConfirmingId(id);
+    }
+  }
+
   return (
     <>
       <div className="archived-overlay" onClick={onClose} />
@@ -57,13 +70,43 @@ export function ArchivedView({ items, onRestore, onClose, loading }: ArchivedVie
                       )}
                     </div>
                   </div>
-                  <Button
-                    variant="secondary"
-                    className="archived-item__restore"
-                    onClick={() => onRestore(item.id)}
-                  >
-                    Restore
-                  </Button>
+                  <div className="archived-item__actions">
+                    <Button
+                      variant="secondary"
+                      className="archived-item__restore"
+                      onClick={() => onRestore(item.id)}
+                    >
+                      Restore
+                    </Button>
+                    {onDelete && (
+                      confirmingId === item.id ? (
+                        <div className="archived-item__confirm">
+                          <span className="archived-item__confirm-text">Delete permanently?</span>
+                          <Button
+                            variant="secondary"
+                            className="archived-item__delete-confirm"
+                            onClick={() => handleDelete(item.id)}
+                          >
+                            Confirm
+                          </Button>
+                          <Button
+                            variant="text"
+                            onClick={() => setConfirmingId(null)}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      ) : (
+                        <button
+                          className="archived-item__delete"
+                          onClick={() => handleDelete(item.id)}
+                          title="Delete permanently"
+                        >
+                          Delete
+                        </button>
+                      )
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

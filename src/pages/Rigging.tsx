@@ -7,6 +7,7 @@ import type { RiggingPlan } from '../lib/types';
 import { PlanCard } from '../components/rigging/PlanCard';
 import { PlanDetail } from '../components/rigging/PlanDetail';
 import { ManualPlanForm } from '../components/rigging/ManualPlanForm';
+import { Plus, MessageSquare, PenLine } from 'lucide-react';
 import { FloatingActionButton } from '../components/shared/FloatingActionButton';
 import { CollapsibleGroup } from '../components/shared/CollapsibleGroup';
 import { EmptyState, LoadingSpinner, FeatureGuide } from '../components/shared';
@@ -260,32 +261,46 @@ export default function Rigging() {
         </div>
       )}
 
-      {/* FAB with dual action */}
-      <div className="rigging-page__fab-area">
-        {fabExpanded && (
-          <div className="rigging-page__fab-options">
+      {/* FAB */}
+      <FloatingActionButton
+        onClick={() => setFabExpanded(true)}
+        aria-label="Create new plan"
+        title="Create new plan"
+      >
+        <Plus size={24} />
+      </FloatingActionButton>
+
+      {/* New Plan options modal */}
+      {fabExpanded && (
+        <>
+          <div className="rigging-page__fab-overlay" onClick={() => setFabExpanded(false)} />
+          <div className="rigging-page__fab-modal" role="dialog" aria-label="New plan options">
+            <h3 className="rigging-page__fab-modal-title">New Plan</h3>
             <button
               type="button"
               className="rigging-page__fab-option"
               onClick={handlePlanAtHelm}
             >
-              Plan at The Helm
+              <MessageSquare size={18} />
+              <div>
+                <span className="rigging-page__fab-option-label">Plan at The Helm</span>
+                <span className="rigging-page__fab-option-desc">AI-guided planning conversation</span>
+              </div>
             </button>
             <button
               type="button"
               className="rigging-page__fab-option"
               onClick={() => { setFabExpanded(false); setViewMode('create'); }}
             >
-              Create Manually
+              <PenLine size={18} />
+              <div>
+                <span className="rigging-page__fab-option-label">Create Manually</span>
+                <span className="rigging-page__fab-option-desc">Fill in plan details yourself</span>
+              </div>
             </button>
           </div>
-        )}
-        <FloatingActionButton
-          onClick={() => setFabExpanded(!fabExpanded)}
-        >
-          {fabExpanded ? 'Close' : 'New Plan'}
-        </FloatingActionButton>
-      </div>
+        </>
+      )}
     </div>
   );
 }

@@ -166,6 +166,24 @@ export function useCrew() {
     }
   }, [user, selectedPerson]);
 
+  const permanentlyDeletePerson = useCallback(async (id: string) => {
+    if (!user) return;
+    setError(null);
+    try {
+      // crew_notes, spouse_insights, spouse_prompts have ON DELETE CASCADE
+      const { error: err } = await supabase
+        .from('people')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (err) throw err;
+      setPeople((prev) => prev.filter((p) => p.id !== id));
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }, [user]);
+
   const fetchCrewNotes = useCallback(async (personId: string, category?: CrewNoteCategory) => {
     if (!user) return;
     try {
@@ -302,6 +320,7 @@ export function useCrew() {
     createPerson,
     updatePerson,
     archivePerson,
+    permanentlyDeletePerson,
     fetchCrewNotes,
     createCrewNote,
     updateCrewNote,

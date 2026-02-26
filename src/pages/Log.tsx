@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Download } from 'lucide-react';
+import { Download, Plus } from 'lucide-react';
 import { usePageContext } from '../hooks/usePageContext';
 import { useLog } from '../hooks/useLog';
 import type { LogFilters, LogEntryType, LogEntry } from '../lib/types';
@@ -43,6 +43,7 @@ export default function Log() {
     updateEntry,
     archiveEntry,
     restoreEntry,
+    permanentlyDelete,
     fetchArchivedEntries,
     updateRouting,
     setSelectedEntry,
@@ -130,6 +131,7 @@ export default function Log() {
           entries={archivedEntries}
           loading={archiveLoading}
           onRestore={restoreEntry}
+          onDelete={permanentlyDelete}
           onLoad={fetchArchivedEntries}
           onBack={handleBackToList}
         />
@@ -200,7 +202,9 @@ export default function Log() {
         </button>
       </div>
 
-      <FloatingActionButton onClick={handleCreate} aria-label="New Entry">+</FloatingActionButton>
+      <FloatingActionButton onClick={handleCreate} aria-label="New Entry">
+        <Plus size={24} />
+      </FloatingActionButton>
 
       <JournalExportModal
         open={showExportModal}

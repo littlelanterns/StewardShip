@@ -21,16 +21,37 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { text_content, file_name, existing_tags, existing_folders, user_id } = await req.json();
+    // Validate JWT
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Missing authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: { user: authUser }, error: authError } = await authClient.auth.getUser();
+    if (authError || !authUser) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid or expired token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+    const userId = authUser.id;
 
-    if (!text_content || !user_id) {
+    const { text_content, file_name, existing_tags, existing_folders } = await req.json();
+
+    if (!text_content) {
       return new Response(
         JSON.stringify({ error: 'Missing required fields' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -38,7 +59,7 @@ serve(async (req: Request) => {
     const { data: settings } = await supabase
       .from('user_settings')
       .select('ai_api_key_encrypted')
-      .eq('user_id', user_id)
+      .eq('user_id', userId)
       .maybeSingle();
 
     let apiKey = Deno.env.get('OPENROUTER_API_KEY') || '';

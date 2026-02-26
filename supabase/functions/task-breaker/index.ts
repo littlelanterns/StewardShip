@@ -29,11 +29,33 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { task_title, task_description, detail_level, context, user_id } = await req.json();
-
-    if (!task_title || !detail_level || !user_id) {
+    // Validate JWT
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields: task_title, detail_level, user_id' }),
+        JSON.stringify({ error: 'Missing authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: { user: authUser }, error: authError } = await authClient.auth.getUser();
+    if (authError || !authUser) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid or expired token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+    const userId = authUser.id;
+
+    const { task_title, task_description, detail_level, context } = await req.json();
+
+    if (!task_title || !detail_level) {
+      return new Response(
+        JSON.stringify({ error: 'Missing required fields: task_title, detail_level' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
@@ -47,14 +69,13 @@ serve(async (req: Request) => {
     }
 
     // Get API key
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { data: settings } = await supabase
       .from('user_settings')
       .select('ai_api_key_encrypted, ai_model')
-      .eq('user_id', user_id)
+      .eq('user_id', userId)
       .maybeSingle();
 
     let apiKey = Deno.env.get('OPENROUTER_API_KEY') || '';

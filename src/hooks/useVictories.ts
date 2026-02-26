@@ -30,6 +30,7 @@ function getDateRange(period: VictoryTimePeriod): { from: string | null; to: str
 export function useVictories() {
   const { user } = useAuthContext();
   const [victories, setVictories] = useState<Victory[]>([]);
+  const [archivedVictories, setArchivedVictories] = useState<Victory[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -153,6 +154,58 @@ export function useVictories() {
     }
   }, [user]);
 
+  const fetchArchivedVictories = useCallback(async () => {
+    if (!user) return;
+    try {
+      const { data, error: err } = await supabase
+        .from('victories')
+        .select('*')
+        .eq('user_id', user.id)
+        .not('archived_at', 'is', null)
+        .order('archived_at', { ascending: false });
+
+      if (err) throw err;
+      setArchivedVictories((data as Victory[]) || []);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to fetch archived victories');
+    }
+  }, [user]);
+
+  const restoreVictory = useCallback(async (id: string) => {
+    if (!user) return;
+    setError(null);
+    try {
+      const { error: err } = await supabase
+        .from('victories')
+        .update({ archived_at: null })
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (err) throw err;
+      setArchivedVictories((prev) => prev.filter((v) => v.id !== id));
+      fetchVictories();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to restore victory');
+    }
+  }, [user, fetchVictories]);
+
+  const permanentlyDelete = useCallback(async (id: string) => {
+    if (!user) return;
+    setError(null);
+    try {
+      const { error: err } = await supabase
+        .from('victories')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (err) throw err;
+      setArchivedVictories((prev) => prev.filter((v) => v.id !== id));
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to delete victory');
+    }
+  }, [user]);
+
   const getVictoryCount = useCallback(async (period: VictoryTimePeriod): Promise<number> => {
     if (!user) return 0;
     try {
@@ -214,12 +267,16 @@ export function useVictories() {
 
   return {
     victories,
+    archivedVictories,
     loading,
     error,
     fetchVictories,
     createVictory,
     updateVictory,
     archiveVictory,
+    fetchArchivedVictories,
+    restoreVictory,
+    permanentlyDelete,
     getVictoryCount,
     getVictoriesByArea,
     getRecentVictories,

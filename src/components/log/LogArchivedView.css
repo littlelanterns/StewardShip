@@ -90,3 +90,43 @@
   font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
 }
+
+.log-archived__item-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--spacing-2xs);
+  flex-shrink: 0;
+}
+
+.log-archived__delete-btn {
+  background: none;
+  border: none;
+  color: var(--color-slate-gray);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+  padding: var(--spacing-2xs) var(--spacing-xs);
+  border-radius: var(--radius-sm);
+  transition: color var(--transition-fast);
+}
+
+.log-archived__delete-btn:hover {
+  color: #c0392b;
+}
+
+.log-archived__confirm {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--spacing-2xs);
+}
+
+.log-archived__confirm-text {
+  font-size: var(--font-size-xs);
+  color: #c0392b;
+  font-weight: 600;
+}
+
+.log-archived__delete-confirm {
+  color: #c0392b;
+}

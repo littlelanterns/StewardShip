@@ -12,24 +12,45 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { messages, system_prompt, max_tokens, user_id, guided_mode, file_attachment } = await req.json();
-
-    if (!messages || !system_prompt || !user_id) {
+    // Validate JWT
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields: messages, system_prompt, user_id' }),
+        JSON.stringify({ error: 'Missing authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: { user: authUser }, error: authError } = await authClient.auth.getUser();
+    if (authError || !authUser) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid or expired token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+    const userId = authUser.id;
+
+    const { messages, system_prompt, max_tokens, guided_mode, file_attachment } = await req.json();
+
+    if (!messages || !system_prompt) {
+      return new Response(
+        JSON.stringify({ error: 'Missing required fields: messages, system_prompt' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
     // Get user's AI settings
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { data: settings } = await supabase
       .from('user_settings')
       .select('ai_provider, ai_api_key_encrypted, ai_model, max_tokens')
-      .eq('user_id', user_id)
+      .eq('user_id', userId)
       .maybeSingle();
 
     // Determine API key: user's key if set, otherwise developer fallback

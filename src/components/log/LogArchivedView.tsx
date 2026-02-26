@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import type { LogEntry } from '../../lib/types';
 import { LOG_ENTRY_TYPE_LABELS } from '../../lib/types';
@@ -9,15 +9,27 @@ interface LogArchivedViewProps {
   entries: LogEntry[];
   loading: boolean;
   onRestore: (id: string) => void;
+  onDelete?: (id: string) => void;
   onLoad: () => void;
   onBack: () => void;
 }
 
-export default function LogArchivedView({ entries, loading, onRestore, onLoad, onBack }: LogArchivedViewProps) {
+export default function LogArchivedView({ entries, loading, onRestore, onDelete, onLoad, onBack }: LogArchivedViewProps) {
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+
   useEffect(() => {
     onLoad();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  function handleDelete(id: string) {
+    if (confirmingId === id) {
+      onDelete?.(id);
+      setConfirmingId(null);
+    } else {
+      setConfirmingId(id);
+    }
+  }
 
   return (
     <div className="log-archived">
@@ -52,9 +64,32 @@ export default function LogArchivedView({ entries, loading, onRestore, onLoad, o
                 Archived {new Date(entry.archived_at!).toLocaleDateString()}
               </span>
             </div>
-            <Button variant="text" onClick={() => onRestore(entry.id)}>
-              Restore
-            </Button>
+            <div className="log-archived__item-actions">
+              <Button variant="text" onClick={() => onRestore(entry.id)}>
+                Restore
+              </Button>
+              {onDelete && (
+                confirmingId === entry.id ? (
+                  <div className="log-archived__confirm">
+                    <span className="log-archived__confirm-text">Delete permanently?</span>
+                    <Button variant="text" className="log-archived__delete-confirm" onClick={() => handleDelete(entry.id)}>
+                      Confirm
+                    </Button>
+                    <Button variant="text" onClick={() => setConfirmingId(null)}>
+                      Cancel
+                    </Button>
+                  </div>
+                ) : (
+                  <button
+                    className="log-archived__delete-btn"
+                    onClick={() => handleDelete(entry.id)}
+                    title="Delete permanently"
+                  >
+                    Delete
+                  </button>
+                )
+              )}
+            </div>
           </div>
         ))}
       </div>

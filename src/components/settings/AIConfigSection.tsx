@@ -61,6 +61,7 @@ export function AIConfigSection({
 
   const provider = (settings?.ai_provider || 'openrouter') as AIProvider;
   const hasKey = !!settings?.ai_api_key_encrypted;
+  const usingDeveloperKey = !hasKey;
 
   const models = useMemo(() => MODELS_BY_PROVIDER[provider] || MODELS_BY_PROVIDER.openrouter, [provider]);
 
@@ -98,8 +99,9 @@ export function AIConfigSection({
       <div className="settings-field">
         <label className="settings-field__label">AI Provider</label>
         <select
-          className="settings-field__select"
+          className={`settings-field__select ${usingDeveloperKey ? 'settings-field__select--locked' : ''}`}
           value={provider}
+          disabled={usingDeveloperKey}
           onChange={e => onUpdateSetting('ai_provider', e.target.value)}
         >
           {Object.entries(PROVIDER_LABELS).map(([key, label]) => (
@@ -166,8 +168,9 @@ export function AIConfigSection({
       <div className="settings-field">
         <label className="settings-field__label">AI Model</label>
         <select
-          className="settings-field__select"
+          className={`settings-field__select ${usingDeveloperKey ? 'settings-field__select--locked' : ''}`}
           value={settings?.ai_model || models[0]?.value || ''}
+          disabled={usingDeveloperKey}
           onChange={e => onUpdateSetting('ai_model', e.target.value)}
         >
           {models.map(m => (
@@ -180,8 +183,9 @@ export function AIConfigSection({
       <div className="settings-field">
         <label className="settings-field__label">Response Length</label>
         <select
-          className="settings-field__select"
+          className={`settings-field__select ${usingDeveloperKey ? 'settings-field__select--locked' : ''}`}
           value={settings?.max_tokens || 1024}
+          disabled={usingDeveloperKey}
           onChange={e => onUpdateSetting('max_tokens', parseInt(e.target.value, 10))}
         >
           {RESPONSE_LENGTH_OPTIONS.map(opt => (
@@ -194,8 +198,9 @@ export function AIConfigSection({
       <div className="settings-field">
         <label className="settings-field__label">Context Depth</label>
         <select
-          className="settings-field__select"
+          className={`settings-field__select ${usingDeveloperKey ? 'settings-field__select--locked' : ''}`}
           value={settings?.context_window_size || 'medium'}
+          disabled={usingDeveloperKey}
           onChange={e => onUpdateSetting('context_window_size', e.target.value)}
         >
           {CONTEXT_DEPTH_OPTIONS.map(opt => (
@@ -206,6 +211,12 @@ export function AIConfigSection({
           More context = richer responses but higher cost
         </span>
       </div>
+
+      {usingDeveloperKey && (
+        <p className="settings-field__hint settings-field__hint--locked">
+          Add your own API key above to customize model, length, and depth settings.
+        </p>
+      )}
     </div>
   );
 }

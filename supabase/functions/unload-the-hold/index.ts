@@ -45,24 +45,45 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { conversation_text, user_id, context } = await req.json();
-
-    if (!conversation_text || !user_id) {
+    // Validate JWT
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
       return new Response(
-        JSON.stringify({ items: [], error: 'Missing required fields: conversation_text, user_id' }),
+        JSON.stringify({ items: [], error: 'Missing authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: { user: authUser }, error: authError } = await authClient.auth.getUser();
+    if (authError || !authUser) {
+      return new Response(
+        JSON.stringify({ items: [], error: 'Invalid or expired token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+    const userId = authUser.id;
+
+    const { conversation_text, context } = await req.json();
+
+    if (!conversation_text) {
+      return new Response(
+        JSON.stringify({ items: [], error: 'Missing required field: conversation_text' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
     // Get API key
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { data: settings } = await supabase
       .from('user_settings')
       .select('ai_api_key_encrypted, ai_model')
-      .eq('user_id', user_id)
+      .eq('user_id', userId)
       .maybeSingle();
 
     let apiKey = Deno.env.get('OPENROUTER_API_KEY') || '';

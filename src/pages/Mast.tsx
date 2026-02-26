@@ -127,6 +127,7 @@ export default function Mast() {
     updateEntry,
     archiveEntry,
     restoreEntry,
+    permanentlyDelete,
     reorderEntries,
   } = useMast();
 
@@ -293,6 +294,7 @@ export default function Mast() {
             archived_at: e.archived_at,
           }))}
           onRestore={restoreEntry}
+          onDelete={permanentlyDelete}
           onClose={() => setShowArchived(false)}
           loading={archivedLoading}
         />

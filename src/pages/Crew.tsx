@@ -3,6 +3,7 @@ import { usePageContext } from '../hooks/usePageContext';
 import { useCrew } from '../hooks/useCrew';
 import { useSphere } from '../hooks/useSphere';
 import type { Person } from '../lib/types';
+import { Plus } from 'lucide-react';
 import { LoadingSpinner, EmptyState, FloatingActionButton, FeatureGuide } from '../components/shared';
 import { FEATURE_GUIDES } from '../lib/featureGuides';
 import { CrewCategoryView } from '../components/crew/CrewCategoryView';
@@ -139,7 +140,7 @@ export default function Crew() {
       {isSphere ? (
         <div className="crew-page__fab-group">
           <FloatingActionButton onClick={() => setShowAdd(true)} aria-label="Add Person">
-            +
+            <Plus size={24} />
           </FloatingActionButton>
           <button
             type="button"
@@ -151,7 +152,7 @@ export default function Crew() {
         </div>
       ) : (
         <FloatingActionButton onClick={() => setShowAdd(true)} aria-label="Add Crewmate">
-          +
+          <Plus size={24} />
         </FloatingActionButton>
       )}
 

@@ -113,6 +113,18 @@ export function useKeel() {
     setEntries((prev) => prev.filter((e) => e.id !== id));
   }, [user]);
 
+  const permanentlyDelete = useCallback(async (id: string) => {
+    if (!user) return;
+    const { error: err } = await supabase
+      .from('keel_entries')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', user.id);
+
+    if (err) throw err;
+    setArchivedEntries((prev) => prev.filter((e) => e.id !== id));
+  }, [user]);
+
   const restoreEntry = useCallback(async (id: string) => {
     if (!user) return;
     const { error: err } = await supabase
@@ -179,6 +191,7 @@ export function useKeel() {
     updateEntry,
     archiveEntry,
     restoreEntry,
+    permanentlyDelete,
     reorderEntries,
     entriesByCategory,
   };

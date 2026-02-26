@@ -126,6 +126,7 @@ export default function Keel() {
     updateEntry,
     archiveEntry,
     restoreEntry,
+    permanentlyDelete,
     reorderEntries,
   } = useKeel();
 
@@ -292,6 +293,7 @@ export default function Keel() {
             archived_at: e.archived_at,
           }))}
           onRestore={restoreEntry}
+          onDelete={permanentlyDelete}
           onClose={() => setShowArchived(false)}
           loading={archivedLoading}
         />

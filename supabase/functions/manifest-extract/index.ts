@@ -68,16 +68,37 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { manifest_item_id, extraction_type, user_id } = await req.json();
-
-    if (!manifest_item_id || !extraction_type || !user_id) {
+    // Validate JWT
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields: manifest_item_id, extraction_type, user_id' }),
+        JSON.stringify({ error: 'Missing authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: { user: authUser }, error: authError } = await authClient.auth.getUser();
+    if (authError || !authUser) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid or expired token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+    const userId = authUser.id;
+
+    const { manifest_item_id, extraction_type } = await req.json();
+
+    if (!manifest_item_id || !extraction_type) {
+      return new Response(
+        JSON.stringify({ error: 'Missing required fields: manifest_item_id, extraction_type' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -86,7 +107,7 @@ serve(async (req: Request) => {
       .from('manifest_items')
       .select('text_content, title')
       .eq('id', manifest_item_id)
-      .eq('user_id', user_id)
+      .eq('user_id', userId)
       .single();
 
     if (fetchErr || !item?.text_content) {
@@ -100,7 +121,7 @@ serve(async (req: Request) => {
     const { data: settings } = await supabase
       .from('user_settings')
       .select('ai_api_key_encrypted')
-      .eq('user_id', user_id)
+      .eq('user_id', userId)
       .maybeSingle();
 
     let apiKey = Deno.env.get('OPENROUTER_API_KEY') || '';

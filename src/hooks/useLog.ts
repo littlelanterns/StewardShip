@@ -221,6 +221,24 @@ export function useLog() {
     }
   }, [user]);
 
+  const permanentlyDelete = useCallback(async (entryId: string) => {
+    if (!user) return;
+    setError(null);
+    try {
+      const { error: err } = await supabase
+        .from('log_entries')
+        .delete()
+        .eq('id', entryId)
+        .eq('user_id', user.id);
+
+      if (err) throw err;
+      setArchivedEntries((prev) => prev.filter((e) => e.id !== entryId));
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Failed to delete entry';
+      setError(msg);
+    }
+  }, [user]);
+
   const fetchArchivedEntries = useCallback(async () => {
     if (!user) return;
     setArchiveLoading(true);
@@ -303,6 +321,7 @@ export function useLog() {
     updateEntry,
     archiveEntry,
     restoreEntry,
+    permanentlyDelete,
     fetchArchivedEntries,
     updateRouting,
     setSelectedEntry,
