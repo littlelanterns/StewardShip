@@ -13,7 +13,8 @@ import { RhythmsSection } from '../components/settings/RhythmsSection';
 import { MeetingSchedulesSection } from '../components/settings/MeetingSchedulesSection';
 import { CompassSection } from '../components/settings/CompassSection';
 import { DataPrivacySection } from '../components/settings/DataPrivacySection';
-import { AboutSection } from '../components/settings/AboutSection';
+// About section hidden for now — re-enable when ready
+// import { AboutSection } from '../components/settings/AboutSection';
 import { LoadingSpinner, FeatureGuide } from '../components/shared';
 import { FEATURE_GUIDES } from '../lib/featureGuides';
 import '../components/settings/Settings.css';
