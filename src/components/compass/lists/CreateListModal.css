@@ -92,3 +92,28 @@
   background: var(--color-mid-teal);
   border-color: var(--color-mid-teal);
 }
+
+.create-list__days-row {
+  display: flex;
+  gap: var(--spacing-2xs);
+  margin-top: var(--spacing-xs);
+}
+
+.create-list__day-btn {
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  color: var(--color-slate-gray);
+  background: var(--color-cream);
+  border: 1px solid var(--color-warm-sand);
+  border-radius: var(--radius-sm);
+  width: 44px;
+  height: 44px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.create-list__day-btn--active {
+  color: var(--color-white);
+  background: var(--color-mid-teal);
+  border-color: var(--color-mid-teal);
+}

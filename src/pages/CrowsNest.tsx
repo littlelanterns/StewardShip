@@ -96,7 +96,8 @@ export default function CrowsNest() {
   const hasMast = data && data.mastThought;
   const hasWheels = data && data.activeWheels.length > 0;
   const hasReminders = data && data.upcomingReminders.length > 0;
-  const hasAnyData = hasTaskData || hasStreaks || hasVictories || hasGoals || hasJournal || hasMast || hasWheels || hasReminders;
+  const hasReflections = data && data.reflectionsThisWeek > 0;
+  const hasAnyData = hasTaskData || hasStreaks || hasVictories || hasGoals || hasJournal || hasMast || hasWheels || hasReminders || hasReflections;
 
   return (
     <div className="page crowsnest" onTouchEnd={handleRefresh}>
@@ -184,6 +185,22 @@ export default function CrowsNest() {
               wheels={data.activeWheels}
               onWheelClick={() => navigate('/wheel')}
             />
+          )}
+
+          {hasReflections && data && (
+            <Card className="crowsnest__card">
+              <h3 className="crowsnest__card-title">Reflections</h3>
+              <p className="crowsnest__card-text">
+                You reflected on {data.reflectionsThisWeek} question{data.reflectionsThisWeek !== 1 ? 's' : ''} this week.
+              </p>
+              <button
+                type="button"
+                className="crowsnest__card-link"
+                onClick={() => navigate('/reflections')}
+              >
+                View Reflections
+              </button>
+            </Card>
           )}
 
           {hasJournal && (

@@ -42,6 +42,12 @@
   font-weight: 600;
 }
 
+.lists-main__card-badges {
+  display: flex;
+  gap: var(--spacing-2xs);
+  flex-shrink: 0;
+}
+
 .lists-main__card-badge {
   font-family: var(--font-body);
   font-size: var(--font-size-xs);
@@ -51,6 +57,12 @@
   border-radius: var(--radius-full);
   padding: 2px var(--spacing-xs);
   white-space: nowrap;
+}
+
+.lists-main__card-badge--schedule {
+  color: var(--color-cognac);
+  background: color-mix(in srgb, var(--color-cognac) 10%, var(--color-cream));
+  border-color: color-mix(in srgb, var(--color-cognac) 25%, var(--color-warm-sand));
 }
 
 .lists-main__card-meta {

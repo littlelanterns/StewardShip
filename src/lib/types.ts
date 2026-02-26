@@ -253,7 +253,9 @@ export type HelmPageContext =
   | { page: 'meetings'; meetingType?: string; personId?: string }
   | { page: 'lists' }
   | { page: 'reveille' }
-  | { page: 'reckoning' };
+  | { page: 'reckoning' }
+  | { page: 'reflections' }
+  | { page: 'reports' };
 
 export type GuidedMode =
   | 'wheel'
@@ -423,8 +425,9 @@ export interface LogFilters {
 
 // === PRD-06 Part 3: Lists ===
 
-export type ListType = 'shopping' | 'wishlist' | 'expenses' | 'todo' | 'custom';
+export type ListType = 'shopping' | 'wishlist' | 'expenses' | 'todo' | 'custom' | 'routine';
 export type ListAiAction = 'store_only' | 'remind' | 'schedule' | 'prioritize';
+export type ResetSchedule = 'daily' | 'weekdays' | 'weekly' | 'on_completion' | 'custom';
 
 export interface List {
   id: string;
@@ -433,6 +436,9 @@ export interface List {
   list_type: ListType;
   ai_action: ListAiAction;
   share_token: string | null;
+  reset_schedule: ResetSchedule | null;
+  reset_custom_days: number[] | null;
+  last_reset_at: string | null;
   archived_at: string | null;
   created_at: string;
   updated_at: string;
@@ -444,6 +450,7 @@ export interface ListItem {
   user_id: string;
   text: string;
   checked: boolean;
+  notes: string | null;
   sort_order: number;
   created_at: string;
   updated_at: string;
@@ -455,6 +462,15 @@ export const LIST_TYPE_LABELS: Record<ListType, string> = {
   expenses: 'Expenses',
   todo: 'To-Do',
   custom: 'Custom',
+  routine: 'Routine',
+};
+
+export const RESET_SCHEDULE_LABELS: Record<ResetSchedule, string> = {
+  daily: 'Daily',
+  weekdays: 'Weekdays',
+  weekly: 'Weekly',
+  on_completion: 'On Completion',
+  custom: 'Custom Days',
 };
 
 export const LIST_AI_ACTION_LABELS: Record<ListAiAction, string> = {
@@ -1431,3 +1447,142 @@ export const RHYTHM_TYPE_LABELS: Record<RhythmType, string> = {
   monthly_review: 'Monthly Review',
   quarterly_inventory: 'Quarterly Inventory',
 };
+
+// === Phase 9.5: Routines, Reflections & Reports ===
+
+export interface RoutineItemSnapshot {
+  id: string;
+  text: string;
+  checked: boolean;
+  notes: string | null;
+}
+
+export interface RoutineCompletionHistory {
+  id: string;
+  user_id: string;
+  list_id: string;
+  completed_at: string;
+  items_snapshot: RoutineItemSnapshot[];
+  total_items: number;
+  completed_items: number;
+  created_at: string;
+}
+
+export interface ReflectionQuestion {
+  id: string;
+  user_id: string;
+  question_text: string;
+  is_default: boolean;
+  is_ai_suggested: boolean;
+  sort_order: number;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ReflectionResponse {
+  id: string;
+  user_id: string;
+  question_id: string;
+  response_text: string;
+  response_date: string;
+  routed_to_log: boolean;
+  log_entry_id: string | null;
+  routed_to_victory: boolean;
+  victory_id: string | null;
+  created_at: string;
+  updated_at: string;
+  // Joined field
+  question_text?: string;
+}
+
+export type ReportPeriod = 'today' | 'this_week' | 'this_month' | 'last_month' | 'custom';
+
+export type ReportSection =
+  | 'tasks'
+  | 'routines'
+  | 'journal'
+  | 'victories'
+  | 'reflections'
+  | 'goals'
+  | 'streaks';
+
+export const REPORT_PERIOD_LABELS: Record<ReportPeriod, string> = {
+  today: 'Today',
+  this_week: 'This Week',
+  this_month: 'This Month',
+  last_month: 'Last Month',
+  custom: 'Custom Range',
+};
+
+export const REPORT_SECTION_LABELS: Record<ReportSection, string> = {
+  tasks: 'Tasks',
+  routines: 'Routines',
+  journal: 'Journal Entries',
+  victories: 'Victories',
+  reflections: 'Reflections',
+  goals: 'Goals',
+  streaks: 'Streaks',
+};
+
+export interface ReportConfig {
+  period: ReportPeriod;
+  sections: ReportSection[];
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+export interface ReportTaskData {
+  completed: number;
+  pending: number;
+  carried_forward: number;
+  cancelled: number;
+  byLifeArea: Record<string, number>;
+}
+
+export interface ReportRoutineData {
+  routineName: string;
+  completionCount: number;
+  averageCompletion: number;
+}
+
+export interface ReportJournalData {
+  total: number;
+  byType: Record<string, number>;
+}
+
+export interface ReportVictoryData {
+  total: number;
+  descriptions: string[];
+}
+
+export interface ReportReflectionData {
+  total: number;
+  questions: { question: string; response: string; date: string }[];
+}
+
+export interface ReportGoalData {
+  title: string;
+  progress: number;
+  target: number | null;
+  status: string;
+}
+
+export interface ReportStreakData {
+  taskTitle: string;
+  currentStreak: number;
+  longestStreak: number;
+}
+
+export interface ReportData {
+  period: ReportPeriod;
+  dateFrom: string;
+  dateTo: string;
+  tasks?: ReportTaskData;
+  routines?: ReportRoutineData[];
+  journal?: ReportJournalData;
+  victories?: ReportVictoryData;
+  reflections?: ReportReflectionData;
+  goals?: ReportGoalData[];
+  streaks?: ReportStreakData[];
+}

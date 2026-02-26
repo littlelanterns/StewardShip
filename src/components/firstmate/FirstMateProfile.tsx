@@ -22,12 +22,12 @@ export function FirstMateProfile({ spouse, onCreateSpouse, onUpdateSpouse, partn
   if (!spouse && !creating) {
     return (
       <Card className="firstmate-profile firstmate-profile--empty">
-        <h2 className="firstmate-profile__heading">Set Up Your First Mate</h2>
+        <h2 className="firstmate-profile__heading">Welcome to First Mate</h2>
         <p className="firstmate-profile__desc">
-          Add your {partnerLabel.toLowerCase()} to start building a richer understanding of who they are.
+          This is where you'll build a living profile of your {partnerLabel.toLowerCase()} — their personality, love language, dreams, and the things you're grateful for about them.
         </p>
         <Button variant="primary" onClick={() => setCreating(true)}>
-          Add {partnerLabel}
+          Set Up Your {partnerLabel}'s Profile
         </Button>
       </Card>
     );

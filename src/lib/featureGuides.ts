@@ -118,4 +118,16 @@ export const FEATURE_GUIDES: Record<string, FeatureGuideContent> = {
     description: "Configure your AI, daily rhythms, notifications, meeting schedules, and more. Every setting has a sensible default \u2014 you never need to visit here unless you want to customize something.",
     tips: ["Changes take effect immediately", "Deep links bring you here from other features when relevant"],
   },
+  reflections: {
+    featureKey: 'reflections',
+    title: "Reflections \u2014 Daily Questions to Guide Your Thinking",
+    description: "Answer a rotating set of questions each day to build self-awareness and track your growth over time. Route any response to your Log or flag it as a Victory. Add your own questions or use the defaults.",
+    tips: ["Manage your question list on the Manage tab", "Past reflections are grouped by date for easy review"],
+  },
+  reports: {
+    featureKey: 'reports',
+    title: "Reports \u2014 See the Full Picture",
+    description: "Generate progress reports across any time period. Choose which sections to include \u2014 tasks, journal entries, victories, goals, streaks, and more \u2014 then preview and export as PDF or Markdown.",
+    tips: ["Use custom date ranges for quarterly or annual reviews", "Download as PDF to share or archive your progress"],
+  },
 };

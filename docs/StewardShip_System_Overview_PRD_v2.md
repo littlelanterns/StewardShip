@@ -1162,6 +1162,11 @@ Every AI interaction includes these context layers (loaded dynamically based on 
 35. Cost tracking dashboard
 36. Google Calendar integration (post-launch)
 
+### Phase 9.5: Routines, Reflections & Reports ✅
+37. **Routine Lists** (new `routine` list type with reset schedules, completion history tracking, item notes, convert-to-tasks including recurring, standalone /lists page) — **Phase 9.5 BUILT** ✅
+38. **Daily Reflections** (12 default questions, daily response tracking, routing to Log/Victory, Reckoning/CrowsNest/LifeInventory integrations, AI context loading) — **Phase 9.5 BUILT** ✅
+39. **Report Generator** (client-side report generation, period selection, section toggles, inline preview, PDF/Markdown export via jsPDF) — **Phase 9.5 BUILT** ✅
+
 ---
 
 ## File Structure
@@ -1283,6 +1288,7 @@ stewardship/
 | PRD-18: Reminders + Rhythms | Phase 10B Built ✅ |
 | PRD-19: Settings | Phase 10C Built ✅ |
 | PRD-20: Unload the Hold (Brain Dump) | 4D Built ✅ |
+| Phase 9.5: Routines, Reflections & Reports | Phase 9.5 Built ✅ |
 
 ---
 

@@ -4,6 +4,7 @@ import { X, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { useRhythms } from '../../hooks/useRhythms';
 import { useReminders } from '../../hooks/useReminders';
 import { useAuthContext } from '../../contexts/AuthContext';
+import { supabase } from '../../lib/supabase';
 import { TrackerPrompts } from '../reveille/TrackerPrompts';
 import { ReminderBatchSection } from '../reminders/ReminderBatchSection';
 import { MAST_TYPE_LABELS, LIFE_AREA_LABELS, MEETING_TYPE_LABELS } from '../../lib/types';
@@ -103,6 +104,34 @@ export function ReckoningScreen() {
 
     return () => { mounted = false; };
   }, [reckoningData, fetchReckoningReminders]);
+
+  // Reflections nudge
+  const [reflectionsTodayCount, setReflectionsTodayCount] = useState(0);
+  const [reflectionsRandomQ, setReflectionsRandomQ] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!profile) return;
+    const today = new Date().toISOString().split('T')[0];
+    Promise.all([
+      supabase
+        .from('reflection_responses')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', profile.user_id || '')
+        .eq('response_date', today),
+      supabase
+        .from('reflection_questions')
+        .select('question_text')
+        .eq('user_id', profile.user_id || '')
+        .is('archived_at', null)
+        .limit(20),
+    ]).then(([countRes, questionsRes]) => {
+      setReflectionsTodayCount(countRes.count || 0);
+      const qs = questionsRes.data || [];
+      if (qs.length > 0) {
+        setReflectionsRandomQ(qs[Math.floor(Math.random() * qs.length)].question_text);
+      }
+    });
+  }, [profile]);
 
   const timezone = profile?.timezone || 'America/Chicago';
   const greeting = getGreeting(timezone);
@@ -663,6 +692,32 @@ export function ReckoningScreen() {
             </div>
           </div>
         )}
+
+        {/* Section 7b: Daily Reflections Nudge */}
+        <div className="rhythm-section">
+          {reflectionsTodayCount > 0 ? (
+            <>
+              <h3 className="rhythm-section__title">Daily Reflections</h3>
+              <p className="rhythm-section__text">
+                You reflected on {reflectionsTodayCount} question{reflectionsTodayCount !== 1 ? 's' : ''} today.
+              </p>
+            </>
+          ) : reflectionsRandomQ ? (
+            <>
+              <h3 className="rhythm-section__title">Daily Reflections</h3>
+              <p className="rhythm-section__text rhythm-section__text--italic">
+                "{reflectionsRandomQ}"
+              </p>
+              <button
+                type="button"
+                className="rhythm-section__link"
+                onClick={() => navigate('/reflections')}
+              >
+                Reflect
+              </button>
+            </>
+          ) : null}
+        </div>
 
         {/* Section 8: Custom Tracker Prompts (Evening) */}
         {hasTrackers && (

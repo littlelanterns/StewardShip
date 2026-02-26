@@ -1457,6 +1457,57 @@ All tables across PRDs 01-20 have been defined (39 total). Settings (PRD-19) int
 | 012_delete_user_account.sql | `delete_user_account()` RPC function — SECURITY DEFINER, deletes from `auth.users` where `id = auth.uid()`, cascades to all related tables via FK constraints. Granted to `authenticated` role only. |
 | 013_repair_prompt_period.sql | Fix prompt_period column on custom_trackers |
 | 014_feature_guides.sql | Add `show_feature_guides` (BOOLEAN) and `dismissed_guides` (TEXT[]) columns to `user_settings` for Feature Guide System |
+| 015_helm_attachments.sql | `helm-attachments` storage bucket + `file_storage_path` column on `helm_messages` |
+| 016_routines_reflections.sql | Routine list support (`reset_schedule`, `reset_custom_days`, `last_reset_at` on `lists`; `notes` on `list_items`), `routine_completion_history` table, `reflection_questions` table, `reflection_responses` table |
+
+---
+
+### routine_completion_history
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | UUID | PK |
+| user_id | UUID | FK → auth.users |
+| list_id | UUID | FK → lists |
+| completed_at | TIMESTAMPTZ | Default now() |
+| items_snapshot | JSONB | Array of {id, text, checked, notes} |
+| total_items | INTEGER | Default 0 |
+| completed_items | INTEGER | Default 0 |
+| created_at | TIMESTAMPTZ | |
+
+Indexes: user_id, list_id, completed_at DESC. RLS: users own data only.
+
+### reflection_questions
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | UUID | PK |
+| user_id | UUID | FK → auth.users |
+| question_text | TEXT | Not null |
+| is_default | BOOLEAN | Default false |
+| is_ai_suggested | BOOLEAN | Default false |
+| sort_order | INTEGER | Default 0 |
+| archived_at | TIMESTAMPTZ | Nullable |
+| created_at | TIMESTAMPTZ | |
+| updated_at | TIMESTAMPTZ | Auto-trigger |
+
+### reflection_responses
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | UUID | PK |
+| user_id | UUID | FK → auth.users |
+| question_id | UUID | FK → reflection_questions |
+| response_text | TEXT | Not null |
+| response_date | DATE | Default CURRENT_DATE |
+| routed_to_log | BOOLEAN | Default false |
+| log_entry_id | UUID | FK → log_entries, nullable |
+| routed_to_victory | BOOLEAN | Default false |
+| victory_id | UUID | FK → victories, nullable |
+| created_at | TIMESTAMPTZ | |
+| updated_at | TIMESTAMPTZ | Auto-trigger |
+
+Indexes: user_id, question_id, response_date DESC, (user_id, response_date). RLS: users own data only.
 
 ---
 

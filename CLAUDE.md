@@ -143,7 +143,9 @@ Every feature has a nautical name. Use these consistently in code, UI, and comme
 | The Wheel | Change process tool | `wheel/` |
 | Life Inventory | Life assessment tool | `lifeinventory/` |
 | Task Breaker | AI task decomposition (within Compass) | `compass/` |
-| Lists | Shareable flexible lists | `lists/` |
+| Lists | Shareable flexible lists + routines | `lists/` (components in `compass/lists/`) |
+| Reflections | Daily reflection questions + responses | `reflections/` |
+| Reports | Progress report generator | (page only, no subfolder) |
 | Unload the Hold | Brain dump → Helm conversation → AI triage → batch routing | Global action (FAB, More menu) → Helm guided mode |
 | Reveille | Morning briefing | `reveille/` |
 | Reckoning | Evening review | `reckoning/` |
@@ -615,13 +617,31 @@ The AI applies this framework naturally when it helps the user understand why ch
 - **Parent-child display:** Parent tasks with subtasks show expandable arrow. Checking all subtasks does NOT auto-complete parent.
 - **Inheritance:** Subtasks inherit parent's `due_date`, `life_area_tag`, and goal/Wheel links unless user overrides.
 
-#### Lists Conventions (Phase 4C)
-- **Lists are NOT tasks.** They're lightweight collections (shopping, wishlists, expenses, to-do, custom). Not tracked in Charts or goals.
-- **Compass page navigation:** Tab toggle at top: "Tasks | Lists". Lists also accessible from More menu.
-- **List types:** shopping, wishlist, expenses, todo, custom. Displayed as badge on list card.
-- **AI action on list creation:** "What should I do with this?" — store_only (default), remind, schedule, prioritize. Remind/schedule/prioritize open Helm with list context.
+#### Lists Conventions (Phase 4C + Phase 9.5)
+- **Lists are NOT tasks.** They're lightweight collections (shopping, wishlists, expenses, to-do, custom, routines). Not tracked in Charts or goals.
+- **Standalone page:** Lists live at `/lists` as a full standalone page. Compass page links to `/lists` instead of rendering lists inline.
+- **List types:** shopping, wishlist, expenses, todo, custom, routine. Displayed as badge on list card.
+- **Routine lists (Phase 9.5):** A new list type with `reset_schedule` (daily, weekdays, weekly, on_completion, custom), `reset_custom_days`, and `last_reset_at`. Auto-reset triggers on list view when schedule is due. Reset creates a `routine_completion_history` snapshot, then unchecks all items. Item notes supported via `notes` field on `list_items`.
+- **Convert to tasks:** Any list's unchecked items can be converted to Compass tasks (`source = 'list_converted'`). For routines, items can also be converted to recurring tasks mapping `reset_schedule` to `recurrence_rule`.
+- **AI action on list creation:** "What should I do with this?" — store_only (default), remind, schedule, prioritize. Remind/schedule/prioritize open Helm with list context. Hidden for routine type.
 - **Share token:** Generated on demand, stored on `lists.share_token`. For future multi-user support. MVP: generate token, show "link copied" — actual shared access is post-MVP.
-- **List items:** Simple checkable rows with drag reorder. Quick-add input at bottom.
+- **List items:** Simple checkable rows with drag reorder. Quick-add input at bottom. Optional notes per item.
+
+### Reflections Conventions (Phase 9.5)
+- **Daily reflection practice** with rotating questions. NOT in sidebar nav — accessed from Life Inventory, Reckoning, Crow's Nest, and direct URL only.
+- **Default questions:** 12 questions seeded on first visit (not on account creation). Questions are user-editable, reorderable, archivable.
+- **Three tabs:** Today (answer questions), Past (date-grouped history), Manage (reorder/archive/add custom questions).
+- **Routing:** Each response can be routed to Log (`entry_type = 'reflection'`) or flagged as Victory. Original response stays in reflections.
+- **Integrations:** Reckoning shows nudge/summary section, Crow's Nest shows this-week card, Life Inventory has "Reflections Toolbox" card.
+- **AI context:** Loaded conditionally via `shouldLoadReflections()` keyword detection. Recent responses with question text formatted into context string.
+- **Two tables:** `reflection_questions` (question text, default flag, AI-suggested flag, sort order, archive) and `reflection_responses` (response text, date, routing references).
+
+### Reports Conventions (Phase 9.5)
+- **Client-side report generation** — no Edge Function. Queries Supabase directly, assembles data, exports via jsPDF (PDF) or string generation (Markdown).
+- **Report sections:** Tasks (by status + life area), Routines (completion history), Journal (by entry type), Victories, Reflections (with question text), Goals (with progress), Streaks (from recurring tasks).
+- **Period selection:** This week, last week, this month, last month, this quarter, this year, custom range.
+- **Empty sections:** Show "No data for this period" message, not hidden.
+- **Accessible from:** Sidebar (Resources section) and MoreMenu.
 
 ### Unload the Hold Conventions
 - **Helm guided mode, not a standalone page.** Always flows through a Helm conversation. Accessible globally from FAB expansion and More menu.

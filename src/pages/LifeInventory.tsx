@@ -1,15 +1,17 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { usePageContext } from '../hooks/usePageContext';
 import { useLifeInventory } from '../hooks/useLifeInventory';
 import { useHelmContext } from '../contexts/HelmContext';
 import type { LifeInventoryArea } from '../lib/types';
-import { FloatingActionButton, LoadingSpinner, Button, Input, FeatureGuide } from '../components/shared';
+import { FloatingActionButton, LoadingSpinner, Button, Input, Card, FeatureGuide } from '../components/shared';
 import { FEATURE_GUIDES } from '../lib/featureGuides';
 import { AreaCard } from '../components/lifeinventory/AreaCard';
 import './LifeInventory.css';
 
 export default function LifeInventory() {
   usePageContext({ page: 'lifeinventory' });
+  const navigate = useNavigate();
   const { startGuidedConversation } = useHelmContext();
 
   const {
@@ -54,6 +56,16 @@ export default function LifeInventory() {
       </div>
 
       <FeatureGuide {...FEATURE_GUIDES.lifeinventory} />
+
+      <Card className="life-inventory-page__reflections-card">
+        <h3 className="life-inventory-page__reflections-title">Reflections Toolbox</h3>
+        <p className="life-inventory-page__reflections-desc">
+          Daily reflection questions help deepen self-awareness across every area of life.
+        </p>
+        <Button size="sm" variant="secondary" onClick={() => navigate('/reflections')}>
+          Open Reflections
+        </Button>
+      </Card>
 
       {loading && areas.length === 0 ? (
         <div className="life-inventory-page__loading">

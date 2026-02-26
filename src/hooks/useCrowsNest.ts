@@ -15,6 +15,7 @@ interface DashboardData {
   mastThought: MastEntry | null;
   activeWheels: WheelInstance[];
   upcomingReminders: Reminder[];
+  reflectionsThisWeek: number;
 }
 
 const STREAK_MILESTONES = [7, 30, 90, 365];
@@ -52,6 +53,7 @@ export function useCrowsNest() {
         mastResult,
         wheelsResult,
         remindersResult,
+        reflectionsResult,
       ] = await Promise.all([
         // Today's tasks
         supabase
@@ -133,6 +135,12 @@ export function useCrowsNest() {
           .is('archived_at', null)
           .order('created_at', { ascending: true })
           .limit(5),
+        // Reflections this week
+        supabase
+          .from('reflection_responses')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .gte('created_at', weekStart.toISOString()),
       ]);
 
       // Process tasks
@@ -221,6 +229,7 @@ export function useCrowsNest() {
         mastThought,
         activeWheels: (wheelsResult.data as WheelInstance[]) || [],
         upcomingReminders: (remindersResult.data as Reminder[]) || [],
+        reflectionsThisWeek: reflectionsResult.count || 0,
       });
     } catch {
       // Silently fail — dashboard is read-only, stale data is acceptable

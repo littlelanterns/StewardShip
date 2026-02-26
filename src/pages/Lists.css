@@ -1,0 +1,14 @@
+.lists-page {
+  padding-bottom: var(--spacing-3xl);
+}
+
+.lists-page__header {
+  margin-bottom: var(--spacing-sm);
+}
+
+.lists-page__title {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-xl);
+  color: var(--color-text-heading);
+  margin: 0;
+}

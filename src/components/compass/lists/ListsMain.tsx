@@ -3,7 +3,7 @@ import { EmptyState, LoadingSpinner } from '../../shared';
 import { Button } from '../../shared/Button';
 import { Card } from '../../shared/Card';
 import type { List } from '../../../lib/types';
-import { LIST_TYPE_LABELS } from '../../../lib/types';
+import { LIST_TYPE_LABELS, RESET_SCHEDULE_LABELS } from '../../../lib/types';
 import './ListsMain.css';
 
 interface ListsMainProps {
@@ -67,9 +67,16 @@ export default function ListsMain({
           <Card className="lists-main__card">
             <div className="lists-main__card-header">
               <span className="lists-main__card-title">{list.title}</span>
-              <span className="lists-main__card-badge">
-                {LIST_TYPE_LABELS[list.list_type]}
-              </span>
+              <div className="lists-main__card-badges">
+                <span className="lists-main__card-badge">
+                  {LIST_TYPE_LABELS[list.list_type]}
+                </span>
+                {list.list_type === 'routine' && list.reset_schedule && (
+                  <span className="lists-main__card-badge lists-main__card-badge--schedule">
+                    {RESET_SCHEDULE_LABELS[list.reset_schedule]}
+                  </span>
+                )}
+              </div>
             </div>
             <div className="lists-main__card-meta">
               <span className="lists-main__card-date">

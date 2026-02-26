@@ -20,6 +20,7 @@ import {
   shouldLoadFrameworks,
   shouldLoadManifest,
   shouldLoadMeeting,
+  shouldLoadReflections,
   shouldLoadAppGuide,
   formatFirstMateContext,
   formatCrewContext,
@@ -27,6 +28,7 @@ import {
   formatFrameworksContext,
   formatManifestContext,
   formatMeetingContext,
+  formatReflectionsContext,
   type SystemPromptContext,
   type GuidedModeContext,
 } from './systemPrompt';
@@ -91,6 +93,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
   const needFrameworks = shouldLoadFrameworks(message, pageContext, guidedMode);
   const needManifest = shouldLoadManifest(message, pageContext, guidedMode);
   const needMeeting = shouldLoadMeeting(message, pageContext, guidedMode);
+  const needReflections = shouldLoadReflections(message, pageContext);
   const needAppGuide = shouldLoadAppGuide(message, pageContext);
 
   // Name recognition: lightweight fetch of all crew names to detect mentions
@@ -133,6 +136,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
   let manifestContext: string | undefined;
   let cyranoContext: string | undefined;
   let meetingContext: string | undefined;
+  let reflectionsContext: string | undefined;
   let appGuideContext: string | undefined;
 
   // Fetch conditional data in parallel
@@ -273,6 +277,15 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
         .limit(3)
     : null;
 
+  const reflectionsPromise = needReflections
+    ? supabase
+        .from('reflection_responses')
+        .select('response_text, response_date, question_id, reflection_questions(question_text)')
+        .eq('user_id', userId)
+        .order('response_date', { ascending: false })
+        .limit(10)
+    : null;
+
   // Manifest RAG search — depth varies by mode
   const isManifestDiscuss = guidedMode === 'manifest_discuss';
   let manifestPromise: Promise<ManifestSearchResult[]> | null = null;
@@ -307,7 +320,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     }
   }
 
-  const [keelResult, logResult, compassResult, victoriesResult, wheelResult, lifeInvResult, riggingResult, firstMateResult, spouseInsightsResult, crewResult, sphereEntitiesResult, frameworksResult, manifestResults, meetingResult] = await Promise.all([
+  const [keelResult, logResult, compassResult, victoriesResult, wheelResult, lifeInvResult, riggingResult, firstMateResult, spouseInsightsResult, crewResult, sphereEntitiesResult, frameworksResult, manifestResults, meetingResult, reflectionsResult] = await Promise.all([
     keelPromise,
     logPromise,
     compassPromise,
@@ -322,6 +335,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     frameworksPromise,
     manifestPromise,
     meetingPromise,
+    reflectionsPromise,
   ]);
 
   if (keelResult?.data) {
@@ -441,6 +455,20 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     manifestContext = formatManifestContext(manifestResults);
   }
 
+  // Reflections context
+  if (reflectionsResult?.data && reflectionsResult.data.length > 0) {
+    const formatted = (reflectionsResult.data as Array<{
+      response_text: string;
+      response_date: string;
+      reflection_questions: { question_text: string } | null;
+    }>).map((r) => ({
+      question_text: r.reflection_questions?.question_text || 'Unknown question',
+      response_text: r.response_text,
+      response_date: r.response_date,
+    }));
+    reflectionsContext = formatReflectionsContext(formatted);
+  }
+
   // App guide context — static, no async needed
   if (needAppGuide) {
     appGuideContext = getAppGuideContext();
@@ -490,6 +518,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     manifestContext,
     cyranoContext,
     meetingContext,
+    reflectionsContext,
     appGuideContext,
     pageContext,
     guidedMode: guidedMode || null,

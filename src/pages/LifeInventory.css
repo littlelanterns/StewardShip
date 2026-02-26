@@ -15,6 +15,24 @@
   font-style: italic;
 }
 
+.life-inventory-page__reflections-card {
+  margin-bottom: var(--spacing-md);
+}
+
+.life-inventory-page__reflections-title {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-base);
+  color: var(--color-text-heading);
+  margin: 0 0 var(--spacing-2xs);
+}
+
+.life-inventory-page__reflections-desc {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-slate-gray);
+  margin: 0 0 var(--spacing-sm);
+}
+
 .life-inventory-page__loading {
   display: flex;
   justify-content: center;

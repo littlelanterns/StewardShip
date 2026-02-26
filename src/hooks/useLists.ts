@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuthContext } from '../contexts/AuthContext';
-import type { List, ListItem, ListType, ListAiAction } from '../lib/types';
+import type { List, ListItem, ListType, ListAiAction, ResetSchedule } from '../lib/types';
 
 export function useLists() {
   const { user } = useAuthContext();
@@ -37,6 +37,8 @@ export function useLists() {
     title: string;
     list_type: ListType;
     ai_action: ListAiAction;
+    reset_schedule?: string | null;
+    reset_custom_days?: number[] | null;
   }): Promise<List | null> => {
     if (!user) return null;
     setError(null);
@@ -46,6 +48,8 @@ export function useLists() {
         title: data.title,
         list_type: data.list_type,
         ai_action: data.ai_action,
+        reset_schedule: data.reset_schedule || null,
+        reset_custom_days: data.reset_custom_days || null,
       };
 
       const { data: created, error: err } = await supabase

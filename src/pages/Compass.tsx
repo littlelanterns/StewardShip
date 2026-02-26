@@ -38,15 +38,12 @@ import FrogView from '../components/compass/views/FrogView';
 import OneThreeNineView from '../components/compass/views/OneThreeNineView';
 import BigRocksView from '../components/compass/views/BigRocksView';
 import IvyLeeView from '../components/compass/views/IvyLeeView';
-import ListsMain from '../components/compass/lists/ListsMain';
-import ListDetail from '../components/compass/lists/ListDetail';
-import CreateListModal from '../components/compass/lists/CreateListModal';
 import { useCompass } from '../hooks/useCompass';
-import { useLists } from '../hooks/useLists';
 import { usePageContext } from '../hooks/usePageContext';
 import { suggestTaskPlacements } from '../lib/aiPlacement';
+import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../contexts/AuthContext';
-import type { CompassTask, CompassView, CompassLifeArea, List } from '../lib/types';
+import type { CompassTask, CompassView, CompassLifeArea } from '../lib/types';
 import { COMPASS_VIEW_LABELS, COMPASS_VIEW_DESCRIPTIONS, COMPASS_LIFE_AREA_LABELS } from '../lib/types';
 import './Compass.css';
 
@@ -112,13 +109,11 @@ const LIFE_AREA_ORDER: (CompassLifeArea | 'uncategorized')[] = [
 // Views that need all tasks (not just today's)
 const ALL_TASKS_VIEWS: CompassView[] = ['by_category', 'eisenhower', 'eat_the_frog', 'one_three_nine', 'big_rocks', 'ivy_lee'];
 
-type CompassTab = 'tasks' | 'lists';
-
 export default function Compass() {
   const { user } = useAuthContext();
-  const [compassTab, setCompassTab] = useState<CompassTab>('tasks');
+  const navigate = useNavigate();
   const [currentView, setCurrentView] = useState<CompassView>('simple_list');
-  usePageContext({ page: compassTab === 'lists' ? 'lists' : 'compass', activeView: currentView });
+  usePageContext({ page: 'compass', activeView: currentView });
 
   const {
     tasks,
@@ -138,26 +133,6 @@ export default function Compass() {
     createSubtasks,
     fetchSubtasks,
   } = useCompass();
-
-  const {
-    lists,
-    items: listItems,
-    loading: listsLoading,
-    error: listsError,
-    fetchLists,
-    createList,
-    updateList,
-    archiveList,
-    fetchListItems,
-    addListItem,
-    toggleListItem,
-    deleteListItem,
-    reorderListItems,
-    generateShareToken,
-  } = useLists();
-
-  const [selectedList, setSelectedList] = useState<List | null>(null);
-  const [listsPageView, setListsPageView] = useState<'main' | 'detail' | 'create'>('main');
 
   const [pageView, setPageView] = useState<PageView>('list');
   const [selectedTask, setSelectedTask] = useState<CompassTask | null>(null);
@@ -366,48 +341,6 @@ export default function Compass() {
     );
   }
 
-  // Lists sub-views
-  if (compassTab === 'lists' && listsPageView === 'create') {
-    return (
-      <div className="page compass-page">
-        <CreateListModal
-          onSave={async (data) => {
-            const list = await createList(data);
-            if (list) {
-              setSelectedList(list);
-              setListsPageView('detail');
-            }
-          }}
-          onBack={() => setListsPageView('main')}
-        />
-      </div>
-    );
-  }
-
-  if (compassTab === 'lists' && listsPageView === 'detail' && selectedList) {
-    return (
-      <div className="page compass-page">
-        <ListDetail
-          list={selectedList}
-          items={listItems}
-          onBack={() => {
-            setListsPageView('main');
-            setSelectedList(null);
-            fetchLists();
-          }}
-          onUpdateList={updateList}
-          onArchiveList={archiveList}
-          onFetchItems={fetchListItems}
-          onAddItem={addListItem}
-          onToggleItem={toggleListItem}
-          onDeleteItem={deleteListItem}
-          onReorderItems={reorderListItems}
-          onGenerateShareToken={generateShareToken}
-        />
-      </div>
-    );
-  }
-
   // Sort tasks for simple list (exclude child tasks from top-level display)
   const pendingTasks = tasks.filter((t) => t.status === 'pending').sort((a, b) => a.sort_order - b.sort_order);
   const completedTasks = tasks.filter((t) => t.status === 'completed').sort((a, b) => a.sort_order - b.sort_order);
@@ -563,27 +496,17 @@ export default function Compass() {
 
       <FeatureGuide {...FEATURE_GUIDES.compass} />
 
-      {/* Tasks / Lists tab toggle */}
-      <div className="compass-page__tab-bar">
-        <button
-          type="button"
-          className={`compass-page__tab ${compassTab === 'tasks' ? 'compass-page__tab--active' : ''}`}
-          onClick={() => setCompassTab('tasks')}
-        >
-          Tasks
-        </button>
-        <button
-          type="button"
-          className={`compass-page__tab ${compassTab === 'lists' ? 'compass-page__tab--active' : ''}`}
-          onClick={() => { setCompassTab('lists'); fetchLists(); }}
-        >
-          Lists
-        </button>
-      </div>
+      {/* Quick link to Lists */}
+      <button
+        type="button"
+        className="compass-page__lists-link"
+        onClick={() => navigate('/lists')}
+      >
+        View Lists
+      </button>
 
-      {compassTab === 'tasks' ? (
-        <>
-          {/* View toggle bar */}
+      <>
+        {/* View toggle bar */}
           <div className="compass-page__view-bar" role="tablist">
             {VIEW_ORDER.map((view) => (
               <button
@@ -658,25 +581,6 @@ export default function Compass() {
             <Plus size={24} />
           </FloatingActionButton>
         </>
-      ) : (
-        <>
-          <ListsMain
-            lists={lists}
-            loading={listsLoading}
-            error={listsError}
-            onFetchLists={fetchLists}
-            onListClick={(list) => {
-              setSelectedList(list);
-              setListsPageView('detail');
-            }}
-            onCreateClick={() => setListsPageView('create')}
-          />
-
-          <FloatingActionButton onClick={() => setListsPageView('create')} aria-label="New list">
-            <Plus size={24} />
-          </FloatingActionButton>
-        </>
-      )}
 
       {victoryPromptTask && !showRecordVictory && (
         <VictoryPrompt

@@ -30,6 +30,7 @@ export interface SystemPromptContext {
   manifestContext?: string;
   cyranoContext?: string;
   meetingContext?: string;
+  reflectionsContext?: string;
   appGuideContext?: string;
   pageContext: string;
   guidedMode?: GuidedMode;
@@ -670,6 +671,14 @@ When referencing this material: paraphrase, attribute the source by title, never
     }
   }
 
+  if (context.reflectionsContext) {
+    const reflTokens = estimateTokens(context.reflectionsContext);
+    if (currentTokens + reflTokens < budget) {
+      prompt += context.reflectionsContext;
+      currentTokens += reflTokens;
+    }
+  }
+
   if (context.appGuideContext) {
     const guideSection = `\n\n${context.appGuideContext}\n\nWhen the user asks how to use a feature: give clear, specific navigation instructions. Reference actual button positions, icons, and page names. Be concise — one or two sentences per step. If you're not sure about a specific UI detail, say what the feature does and suggest the user check the menu.`;
     const guideTokens = estimateTokens(guideSection);
@@ -1150,6 +1159,41 @@ const APP_GUIDE_KEYWORDS = [
   'what features', 'what can you do', 'what can i do',
   'tutorial', 'walkthrough', 'getting started',
 ];
+
+// --- Reflections context ---
+
+const REFLECTIONS_KEYWORDS = [
+  'reflect', 'reflection', 'daily question', 'self-awareness',
+  'contemplat', 'introspect', 'daily practice', 'journal prompt',
+];
+
+export function shouldLoadReflections(message: string, pageContext: string): boolean {
+  if (pageContext === 'reflections') return true;
+  const lower = message.toLowerCase();
+  return REFLECTIONS_KEYWORDS.some((kw) => lower.includes(kw));
+}
+
+export function formatReflectionsContext(
+  responses: Array<{ question_text: string; response_text: string; response_date: string }>,
+): string {
+  if (responses.length === 0) return '';
+
+  let result = '\n\nRECENT REFLECTIONS:\n';
+  for (const r of responses.slice(0, 10)) {
+    result += `- [${r.response_date}] Q: ${r.question_text}\n  A: ${r.response_text.length > 150 ? r.response_text.slice(0, 147) + '...' : r.response_text}\n`;
+  }
+  return result;
+}
+
+// --- Page context labels ---
+
+export function getPageLabel(pageContext: string): string {
+  const labels: Record<string, string> = {
+    reflections: 'Reflections',
+    reports: 'Reports',
+  };
+  return labels[pageContext] || pageContext;
+}
 
 export function shouldLoadAppGuide(message: string, _pageContext: string): boolean {
   const lower = message.toLowerCase();

@@ -15,6 +15,7 @@ import {
   Users,
   ShieldCheck,
   Archive,
+  FileText,
   Calendar,
   ListChecks,
   PackageOpen,
@@ -204,6 +205,12 @@ export default function Sidebar() {
             <NavLink to="/manifest" className="sidebar__link">
               <Archive size={18} strokeWidth={1.5} />
               <span>Manifest</span>
+            </NavLink>
+          </li>
+          <li>
+            <NavLink to="/reports" className="sidebar__link">
+              <FileText size={18} strokeWidth={1.5} />
+              <span>Reports</span>
             </NavLink>
           </li>
         </ul>

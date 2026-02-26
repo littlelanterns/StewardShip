@@ -11,6 +11,7 @@ import {
   Users,
   ShieldCheck,
   Archive,
+  FileText,
   Calendar,
   ListChecks,
   PackageOpen,
@@ -185,6 +186,12 @@ export default function MoreMenu({ open, onClose }: MoreMenuProps) {
               <NavLink to="/manifest" className="more-menu__link" onClick={onClose}>
                 <Archive size={20} strokeWidth={1.5} />
                 <span>Manifest</span>
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/reports" className="more-menu__link" onClick={onClose}>
+                <FileText size={20} strokeWidth={1.5} />
+                <span>Reports</span>
               </NavLink>
             </li>
           </ul>

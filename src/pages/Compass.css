@@ -49,6 +49,19 @@
   border-bottom-color: var(--color-mid-teal);
 }
 
+.compass-page__lists-link {
+  display: inline-block;
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-mid-teal);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+  margin-bottom: var(--spacing-xs);
+}
+
 .compass-page__view-bar {
   display: flex;
   gap: var(--spacing-xs);

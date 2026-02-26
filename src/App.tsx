@@ -24,6 +24,8 @@ import Manifest from './pages/Manifest';
 import Settings from './pages/Settings';
 import Meetings from './pages/Meetings';
 import Lists from './pages/Lists';
+import Reflections from './pages/Reflections';
+import Reports from './pages/Reports';
 import Reveille from './pages/Reveille';
 import Reckoning from './pages/Reckoning';
 import UnloadTheHold from './pages/UnloadTheHold';
@@ -74,6 +76,8 @@ export default function App() {
               <Route path="settings" element={<Settings />} />
               <Route path="meetings" element={<Meetings />} />
               <Route path="lists" element={<Lists />} />
+              <Route path="reflections" element={<Reflections />} />
+              <Route path="reports" element={<Reports />} />
               <Route path="reveille" element={<Reveille />} />
               <Route path="reckoning" element={<Reckoning />} />
               <Route path="unload-the-hold" element={<UnloadTheHold />} />
