@@ -21,13 +21,13 @@ import '../components/settings/Settings.css';
 
 const SECTIONS = [
   { key: 'account', name: 'Account', description: 'Name, email, timezone, gender, relationship, appearance, password' },
-  { key: 'ai', name: 'BYOK (Bring Your Own Key)', description: 'Use your own AI API key for customized model access' },
   { key: 'daily-rhythms', name: 'Daily Rhythms', description: 'Reveille, Reckoning, prompted entries' },
   { key: 'notifications', name: 'Notifications', description: 'Push, quiet hours, delivery preferences' },
   { key: 'rhythms', name: 'Rhythms', description: 'Friday Overview, Sunday Reflection, monthly, quarterly' },
   { key: 'meetings', name: 'Meeting Schedules', description: 'Recurring meeting configuration' },
   { key: 'compass', name: 'Compass', description: 'Default task view' },
   { key: 'data', name: 'Data & Privacy', description: 'Export data, storage info' },
+  { key: 'ai', name: 'BYOK (Bring Your Own Key)', description: 'Use your own AI API key for customized model access' },
   // About section hidden for now — re-enable when ready
   // { key: 'about', name: 'About StewardShip', description: 'Version, acknowledgments' },
 ];
@@ -140,7 +140,7 @@ export default function Settings() {
             </button>
 
             <div className={isExpanded ? 'settings-section__content--expanded' : 'settings-section__content--collapsed'}>
-              {index === 0 && (
+              {section.key === 'account' && (
                 <AccountSection
                   user={user}
                   profile={profile}
@@ -152,15 +152,50 @@ export default function Settings() {
                   onDeleteAccount={deleteAccount}
                 />
               )}
+              {section.key === 'daily-rhythms' && (
+                <DailyRhythmsSection
+                  settings={settings}
+                  onUpdateSetting={updateSetting}
+                />
+              )}
+              {section.key === 'notifications' && (
+                <NotificationsSection
+                  userId={user.id}
+                  settings={settings}
+                  onUpdateSetting={updateSetting}
+                  onUpdateSettings={updateSettings}
+                />
+              )}
+              {section.key === 'rhythms' && (
+                <RhythmsSection
+                  settings={settings}
+                  onUpdateSetting={updateSetting}
+                />
+              )}
+              {section.key === 'meetings' && (
+                <MeetingSchedulesSection />
+              )}
+              {section.key === 'compass' && (
+                <CompassSection
+                  settings={settings}
+                  onUpdateSetting={updateSetting}
+                />
+              )}
+              {section.key === 'data' && (
+                <DataPrivacySection
+                  onExportAllData={exportAllData}
+                  onDownloadBlob={downloadBlob}
+                />
+              )}
               {/* BYOK coming soon — full AIConfigSection preserved below, re-enable when ready */}
-              {index === 1 && (
+              {section.key === 'ai' && (
                 <div className="settings-section__body">
                   <p className="settings-section__helper">
                     Coming soon — this feature will let you use your own API key for customized AI model, response length, and context depth.
                   </p>
                 </div>
               )}
-              {false && index === 1 && (
+              {false && section.key === 'ai' && (
                 <AIConfigSection
                   settings={settings}
                   onUpdateSetting={updateSetting}
@@ -169,46 +204,6 @@ export default function Settings() {
                   onTestConnection={testApiConnection}
                 />
               )}
-              {index === 2 && (
-                <DailyRhythmsSection
-                  settings={settings}
-                  onUpdateSetting={updateSetting}
-                />
-              )}
-              {index === 3 && (
-                <NotificationsSection
-                  userId={user.id}
-                  settings={settings}
-                  onUpdateSetting={updateSetting}
-                  onUpdateSettings={updateSettings}
-                />
-              )}
-              {index === 4 && (
-                <RhythmsSection
-                  settings={settings}
-                  onUpdateSetting={updateSetting}
-                />
-              )}
-              {index === 5 && (
-                <MeetingSchedulesSection />
-              )}
-              {index === 6 && (
-                <CompassSection
-                  settings={settings}
-                  onUpdateSetting={updateSetting}
-                />
-              )}
-              {index === 7 && (
-                <DataPrivacySection
-                  onExportAllData={exportAllData}
-                  onDownloadBlob={downloadBlob}
-                />
-              )}
-              {/* About section hidden — re-enable when ready
-              {index === 8 && (
-                <AboutSection />
-              )}
-              */}
             </div>
           </div>
         );
