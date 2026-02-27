@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { ArrowLeft, MoreVertical, Trash2, GripVertical, ChevronDown, ChevronUp, ChevronRight, History, RotateCcw, Plus } from 'lucide-react';
+import { ArrowLeft, MoreVertical, Trash2, GripVertical, ChevronDown, ChevronUp, ChevronRight, History, RotateCcw, Plus, Compass, ListPlus } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -496,6 +496,18 @@ export default function ListDetail({
         </div>
       )}
 
+      {/* Assign to Compass CTA for unassigned routines */}
+      {isRoutine && !assignment && onAssignToCompass && (
+        <button
+          type="button"
+          className="list-detail__assign-cta"
+          onClick={onAssignToCompass}
+        >
+          <Compass size={16} />
+          <span>Assign to Compass</span>
+        </button>
+      )}
+
       {/* Assignment status */}
       {isRoutine && assignment && (
         <div className="list-detail__assignment-bar">
@@ -551,7 +563,24 @@ export default function ListDetail({
         </div>
       )}
 
-      {(() => {
+      {/* Empty state with bulk add prompt */}
+      {items.length === 0 && (
+        <div className="list-detail__empty">
+          <p className="list-detail__empty-text">Add items to get started</p>
+          {onShowBulkAdd && (
+            <button
+              type="button"
+              className="list-detail__empty-bulk-btn"
+              onClick={onShowBulkAdd}
+            >
+              <ListPlus size={18} />
+              Bulk Add
+            </button>
+          )}
+        </div>
+      )}
+
+      {items.length > 0 && (() => {
         // Use hierarchy if available, otherwise flat list
         const hierarchy = getItemHierarchy ? getItemHierarchy(items) : null;
         const topUnchecked = hierarchy

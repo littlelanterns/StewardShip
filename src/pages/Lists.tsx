@@ -13,10 +13,11 @@ import ListDetail from '../components/compass/lists/ListDetail';
 import CreateListModal from '../components/compass/lists/CreateListModal';
 import BulkAddItems from '../components/compass/lists/BulkAddItems';
 import AssignRoutineModal from '../components/compass/lists/AssignRoutineModal';
+import RoutineSetupWizard from '../components/compass/lists/RoutineSetupWizard';
 import type { List, ListItem } from '../lib/types';
 import './Lists.css';
 
-type ListsPageView = 'main' | 'detail' | 'create' | 'bulk_add' | 'assign_routine';
+type ListsPageView = 'main' | 'detail' | 'create' | 'bulk_add' | 'assign_routine' | 'routine_wizard';
 
 export default function Lists() {
   usePageContext({ page: 'lists' });
@@ -168,10 +169,27 @@ export default function Lists() {
             const list = await createList(data);
             if (list) {
               setSelectedList(list);
-              setPageView('detail');
+              if (list.list_type === 'routine') {
+                setPageView('routine_wizard');
+              } else {
+                setPageView('detail');
+              }
             }
           }}
           onBack={() => setPageView('main')}
+        />
+      </div>
+    );
+  }
+
+  if (pageView === 'routine_wizard' && selectedList) {
+    return (
+      <div className="page lists-page">
+        <RoutineSetupWizard
+          list={selectedList}
+          onComplete={() => setPageView('detail')}
+          onAddItems={handleBulkAddItems}
+          onAssignToCompass={handleAssignRoutine}
         />
       </div>
     );

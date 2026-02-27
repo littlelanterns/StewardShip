@@ -488,6 +488,67 @@
   min-height: 36px;
 }
 
+/* Assign to Compass CTA */
+.list-detail__assign-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  width: 100%;
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-mid-teal);
+  background: var(--color-white);
+  border: 1.5px dashed var(--color-mid-teal);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  cursor: pointer;
+  min-height: 44px;
+  transition: background var(--transition-fast);
+}
+
+.list-detail__assign-cta:hover {
+  background: color-mix(in srgb, var(--color-mid-teal) 6%, var(--color-white));
+}
+
+/* Empty state */
+.list-detail__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-xl) var(--spacing-md);
+}
+
+.list-detail__empty-text {
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  color: var(--color-slate-gray);
+  margin: 0;
+}
+
+.list-detail__empty-bulk-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-mid-teal);
+  background: color-mix(in srgb, var(--color-mid-teal) 8%, var(--color-cream));
+  border: 1px solid var(--color-mid-teal);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  cursor: pointer;
+  min-height: 44px;
+  transition: background var(--transition-fast);
+}
+
+.list-detail__empty-bulk-btn:hover {
+  background: color-mix(in srgb, var(--color-mid-teal) 14%, var(--color-cream));
+}
+
 /* Streak badge */
 .list-detail__streak-badge {
   display: inline-block;
