@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Settings as SettingsIcon, ChevronRight } from 'lucide-react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { Settings as SettingsIcon, ChevronRight, BookOpen } from 'lucide-react';
 import { usePageContext } from '../hooks/usePageContext';
 import { useSettings } from '../hooks/useSettings';
 import { useAuthContext } from '../contexts/AuthContext';
@@ -37,6 +37,7 @@ SECTIONS.forEach((s, i) => { SECTION_INDEX[s.key] = i; });
 
 export default function Settings() {
   usePageContext({ page: 'settings' });
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuthContext();
   const { setTheme, setFontScale } = useTheme();
@@ -118,6 +119,20 @@ export default function Settings() {
       </div>
 
       <FeatureGuide {...FEATURE_GUIDES.settings} />
+
+      {/* Help & Guide */}
+      <button
+        className="settings-section__header"
+        onClick={() => navigate('/captains-briefing')}
+        style={{ marginBottom: 'var(--spacing-sm)' }}
+      >
+        <BookOpen size={16} style={{ color: 'var(--color-cognac)', flexShrink: 0 }} />
+        <div className="settings-section__header-text">
+          <span className="settings-section__name">The Captain's Briefing</span>
+          <span className="settings-section__description">A guided tour of every feature aboard StewardShip</span>
+        </div>
+        <ChevronRight size={16} style={{ color: 'var(--color-slate-gray)', flexShrink: 0 }} />
+      </button>
 
       {SECTIONS.map((section, index) => {
         const isExpanded = expandedSections.has(index);

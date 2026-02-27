@@ -29,6 +29,7 @@ import Reports from './pages/Reports';
 import Reveille from './pages/Reveille';
 import Reckoning from './pages/Reckoning';
 import UnloadTheHold from './pages/UnloadTheHold';
+import CaptainsBriefing from './pages/CaptainsBriefing';
 import { RhythmInterceptor } from './components/navigation/RhythmInterceptor';
 
 export default function App() {
@@ -81,6 +82,7 @@ export default function App() {
               <Route path="reveille" element={<Reveille />} />
               <Route path="reckoning" element={<Reckoning />} />
               <Route path="unload-the-hold" element={<UnloadTheHold />} />
+              <Route path="captains-briefing" element={<CaptainsBriefing />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />
