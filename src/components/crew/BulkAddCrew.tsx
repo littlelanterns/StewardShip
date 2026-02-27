@@ -9,6 +9,20 @@ import './BulkAddCrew.css';
 
 const RELATIONSHIP_TYPES: RelationshipType[] = ['child', 'parent', 'sibling', 'coworker', 'friend', 'mentor', 'other'];
 
+function formatDate(dateStr: string): string {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length < 3) return dateStr;
+  const month = parseInt(parts[1], 10);
+  const day = parseInt(parts[2], 10);
+  const year = parseInt(parts[0], 10);
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const monthName = months[month - 1] || '';
+  // If year is 0000 or current year placeholder, show month/day only
+  if (year === 0 || year === new Date().getFullYear()) return `${monthName} ${day}`;
+  return `${monthName} ${day}, ${year}`;
+}
+
 const CATEGORY_LABELS: Record<string, string> = {
   immediate_family: 'Immediate Family',
   extended_family: 'Extended Family',
@@ -215,6 +229,16 @@ export function BulkAddCrew({ existingNames, onSave, onClose }: BulkAddCrewProps
                     {member.notes && !member.isSpouse && (
                       <div className="bulk-crew__notes-row">
                         <p className="bulk-crew__notes-text">{member.notes}</p>
+                      </div>
+                    )}
+
+                    {member.important_dates.length > 0 && (
+                      <div className="bulk-crew__category-chips">
+                        {member.important_dates.map((d, i) => (
+                          <span key={i} className="bulk-crew__date-chip">
+                            {d.label}: {formatDate(d.date)}
+                          </span>
+                        ))}
                       </div>
                     )}
                   </div>

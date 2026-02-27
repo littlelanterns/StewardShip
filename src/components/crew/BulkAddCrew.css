@@ -208,6 +208,15 @@
   color: var(--color-text-secondary);
 }
 
+.bulk-crew__date-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: var(--font-size-xs);
+  background: var(--color-warm-sand);
+  color: var(--color-deep-brown);
+}
+
 /* Empty result message */
 .bulk-crew__empty {
   font-family: var(--font-body);

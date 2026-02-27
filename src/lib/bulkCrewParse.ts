@@ -1,5 +1,5 @@
 import { sendChatMessage } from './ai';
-import type { RelationshipType } from './types';
+import type { RelationshipType, ImportantDate } from './types';
 
 export interface ParsedCrewMember {
   name: string;
@@ -7,6 +7,7 @@ export interface ParsedCrewMember {
   categories: string[];
   age: number | null;
   notes: string | null;
+  important_dates: ImportantDate[];
   isSpouse?: boolean;
 }
 
@@ -33,6 +34,12 @@ For each person mentioned, extract:
 - categories (array of strings from: "immediate_family", "extended_family", "professional", "social", "church_community", "custom")
 - age (number or null — only if explicitly stated or clearly implied)
 - notes (string or null — any extra context the user provided about this person)
+- important_dates (array of {label: string, date: string (YYYY-MM-DD), recurring: boolean})
+  - Extract birthdays when mentioned: "born March 15", "birthday is June 3rd", "turns 12 on Sept 20", "Jake (12, 3/15/2014)"
+  - Always set label to "Birthday" and recurring to true for birthdays
+  - If only month/day given (no year), use current year as placeholder
+  - If no dates mentioned for a person, return an empty array []
+  - Also extract other important dates if mentioned: anniversaries, graduations, etc.
 - is_spouse (boolean — true ONLY if the person is described as a spouse, wife, husband, or partner)
 
 Category assignment rules:
@@ -64,7 +71,7 @@ These people already exist in the system (skip them): ${existingNames.length > 0
 Return ONLY a JSON object with this structure, no other text:
 {
   "members": [
-    { "name": "...", "relationship_type": "...", "categories": [...], "age": null, "notes": null, "is_spouse": false }
+    { "name": "...", "relationship_type": "...", "categories": [...], "age": null, "notes": null, "important_dates": [{"label": "Birthday", "date": "2014-03-15", "recurring": true}], "is_spouse": false }
   ],
   "duplicates": ["name1", "name2"]
 }
@@ -93,6 +100,15 @@ The "duplicates" array should list names from the input that match existing peop
             categories: Array.isArray(m.categories) ? (m.categories as unknown[]).filter(isValidCategory) as string[] : ['social'],
             age: typeof m.age === 'number' && m.age > 0 ? m.age : null,
             notes: typeof m.notes === 'string' && m.notes.trim().length > 0 ? m.notes.trim() : null,
+            important_dates: Array.isArray(m.important_dates)
+              ? (m.important_dates as Record<string, unknown>[])
+                  .filter((d) => d.label && d.date)
+                  .map((d) => ({
+                    label: typeof d.label === 'string' ? d.label : 'Birthday',
+                    date: typeof d.date === 'string' ? d.date : '',
+                    recurring: typeof d.recurring === 'boolean' ? d.recurring : true,
+                  }))
+              : [],
             isSpouse: m.is_spouse === true,
           }));
 
@@ -121,6 +137,7 @@ The "duplicates" array should list names from the input that match existing peop
       categories: ['social'],
       age: null,
       notes: null,
+      important_dates: [],
     }));
 
   const duplicates = lines.filter((name) => existingNamesLower.includes(name.toLowerCase()));

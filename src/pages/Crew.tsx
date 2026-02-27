@@ -205,6 +205,9 @@ export default function Crew() {
                 categories: member.categories,
                 age: member.age ?? undefined,
                 notes: member.notes ?? undefined,
+                important_dates: member.important_dates.length > 0
+                  ? member.important_dates
+                  : undefined,
               });
             }
             await fetchPeople();

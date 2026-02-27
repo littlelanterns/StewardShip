@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { AddEntryModal } from '../shared/AddEntryModal';
 import { Button, Input } from '../shared';
-import type { RelationshipType } from '../../lib/types';
+import type { RelationshipType, ImportantDate } from '../../lib/types';
 import { RELATIONSHIP_TYPE_LABELS } from '../../lib/types';
 
 interface AddCrewmateModalProps {
@@ -11,6 +11,7 @@ interface AddCrewmateModalProps {
     relationship_type: RelationshipType;
     age?: number;
     notes?: string;
+    important_dates?: ImportantDate[];
   }) => Promise<unknown>;
 }
 
@@ -20,6 +21,7 @@ export function AddCrewmateModal({ onClose, onSave }: AddCrewmateModalProps) {
   const [name, setName] = useState('');
   const [type, setType] = useState<RelationshipType>('friend');
   const [age, setAge] = useState('');
+  const [birthday, setBirthday] = useState('');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,6 +36,9 @@ export function AddCrewmateModal({ onClose, onSave }: AddCrewmateModalProps) {
         relationship_type: type,
         age: age ? parseInt(age, 10) : undefined,
         notes: notes.trim() || undefined,
+        important_dates: birthday
+          ? [{ label: 'Birthday', date: birthday, recurring: true }]
+          : undefined,
       });
       onClose();
     } catch {
@@ -61,6 +66,10 @@ export function AddCrewmateModal({ onClose, onSave }: AddCrewmateModalProps) {
         <div className="add-entry-form__field">
           <label className="add-entry-form__label">Age (optional)</label>
           <Input type="number" value={age} onChange={(e) => setAge(e.target.value)} placeholder="Optional" />
+        </div>
+        <div className="add-entry-form__field">
+          <label className="add-entry-form__label">Birthday (optional)</label>
+          <Input type="date" value={birthday} onChange={(e) => setBirthday(e.target.value)} />
         </div>
         <div className="add-entry-form__field">
           <label className="add-entry-form__label">Notes (optional)</label>
