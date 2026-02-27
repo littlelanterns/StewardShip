@@ -13,7 +13,7 @@ Higgins extends the Cyrano Me communication coaching pattern from First Mate to 
 ## Architecture
 
 ### Same Pattern as Cyrano Me
-- Dedicated table (`higgins_messages`) → hook (`useHiggins`) → guided mode prompt (`getHigginsGuidedPrompt`) → context loader → drafts component (`HigginsDrafts`) → UI entry points (PersonDetail toolbar + Crew page toolbar)
+- Dedicated table (`higgins_messages`) → hook (`useHiggins`) → guided mode prompt (`getHigginsGuidedPrompt`) → context loader → drafts component (`HigginsDrafts`) → UI entry points (PersonDetail toolbar + Crew page card)
 
 ### Guided Mode
 - `guided_mode = 'crew_action'`
@@ -87,7 +87,7 @@ Applies naturally, never as lectures. Same "teach principles, not authors" rule:
 ## Entry Points
 
 1. **PersonDetail page:** GraduationCap icon in toolbar, shown only for `has_rich_context && !is_first_mate` people. Opens HigginsModal for mode selection.
-2. **Crew page toolbar:** GraduationCap icon opens HigginsCrewModal — multi-person select modal for choosing one or more crew members before launching Higgins.
+2. **Crew page card:** Card-style button matching Marriage Toolbox aesthetic (GraduationCap icon + "Higgins" title + "Help me talk to someone" description). Shown above crew list when rich-context non-spouse crew members exist, hidden in Sphere view. Opens HigginsCrewModal — multi-person select modal for choosing one or more crew members before launching Higgins.
 
 ### Multi-Person Support
 When launched from Crew page with multiple people selected:
