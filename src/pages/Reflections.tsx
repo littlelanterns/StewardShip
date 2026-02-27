@@ -24,6 +24,7 @@ export default function Reflections() {
     addQuestion,
     updateQuestion,
     archiveQuestion,
+    deleteQuestion,
     restoreQuestion,
     fetchTodaysResponses,
     fetchPastResponses,
@@ -125,6 +126,7 @@ export default function Reflections() {
               onAdd={addQuestion}
               onUpdate={updateQuestion}
               onArchive={archiveQuestion}
+              onDelete={deleteQuestion}
               onRestore={restoreQuestion}
             />
           )}

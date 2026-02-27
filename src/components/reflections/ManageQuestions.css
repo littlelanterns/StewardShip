@@ -59,6 +59,13 @@
   flex-shrink: 0;
 }
 
+.manage-questions__actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
 .manage-questions__remove {
   display: flex;
   align-items: center;
@@ -75,4 +82,8 @@
 
 .manage-questions__remove:hover {
   color: var(--color-cognac);
+}
+
+.manage-questions__remove--delete:hover {
+  color: #c0392b;
 }

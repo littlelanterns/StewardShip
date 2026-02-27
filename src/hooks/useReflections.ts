@@ -5,17 +5,18 @@ import type { ReflectionQuestion, ReflectionResponse } from '../lib/types';
 
 const DEFAULT_QUESTIONS: string[] = [
   'What am I grateful for today?',
-  'What challenged me today, and what did I learn from it?',
-  'How did I show up for the people who matter most?',
-  'What is one thing I did today that aligned with my values?',
+  'What obstacle did I face today, and what did I do to overcome it?',
+  'What was a moment that made me appreciate another family member?',
+  'How did I move toward my divine identity or life purpose today?',
+  'What was a moment that inspired awe, wonder, or joy?',
+  'What did I love about today?',
+  'What was something interesting I learned or discovered?',
+  'What goal did I make progress on?',
+  'How well did I attend to my duties today?',
+  'How did I serve today?',
+  'What would my future self thank me for today?',
+  'What made me laugh today?',
   'Where did I fall short today, and what would I do differently?',
-  'What am I looking forward to tomorrow?',
-  'How did I take care of my body today?',
-  'What conversation or interaction stood out today?',
-  'What is weighing on my mind right now?',
-  'How did I grow closer to God today?',
-  'What is one small win I can celebrate?',
-  'If I could give my past self advice from today, what would it be?',
 ];
 
 export function useReflections() {
@@ -143,6 +144,27 @@ export function useReflections() {
       console.error('Failed to archive question:', e);
     }
   }, [user]);
+
+  const deleteQuestion = useCallback(async (id: string): Promise<void> => {
+    if (!user) return;
+    // Default questions can only be archived, not deleted
+    const question = questions.find((q) => q.id === id);
+    if (question?.is_default) {
+      return archiveQuestion(id);
+    }
+    try {
+      const { error: err } = await supabase
+        .from('reflection_questions')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (err) throw err;
+      setQuestions((prev) => prev.filter((q) => q.id !== id));
+    } catch (e: unknown) {
+      console.error('Failed to delete question:', e);
+    }
+  }, [user, questions, archiveQuestion]);
 
   const restoreQuestion = useCallback(async (id: string): Promise<void> => {
     if (!user) return;
@@ -406,6 +428,7 @@ export function useReflections() {
     addQuestion,
     updateQuestion,
     archiveQuestion,
+    deleteQuestion,
     restoreQuestion,
     fetchTodaysResponses,
     fetchPastResponses,

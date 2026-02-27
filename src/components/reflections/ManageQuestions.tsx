@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Trash2 } from 'lucide-react';
+import { Archive, Trash2 } from 'lucide-react';
 import { Card } from '../shared/Card';
 import { Button } from '../shared/Button';
 import type { ReflectionQuestion } from '../../lib/types';
@@ -10,6 +10,7 @@ interface ManageQuestionsProps {
   onAdd: (text: string) => Promise<ReflectionQuestion | null>;
   onUpdate: (id: string, updates: Partial<ReflectionQuestion>) => Promise<void>;
   onArchive: (id: string) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
   onRestore: (id: string) => Promise<void>;
 }
 
@@ -17,6 +18,7 @@ export default function ManageQuestions({
   questions,
   onAdd,
   onArchive,
+  onDelete,
 }: ManageQuestionsProps) {
   const [newQuestion, setNewQuestion] = useState('');
   const [adding, setAdding] = useState(false);
@@ -52,14 +54,28 @@ export default function ManageQuestions({
               {q.question_text}
               {q.is_default && <span className="manage-questions__default-badge">Default</span>}
             </span>
-            <button
-              type="button"
-              className="manage-questions__remove"
-              onClick={() => onArchive(q.id)}
-              aria-label="Remove question"
-            >
-              <Trash2 size={16} />
-            </button>
+            <div className="manage-questions__actions">
+              <button
+                type="button"
+                className="manage-questions__remove"
+                onClick={() => onArchive(q.id)}
+                aria-label="Archive question"
+                title="Archive"
+              >
+                <Archive size={16} />
+              </button>
+              {!q.is_default && (
+                <button
+                  type="button"
+                  className="manage-questions__remove manage-questions__remove--delete"
+                  onClick={() => onDelete(q.id)}
+                  aria-label="Delete question"
+                  title="Delete permanently"
+                >
+                  <Trash2 size={16} />
+                </button>
+              )}
+            </div>
           </Card>
         ))}
       </div>

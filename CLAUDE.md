@@ -641,7 +641,7 @@ One consistent rule across the entire app — applies to Compass task/subtask AN
 
 ### Reflections Conventions (Phase 9.5)
 - **Daily reflection practice** with rotating questions. NOT in sidebar nav — accessed from Life Inventory, Reckoning, Crow's Nest, and direct URL only.
-- **Default questions:** 12 questions seeded on first visit (not on account creation). Questions are user-editable, reorderable, archivable.
+- **Default questions:** 13 questions seeded on first visit (not on account creation). Questions are user-editable, reorderable, archivable. Default questions can be archived but not deleted. Custom questions can be archived or deleted.
 - **Three tabs:** Today (answer questions), Past (date-grouped history), Manage (reorder/archive/add custom questions).
 - **Routing:** Each response can be routed to Log (`entry_type = 'reflection'`) or flagged as Victory. Original response stays in reflections.
 - **Integrations:** Reckoning shows nudge/summary section, Crow's Nest shows this-week card, Life Inventory has "Reflections Toolbox" card.
