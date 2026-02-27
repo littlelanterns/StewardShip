@@ -270,6 +270,7 @@ export type GuidedMode =
   | 'safe_harbor'
   | 'unload_the_hold'
   | 'manifest_discuss'
+  | 'crew_action'
   | null;
 
 export type GuidedSubtype =
@@ -286,6 +287,8 @@ export type GuidedSubtype =
   | 'business'
   | 'custom'
   | 'template_creation'
+  | 'higgins_say'
+  | 'higgins_navigate'
   | null;
 
 export type MessageRole = 'user' | 'assistant' | 'system';
@@ -326,6 +329,7 @@ export const GUIDED_MODE_LABELS: Record<string, string> = {
   first_mate_action: 'First Mate',
   safe_harbor: 'Safe Harbor',
   unload_the_hold: 'Unload the Hold',
+  crew_action: 'Higgins',
 };
 
 // === PRD-05: The Log ===
@@ -1099,6 +1103,47 @@ export const CYRANO_TEACHING_SKILL_LABELS: Record<CyranoTeachingSkill, string> =
   callback_power: 'Callback Power',
   unsaid_need: 'The Unsaid Need',
   presence_proof: 'Presence Proof',
+};
+
+// === PRD-13A: Higgins — Crew Communication Coach ===
+
+export type HigginsTeachingSkill =
+  | 'naming_emotion'
+  | 'perspective_shift'
+  | 'validation_first'
+  | 'behavior_vs_identity'
+  | 'invitation'
+  | 'repair'
+  | 'boundaries_with_love';
+
+export type HigginsMode = 'say_something' | 'navigate_situation';
+export type HigginsStatus = 'draft' | 'sent' | 'saved_for_later';
+
+export interface HigginsMessage {
+  id: string;
+  user_id: string;
+  people_id: string;
+  mode: HigginsMode;
+  raw_input: string;
+  crafted_version: string | null;
+  final_version: string | null;
+  teaching_skill: HigginsTeachingSkill | null;
+  teaching_note: string | null;
+  status: HigginsStatus;
+  sent_at: string | null;
+  helm_conversation_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const HIGGINS_TEACHING_SKILL_LABELS: Record<HigginsTeachingSkill, string> = {
+  naming_emotion: 'Naming the Emotion',
+  perspective_shift: 'Perspective Shift',
+  validation_first: 'Validation Before Correction',
+  behavior_vs_identity: 'Behavior vs. Identity',
+  invitation: 'The Invitation',
+  repair: 'Repair & Reconnection',
+  boundaries_with_love: 'Boundaries with Love',
 };
 
 export const CREW_NOTE_CATEGORY_LABELS: Record<CrewNoteCategory, string> = {

@@ -2,6 +2,8 @@ import { useEffect, useState, useCallback } from 'react';
 import { usePageContext } from '../hooks/usePageContext';
 import { useCrew } from '../hooks/useCrew';
 import { useSphere } from '../hooks/useSphere';
+import { useHiggins } from '../hooks/useHiggins';
+import { useAuthContext } from '../contexts/AuthContext';
 import type { Person } from '../lib/types';
 import { Plus } from 'lucide-react';
 import { LoadingSpinner, EmptyState, FloatingActionButton, FeatureGuide } from '../components/shared';
@@ -36,6 +38,12 @@ export default function Crew() {
   } = useCrew();
 
   const { createSphereEntity } = useSphere();
+  const { user } = useAuthContext();
+  const {
+    drafts: higginsDrafts,
+    markSent: markHigginsSent,
+    deleteDraft: deleteHigginsDraft,
+  } = useHiggins(user?.id, selectedPerson?.id);
 
   const [view, setView] = useState<CrewView>('list');
   const [showAdd, setShowAdd] = useState(false);
@@ -82,6 +90,9 @@ export default function Crew() {
           onCreateNote={createCrewNote}
           onUpdateNote={updateCrewNote}
           onArchiveNote={archiveCrewNote}
+          higginsDrafts={higginsDrafts}
+          onMarkHigginsSent={markHigginsSent}
+          onDeleteHigginsDraft={deleteHigginsDraft}
         />
       </div>
     );

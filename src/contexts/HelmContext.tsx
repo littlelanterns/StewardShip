@@ -57,6 +57,8 @@ function getGuidedModeOpeningMessage(mode: GuidedMode): string | null {
       return "Let's set up this meeting. I'll walk us through a structured agenda — we'll cover what matters, capture action items, and make sure nothing important gets missed.\n\nReady when you are.";
     case 'manifest_discuss':
       return null; // Opening message varies — set by caller based on specific item vs library
+    case 'crew_action':
+      return null; // AI greets based on mode (say/navigate) and person context
     default:
       return null;
   }
@@ -150,13 +152,17 @@ export function HelmProvider({ children }: { children: ReactNode }) {
       .find((m) => m.role === 'user');
     const messageText = lastUserMessage?.content || '';
 
-    // Build guided mode context for Manifest discuss mode
+    // Build guided mode context
     const activeConvo = helmData.activeConversation;
-    let gmContext: { manifest_item_id?: string; manifest_item_title?: string } | undefined;
+    let gmContext: { manifest_item_id?: string; manifest_item_title?: string; people_id?: string } | undefined;
     if (activeConvo?.guided_mode === 'manifest_discuss' && activeConvo.guided_mode_reference_id) {
       gmContext = {
         manifest_item_id: activeConvo.guided_mode_reference_id,
         manifest_item_title: activeConvo.title || undefined,
+      };
+    } else if (activeConvo?.guided_mode === 'crew_action' && activeConvo.guided_mode_reference_id) {
+      gmContext = {
+        people_id: activeConvo.guided_mode_reference_id,
       };
     }
 

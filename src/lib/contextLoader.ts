@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
-import type { MastEntry, KeelEntry, LogEntry, Victory, CompassTask, GuidedMode, GuidedSubtype, HelmMessage, WheelInstance, LifeInventoryArea, RiggingPlan, Person, SpouseInsight, SphereEntity, ManifestSearchResult, Meeting } from './types';
-import { SPOKE_LABELS, PLANNING_FRAMEWORK_LABELS } from './types';
+import type { MastEntry, KeelEntry, LogEntry, Victory, CompassTask, GuidedMode, GuidedSubtype, HelmMessage, WheelInstance, LifeInventoryArea, RiggingPlan, Person, SpouseInsight, SphereEntity, ManifestSearchResult, Meeting, CrewNote } from './types';
+import { SPOKE_LABELS, PLANNING_FRAMEWORK_LABELS, CREW_NOTE_CATEGORY_LABELS } from './types';
 import { searchManifest } from './rag';
 import {
   shouldLoadKeel,
@@ -135,6 +135,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
   let frameworksContext: string | undefined;
   let manifestContext: string | undefined;
   let cyranoContext: string | undefined;
+  let higginsContext: string | undefined;
   let meetingContext: string | undefined;
   let reflectionsContext: string | undefined;
   let appGuideContext: string | undefined;
@@ -423,6 +424,79 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     cyranoContext = ctx;
   }
 
+  // Higgins context — load recent teaching skills and crew notes for specific person
+  if (guidedMode === 'crew_action' && guidedModeContext?.people_id) {
+    const personId = guidedModeContext.people_id;
+    const [skillsResult, countResult, personNotesResult, personResult] = await Promise.all([
+      supabase
+        .from('higgins_messages')
+        .select('teaching_skill')
+        .eq('user_id', userId)
+        .not('teaching_skill', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(10),
+      supabase
+        .from('higgins_messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('people_id', personId),
+      supabase
+        .from('crew_notes')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('person_id', personId)
+        .is('archived_at', null)
+        .order('category')
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('people')
+        .select('*')
+        .eq('id', personId)
+        .eq('user_id', userId)
+        .maybeSingle(),
+    ]);
+
+    const recentSkills = (skillsResult.data || [])
+      .map((s: { teaching_skill: string }) => s.teaching_skill)
+      .filter(Boolean);
+    const totalCount = countResult.count || 0;
+    const notes = (personNotesResult.data || []) as CrewNote[];
+    const person = personResult.data as Person | null;
+
+    let ctx = '\n\nHIGGINS COACHING CONTEXT:';
+    if (person) {
+      ctx += `\nPerson: ${person.name}`;
+      if (person.relationship_type) ctx += ` (${person.relationship_type})`;
+      if (person.age) ctx += `, age ${person.age}`;
+      if (person.personality_summary) ctx += `\nPersonality: ${person.personality_summary}`;
+      if (person.love_language) ctx += `\nLove language: ${person.love_language}`;
+    }
+    if (notes.length > 0) {
+      ctx += '\n\nDetailed notes about this person:';
+      const grouped: Record<string, string[]> = {};
+      for (const note of notes) {
+        const label = CREW_NOTE_CATEGORY_LABELS[note.category] || note.category;
+        if (!grouped[label]) grouped[label] = [];
+        grouped[label].push(note.text.length > 300 ? note.text.slice(0, 300) + '...' : note.text);
+      }
+      for (const [label, texts] of Object.entries(grouped)) {
+        ctx += `\n${label.toUpperCase()}:`;
+        for (const text of texts.slice(0, 5)) {
+          ctx += `\n- ${text}`;
+        }
+      }
+    }
+    if (recentSkills.length > 0) {
+      ctx += `\n\nRecent teaching skills used (avoid repeating the most recent): ${recentSkills.join(', ')}`;
+    } else {
+      ctx += '\n\nThis may be their first Higgins interaction with this person. Start with the basics.';
+    }
+    if (totalCount >= 5) {
+      ctx += `\nThe user has used Higgins ${totalCount} times with this person. You may occasionally offer "skill check" mode — let them write first, then give feedback instead of rewriting.`;
+    }
+    higginsContext = ctx;
+  }
+
   if (crewResult?.data && crewResult.data.length > 0) {
     crewContext = formatCrewContext(crewResult.data as Person[]);
     // Annotate crew context with detected names so AI knows which people were mentioned
@@ -521,6 +595,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     frameworksContext,
     manifestContext,
     cyranoContext,
+    higginsContext,
     meetingContext,
     reflectionsContext,
     appGuideContext,

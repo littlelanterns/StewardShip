@@ -132,6 +132,7 @@ Every feature has a nautical name. Use these consistently in code, UI, and comme
 | The Keel | Personality, self-knowledge | `keel/` |
 | First Mate | Spouse profile + relationship tools | `firstmate/` |
 | Crew | People profiles + categories | `crew/` |
+| Higgins | Crew communication coach (within Crew) | `crew/` |
 | Sphere of Influence | Relationship influence visualization (within Crew) | `sphere/` |
 | Victory Recorder | Accomplishment tracking | `victories/` |
 | Safe Harbor | Stress relief, advice | `safeharbor/` |
@@ -238,7 +239,7 @@ type HelmPageContext =
 - **Context budget by user setting:** Short ~4K tokens (cheaper), Medium ~8K (default), Long ~16K (richer, more expensive). Controlled by `user_settings.context_window_size`.
 - **Topic detection:** AI scans user message for signals — crew member names, relationship words, emotion/stress words, goal/progress words, task words, faith/spiritual words, work/career words — and loads corresponding context automatically. User never manually selects a mode.
 - **Guided mode rules:** Only one guided mode active at a time. Can pause and resume across sessions and devices. Progress saved incrementally per step (each Wheel spoke, each Life Inventory area, each Rigging milestone saves to DB as completed). On return, AI detects in-progress guided mode and offers to resume with summary of completed steps.
-- **Guided modes available:** `'wheel'`, `'life_inventory'`, `'rigging'`, `'declaration'`, `'self_discovery'`, `'meeting'`, `'first_mate_action'` (with `guided_subtype`), `'safe_harbor'`, `'unload_the_hold'`, `'manifest_discuss'`, `null` (free-form default).
+- **Guided modes available:** `'wheel'`, `'life_inventory'`, `'rigging'`, `'declaration'`, `'self_discovery'`, `'meeting'`, `'first_mate_action'` (with `guided_subtype`), `'crew_action'` (with `guided_subtype`), `'safe_harbor'`, `'unload_the_hold'`, `'manifest_discuss'`, `null` (free-form default).
 - **Guided Helm Modal (Phase 11E):** All guided conversations open in a modal overlay (`GuidedHelmModal` component) instead of navigating to `/helm`. `startGuidedConversation()` auto-opens the modal via `setGuidedModalOpen(true)` in HelmContext. Callers no longer need `navigate('/helm')` or `expandDrawer()`. Modal: z-index 200, 90vh mobile / 85vh desktop, max-width 600px, slide-up animation, close via X/Escape/backdrop. "Expand to Full Page" button navigates to /helm. Unload the Hold triage (Review & Route + TriageReview) renders within the modal.
 - **Unload the Hold mode** (`guided_mode = 'unload_the_hold'`): Brain dump conversation. AI adapts engagement to the dump — just listens for straightforward items, offers clarifying questions for messy/emotional content (always offers, never imposes). When user signals completion, AI calls the triage Edge Function, presents a conversational summary, then "Review & Route" button opens structured triage screen. After routing, AI confirms and checks in warmly.
 - **Voice input flow:** Record → Whisper transcription → transcribed text appears in input field for editing → user taps send manually. Never auto-send transcribed text.
@@ -789,6 +790,21 @@ Six guided conversation modes accessible from the First Mate page, each opening 
 - **Basic context for others:** Freeform `notes` field on the `people` record. Sufficient for coworkers, acquaintances, casual friends.
 - **Helm-to-Crew flow:** AI recognizes names from people table. Offers to add unknown people when they seem significant (emotional weight, advice-seeking, conflict processing, repeated mentions). Does NOT offer for casual or transactional mentions. Offers to save substantive insights to crew_notes (rich context) or freeform notes (basic).
 - **Name disambiguation:** If multiple people share a name, AI uses relationship type and conversation context. If uncertain: "Are you talking about [name] your son or [name] from work?"
+
+### Higgins (Crew Communication Coach) Conventions
+- **Extends the Cyrano Me pattern to ALL Crew relationships.** Same architectural pattern: dedicated table → hook → guided mode prompt → context loader → drafts component → UI entry point.
+- **Two modes:** `higgins_say` (help me say something — craft-first flow) and `higgins_navigate` (help me navigate a situation — relational processing flow). Selected via HigginsModal on PersonDetail page.
+- **Guided mode:** `guided_mode = 'crew_action'` with `guided_subtype` = `'higgins_say'` or `'higgins_navigate'`. Uses `guided_mode_reference_id` = person's UUID.
+- **7 teaching skills** (rotated to avoid repetition): naming_emotion, perspective_shift, validation_first, behavior_vs_identity, invitation, repair, boundaries_with_love. Each message teaches one skill with a brief teaching note.
+- **Relationship-aware coaching voices:** AI adapts based on `relationship_type` from the `people` table — parent→child, child/teen→parent, peer→peer, other. Parent→child further adapts by child age (under 8, 8-12, 13-17, 18+).
+- **Skill rotation:** Last 10 teaching skills loaded into AI context to ensure variety. After 5+ total messages with a person, AI periodically offers "skill check" mode (feedback on user's own draft instead of rewrite).
+- **Faith integration:** References Mast principles when faith entries exist and topic connects naturally. Never forced.
+- **Safety:** Defers to Safe Harbor Tier 3 for abuse/danger indicators. Never coaches manipulation. Redirects to human connection.
+- **Entry point:** GraduationCap icon button on PersonDetail toolbar, shown only for `has_rich_context && !is_first_mate` people. (First Mate uses Cyrano Me instead.)
+- **Dedicated table:** `higgins_messages` — mirrors `cyrano_messages` structure with added `mode` column (say_something/navigate_situation) and `people_id` foreign key.
+- **Context loading:** When `crew_action` mode active, contextLoader fetches person details, grouped crew_notes for that person, recent teaching skills, and message count. Person-specific crew notes are grouped by category with truncation.
+- **HigginsDrafts component:** Collapsible card on PersonDetail page showing saved drafts with mode badge, skill badge, copy/send/delete actions. Mirrors CyranoDrafts pattern.
+- **Not available for First Mate:** Spouse uses Cyrano Me (richer, marriage-specific). Higgins is for all other Crew relationships.
 
 ### Sphere of Influence Conventions
 - **Atwater framework (inward):** What you ALLOW to influence you. Distinct from Covey's Circle of Influence (outward — what you CAN influence). Both frameworks available conversationally at the Helm.

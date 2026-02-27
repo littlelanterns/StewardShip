@@ -1,13 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ArrowLeft, MessageSquare, Pencil, Trash2 } from 'lucide-react';
+import { ArrowLeft, GraduationCap, MessageSquare, Pencil, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Card, Button, Input } from '../shared';
 import { CollapsibleGroup } from '../shared/CollapsibleGroup';
 import { CrewNoteCard } from './CrewNoteCard';
 import { AddCrewNoteModal } from './AddCrewNoteModal';
 import { SphereAssignment } from '../sphere/SphereAssignment';
+import { HigginsModal } from './HigginsModal';
+import { HigginsDrafts } from './HigginsDrafts';
 import { useHelmContext } from '../../contexts/HelmContext';
-import type { Person, CrewNote, CrewNoteCategory, ImportantDate, SphereLevel } from '../../lib/types';
+import type { Person, CrewNote, CrewNoteCategory, ImportantDate, SphereLevel, HigginsMessage } from '../../lib/types';
 import { RELATIONSHIP_TYPE_LABELS, CREW_NOTE_CATEGORY_LABELS, CREW_NOTE_CATEGORY_ORDER, SPHERE_LEVEL_LABELS } from '../../lib/types';
 import '../sphere/Sphere.css';
 
@@ -21,6 +23,9 @@ interface PersonDetailProps {
   onCreateNote: (personId: string, data: { text: string; category: CrewNoteCategory }) => Promise<void>;
   onUpdateNote: (id: string, updates: { text?: string; category?: CrewNoteCategory }) => Promise<void>;
   onArchiveNote: (id: string) => Promise<void>;
+  higginsDrafts: HigginsMessage[];
+  onMarkHigginsSent: (id: string) => Promise<void>;
+  onDeleteHigginsDraft: (id: string) => Promise<void>;
 }
 
 export function PersonDetail({
@@ -33,6 +38,9 @@ export function PersonDetail({
   onCreateNote,
   onUpdateNote,
   onArchiveNote,
+  higginsDrafts,
+  onMarkHigginsSent,
+  onDeleteHigginsDraft,
 }: PersonDetailProps) {
   const navigate = useNavigate();
   const { openDrawer, expandDrawer } = useHelmContext();
@@ -46,6 +54,7 @@ export function PersonDetail({
   const [confirmArchive, setConfirmArchive] = useState(false);
   const [showAddNote, setShowAddNote] = useState(false);
   const [addNoteCategory, setAddNoteCategory] = useState<CrewNoteCategory | undefined>();
+  const [showHiggins, setShowHiggins] = useState(false);
 
   useEffect(() => {
     if (person.has_rich_context) {
@@ -92,6 +101,11 @@ export function PersonDetail({
           <button className="person-detail__action-btn" onClick={handleDiscuss} title="Discuss at The Helm">
             <MessageSquare size={18} />
           </button>
+          {person.has_rich_context && !person.is_first_mate && (
+            <button className="person-detail__action-btn" onClick={() => setShowHiggins(true)} title="Higgins">
+              <GraduationCap size={18} />
+            </button>
+          )}
           {!editing && (
             <button className="person-detail__action-btn" onClick={() => setEditing(true)} title="Edit">
               <Pencil size={18} />
@@ -227,6 +241,14 @@ export function PersonDetail({
         </Card>
       )}
 
+      {person.has_rich_context && !person.is_first_mate && higginsDrafts.length > 0 && (
+        <HigginsDrafts
+          drafts={higginsDrafts}
+          onMarkSent={onMarkHigginsSent}
+          onDelete={onDeleteHigginsDraft}
+        />
+      )}
+
       <div className="person-detail__danger-zone">
         {confirmArchive ? (
           <div className="person-detail__confirm-archive">
@@ -252,6 +274,13 @@ export function PersonDetail({
           preselectedCategory={addNoteCategory}
         />
       )}
+
+      <HigginsModal
+        personName={person.name}
+        personId={person.id}
+        isOpen={showHiggins}
+        onClose={() => setShowHiggins(false)}
+      />
     </div>
   );
 }
