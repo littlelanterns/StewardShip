@@ -1162,7 +1162,7 @@ Every AI interaction includes these context layers (loaded dynamically based on 
 24D. Expanded Format Support (EPUB, DOCX, TXT, MD) — BUILT (Phase 9C Addendum) ✅
 
 ### Phase 10: Cadence ✅
-25. **Meeting Frameworks** (templates, custom scheduling, note integration) — **Phase 10A BUILT** ✅
+25. **Meeting Frameworks** (templates, custom scheduling, note integration, mentor type with TJEd/TSG prompt, between-meeting agenda items, per-user customizable agenda sections with auto-seeded defaults/archive/restore) — **Phase 10A BUILT** ✅
 26. **Reminders** (reminder engine with CRUD/snooze/dismiss lifecycle, daily reminder generation from tasks/meetings/dates/Wheel/Rigging/streaks, push notification infrastructure with service worker, VAPID, send-push Edge Function, frequency capping, quiet hours, Log "Set Reminder" routing wired) — **Phase 10B BUILT** ✅
 27. **Rhythms** (Friday Overview, Sunday Reflection, Monthly Review, Quarterly Inventory rhythm cards, Reveille/Reckoning batch delivery) — **Phase 10B BUILT** ✅
 

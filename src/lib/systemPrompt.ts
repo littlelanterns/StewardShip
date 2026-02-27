@@ -1,4 +1,4 @@
-import type { MastEntry, KeelEntry, LogEntry, Victory, GuidedMode, HelmMessage, SpouseInsight, SpouseInsightCategory, Person, CrewNote, CrewNoteCategory, SphereEntity, SphereLevel } from './types';
+import type { MastEntry, KeelEntry, LogEntry, Victory, GuidedMode, HelmMessage, SpouseInsight, SpouseInsightCategory, Person, CrewNote, CrewNoteCategory, SphereEntity, SphereLevel, MeetingTemplateSection } from './types';
 import { MAST_TYPE_ORDER, MAST_TYPE_LABELS } from './types';
 import { KEEL_CATEGORY_ORDER, KEEL_CATEGORY_LABELS } from './types';
 import { SPOUSE_INSIGHT_CATEGORY_LABELS, SPOUSE_INSIGHT_CATEGORY_ORDER, CREW_NOTE_CATEGORY_LABELS } from './types';
@@ -33,6 +33,7 @@ export interface SystemPromptContext {
   cyranoContext?: string;
   higginsContext?: string;
   meetingContext?: string;
+  meetingSections?: MeetingTemplateSection[];
   reflectionsContext?: string;
   appGuideContext?: string;
   pageContext: string;
@@ -1107,9 +1108,87 @@ export function formatMeetingContext(
   return result;
 }
 
+function getMeetingIntroText(subtype: string): string {
+  const intros: Record<string, string> = {
+    couple: 'You are guiding a structured Couple Meeting.',
+    parent_child: `You are guiding a mentor meeting between the user and their child.
+Adapt your approach based on the child's age:
+- Ages 0-8 (Core Phase): Simple habits, fun goals, parent reflection
+- Ages 8-12 (Love of Learning): Explore interests, set exploration goals
+- Ages 12+ (Scholar Phase): Structured goals across areas`,
+    mentor: `This is a Mentor Meeting — a self-directed meeting between the user and their mentor (teacher, coach, spiritual leader, tutor, etc.). Your role is to help the user prepare for and reflect on the meeting, NOT to be the mentor.
+
+Before the meeting: Help them organize their thoughts and agenda items.
+During the meeting (if using live mode): Help them take notes, capture key advice, and stay focused on their agenda.
+After the meeting: Help them process what was discussed, create action items, and set goals.`,
+    weekly_review: 'Structured reflection partner for a weekly review. Pull real data.',
+    monthly_review: 'Deeper strategic review. Total target: 60-90 minutes.',
+    business: 'For professional stewardship. Frame work as meaningful service.',
+    custom: 'Follow the agenda sections conversationally. Adapt to whatever the user has designed.',
+  };
+  return intros[subtype] || intros.weekly_review;
+}
+
+function getMeetingRulesText(subtype: string): string {
+  const rules: Record<string, string> = {
+    couple: `RULES: Spend more time where the user engages deeply. Move quickly through sections they want to skip. Never rush. Never guilt about skipped sections. Reference First Mate context naturally. Three-tier relationship safety applies.
+After completion, summarize the meeting, list action items for Compass confirmation, and offer to save insights to First Mate/Log/Keel.`,
+    parent_child: `RULES: Reference the child's personality and interests from Crew context. Coach the parent to listen actively. Never judgmental about unmet goals.
+After completion, save notes to crew_notes, create Compass tasks, save to Log.`,
+    mentor: `PRINCIPLES TO EMBODY:
+- Self-directed learning: The user drives the agenda, not the mentor and not you.
+- Inspire, don't require: Encourage curiosity and ownership, never force.
+- Self-government: Help the user reflect on how they communicate — staying calm, accepting feedback, disagreeing respectfully.
+- Accountability: Track commitments made and follow through.
+- Respect: The mentor relationship is built on mutual respect. Help the user show up prepared and engaged.
+- Classics and depth: Encourage engaging with great ideas, original sources, and deep thinking over surface-level material.
+
+RULES: Reference the mentor's personality and context from Crew data when available. If the user is a teen, be age-appropriate — encouraging but not patronizing. Connect goals to the user's Mast principles when relevant.`,
+    weekly_review: `RULES: Ground reflection in real data, not just feelings. Suggest 1-3 Big Rock goals. Reference active plans and Wheels naturally.`,
+    monthly_review: `RULES: Deeper than weekly. Reference monthly trends, not just recent days.`,
+    business: `RULES: Manifest RAG available for business framework content. Keep strategic, not just tactical.`,
+    custom: `RULES: The eight core elements (prayer, review, goals, etc.) are available but not required for custom meetings. Adapt to whatever the user has designed.`,
+  };
+  return rules[subtype] || rules.weekly_review;
+}
+
+function buildDynamicMeetingPrompt(subtype: string, sections: MeetingTemplateSection[], context?: SystemPromptContext): string {
+  const intro = getMeetingIntroText(subtype);
+  const rules = getMeetingRulesText(subtype);
+
+  let prompt = `\n\nGUIDED MODE: ${subtype.toUpperCase().replace(/_/g, ' ')} MEETING\n${intro}\n\nWalk through these sections conversationally:\n`;
+  for (let i = 0; i < sections.length; i++) {
+    const s = sections[i];
+    prompt += `${i + 1}. ${s.title}`;
+    if (s.ai_prompt_text) {
+      prompt += ` — ${s.ai_prompt_text}`;
+    }
+    prompt += '\n';
+  }
+  prompt += `\n${rules}\nWhen presenting summary, format: MEETING_SUMMARY:{"summary": "...", "action_items": ["..."], "impressions": "..."}`;
+
+  // Agenda items instruction
+  if (context?.meetingContext && context.meetingContext.includes('PENDING AGENDA ITEMS')) {
+    prompt += `\n\nAGENDA ITEMS INSTRUCTION:
+The user has pre-added discussion items they want to cover during this meeting. Work these into the conversation naturally at appropriate moments within the meeting flow. Don't list them all at once at the start — weave them in where they fit. After discussing an item, you can briefly acknowledge it was covered. If any items remain unaddressed near the end of the meeting, mention them before closing: "You also had [item] on your agenda — want to touch on that?"`;
+  }
+
+  if (context?.meetingContext) {
+    prompt += context.meetingContext;
+  }
+
+  return prompt;
+}
+
 function getMeetingGuidedPrompt(context?: SystemPromptContext): string {
   const subtype = context?.guidedSubtype || 'weekly_review';
 
+  // If user has customized sections, use dynamic prompt
+  if (context?.meetingSections && context.meetingSections.length > 0) {
+    return buildDynamicMeetingPrompt(subtype, context.meetingSections, context);
+  }
+
+  // Fallback to hardcoded prompts
   const subtypePrompts: Record<string, string> = {
     couple: `\n\nGUIDED MODE: COUPLE MEETING
 You are guiding a structured Couple Meeting. Walk through these sections conversationally:

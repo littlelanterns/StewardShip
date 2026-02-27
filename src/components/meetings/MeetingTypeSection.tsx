@@ -1,9 +1,10 @@
 import { useState, useCallback } from 'react';
-import { Calendar, Users, BarChart3, Briefcase, Layout, ChevronDown, GraduationCap } from 'lucide-react';
+import { Calendar, Users, BarChart3, Briefcase, Layout, ChevronDown, GraduationCap, SlidersHorizontal } from 'lucide-react';
 import type { MeetingType, MeetingEntryMode, Person, MeetingAgendaItem } from '../../lib/types';
 import { MEETING_TYPE_LABELS, MEETING_FREQUENCY_LABELS } from '../../lib/types';
 import type { ScheduleWithPerson } from '../../hooks/useMeetings';
 import { AgendaItemsList } from './AgendaItemsList';
+import { AgendaSectionEditor } from './AgendaSectionEditor';
 
 const TYPE_ICONS: Record<MeetingType, typeof Calendar> = {
   couple: Calendar,
@@ -48,6 +49,7 @@ export function MeetingTypeSection({
   onDeleteAgendaItem,
 }: MeetingTypeSectionProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [showSectionEditor, setShowSectionEditor] = useState(false);
   const Icon = TYPE_ICONS[meetingType] || Layout;
 
   const toggle = useCallback(() => setIsOpen(prev => !prev), []);
@@ -80,6 +82,15 @@ export function MeetingTypeSection({
             <span className="agenda-badge">{pendingCount}</span>
           )}
         </h3>
+        <button
+          type="button"
+          className="meeting-type-section__settings-btn"
+          onClick={e => { e.stopPropagation(); setShowSectionEditor(true); }}
+          aria-label="Edit agenda sections"
+          title="Edit agenda sections"
+        >
+          <SlidersHorizontal size={15} />
+        </button>
         <ChevronDown
           size={16}
           className={`meeting-type-section__chevron ${isOpen ? 'meeting-type-section__chevron--open' : ''}`}
@@ -233,6 +244,14 @@ export function MeetingTypeSection({
             </button>
           )}
         </div>
+      )}
+      {showSectionEditor && (
+        <AgendaSectionEditor
+          meetingType={meetingType}
+          templateId={templateId}
+          templateName={templateName}
+          onClose={() => setShowSectionEditor(false)}
+        />
       )}
     </div>
   );

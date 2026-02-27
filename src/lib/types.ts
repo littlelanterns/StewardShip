@@ -1378,6 +1378,21 @@ export interface MeetingAgendaItem {
   updated_at: string;
 }
 
+export interface MeetingTemplateSection {
+  id: string;
+  user_id: string;
+  meeting_type: string;
+  template_id: string | null;
+  title: string;
+  ai_prompt_text: string;
+  sort_order: number;
+  is_default: boolean;
+  default_key: string | null;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export const MEETING_TYPE_LABELS: Record<MeetingType, string> = {
   couple: 'Couple Meeting',
   parent_child: 'Parent-Child Mentor Meeting',

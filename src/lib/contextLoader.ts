@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { MastEntry, KeelEntry, LogEntry, Victory, CompassTask, GuidedMode, GuidedSubtype, HelmMessage, WheelInstance, LifeInventoryArea, RiggingPlan, Person, SpouseInsight, SphereEntity, ManifestSearchResult, Meeting, CrewNote, MeetingAgendaItem } from './types';
+import type { MastEntry, KeelEntry, LogEntry, Victory, CompassTask, GuidedMode, GuidedSubtype, HelmMessage, WheelInstance, LifeInventoryArea, RiggingPlan, Person, SpouseInsight, SphereEntity, ManifestSearchResult, Meeting, CrewNote, MeetingAgendaItem, MeetingTemplateSection } from './types';
 import { SPOKE_LABELS, PLANNING_FRAMEWORK_LABELS, CREW_NOTE_CATEGORY_LABELS } from './types';
 import { searchManifest } from './rag';
 import {
@@ -137,6 +137,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
   let cyranoContext: string | undefined;
   let higginsContext: string | undefined;
   let meetingContext: string | undefined;
+  let meetingSections: MeetingTemplateSection[] | undefined;
   let reflectionsContext: string | undefined;
   let appGuideContext: string | undefined;
 
@@ -288,6 +289,27 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
         .order('sort_order', { ascending: true })
     : null;
 
+  // Meeting template sections — user's customized agenda sections for the meeting subtype
+  const meetingSubtype = guidedMode === 'meeting' ? (guidedSubtype || 'weekly_review') : null;
+  const meetingSectionsPromise = meetingSubtype
+    ? (() => {
+        let q = supabase
+          .from('meeting_template_sections')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('meeting_type', meetingSubtype)
+          .is('archived_at', null)
+          .order('sort_order', { ascending: true });
+        // For custom types with a template_id from guided mode context
+        if (meetingSubtype === 'custom' && guidedModeContext?.manifest_item_id) {
+          q = q.eq('template_id', guidedModeContext.manifest_item_id);
+        } else {
+          q = q.is('template_id', null);
+        }
+        return q;
+      })()
+    : null;
+
   const reflectionsPromise = needReflections
     ? supabase
         .from('reflection_responses')
@@ -331,7 +353,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     }
   }
 
-  const [keelResult, logResult, compassResult, victoriesResult, wheelResult, lifeInvResult, riggingResult, firstMateResult, spouseInsightsResult, crewResult, sphereEntitiesResult, frameworksResult, manifestResults, meetingResult, agendaResult, reflectionsResult] = await Promise.all([
+  const [keelResult, logResult, compassResult, victoriesResult, wheelResult, lifeInvResult, riggingResult, firstMateResult, spouseInsightsResult, crewResult, sphereEntitiesResult, frameworksResult, manifestResults, meetingResult, agendaResult, reflectionsResult, meetingSectionsResult] = await Promise.all([
     keelPromise,
     logPromise,
     compassPromise,
@@ -348,6 +370,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     meetingPromise,
     agendaPromise,
     reflectionsPromise,
+    meetingSectionsPromise,
   ]);
 
   if (keelResult?.data) {
@@ -403,6 +426,11 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     if (agendaSection) {
       meetingContext = (meetingContext || '') + agendaSection;
     }
+  }
+
+  // Meeting template sections — pass to systemPrompt for dynamic agenda
+  if (meetingSectionsResult?.data && meetingSectionsResult.data.length > 0) {
+    meetingSections = meetingSectionsResult.data as MeetingTemplateSection[];
   }
 
   if (firstMateResult?.data) {
@@ -646,6 +674,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     cyranoContext,
     higginsContext,
     meetingContext,
+    meetingSections,
     reflectionsContext,
     appGuideContext,
     pageContext,

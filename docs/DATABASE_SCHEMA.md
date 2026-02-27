@@ -1167,6 +1167,35 @@ Discussion items users jot down between meetings. Attached to the next meeting o
 CREATE TRIGGER set_updated_at BEFORE UPDATE ON meeting_agenda_items FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
 ```
 
+#### `meeting_template_sections`
+
+Per-user customizable agenda sections for any meeting type. Auto-seeded from BUILT_IN_AGENDAS on first access. Users can add, edit, reorder, archive, and restore sections.
+
+| Column | Type | Default | Nullable | Notes |
+|--------|------|---------|----------|-------|
+| id | UUID | gen_random_uuid() | NOT NULL | PK |
+| user_id | UUID | | NOT NULL | FK → auth.users |
+| meeting_type | TEXT | | NOT NULL | Matches MeetingType enum (couple, parent_child, mentor, weekly_review, monthly_review, business, custom) |
+| template_id | UUID | null | NULL | FK → meeting_templates. For custom meeting types only. |
+| title | TEXT | | NOT NULL | Section display title |
+| ai_prompt_text | TEXT | '' | NOT NULL | Short AI instruction for this section (1-2 sentences) |
+| sort_order | INTEGER | 0 | NOT NULL | User-controlled ordering |
+| is_default | BOOLEAN | false | NOT NULL | True for built-in default sections (can be archived but not hard-deleted) |
+| default_key | TEXT | null | NULL | Unique key for default sections (e.g., 'couple_prayer_open') |
+| archived_at | TIMESTAMPTZ | null | NULL | Soft delete for hiding sections |
+| created_at | TIMESTAMPTZ | now() | NOT NULL | |
+| updated_at | TIMESTAMPTZ | now() | NOT NULL | Auto-trigger |
+
+**RLS:** Users CRUD own sections only.
+**Indexes:**
+- `user_id, meeting_type, archived_at` (active sections query)
+- Partial unique index: `(user_id, meeting_type, default_key) WHERE default_key IS NOT NULL` (prevent duplicate default seeding)
+
+**Trigger:**
+```sql
+CREATE TRIGGER set_updated_at BEFORE UPDATE ON meeting_template_sections FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
+```
+
 ---
 
 ## PRD-18: Reminders + Rhythms
@@ -1409,6 +1438,7 @@ auth.users
   ├── meeting_schedules (user_id → auth.users.id)
   ├── meeting_templates (user_id → auth.users.id)
   ├── meeting_agenda_items (user_id → auth.users.id)
+  ├── meeting_template_sections (user_id → auth.users.id)
   ├── reminders (user_id → auth.users.id)
   ├── push_subscriptions (user_id → auth.users.id)
   ├── rhythm_status (user_id → auth.users.id)
@@ -1487,6 +1517,9 @@ meeting_schedules
   ├── people (related_person_id → people.id)
   └── meeting_templates (template_id → meeting_templates.id)
 
+meeting_template_sections
+  └── meeting_templates (template_id → meeting_templates.id)
+
 compass_tasks
   └── related_rigging_plan_id → rigging_plans.id
 ```
@@ -1495,7 +1528,7 @@ compass_tasks
 
 ## Tables — All PRDs Complete
 
-All tables across PRDs 01-20 have been defined (42 total). Settings (PRD-19) introduces no new tables. PRD-20 adds `hold_dumps`. PRD-12A adds `cyrano_messages`. PRD-13A adds `higgins_messages`. Phase 9.5+ adds `routine_assignments`. Meeting Enhancement adds `meeting_agenda_items`.
+All tables across PRDs 01-20 have been defined (43 total). Settings (PRD-19) introduces no new tables. PRD-20 adds `hold_dumps`. PRD-12A adds `cyrano_messages`. PRD-13A adds `higgins_messages`. Phase 9.5+ adds `routine_assignments`. Meeting Enhancement adds `meeting_agenda_items` and `meeting_template_sections`.
 
 | Table | Expected PRD | Purpose |
 |-------|-------------|---------|
@@ -1530,6 +1563,7 @@ All tables across PRDs 01-20 have been defined (42 total). Settings (PRD-19) int
 | meeting_schedules | ~~PRD-17~~ DONE | Recurring meeting configuration with frequency, day/time, notifications |
 | meeting_templates | PRD-17 | DONE (new — user-created custom meeting templates with JSONB agenda sections) |
 | meeting_agenda_items | PRD-17 | DONE (new — between-meeting discussion items queued for next meeting of type/person) |
+| meeting_template_sections | PRD-17 | DONE (new — per-user customizable agenda sections with auto-seeded defaults, archive/restore) |
 | reminders | ~~PRD-18~~ DONE | Reminder records with type, delivery method, lifecycle status, snooze tracking, related entity |
 | push_subscriptions | PRD-18 | DONE (new — Web Push API device subscription records) |
 | rhythm_status | PRD-18 | DONE (new — tracks weekly/monthly/quarterly rhythm card dismissals) |
@@ -1559,6 +1593,7 @@ All tables across PRDs 01-20 have been defined (42 total). Settings (PRD-19) int
 | 021_completion_note.sql | Add `completion_note` TEXT column to `compass_tasks` for accomplishment notes |
 | 022_meeting_agenda_items.sql | `meeting_agenda_items` table for between-meeting discussion items with status lifecycle, person/template FKs, RLS, indexes, auto-update trigger |
 | 023_mentor_meeting_custom_title.sql | Add `custom_title` TEXT column to `meetings` and `meeting_schedules` tables for user-defined meeting names (used by mentor type) |
+| 024_meeting_template_sections.sql | `meeting_template_sections` table for per-user customizable agenda sections with auto-seeded defaults, archive/restore, partial unique index on default_key, RLS, auto-update trigger |
 
 ---
 
