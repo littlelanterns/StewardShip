@@ -1202,6 +1202,12 @@ The eight core elements (opening prayer, review previous, current state, vision 
 
   let prompt = subtypePrompts[subtype] || subtypePrompts.weekly_review;
 
+  // Add agenda items instruction if meeting context contains agenda items
+  if (context?.meetingContext && context.meetingContext.includes('PENDING AGENDA ITEMS')) {
+    prompt += `\n\nAGENDA ITEMS INSTRUCTION:
+The user has pre-added discussion items they want to cover during this meeting. Work these into the conversation naturally at appropriate moments within the meeting flow. Don't list them all at once at the start — weave them in where they fit. After discussing an item, you can briefly acknowledge it was covered. If any items remain unaddressed near the end of the meeting, mention them before closing: "You also had [item] on your agenda — want to touch on that?"`;
+  }
+
   // Add meeting context if available
   if (context?.meetingContext) {
     prompt += context.meetingContext;

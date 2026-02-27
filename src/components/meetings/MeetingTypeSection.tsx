@@ -1,8 +1,9 @@
 import { useState, useCallback } from 'react';
 import { Calendar, Users, BarChart3, Briefcase, Layout, ChevronDown } from 'lucide-react';
-import type { MeetingType, MeetingEntryMode, Person } from '../../lib/types';
+import type { MeetingType, MeetingEntryMode, Person, MeetingAgendaItem } from '../../lib/types';
 import { MEETING_TYPE_LABELS, MEETING_FREQUENCY_LABELS } from '../../lib/types';
 import type { ScheduleWithPerson } from '../../hooks/useMeetings';
+import { AgendaItemsList } from './AgendaItemsList';
 
 const TYPE_ICONS: Record<MeetingType, typeof Calendar> = {
   couple: Calendar,
@@ -19,9 +20,15 @@ interface MeetingTypeSectionProps {
   schedules: ScheduleWithPerson[];
   children?: Person[];
   templateName?: string;
+  templateId?: string;
   onStartMeeting: (type: MeetingType, mode: MeetingEntryMode, personId?: string, templateId?: string) => void;
   onViewHistory: (type: MeetingType, personId?: string) => void;
   onSetupSchedule: (type: MeetingType, personId?: string) => void;
+  agendaItems: MeetingAgendaItem[];
+  onFetchAgendaItems: (meetingType: string, relatedPersonId?: string | null, templateId?: string | null) => Promise<MeetingAgendaItem[]>;
+  onAddAgendaItem: (meetingType: string, text: string, relatedPersonId?: string | null, templateId?: string | null, notes?: string | null) => Promise<MeetingAgendaItem | null>;
+  onUpdateAgendaItem: (id: string, updates: Partial<Pick<MeetingAgendaItem, 'text' | 'notes'>>) => Promise<void>;
+  onDeleteAgendaItem: (id: string) => Promise<void>;
 }
 
 export function MeetingTypeSection({
@@ -29,9 +36,15 @@ export function MeetingTypeSection({
   schedules,
   children,
   templateName,
+  templateId,
   onStartMeeting,
   onViewHistory,
   onSetupSchedule,
+  agendaItems,
+  onFetchAgendaItems,
+  onAddAgendaItem,
+  onUpdateAgendaItem,
+  onDeleteAgendaItem,
 }: MeetingTypeSectionProps) {
   const [isOpen, setIsOpen] = useState(false);
   const Icon = TYPE_ICONS[meetingType] || Layout;
@@ -42,6 +55,11 @@ export function MeetingTypeSection({
   const hasSchedule = typeSchedules.length > 0;
 
   const label = templateName || MEETING_TYPE_LABELS[meetingType];
+
+  // Count pending agenda items for this meeting type (no person filter for the header badge)
+  const pendingCount = agendaItems.filter(i =>
+    i.status === 'pending' && i.meeting_type === meetingType
+  ).length;
 
   return (
     <div className="meeting-type-section">
@@ -55,7 +73,12 @@ export function MeetingTypeSection({
         <div className="meeting-type-section__icon">
           <Icon size={18} strokeWidth={1.5} />
         </div>
-        <h3 className="meeting-type-section__title">{label}</h3>
+        <h3 className="meeting-type-section__title">
+          {label}
+          {pendingCount > 0 && (
+            <span className="agenda-badge">{pendingCount}</span>
+          )}
+        </h3>
         <ChevronDown
           size={16}
           className={`meeting-type-section__chevron ${isOpen ? 'meeting-type-section__chevron--open' : ''}`}
@@ -105,6 +128,16 @@ export function MeetingTypeSection({
                     View History
                   </button>
                 </div>
+
+                <AgendaItemsList
+                  meetingType={meetingType}
+                  relatedPersonId={child.id}
+                  items={agendaItems}
+                  onFetchItems={onFetchAgendaItems}
+                  onAddItem={onAddAgendaItem}
+                  onUpdateItem={onUpdateAgendaItem}
+                  onDeleteItem={onDeleteAgendaItem}
+                />
               </div>
             ))
           ) : (
@@ -132,6 +165,17 @@ export function MeetingTypeSection({
               >
                 View History
               </button>
+
+              <AgendaItemsList
+                meetingType={meetingType}
+                relatedPersonId={null}
+                templateId={templateId}
+                items={agendaItems}
+                onFetchItems={onFetchAgendaItems}
+                onAddItem={onAddAgendaItem}
+                onUpdateItem={onUpdateAgendaItem}
+                onDeleteItem={onDeleteAgendaItem}
+              />
             </>
           )}
 

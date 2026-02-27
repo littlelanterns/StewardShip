@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { MastEntry, KeelEntry, LogEntry, Victory, CompassTask, GuidedMode, GuidedSubtype, HelmMessage, WheelInstance, LifeInventoryArea, RiggingPlan, Person, SpouseInsight, SphereEntity, ManifestSearchResult, Meeting, CrewNote } from './types';
+import type { MastEntry, KeelEntry, LogEntry, Victory, CompassTask, GuidedMode, GuidedSubtype, HelmMessage, WheelInstance, LifeInventoryArea, RiggingPlan, Person, SpouseInsight, SphereEntity, ManifestSearchResult, Meeting, CrewNote, MeetingAgendaItem } from './types';
 import { SPOKE_LABELS, PLANNING_FRAMEWORK_LABELS, CREW_NOTE_CATEGORY_LABELS } from './types';
 import { searchManifest } from './rag';
 import {
@@ -278,6 +278,16 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
         .limit(3)
     : null;
 
+  // Agenda items — pending items users have queued between meetings
+  const agendaPromise = needMeeting
+    ? supabase
+        .from('meeting_agenda_items')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'pending')
+        .order('sort_order', { ascending: true })
+    : null;
+
   const reflectionsPromise = needReflections
     ? supabase
         .from('reflection_responses')
@@ -321,7 +331,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     }
   }
 
-  const [keelResult, logResult, compassResult, victoriesResult, wheelResult, lifeInvResult, riggingResult, firstMateResult, spouseInsightsResult, crewResult, sphereEntitiesResult, frameworksResult, manifestResults, meetingResult, reflectionsResult] = await Promise.all([
+  const [keelResult, logResult, compassResult, victoriesResult, wheelResult, lifeInvResult, riggingResult, firstMateResult, spouseInsightsResult, crewResult, sphereEntitiesResult, frameworksResult, manifestResults, meetingResult, agendaResult, reflectionsResult] = await Promise.all([
     keelPromise,
     logPromise,
     compassPromise,
@@ -336,6 +346,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     frameworksPromise,
     manifestPromise,
     meetingPromise,
+    agendaPromise,
     reflectionsPromise,
   ]);
 
@@ -383,6 +394,15 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
         person_name: m.related_person_id ? meetingPersonMap[m.related_person_id] : undefined,
       })),
     );
+  }
+
+  // Append pending agenda items to meeting context
+  if (agendaResult?.data && agendaResult.data.length > 0) {
+    const agendaItems = agendaResult.data as MeetingAgendaItem[];
+    const agendaSection = formatAgendaItems(agendaItems);
+    if (agendaSection) {
+      meetingContext = (meetingContext || '') + agendaSection;
+    }
   }
 
   if (firstMateResult?.data) {
@@ -917,6 +937,31 @@ function buildLifeInventoryContext(areas: LifeInventoryArea[]): string {
       result += ` | Vision: ${truncated}`;
     }
     result += '\n';
+  }
+  return result;
+}
+
+function formatAgendaItems(items: MeetingAgendaItem[]): string {
+  if (items.length === 0) return '';
+
+  // Group by meeting_type
+  const byType: Record<string, MeetingAgendaItem[]> = {};
+  for (const item of items) {
+    if (!byType[item.meeting_type]) byType[item.meeting_type] = [];
+    byType[item.meeting_type].push(item);
+  }
+
+  let result = '\n\nPENDING AGENDA ITEMS (queued between meetings):\n';
+  for (const [type, typeItems] of Object.entries(byType)) {
+    result += `${type.replace(/_/g, ' ')}:\n`;
+    for (const item of typeItems) {
+      result += `- ${item.text}`;
+      if (item.notes) {
+        const truncated = item.notes.length > 100 ? item.notes.slice(0, 97) + '...' : item.notes;
+        result += ` (note: ${truncated})`;
+      }
+      result += '\n';
+    }
   }
   return result;
 }

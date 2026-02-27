@@ -1,7 +1,7 @@
 # StewardShip: Database Schema
 
 > This is a living document. Updated after each PRD is written.
-> Last updated: After PRD-13A (Higgins) + Accomplishment Rearchitecture (migration 021)
+> Last updated: After PRD-13A (Higgins) + Accomplishment Rearchitecture (migration 021) + Meeting Agenda Items (migration 022)
 
 ---
 
@@ -1136,6 +1136,37 @@ CREATE TRIGGER set_updated_at BEFORE UPDATE ON meeting_templates FOR EACH ROW EX
 
 ---
 
+#### `meeting_agenda_items`
+
+Discussion items users jot down between meetings. Attached to the next meeting of that type/person.
+
+| Column | Type | Default | Nullable | Notes |
+|--------|------|---------|----------|-------|
+| id | UUID | gen_random_uuid() | NOT NULL | PK |
+| user_id | UUID | | NOT NULL | FK → auth.users |
+| meeting_type | TEXT | | NOT NULL | Matches MeetingType enum (couple, parent_child, weekly_review, etc.) |
+| related_person_id | UUID | null | NULL | FK → people. For person-specific meetings (parent_child, etc.) |
+| template_id | UUID | null | NULL | FK → meeting_templates. For custom template meetings. |
+| text | TEXT | | NOT NULL | The agenda item text |
+| notes | TEXT | null | NULL | Optional context/notes |
+| sort_order | INTEGER | 0 | NOT NULL | User-controlled ordering |
+| status | TEXT | 'pending' | NOT NULL | Enum: 'pending', 'discussed', 'deferred' |
+| discussed_in_meeting_id | UUID | null | NULL | FK → meetings. Set when item is discussed. |
+| created_at | TIMESTAMPTZ | now() | NOT NULL | |
+| updated_at | TIMESTAMPTZ | now() | NOT NULL | Auto-trigger |
+
+**RLS:** Users CRUD own items only.
+**Indexes:**
+- `user_id, status` (pending items query)
+- `user_id, meeting_type, status` (type-filtered pending items)
+
+**Trigger:**
+```sql
+CREATE TRIGGER set_updated_at BEFORE UPDATE ON meeting_agenda_items FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
+```
+
+---
+
 ## PRD-18: Reminders + Rhythms
 
 #### `reminders`
@@ -1375,6 +1406,7 @@ auth.users
   ├── meetings (user_id → auth.users.id)
   ├── meeting_schedules (user_id → auth.users.id)
   ├── meeting_templates (user_id → auth.users.id)
+  ├── meeting_agenda_items (user_id → auth.users.id)
   ├── reminders (user_id → auth.users.id)
   ├── push_subscriptions (user_id → auth.users.id)
   ├── rhythm_status (user_id → auth.users.id)
@@ -1442,6 +1474,11 @@ meetings
   ├── helm_conversations (helm_conversation_id → helm_conversations.id)
   ├── log_entries (log_entry_id → log_entries.id)
   ├── people (related_person_id → people.id)
+  ├── meeting_templates (template_id → meeting_templates.id)
+  └── meeting_agenda_items (discussed_in_meeting_id → meetings.id)
+
+meeting_agenda_items
+  ├── people (related_person_id → people.id)
   └── meeting_templates (template_id → meeting_templates.id)
 
 meeting_schedules
@@ -1456,7 +1493,7 @@ compass_tasks
 
 ## Tables — All PRDs Complete
 
-All tables across PRDs 01-20 have been defined (41 total). Settings (PRD-19) introduces no new tables. PRD-20 adds `hold_dumps`. PRD-12A adds `cyrano_messages`. PRD-13A adds `higgins_messages`. Phase 9.5+ adds `routine_assignments`.
+All tables across PRDs 01-20 have been defined (42 total). Settings (PRD-19) introduces no new tables. PRD-20 adds `hold_dumps`. PRD-12A adds `cyrano_messages`. PRD-13A adds `higgins_messages`. Phase 9.5+ adds `routine_assignments`. Meeting Enhancement adds `meeting_agenda_items`.
 
 | Table | Expected PRD | Purpose |
 |-------|-------------|---------|
@@ -1490,6 +1527,7 @@ All tables across PRDs 01-20 have been defined (41 total). Settings (PRD-19) int
 | meetings | ~~PRD-17~~ DONE | Individual meeting records with type, status, summary, Helm/Log links |
 | meeting_schedules | ~~PRD-17~~ DONE | Recurring meeting configuration with frequency, day/time, notifications |
 | meeting_templates | PRD-17 | DONE (new — user-created custom meeting templates with JSONB agenda sections) |
+| meeting_agenda_items | PRD-17 | DONE (new — between-meeting discussion items queued for next meeting of type/person) |
 | reminders | ~~PRD-18~~ DONE | Reminder records with type, delivery method, lifecycle status, snooze tracking, related entity |
 | push_subscriptions | PRD-18 | DONE (new — Web Push API device subscription records) |
 | rhythm_status | PRD-18 | DONE (new — tracks weekly/monthly/quarterly rhythm card dismissals) |
@@ -1517,6 +1555,7 @@ All tables across PRDs 01-20 have been defined (41 total). Settings (PRD-19) int
 | 019_onboarding.sql | Add `onboarding_completed` BOOLEAN column to `user_profiles` (default false) |
 | 020_higgins_messages.sql | Dedicated Higgins Messages table for crew communication coaching — mode, teaching skill tracking, per-person FK |
 | 021_completion_note.sql | Add `completion_note` TEXT column to `compass_tasks` for accomplishment notes |
+| 022_meeting_agenda_items.sql | `meeting_agenda_items` table for between-meeting discussion items with status lifecycle, person/template FKs, RLS, indexes, auto-update trigger |
 
 ---
 

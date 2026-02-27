@@ -1358,6 +1358,23 @@ export interface MeetingTemplate {
   updated_at: string;
 }
 
+export type MeetingAgendaItemStatus = 'pending' | 'discussed' | 'deferred';
+
+export interface MeetingAgendaItem {
+  id: string;
+  user_id: string;
+  meeting_type: string;
+  related_person_id: string | null;
+  template_id: string | null;
+  text: string;
+  notes: string | null;
+  sort_order: number;
+  status: MeetingAgendaItemStatus;
+  discussed_in_meeting_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export const MEETING_TYPE_LABELS: Record<MeetingType, string> = {
   couple: 'Couple Meeting',
   parent_child: 'Parent-Child Mentor Meeting',

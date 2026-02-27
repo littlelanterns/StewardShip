@@ -887,7 +887,8 @@ Six guided conversation modes accessible from the First Mate page, each opening 
 - **Pattern recognition after 5+ meetings.** AI notices recurring themes, carry-forward goals, growth trends. Reflects in conversation, never assigns scores.
 - **Custom meeting templates:** create via AI conversation, manual form, or uploaded agenda file. Templates stored with ordered JSONB agenda sections.
 - **Convention:** Meeting notes → Log (`entry_type = 'meeting_notes'`, `source = 'meeting_framework'`). Action items → Compass (`source = 'meeting_action'`). Insights → First Mate / Crew / Keel as appropriate.
-- **Three tables:** `meetings` (individual records), `meeting_schedules` (recurring config), `meeting_templates` (custom templates with JSONB agenda sections).
+- **Agenda items between meetings:** Users can jot down things they want to discuss before the next meeting. Items are per meeting type + optional person/template. Displayed inline on meeting cards (Upcoming and Type sections). When a meeting starts in guided mode, pending agenda items are loaded into AI context with instructions to weave them in naturally. Items have status lifecycle: pending → discussed / deferred. Deferred items stay as pending for the next meeting.
+- **Four tables:** `meetings` (individual records), `meeting_schedules` (recurring config), `meeting_templates` (custom templates with JSONB agenda sections), `meeting_agenda_items` (between-meeting discussion items with status lifecycle).
 
 ### Reminders + Rhythms Conventions
 - **Reminders is the notification infrastructure** — every time-sensitive behavior in the app flows through it. Delivery methods: Reveille batch (default, non-urgent), Reckoning batch (evening reflective), push notification (time-critical only), in-app alert (contextual while app is open).

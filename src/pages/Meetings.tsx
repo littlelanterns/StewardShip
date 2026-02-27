@@ -4,6 +4,7 @@ import { usePageContext } from '../hooks/usePageContext';
 import { useAuthContext } from '../contexts/AuthContext';
 import { useHelmContext } from '../contexts/HelmContext';
 import { useMeetings } from '../hooks/useMeetings';
+import { useMeetingAgenda } from '../hooks/useMeetingAgenda';
 import type { ScheduleWithPerson } from '../hooks/useMeetings';
 import { EmptyState, FloatingActionButton, LoadingSpinner, FeatureGuide } from '../components/shared';
 import { FEATURE_GUIDES } from '../lib/featureGuides';
@@ -49,6 +50,8 @@ export default function Meetings() {
     skipMeeting,
     deleteSchedule,
   } = useMeetings();
+
+  const agenda = useMeetingAgenda();
 
   const [viewMode, setViewMode] = useState<ViewMode>('main');
   const [upcomingSchedules, setUpcomingSchedules] = useState<ScheduleWithPerson[]>([]);
@@ -230,6 +233,11 @@ export default function Meetings() {
         schedules={upcomingSchedules}
         onStartMeeting={handleStartFromSchedule}
         onSkip={handleSkip}
+        agendaItems={agenda.items}
+        onFetchAgendaItems={agenda.fetchPendingItems}
+        onAddAgendaItem={agenda.addItem}
+        onUpdateAgendaItem={agenda.updateItem}
+        onDeleteAgendaItem={agenda.deleteItem}
       />
 
       {/* Meeting Type Sections */}
@@ -240,6 +248,11 @@ export default function Meetings() {
           onStartMeeting={handleStartMeeting}
           onViewHistory={handleViewHistory}
           onSetupSchedule={handleSetupSchedule}
+          agendaItems={agenda.items}
+          onFetchAgendaItems={agenda.fetchPendingItems}
+          onAddAgendaItem={agenda.addItem}
+          onUpdateAgendaItem={agenda.updateItem}
+          onDeleteAgendaItem={agenda.deleteItem}
         />
       )}
 
@@ -251,6 +264,11 @@ export default function Meetings() {
           onStartMeeting={handleStartMeeting}
           onViewHistory={handleViewHistory}
           onSetupSchedule={handleSetupSchedule}
+          agendaItems={agenda.items}
+          onFetchAgendaItems={agenda.fetchPendingItems}
+          onAddAgendaItem={agenda.addItem}
+          onUpdateAgendaItem={agenda.updateItem}
+          onDeleteAgendaItem={agenda.deleteItem}
         />
       )}
 
@@ -260,6 +278,11 @@ export default function Meetings() {
         onStartMeeting={handleStartMeeting}
         onViewHistory={handleViewHistory}
         onSetupSchedule={handleSetupSchedule}
+        agendaItems={agenda.items}
+        onFetchAgendaItems={agenda.fetchPendingItems}
+        onAddAgendaItem={agenda.addItem}
+        onUpdateAgendaItem={agenda.updateItem}
+        onDeleteAgendaItem={agenda.deleteItem}
       />
 
       <MeetingTypeSection
@@ -268,6 +291,11 @@ export default function Meetings() {
         onStartMeeting={handleStartMeeting}
         onViewHistory={handleViewHistory}
         onSetupSchedule={handleSetupSchedule}
+        agendaItems={agenda.items}
+        onFetchAgendaItems={agenda.fetchPendingItems}
+        onAddAgendaItem={agenda.addItem}
+        onUpdateAgendaItem={agenda.updateItem}
+        onDeleteAgendaItem={agenda.deleteItem}
       />
 
       {hasBusinessSchedules && (
@@ -277,6 +305,11 @@ export default function Meetings() {
           onStartMeeting={handleStartMeeting}
           onViewHistory={handleViewHistory}
           onSetupSchedule={handleSetupSchedule}
+          agendaItems={agenda.items}
+          onFetchAgendaItems={agenda.fetchPendingItems}
+          onAddAgendaItem={agenda.addItem}
+          onUpdateAgendaItem={agenda.updateItem}
+          onDeleteAgendaItem={agenda.deleteItem}
         />
       )}
 
@@ -287,9 +320,15 @@ export default function Meetings() {
           meetingType="custom"
           schedules={schedules.filter(s => s.template_id === template.id)}
           templateName={template.name}
+          templateId={template.id}
           onStartMeeting={(type, mode) => handleStartMeeting(type, mode, undefined, template.id)}
           onViewHistory={() => handleViewHistory('custom')}
           onSetupSchedule={() => handleSetupSchedule('custom')}
+          agendaItems={agenda.items}
+          onFetchAgendaItems={agenda.fetchPendingItems}
+          onAddAgendaItem={agenda.addItem}
+          onUpdateAgendaItem={agenda.updateItem}
+          onDeleteAgendaItem={agenda.deleteItem}
         />
       ))}
 
