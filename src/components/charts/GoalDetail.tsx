@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { X, Trash2, Plus } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useGoals } from '../../hooks/useGoals';
 import { useCompass } from '../../hooks/useCompass';
+import { useVictories } from '../../hooks/useVictories';
 import type { Goal, CompassLifeArea } from '../../lib/types';
 import { LIFE_AREA_LABELS } from '../../lib/types';
+import { SparkleOverlay } from '../shared';
 import AddTaskModal from '../compass/AddTaskModal';
 import './ChartCards.css';
 
@@ -18,8 +19,10 @@ interface GoalDetailProps {
 export function GoalDetail({ goal, onClose, onUpdated }: GoalDetailProps) {
   const { updateGoal, updateProgress, archiveGoal } = useGoals();
   const { createTask } = useCompass();
+  const { createVictory } = useVictories();
   const [editing, setEditing] = useState(false);
   const [showCreateTask, setShowCreateTask] = useState(false);
+  const [showSparkle, setShowSparkle] = useState(false);
   const [title, setTitle] = useState(goal.title);
   const [description, setDescription] = useState(goal.description || '');
   const [progressValue, setProgressValue] = useState('');
@@ -67,13 +70,15 @@ export function GoalDetail({ goal, onClose, onUpdated }: GoalDetailProps) {
     onClose();
   };
 
-  const navigate = useNavigate();
-  const [victoryPrompt, setVictoryPrompt] = useState(false);
-
   const handleComplete = async () => {
     await updateGoal(goal.id, { status: 'completed' });
     onUpdated?.();
-    setVictoryPrompt(true);
+    setShowSparkle(true);
+    createVictory({
+      description: `Completed goal: ${goal.title}`,
+      source: 'manual',
+      source_reference_id: goal.id,
+    });
   };
 
   // Simple progress line data (just current point — future: historical data)
@@ -217,32 +222,9 @@ export function GoalDetail({ goal, onClose, onUpdated }: GoalDetailProps) {
           )}
         </div>
 
-        {!editing && victoryPrompt ? (
-          <div className="chart-modal__footer" style={{ flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
-            <div className="victory-suggestion-banner" style={{ marginBottom: 0 }}>
-              <p>Goal achieved! Record this as a victory?</p>
-              <div className="victory-suggestion-banner__actions">
-                <button
-                  type="button"
-                  className="victory-suggestion-banner__yes"
-                  onClick={() => {
-                    navigate(`/victories?prefill=${encodeURIComponent(goal.title)}&source=goal_completion`);
-                    onClose();
-                  }}
-                >
-                  Yes
-                </button>
-                <button
-                  type="button"
-                  className="victory-suggestion-banner__no"
-                  onClick={onClose}
-                >
-                  Not now
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : !editing && (
+        <SparkleOverlay show={showSparkle} size="quick" onComplete={() => setShowSparkle(false)} />
+
+        {!editing && (
           <div className="chart-modal__footer">
             <button type="button" className="chart-btn chart-btn--secondary" onClick={() => setEditing(true)}>
               Edit

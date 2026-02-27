@@ -25,7 +25,7 @@
   font-weight: 600;
 }
 
-.victories__review-btn {
+.victories__celebrate-btn {
   display: inline-flex;
   align-items: center;
   gap: var(--spacing-xs);
@@ -37,6 +37,10 @@
   cursor: pointer;
   font-size: var(--font-size-sm);
   font-family: var(--font-body);
+}
+
+.victories__celebrate-btn:hover {
+  background: rgba(201, 168, 76, 0.1);
 }
 
 .victories__filters {
@@ -76,11 +80,55 @@
   color: var(--color-text-secondary);
 }
 
+.victories__celebrating {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.victories__narrative-card {
+  margin-bottom: var(--spacing-md);
+  border-left: 3px solid var(--color-gold) !important;
+}
+
+.victories__narrative-text {
+  margin: 0 0 var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.victories__narrative-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.victories__narrative-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-mid-teal);
+  font-size: var(--font-size-xs);
+  font-family: var(--font-body);
+  padding: 0;
+}
+
+.victories__narrative-btn:hover {
+  color: var(--color-dark-teal);
+}
+
 .victories__list {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
-  padding-bottom: 80px; /* FAB clearance */
+  padding-bottom: 80px;
 }
 
 .victories__empty-action {
@@ -92,4 +140,94 @@
   cursor: pointer;
   font-family: var(--font-body);
   font-size: var(--font-size-base);
+}
+
+/* Accomplishment card */
+.accomplishment-card {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+}
+
+.accomplishment-card--victory {
+  border-left: 3px solid var(--color-gold);
+  cursor: pointer;
+}
+
+.accomplishment-card--victory:hover {
+  background: var(--color-bg-secondary);
+}
+
+.accomplishment-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+}
+
+.accomplishment-card__title {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  flex: 1;
+  min-width: 0;
+}
+
+.accomplishment-card__badge {
+  font-size: var(--font-size-xs);
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.accomplishment-card__badge--task {
+  background: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+}
+
+.accomplishment-card__badge--victory {
+  background: rgba(201, 168, 76, 0.15);
+  color: var(--color-gold);
+}
+
+.accomplishment-card__note {
+  margin: var(--spacing-xs) 0 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+.accomplishment-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--spacing-xs);
+}
+
+.accomplishment-card__area {
+  font-size: var(--font-size-xs);
+  background: var(--color-bg-secondary);
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+}
+
+.accomplishment-card__date {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.victories__toast {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-dark-teal);
+  color: var(--color-white);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  z-index: 200;
+  animation: completionSlideUp 0.3s ease-out;
 }

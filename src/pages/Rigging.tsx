@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { usePageContext } from '../hooks/usePageContext';
 import { useRigging } from '../hooks/useRigging';
 import { useHelmContext } from '../contexts/HelmContext';
@@ -10,7 +9,8 @@ import { ManualPlanForm } from '../components/rigging/ManualPlanForm';
 import { Plus, MessageSquare, PenLine } from 'lucide-react';
 import { FloatingActionButton } from '../components/shared/FloatingActionButton';
 import { CollapsibleGroup } from '../components/shared/CollapsibleGroup';
-import { EmptyState, LoadingSpinner, FeatureGuide } from '../components/shared';
+import { EmptyState, LoadingSpinner, FeatureGuide, SparkleOverlay } from '../components/shared';
+import { useVictories } from '../hooks/useVictories';
 import { FEATURE_GUIDES } from '../lib/featureGuides';
 import './Rigging.css';
 
@@ -57,12 +57,12 @@ export default function Rigging() {
     setSelectedPlan,
   } = useRigging();
 
-  const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('active');
   const [sortBy, setSortBy] = useState<SortBy>('updated');
   const [fabExpanded, setFabExpanded] = useState(false);
-  const [victoryPrompt, setVictoryPrompt] = useState<string | null>(null);
+  const [showSparkle, setShowSparkle] = useState(false);
+  const { createVictory } = useVictories();
 
   useEffect(() => {
     fetchPlans();
@@ -101,10 +101,15 @@ export default function Rigging() {
     const plan = plans.find((p) => p.id === id) || selectedPlan;
     await completePlan(id);
     if (plan) {
-      setVictoryPrompt(plan.title);
+      setShowSparkle(true);
+      createVictory({
+        description: `Completed plan: ${plan.title}`,
+        source: 'manual',
+        source_reference_id: plan.id,
+      });
     }
     handleBack();
-  }, [completePlan, handleBack, plans, selectedPlan]);
+  }, [completePlan, handleBack, plans, selectedPlan, createVictory]);
 
   const handleArchivePlan = useCallback(async (id: string) => {
     await archivePlan(id);
@@ -174,30 +179,7 @@ export default function Rigging() {
 
       <FeatureGuide {...FEATURE_GUIDES.rigging} />
 
-      {victoryPrompt && (
-        <div className="victory-suggestion-banner">
-          <p>Plan completed! Record this as a victory?</p>
-          <div className="victory-suggestion-banner__actions">
-            <button
-              type="button"
-              className="victory-suggestion-banner__yes"
-              onClick={() => {
-                navigate(`/victories?prefill=${encodeURIComponent(victoryPrompt)}&source=rigging_plan`);
-                setVictoryPrompt(null);
-              }}
-            >
-              Yes
-            </button>
-            <button
-              type="button"
-              className="victory-suggestion-banner__no"
-              onClick={() => setVictoryPrompt(null)}
-            >
-              Not now
-            </button>
-          </div>
-        </div>
-      )}
+      <SparkleOverlay show={showSparkle} size="quick" onComplete={() => setShowSparkle(false)} />
 
       {/* Filter and sort bar */}
       <div className="rigging-page__controls">

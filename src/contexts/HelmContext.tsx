@@ -95,7 +95,7 @@ interface HelmContextValue {
   // Actions
   sendMessage: (content: string, attachment?: { storagePath: string; fileType: string; fileName: string }) => Promise<void>;
   startNewConversation: () => Promise<void>;
-  startGuidedConversation: (mode: GuidedMode, subtype?: GuidedSubtype, refId?: string) => Promise<HelmConversation | null>;
+  startGuidedConversation: (mode: GuidedMode, subtype?: GuidedSubtype, refId?: string, metadata?: Record<string, unknown>) => Promise<HelmConversation | null>;
   switchConversation: (conversationId: string) => Promise<void>;
   deleteConversation: (conversationId: string) => Promise<void>;
   renameConversation: (conversationId: string, title: string) => Promise<void>;
@@ -116,6 +116,7 @@ export function HelmProvider({ children }: { children: ReactNode }) {
   const [showHistory, setShowHistory] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
   const [guidedModalOpen, setGuidedModalOpen] = useState(false);
+  const [guidedModeMetadata, setGuidedModeMetadata] = useState<Record<string, unknown> | null>(null);
 
   const openGuidedModal = useCallback(() => setGuidedModalOpen(true), []);
   const closeGuidedModal = useCallback(() => setGuidedModalOpen(false), []);
@@ -154,15 +155,16 @@ export function HelmProvider({ children }: { children: ReactNode }) {
 
     // Build guided mode context
     const activeConvo = helmData.activeConversation;
-    let gmContext: { manifest_item_id?: string; manifest_item_title?: string; people_id?: string } | undefined;
+    let gmContext: { manifest_item_id?: string; manifest_item_title?: string; people_id?: string; higgins_people_ids?: string[] } | undefined;
     if (activeConvo?.guided_mode === 'manifest_discuss' && activeConvo.guided_mode_reference_id) {
       gmContext = {
         manifest_item_id: activeConvo.guided_mode_reference_id,
         manifest_item_title: activeConvo.title || undefined,
       };
-    } else if (activeConvo?.guided_mode === 'crew_action' && activeConvo.guided_mode_reference_id) {
+    } else if (activeConvo?.guided_mode === 'crew_action') {
       gmContext = {
-        people_id: activeConvo.guided_mode_reference_id,
+        people_id: activeConvo.guided_mode_reference_id || undefined,
+        higgins_people_ids: (guidedModeMetadata?.higgins_people_ids as string[] | undefined) || undefined,
       };
     }
 
@@ -190,7 +192,7 @@ export function HelmProvider({ children }: { children: ReactNode }) {
 
     const guidedMode = helmData.activeConversation?.guided_mode;
     return await sendChatMessage(systemPrompt, apiMessages as Array<{ role: 'user' | 'assistant' | 'system'; content: string }>, 0, user.id, guidedMode, fileInfo);
-  }, [user, pageContext.page, helmData.activeConversation?.guided_mode, helmData.activeConversation?.guided_mode_reference_id, helmData.activeConversation?.title]);
+  }, [user, pageContext.page, helmData.activeConversation?.guided_mode, helmData.activeConversation?.guided_mode_reference_id, helmData.activeConversation?.title, guidedModeMetadata]);
 
   const sendMessage = useCallback(async (content: string, attachment?: { storagePath: string; fileType: string; fileName: string }) => {
     if ((!content.trim() && !attachment) || !user) return;
@@ -319,8 +321,13 @@ export function HelmProvider({ children }: { children: ReactNode }) {
     mode: GuidedMode,
     subtype?: GuidedSubtype,
     refId?: string,
+    metadata?: Record<string, unknown>,
   ): Promise<HelmConversation | null> => {
     if (!user) return null;
+
+    // Store metadata for context loader access during this conversation
+    setGuidedModeMetadata(metadata || null);
+
     const conversation = await helmData.createConversation({
       guided_mode: mode,
       guided_subtype: subtype || null,

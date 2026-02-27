@@ -24,12 +24,11 @@ import {
   Button,
   CollapsibleGroup,
   FeatureGuide,
+  SparkleOverlay,
+  CompletionNotePrompt,
 } from '../components/shared';
 import { FEATURE_GUIDES } from '../lib/featureGuides';
 import { TaskCard } from '../components/compass/TaskCard';
-import { VictoryPrompt } from '../components/compass/VictoryPrompt';
-import { RecordVictory } from '../components/victories/RecordVictory';
-import { useVictories } from '../hooks/useVictories';
 import AddTaskModal from '../components/compass/AddTaskModal';
 import TaskDetail from '../components/compass/TaskDetail';
 import CarryForwardView from '../components/compass/CarryForwardView';
@@ -142,6 +141,7 @@ export default function Compass() {
     tasksByCategory,
     createSubtasks,
     fetchSubtasks,
+    updateCompletionNote,
   } = useCompass();
 
   // Routine assignments on Compass
@@ -163,10 +163,9 @@ export default function Compass() {
   const [subtaskMap, setSubtaskMap] = useState<Record<string, CompassTask[]>>({});
   const [subtaskCounts, setSubtaskCounts] = useState<Record<string, number>>({});
 
-  // Victory prompt state
-  const { createVictory } = useVictories();
-  const [victoryPromptTask, setVictoryPromptTask] = useState<CompassTask | null>(null);
-  const [showRecordVictory, setShowRecordVictory] = useState(false);
+  // Completion sparkle + note prompt state
+  const [completionPromptTask, setCompletionPromptTask] = useState<CompassTask | null>(null);
+  const [showSparkle, setShowSparkle] = useState(false);
 
   // AI placement state
   const [placementBanner, setPlacementBanner] = useState<string | null>(null);
@@ -301,9 +300,10 @@ export default function Compass() {
     await completeTask(id);
 
     if (task && !task.parent_task_id) {
-      // Parent/top-level task — show victory prompt
-      setVictoryPromptTask(task);
-      setTimeout(() => setVictoryPromptTask((prev) => prev?.id === id ? null : prev), 8000);
+      // Parent/top-level task — sparkle + completion note prompt
+      setShowSparkle(true);
+      setCompletionPromptTask(task);
+      setTimeout(() => setCompletionPromptTask((prev) => prev?.id === id ? null : prev), 8000);
 
       // Refresh subtask map so expanded children show as completed
       if (subtaskMap[id]) {
@@ -322,8 +322,9 @@ export default function Compass() {
         const parent = tasks.find((t) => t.id === task.parent_task_id);
         if (parent && parent.status === 'pending') {
           await completeTask(parent.id);
-          setVictoryPromptTask(parent);
-          setTimeout(() => setVictoryPromptTask((prev) => prev?.id === parent.id ? null : prev), 8000);
+          setShowSparkle(true);
+          setCompletionPromptTask(parent);
+          setTimeout(() => setCompletionPromptTask((prev) => prev?.id === parent.id ? null : prev), 8000);
         }
       }
     }
@@ -737,30 +738,17 @@ export default function Compass() {
           </FloatingActionButton>
         </>
 
-      {victoryPromptTask && !showRecordVictory && (
-        <VictoryPrompt
-          taskTitle={victoryPromptTask.title}
-          onYes={() => {
-            setShowRecordVictory(true);
-          }}
-          onDismiss={() => setVictoryPromptTask(null)}
-        />
-      )}
+      <SparkleOverlay show={showSparkle} size="quick" onComplete={() => setShowSparkle(false)} />
 
-      {showRecordVictory && victoryPromptTask && (
-        <RecordVictory
-          prefill={{
-            description: victoryPromptTask.title,
-            source: 'compass_task',
-            source_reference_id: victoryPromptTask.id,
+      {completionPromptTask && (
+        <CompletionNotePrompt
+          taskId={completionPromptTask.id}
+          taskTitle={completionPromptTask.title}
+          onSave={(taskId, note) => {
+            updateCompletionNote(taskId, note);
+            setCompletionPromptTask(null);
           }}
-          onSave={async (data) => {
-            await createVictory(data);
-          }}
-          onClose={() => {
-            setShowRecordVictory(false);
-            setVictoryPromptTask(null);
-          }}
+          onDismiss={() => setCompletionPromptTask(null)}
         />
       )}
     </div>

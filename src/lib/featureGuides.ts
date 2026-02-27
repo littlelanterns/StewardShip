@@ -55,9 +55,9 @@ export const FEATURE_GUIDES: Record<string, FeatureGuideContent> = {
   },
   victories: {
     featureKey: 'victories',
-    title: "Victory Recorder \u2014 Celebrate Your Wins",
-    description: "Every accomplishment deserves recognition. Record victories from completed tasks, personal milestones, or anything worth celebrating. The AI writes personalized celebration text connecting your wins to your identity.",
-    tips: ["Victories show gold effects \u2014 the only place in the app that does", "Victory Review in Reckoning reflects on your day's wins"],
+    title: "Accomplishments \u2014 Evidence of Who You're Becoming",
+    description: "Every completed task is an accomplishment. Record extra victories manually for wins that aren't on your task list. Use 'Celebrate this!' to generate an AI narrative for any time period's collection of accomplishments.",
+    tips: ["Gold sparkle fires on every task completion across the app", "Filter by period and life area to see patterns in your progress"],
   },
   wheel: {
     featureKey: 'wheel',

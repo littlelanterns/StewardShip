@@ -7,6 +7,7 @@ import type { VictorySource, MastEntry } from '../../lib/types';
 import { LIFE_AREA_LABELS } from '../../lib/types';
 import { Button } from '../shared/Button';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
+import { SparkleOverlay } from '../shared/SparkleOverlay';
 import './RecordVictory.css';
 
 interface RecordVictoryProps {
@@ -254,26 +255,7 @@ export function RecordVictory({ onSave, onClose, prefill }: RecordVictoryProps) 
           </Button>
         </div>
 
-        {/* Full-screen gold sparkle burst */}
-        {saved && (
-          <div className="victory-sparkle-overlay">
-            <div className="victory-sparkle-burst">
-              {Array.from({ length: 24 }).map((_, i) => (
-                <span
-                  key={i}
-                  className="victory-sparkle-particle"
-                  style={{
-                    '--angle': `${(i * 15)}deg`,
-                    '--delay': `${Math.random() * 0.3}s`,
-                    '--distance': `${60 + Math.random() * 100}px`,
-                    '--size': `${4 + Math.random() * 6}px`,
-                  } as React.CSSProperties}
-                />
-              ))}
-            </div>
-            <div className="victory-sparkle-ring" />
-          </div>
-        )}
+        <SparkleOverlay show={saved} size="full" />
       </div>
     </div>
   );

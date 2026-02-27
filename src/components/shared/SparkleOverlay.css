@@ -1,0 +1,156 @@
+.sparkle-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sparkle-overlay__burst {
+  position: relative;
+  width: 1px;
+  height: 1px;
+}
+
+/* Individual gold particles */
+.sparkle-overlay__particle {
+  position: absolute;
+  width: var(--size, 6px);
+  height: var(--size, 6px);
+  background: var(--color-gold);
+  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 6px 2px rgba(201, 168, 76, 0.6);
+}
+
+/* Quick animation (task completion) */
+.sparkle-overlay--quick .sparkle-overlay__particle {
+  animation: sparkleExplodeQuick 0.8s var(--delay, 0s) ease-out forwards;
+}
+
+/* Full animation (period celebration) */
+.sparkle-overlay--full .sparkle-overlay__particle {
+  animation: sparkleExplodeFull 1.6s var(--delay, 0s) ease-out forwards;
+}
+
+/* Alternate shapes: some particles are stars (rotated squares) */
+.sparkle-overlay__particle:nth-child(3n) {
+  border-radius: 1px;
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+/* Gold shade variations for depth */
+.sparkle-overlay__particle:nth-child(4n+1) { background: #D4AF37; }
+.sparkle-overlay__particle:nth-child(4n+2) { background: #E8C547; }
+.sparkle-overlay__particle:nth-child(4n+3) { background: #B8942A; }
+
+/* Quick sparkle burst */
+@keyframes sparkleExplodeQuick {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(0deg)
+               translateX(0) translateY(0)
+               scale(0.3);
+  }
+  25% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(var(--angle, 0deg))
+               translateY(calc(var(--distance, 50px) * -0.5))
+               scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(var(--angle, 0deg))
+               translateY(calc(var(--distance, 50px) * -1))
+               scale(0.1);
+  }
+}
+
+/* Full sparkle burst */
+@keyframes sparkleExplodeFull {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(0deg)
+               translateX(0) translateY(0)
+               scale(0.3);
+  }
+  20% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(var(--angle, 0deg))
+               translateY(calc(var(--distance, 80px) * -0.4))
+               scale(1.2);
+  }
+  50% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(var(--angle, 0deg))
+               translateY(calc(var(--distance, 80px) * -1))
+               scale(0.1);
+  }
+}
+
+/* Expanding gold ring — quick */
+.sparkle-overlay__ring--quick {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--color-gold);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  animation: ringExpandQuick 0.7s ease-out forwards;
+}
+
+/* Expanding gold ring — full */
+.sparkle-overlay__ring--full {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  border: 3px solid var(--color-gold);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  animation: ringExpandFull 1.4s ease-out forwards;
+}
+
+@keyframes ringExpandQuick {
+  0% {
+    width: 16px;
+    height: 16px;
+    opacity: 0.7;
+    border-width: 2px;
+  }
+  100% {
+    width: 180px;
+    height: 180px;
+    opacity: 0;
+    border-width: 1px;
+  }
+}
+
+@keyframes ringExpandFull {
+  0% {
+    width: 20px;
+    height: 20px;
+    opacity: 0.8;
+    border-width: 3px;
+  }
+  50% {
+    opacity: 0.5;
+    border-width: 2px;
+  }
+  100% {
+    width: 300px;
+    height: 300px;
+    opacity: 0;
+    border-width: 1px;
+  }
+}

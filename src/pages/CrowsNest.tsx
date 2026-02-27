@@ -9,7 +9,8 @@ import { FEATURE_GUIDES } from '../lib/featureGuides';
 import { supabase } from '../lib/supabase';
 import { TodaysCompassCard } from '../components/crowsnest/TodaysCompassCard';
 import { ActiveStreaksCard } from '../components/crowsnest/ActiveStreaksCard';
-import { RecentVictoriesCard } from '../components/crowsnest/RecentVictoriesCard';
+import { RecentAccomplishmentsCard } from '../components/crowsnest/RecentAccomplishmentsCard';
+import { useAccomplishments } from '../hooks/useAccomplishments';
 import { GoalsCard } from '../components/crowsnest/GoalsCard';
 import { JournalSnapshotCard } from '../components/crowsnest/JournalSnapshotCard';
 import { MastThoughtCard } from '../components/crowsnest/MastThoughtCard';
@@ -58,9 +59,15 @@ export default function CrowsNest() {
   const greeting = getGreeting(timezone);
   const name = profile?.display_name || 'Steward';
 
+  const { getRecentAccomplishments, getAccomplishmentCount } = useAccomplishments();
+  const [recentAccomplishments, setRecentAccomplishments] = useState<import('../hooks/useAccomplishments').Accomplishment[]>([]);
+  const [weekAccomplishmentCount, setWeekAccomplishmentCount] = useState(0);
+
   useEffect(() => {
     fetchDashboard();
-  }, [fetchDashboard]);
+    getRecentAccomplishments(3).then(setRecentAccomplishments);
+    getAccomplishmentCount('this_week').then(setWeekAccomplishmentCount);
+  }, [fetchDashboard, getRecentAccomplishments, getAccomplishmentCount]);
 
   // Check if Evening Review button should show
   useEffect(() => {
@@ -90,7 +97,7 @@ export default function CrowsNest() {
   // Determine if we have enough data for cards
   const hasTaskData = data && data.todayTasks.total > 0;
   const hasStreaks = data && data.streaks.length > 0;
-  const hasVictories = data && data.recentVictories.length > 0;
+  const hasVictories = recentAccomplishments.length > 0;
   const hasGoals = data && data.goals.length > 0;
   const hasJournal = data && (data.journalThisWeek > 0 || data.lastJournalPreview);
   const hasMast = data && data.mastThought;
@@ -170,9 +177,9 @@ export default function CrowsNest() {
           )}
 
           {hasVictories && (
-            <RecentVictoriesCard
-              victories={data.recentVictories}
-              weekCount={data.weekVictoryCount}
+            <RecentAccomplishmentsCard
+              accomplishments={recentAccomplishments}
+              weekCount={weekAccomplishmentCount}
             />
           )}
 

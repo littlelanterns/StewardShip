@@ -231,6 +231,7 @@ export function ReckoningScreen() {
 
   const hasCompleted = reckoningData.completedTasks.length > 0;
   const hasVictories = reckoningData.victories.length > 0;
+  const hasAccomplishments = hasCompleted || hasVictories;
   const hasIncomplete = reckoningData.incompleteTasks.length > 0;
   const hasTomorrow = localTomorrowTasks.length > 0;
   const hasMast = !!reckoningData.mastThought;
@@ -345,12 +346,17 @@ export function ReckoningScreen() {
           </div>
         )}
 
-        {/* Section 3: Victory Review Triage — only if victories exist */}
-        {hasVictories && (
+        {/* Section 3: Accomplishment Review Triage — if completed tasks or victories exist */}
+        {hasAccomplishments && (
           <div className="rhythm-section">
-            <h3 className="rhythm-section__title">Victory Review</h3>
+            <h3 className="rhythm-section__title">Today's Accomplishments</h3>
             <div className="victory-review">
               <div className="victory-review__narrative">
+                {reckoningData.completedTasks.map((t) => (
+                  <div key={t.id} style={{ marginBottom: 'var(--spacing-sm)' }}>
+                    {t.title}{t.completion_note ? ` — ${t.completion_note}` : ''}
+                  </div>
+                ))}
                 {reckoningData.victories.map((v) => (
                   <div key={v.id} style={{ marginBottom: 'var(--spacing-sm)' }}>
                     {v.celebration_text || v.description}

@@ -424,77 +424,106 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     cyranoContext = ctx;
   }
 
-  // Higgins context — load recent teaching skills and crew notes for specific person
-  if (guidedMode === 'crew_action' && guidedModeContext?.people_id) {
-    const personId = guidedModeContext.people_id;
-    const [skillsResult, countResult, personNotesResult, personResult] = await Promise.all([
-      supabase
-        .from('higgins_messages')
-        .select('teaching_skill')
-        .eq('user_id', userId)
-        .not('teaching_skill', 'is', null)
-        .order('created_at', { ascending: false })
-        .limit(10),
-      supabase
-        .from('higgins_messages')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .eq('people_id', personId),
-      supabase
-        .from('crew_notes')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('person_id', personId)
-        .is('archived_at', null)
-        .order('category')
-        .order('created_at', { ascending: false }),
-      supabase
-        .from('people')
-        .select('*')
-        .eq('id', personId)
-        .eq('user_id', userId)
-        .maybeSingle(),
-    ]);
+  // Higgins context — load recent teaching skills and crew notes for person(s)
+  if (guidedMode === 'crew_action') {
+    const primaryPersonId = guidedModeContext?.people_id;
+    const extraPeopleIds = guidedModeContext?.higgins_people_ids || [];
+    // Combine: primary ID + any extra IDs, deduplicated
+    const allPeopleIds = [...new Set([...(primaryPersonId ? [primaryPersonId] : []), ...extraPeopleIds])];
 
-    const recentSkills = (skillsResult.data || [])
-      .map((s: { teaching_skill: string }) => s.teaching_skill)
-      .filter(Boolean);
-    const totalCount = countResult.count || 0;
-    const notes = (personNotesResult.data || []) as CrewNote[];
-    const person = personResult.data as Person | null;
+    if (allPeopleIds.length > 0) {
+      // Fetch teaching skills (global, not per-person)
+      const [skillsResult, ...personResults] = await Promise.all([
+        supabase
+          .from('higgins_messages')
+          .select('teaching_skill')
+          .eq('user_id', userId)
+          .not('teaching_skill', 'is', null)
+          .order('created_at', { ascending: false })
+          .limit(10),
+        // For each person, fetch notes + profile in parallel
+        ...allPeopleIds.flatMap((pid) => [
+          supabase
+            .from('crew_notes')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('person_id', pid)
+            .is('archived_at', null)
+            .order('category')
+            .order('created_at', { ascending: false }),
+          supabase
+            .from('people')
+            .select('*')
+            .eq('id', pid)
+            .eq('user_id', userId)
+            .maybeSingle(),
+        ]),
+      ]);
 
-    let ctx = '\n\nHIGGINS COACHING CONTEXT:';
-    if (person) {
-      ctx += `\nPerson: ${person.name}`;
-      if (person.relationship_type) ctx += ` (${person.relationship_type})`;
-      if (person.age) ctx += `, age ${person.age}`;
-      if (person.personality_summary) ctx += `\nPersonality: ${person.personality_summary}`;
-      if (person.love_language) ctx += `\nLove language: ${person.love_language}`;
-    }
-    if (notes.length > 0) {
-      ctx += '\n\nDetailed notes about this person:';
-      const grouped: Record<string, string[]> = {};
-      for (const note of notes) {
-        const label = CREW_NOTE_CATEGORY_LABELS[note.category] || note.category;
-        if (!grouped[label]) grouped[label] = [];
-        grouped[label].push(note.text.length > 300 ? note.text.slice(0, 300) + '...' : note.text);
+      const recentSkills = (skillsResult.data || [])
+        .map((s: { teaching_skill: string }) => s.teaching_skill)
+        .filter(Boolean);
+
+      let ctx = '\n\nHIGGINS COACHING CONTEXT:';
+
+      if (allPeopleIds.length > 1) {
+        ctx += '\n\nPEOPLE INVOLVED IN THIS CONVERSATION:';
       }
-      for (const [label, texts] of Object.entries(grouped)) {
-        ctx += `\n${label.toUpperCase()}:`;
-        for (const text of texts.slice(0, 5)) {
-          ctx += `\n- ${text}`;
+
+      // Process each person (results come in pairs: notes, person)
+      for (let i = 0; i < allPeopleIds.length; i++) {
+        const notesResult = personResults[i * 2];
+        const personResult = personResults[i * 2 + 1];
+        const notes = (notesResult.data || []) as CrewNote[];
+        const person = personResult.data as Person | null;
+
+        if (person) {
+          ctx += `\n${allPeopleIds.length > 1 ? '\nAbout ' : '\nPerson: '}${person.name}`;
+          if (person.relationship_type) ctx += ` (${person.relationship_type})`;
+          if (person.age) ctx += `, age ${person.age}`;
+          if (person.personality_summary) ctx += `\nPersonality: ${person.personality_summary}`;
+          if (person.love_language) ctx += `\nLove language: ${person.love_language}`;
+        }
+        if (notes.length > 0) {
+          ctx += `\n\nDetailed notes about ${person?.name || 'this person'}:`;
+          const grouped: Record<string, string[]> = {};
+          for (const note of notes) {
+            const label = CREW_NOTE_CATEGORY_LABELS[note.category] || note.category;
+            if (!grouped[label]) grouped[label] = [];
+            grouped[label].push(note.text.length > 300 ? note.text.slice(0, 300) + '...' : note.text);
+          }
+          for (const [label, texts] of Object.entries(grouped)) {
+            ctx += `\n${label.toUpperCase()}:`;
+            for (const text of texts.slice(0, 5)) {
+              ctx += `\n- ${text}`;
+            }
+          }
         }
       }
-    }
-    if (recentSkills.length > 0) {
-      ctx += `\n\nRecent teaching skills used (avoid repeating the most recent): ${recentSkills.join(', ')}`;
+
+      if (recentSkills.length > 0) {
+        ctx += `\n\nRecent teaching skills used (avoid repeating the most recent): ${recentSkills.join(', ')}`;
+      } else {
+        ctx += '\n\nThis may be their first Higgins interaction. Start with the basics.';
+      }
+
+      // Count for primary person only (skill check offer)
+      if (primaryPersonId) {
+        const countResult = await supabase
+          .from('higgins_messages')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', userId)
+          .eq('people_id', primaryPersonId);
+        const totalCount = countResult.count || 0;
+        if (totalCount >= 5) {
+          ctx += `\nThe user has used Higgins ${totalCount} times with this person. You may occasionally offer "skill check" mode — let them write first, then give feedback instead of rewriting.`;
+        }
+      }
+      higginsContext = ctx;
     } else {
-      ctx += '\n\nThis may be their first Higgins interaction with this person. Start with the basics.';
+      // No person pre-selected ("Just start talking" mode)
+      higginsContext = '\n\nHIGGINS COACHING CONTEXT:\nNO PERSON PRE-SELECTED. The user chose to start talking without selecting a specific person. Ask who they want to talk about. Use crew name detection from the broader context to match when they mention someone.';
     }
-    if (totalCount >= 5) {
-      ctx += `\nThe user has used Higgins ${totalCount} times with this person. You may occasionally offer "skill check" mode — let them write first, then give feedback instead of rewriting.`;
-    }
-    higginsContext = ctx;
   }
 
   if (crewResult?.data && crewResult.data.length > 0) {

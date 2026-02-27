@@ -227,6 +227,30 @@ export async function generateVictoryNarrative(
   }
 }
 
+export async function celebrateCollection(
+  accomplishments: string,
+  periodLabel: string,
+  userId: string,
+  mastEntries?: string,
+): Promise<string | null> {
+  try {
+    const { data, error } = await supabase.functions.invoke('celebrate-victory', {
+      body: {
+        description: accomplishments,
+        user_id: userId,
+        mast_entries: mastEntries || undefined,
+        mode: 'collection',
+        period_label: periodLabel,
+      },
+    });
+
+    if (error || data?.error) return null;
+    return data?.narrative || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function autoTagTask(
   title: string,
   description: string | null,

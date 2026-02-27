@@ -686,6 +686,21 @@ export function useCompass() {
     }
   }, [user]);
 
+  const updateCompletionNote = useCallback(async (taskId: string, note: string) => {
+    if (!user) return;
+    try {
+      await supabase
+        .from('compass_tasks')
+        .update({ completion_note: note })
+        .eq('id', taskId)
+        .eq('user_id', user.id);
+
+      setTasks((prev) => prev.map((t) => t.id === taskId ? { ...t, completion_note: note } : t));
+    } catch {
+      // Silent fail — note is non-critical
+    }
+  }, [user]);
+
   return {
     tasks,
     loading,
@@ -708,5 +723,6 @@ export function useCompass() {
     tasksByCategory,
     createSubtasks,
     fetchSubtasks,
+    updateCompletionNote,
   };
 }

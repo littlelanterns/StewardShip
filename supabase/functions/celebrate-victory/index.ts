@@ -39,7 +39,7 @@ serve(async (req: Request) => {
     }
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 
-    const { description, mast_entries, wheel_hubs, mode } = await req.json();
+    const { description, mast_entries, wheel_hubs, mode, period_label } = await req.json();
 
     if (!description) {
       return new Response(
@@ -100,6 +100,23 @@ serve(async (req: Request) => {
 - No emoji.`;
 
       userMessage = `Write a monthly victory summary:\n\n${description}`;
+
+      if (mast_entries) {
+        userMessage += `\n\nUser's guiding principles:\n${mast_entries}`;
+      }
+    } else if (mode === 'collection') {
+      const periodStr = period_label || 'this period';
+      systemPrompt = `You write warm, identity-based narratives celebrating a collection of accomplishments. Rules:
+- Write 2-4 paragraphs reflecting on the accomplishments from ${periodStr}.
+- These include both completed tasks and manually recorded victories.
+- Connect accomplishments to Mast principles when natural.
+- Notice patterns, themes, and life areas where effort is concentrated.
+- Frame as evidence of who this person is becoming.
+- Never generic ("Great job!"), never parental ("I'm so proud!").
+- Warm but not gushing. Identity-based celebration.
+- No emoji.`;
+
+      userMessage = `Write a warm celebration narrative for these accomplishments from ${periodStr}:\n\n${description}`;
 
       if (mast_entries) {
         userMessage += `\n\nUser's guiding principles:\n${mast_entries}`;
@@ -167,8 +184,8 @@ Respond with ONLY valid JSON, nothing else.`;
     const data = await openRouterResponse.json();
     const content = data.choices?.[0]?.message?.content || '';
 
-    // For review/monthly modes, return the narrative directly
-    if (mode === 'review' || mode === 'monthly') {
+    // For review/monthly/collection modes, return the narrative directly
+    if (mode === 'review' || mode === 'monthly' || mode === 'collection') {
       return new Response(
         JSON.stringify({ narrative: content.trim() }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },

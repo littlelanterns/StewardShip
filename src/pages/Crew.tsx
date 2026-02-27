@@ -5,13 +5,14 @@ import { useSphere } from '../hooks/useSphere';
 import { useHiggins } from '../hooks/useHiggins';
 import { useAuthContext } from '../contexts/AuthContext';
 import type { Person } from '../lib/types';
-import { Plus } from 'lucide-react';
+import { Plus, GraduationCap } from 'lucide-react';
 import { LoadingSpinner, EmptyState, FloatingActionButton, FeatureGuide } from '../components/shared';
 import { FEATURE_GUIDES } from '../lib/featureGuides';
 import { CrewCategoryView } from '../components/crew/CrewCategoryView';
 import { PersonDetail } from '../components/crew/PersonDetail';
 import { AddCrewmateModal } from '../components/crew/AddCrewmateModal';
 import { BulkAddCrew } from '../components/crew/BulkAddCrew';
+import { HigginsCrewModal } from '../components/crew/HigginsCrewModal';
 import { SphereView } from '../components/sphere/SphereView';
 import { AddSphereEntityModal } from '../components/sphere/AddSphereEntityModal';
 import '../components/crew/Crew.css';
@@ -50,6 +51,11 @@ export default function Crew() {
   const [showAdd, setShowAdd] = useState(false);
   const [showBulkAdd, setShowBulkAdd] = useState(false);
   const [showAddEntity, setShowAddEntity] = useState(false);
+  const [showHigginsCrewModal, setShowHigginsCrewModal] = useState(false);
+
+  const higginsEligiblePeople = people.filter(
+    (p) => p.has_rich_context && !p.is_first_mate
+  );
 
   useEffect(() => {
     fetchPeople();
@@ -105,7 +111,19 @@ export default function Crew() {
   return (
     <div className="page crew-page">
       <div className="crew-page__header">
-        <h1 className="crew-page__title">Crew</h1>
+        <div className="crew-page__title-row">
+          <h1 className="crew-page__title">Crew</h1>
+          {higginsEligiblePeople.length > 0 && (
+            <button
+              className="crew-page__higgins-btn"
+              onClick={() => setShowHigginsCrewModal(true)}
+              title="Higgins"
+              type="button"
+            >
+              <GraduationCap size={20} />
+            </button>
+          )}
+        </div>
         <div className="crew-page__view-toggle">
           <button
             className={`crew-page__toggle-btn ${!isSphere ? 'crew-page__toggle-btn--active' : ''}`}
@@ -222,6 +240,12 @@ export default function Crew() {
           onSave={(data) => createSphereEntity(data)}
         />
       )}
+
+      <HigginsCrewModal
+        people={higginsEligiblePeople}
+        isOpen={showHigginsCrewModal}
+        onClose={() => setShowHigginsCrewModal(false)}
+      />
     </div>
   );
 }
