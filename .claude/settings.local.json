@@ -17,7 +17,24 @@
       "Bash(npm run build:*)",
       "Bash(timeout 8 npm run dev:*)",
       "Bash(npm run dev:*)",
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "Bash(npx vite:*)",
+      "Bash(python3:*)",
+      "Bash(node -e:*)",
+      "Bash(organize it.\"\n- Fixed aria-hidden warning on drawer close \\(blur handle, conditional\n  role/aria-label\\)\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git status:*)",
+      "WebSearch",
+      "Bash(grep:*)",
+      "Bash(npx:*)",
+      "Bash(cut:*)",
+      "Bash(ls:*)",
+      "Bash(for fn in auto-tag celebrate-victory task-breaker unload-the-hold wheel-compile rigging-compile manifest-embed manifest-process manifest-intake manifest-extract send-push whisper-transcribe extract-insights)",
+      "Bash(do echo \"Deploying $fn...\")",
+      "Bash(done)",
+      "Bash(for fn in chat auto-tag celebrate-victory task-breaker unload-the-hold wheel-compile rigging-compile manifest-embed manifest-process manifest-intake manifest-extract send-push whisper-transcribe extract-insights)",
+      "Bash(do echo \"Deploying $fn with --no-verify-jwt...\")",
+      "Bash(navigate a situation\" \\(relational processing\\). 7 teaching skills with rotation,\nage-adaptive parent→child coaching, faith integration, dedicated drafts table.\n\n- higgins_messages table + RLS + indexes \\(migration 020\\)\n- useHiggins hook, HigginsModal, HigginsDrafts components\n- crew_action guided mode with higgins_say/higgins_navigate subtypes\n- Relationship-aware system prompt \\(parent→child, child→parent, peer→peer\\)\n- Per-person crew notes + teaching skill context loading\n- PersonDetail toolbar integration \\(GraduationCap button\\)\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(test:*)"
     ]
   }
 }

@@ -1,7 +1,7 @@
 # StewardShip: Database Schema
 
 > This is a living document. Updated after each PRD is written.
-> Last updated: After Phase 10C (Settings) — All PRDs complete
+> Last updated: After PRD-13A (Higgins) + Accomplishment Rearchitecture (migration 021)
 
 ---
 
@@ -256,6 +256,7 @@
 | source | TEXT | 'manual' | NOT NULL | Enum: 'manual', 'helm_conversation', 'log_routed', 'meeting_action', 'rigging_output', 'wheel_commitment', 'recurring_generated', 'unload_the_hold' |
 | source_reference_id | UUID | null | NULL | FK → source record |
 | victory_flagged | BOOLEAN | false | NOT NULL | Recorded as victory on completion |
+| completion_note | TEXT | null | NULL | Optional user note added on task completion |
 | completed_at | TIMESTAMPTZ | null | NULL | When completed |
 | archived_at | TIMESTAMPTZ | null | NULL | Soft delete |
 | created_at | TIMESTAMPTZ | now() | NOT NULL | |
@@ -680,6 +681,42 @@ Dedicated table for Cyrano Me communication coaching data. Tracks raw user input
 **Trigger:**
 ```sql
 CREATE TRIGGER set_updated_at BEFORE UPDATE ON cyrano_messages FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
+```
+
+---
+
+### PRD-13A: Higgins (Crew Communication Coach)
+
+#### `higgins_messages`
+
+Dedicated table for Higgins crew communication coaching data. Mirrors `cyrano_messages` structure with added `mode` column for say/navigate distinction and `people_id` FK for any crew member (not just First Mate).
+
+| Column | Type | Default | Nullable | Notes |
+|--------|------|---------|----------|-------|
+| id | UUID | gen_random_uuid() | NOT NULL | PK |
+| user_id | UUID | | NOT NULL | FK → auth.users |
+| people_id | UUID | | NOT NULL | FK → people (any crew member) |
+| mode | TEXT | | NOT NULL | CHECK: 'say_something', 'navigate_situation' |
+| raw_input | TEXT | | NOT NULL | What the user originally typed |
+| crafted_version | TEXT | null | NULL | The AI's suggested version (say mode) or null (navigate mode) |
+| final_version | TEXT | null | NULL | What the user actually sent (after edits) |
+| teaching_skill | TEXT | null | NULL | CHECK: 'naming_emotion', 'perspective_shift', 'validation_first', 'behavior_vs_identity', 'invitation', 'repair', 'boundaries_with_love' |
+| teaching_note | TEXT | null | NULL | The AI's explanation of why the skill matters |
+| status | TEXT | 'draft' | NOT NULL | CHECK: 'draft', 'sent', 'saved_for_later' |
+| sent_at | TIMESTAMPTZ | null | NULL | When marked as sent |
+| helm_conversation_id | UUID | null | NULL | FK → helm_conversations (ON DELETE SET NULL) |
+| created_at | TIMESTAMPTZ | now() | NOT NULL | |
+| updated_at | TIMESTAMPTZ | now() | NOT NULL | Auto-trigger |
+
+**RLS:** Users CRUD own higgins_messages only.
+**Indexes:**
+- `user_id, status` (fetch drafts/saved)
+- `user_id, people_id, created_at DESC` (message history per person)
+- `user_id, teaching_skill` (skill distribution)
+
+**Trigger:**
+```sql
+CREATE TRIGGER set_updated_at BEFORE UPDATE ON higgins_messages FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
 ```
 
 ---
@@ -1331,6 +1368,7 @@ auth.users
   ├── spouse_insights (user_id → auth.users.id)
   ├── spouse_prompts (user_id → auth.users.id)
   ├── cyrano_messages (user_id → auth.users.id)
+  ├── higgins_messages (user_id → auth.users.id)
   ├── rigging_plans (user_id → auth.users.id)
   ├── rigging_milestones (user_id → auth.users.id)
   ├── rigging_obstacles (user_id → auth.users.id)
@@ -1349,6 +1387,7 @@ helm_conversations
   ├── wheel_instances (helm_conversation_id → helm_conversations.id)
   ├── rigging_plans (helm_conversation_id → helm_conversations.id)
   ├── cyrano_messages (helm_conversation_id → helm_conversations.id)
+  ├── higgins_messages (helm_conversation_id → helm_conversations.id)
   └── hold_dumps (conversation_id → helm_conversations.id)
 
 compass_tasks
@@ -1380,6 +1419,7 @@ people
   ├── spouse_insights (person_id → people.id)
   ├── spouse_prompts (person_id → people.id)
   ├── cyrano_messages (people_id → people.id)
+  ├── higgins_messages (people_id → people.id)
   ├── crew_notes (person_id → people.id)
   ├── meetings (related_person_id → people.id)
   └── meeting_schedules (related_person_id → people.id)
@@ -1416,7 +1456,7 @@ compass_tasks
 
 ## Tables — All PRDs Complete
 
-All tables across PRDs 01-20 have been defined (40 total). Settings (PRD-19) introduces no new tables. PRD-20 adds `hold_dumps`. PRD-12A adds `cyrano_messages`. Phase 9.5+ adds `routine_assignments`.
+All tables across PRDs 01-20 have been defined (41 total). Settings (PRD-19) introduces no new tables. PRD-20 adds `hold_dumps`. PRD-12A adds `cyrano_messages`. PRD-13A adds `higgins_messages`. Phase 9.5+ adds `routine_assignments`.
 
 | Table | Expected PRD | Purpose |
 |-------|-------------|---------|
@@ -1436,6 +1476,7 @@ All tables across PRDs 01-20 have been defined (40 total). Settings (PRD-19) int
 | spouse_insights | ~~PRD-12~~ DONE | Spouse knowledge from all sources |
 | spouse_prompts | ~~PRD-12~~ DONE | AI-generated relationship prompts and responses |
 | cyrano_messages | ~~PRD-12A~~ DONE | Cyrano Me communication coaching data with teaching skill tracking |
+| higgins_messages | ~~PRD-13A~~ DONE | Higgins crew communication coaching data with mode + teaching skill tracking |
 | crew_notes | ~~PRD-13~~ DONE | Categorized context for children and close relationships |
 | sphere_entities | ~~PRD-13~~ DONE | Non-person influences in spheres |
 | ~~people_sphere~~ | ~~PRD-13~~ REPLACED | Sphere data stored as columns on people table instead |
@@ -1473,6 +1514,9 @@ All tables across PRDs 01-20 have been defined (40 total). Settings (PRD-19) int
 | 016_routines_reflections.sql | Routine list support (`reset_schedule`, `reset_custom_days`, `last_reset_at` on `lists`; `notes` on `list_items`), `routine_completion_history` table, `reflection_questions` table, `reflection_responses` table |
 | 017_list_nesting_and_routine_assignments.sql | `parent_item_id` column on `list_items` (self-referential FK for sub-items), `routine_assignments` table (recurrence rules, status lifecycle, pause/resume) with indexes + RLS + auto-update trigger |
 | 018_font_scale.sql | Add `font_scale` TEXT column to `user_settings` for accessibility text sizing ('default', 'large', 'extra_large') |
+| 019_onboarding.sql | Add `onboarding_completed` BOOLEAN column to `user_profiles` (default false) |
+| 020_higgins_messages.sql | Dedicated Higgins Messages table for crew communication coaching — mode, teaching skill tracking, per-person FK |
+| 021_completion_note.sql | Add `completion_note` TEXT column to `compass_tasks` for accomplishment notes |
 
 ---
 

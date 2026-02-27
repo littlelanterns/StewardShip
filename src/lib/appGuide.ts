@@ -29,7 +29,7 @@ Planning section:
 
 Relationships section:
 - First Mate — Your spouse/partner profile (only visible if relationship status is married or dating). Store insights about your partner by category. Includes the Marriage Toolbox with 6 guided modes: Quality Time, Gifts, Observe and Serve, Words of Affirmation, Gratitude, and Cyrano Me (communication coaching). Spouse prompts appear as gentle reminders.
-- Crew — Your people directory. Add important people with relationship type, notes, and optional rich context. The AI recognizes crew member names in conversation and loads their context automatically.
+- Crew — Your people directory. Add important people with relationship type, notes, and optional rich context. The AI recognizes crew member names in conversation and loads their context automatically. Use Higgins (the GraduationCap icon) on any crew member's detail page for communication coaching — choose "Help me say something" for word crafting or "Help me navigate a situation" for relational processing. You can also tap the GraduationCap icon on the main Crew page toolbar to select one or more people and launch Higgins.
 
 Daily Rhythms section:
 - Reveille — Morning briefing. Shows today's tasks, upcoming deadlines, active streaks, a Mast thought, and gentle prompts. Set your preferred time in Settings.
@@ -40,7 +40,7 @@ Resources section:
 - Manifest — Your personal knowledge base. Upload books, articles, notes (PDF, EPUB, DOCX, TXT, MD). The system chunks and embeds content for AI retrieval. When you discuss topics at the Helm, relevant passages from your uploads are automatically surfaced. Use "Discuss This" for deep item exploration or "Ask Your Library" for cross-source queries.
 
 Settings (bottom of menu):
-- Account: Display name, email, password, appearance/theme switching.
+- Account: Display name, email, password, gender, relationship status, appearance/theme switching.
 - AI Configuration: API key, model selection, response length ("Response Length" slider), context depth.
 - Daily Rhythms: Enable/disable and set times for Reveille and Reckoning.
 - Notifications: Push notification preferences and quiet hours.
@@ -64,5 +64,7 @@ COMMON QUESTIONS:
 - "What should I do first?" — Start with the Mast — write a few guiding principles. Then try adding some tasks to the Compass. Journal in the Log. The features build on each other over time.
 - "How do I record a voice entry?" — In the Log or the Helm, tap the microphone icon. Record your message, and it will be transcribed to text for you to review before saving/sending.
 - "How do I get the Sphere of Influence view?" — Go to More menu > Crew, then toggle to "By Sphere" view at the top of the page. Assign people to spheres from their detail page.
+- "How do I use Higgins?" — Go to More menu > Crew, open a crew member's profile, then tap the GraduationCap icon. Choose "Help me say something" or "Help me navigate a situation." You can also tap the GraduationCap icon on the main Crew page toolbar to select multiple people.
+- "Do my settings save automatically?" — Yes. All settings save instantly when changed. You'll see a brief "Saved" confirmation appear next to each field.
 `;
 }

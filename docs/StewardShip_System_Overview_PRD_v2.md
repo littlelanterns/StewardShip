@@ -1306,6 +1306,7 @@ stewardship/
 | PRD-12: First Mate (incl. Spouse Questions) | Phase 8A Built ✅ |
 | PRD-12A: Cyrano Me (Communication Coach) | Built ✅ |
 | PRD-13: Crew + Sphere of Influence | Phase 8A Built ✅ (Sphere = Phase 8B) |
+| PRD-13A: Higgins (Crew Communication Coach) | Built ✅ |
 | PRD-14: Safe Harbor | Phase 7C Built ✅ |
 | PRD-15: The Manifest | Phase 9 Built ✅ |
 | PRD-16: Rigging (Planning Tool) | Phase 7B Built ✅ |
@@ -1315,6 +1316,8 @@ stewardship/
 | PRD-20: Unload the Hold (Brain Dump) | 4D Built ✅ |
 | Phase 9.5: Routines, Reflections & Reports | Phase 9.5 Built ✅ |
 | Phase 9.5+: Routine & List Enhancements | Built ✅ |
+| Accomplishment Rearchitecture | Built ✅ (Victory → Accomplishment model, SparkleOverlay, CompletionNotePrompt, useAccomplishments) |
+| Onboarding Flow | Built ✅ (Welcome → Gender → Relationship Status → Done) |
 
 ---
 

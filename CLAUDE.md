@@ -1,7 +1,7 @@
 # CLAUDE.md — StewardShip Project Instructions
 
 > This is a living document. It grows as PRDs are written and development progresses.
-> Last updated: February 2026 — Phase 12C-5 (Helm AI as in-app help system).
+> Last updated: February 2026 — Accomplishment Rearchitecture + PRD-13A (Higgins) + Onboarding Flow.
 
 ---
 
@@ -458,6 +458,14 @@ Context detection is simple keyword matching for MVP. Can be upgraded to AI-base
 - AI API keys encrypted before storage. Never sent to frontend. All AI calls go through Supabase Edge Functions.
 - Key priority: User key (if set in Settings) → Developer key (fallback from environment variable)
 
+### Onboarding Flow
+- **Multi-step onboarding** for new users: Welcome → Gender/Pronouns (skippable) → Relationship Status (skippable) → Done.
+- **`user_profiles.onboarding_completed`** — BOOLEAN, defaults to false for new users. Set to true when the user completes or skips through the onboarding flow.
+- **`ProtectedRoute`** redirects to `/onboarding` when `onboarding_completed` is not true. Users cannot access the app until onboarding is finished (but all steps are skippable).
+- **Existing users** who haven't completed onboarding see the flow on next login, with any previously-set values (gender, relationship_status) pre-selected.
+- **Progressive save:** Each step saves to `user_profiles` immediately — gender saves on step 2, relationship_status on step 3. Skipping a step still completes onboarding.
+- **No feature guides shown** during onboarding. Feature guide convention: "Not shown on: Onboarding, Auth, Reveille, Reckoning."
+
 ### 5 Levels of Consciousness
 The AI applies this framework naturally when it helps the user understand why change is hard or why patterns persist. It never lectures about "levels" — it uses the concepts to set realistic expectations and prevent discouragement.
 - Level 1 (Actions): Fully controllable, immediate
@@ -770,7 +778,7 @@ Six guided conversation modes accessible from the First Mate page, each opening 
 - **Observe and Serve:** Service based on her current reality. Nudges awareness of repeated frustrations, put-off requests, overlooked needs. Produces Compass tasks.
 - **Words of Affirmation:** Helps user see and articulate what's incredible about his wife. Draws from full First Mate profile AND gratitude entries. Includes **21 Compliments Practice**: structured generation of 21 (default, user adjustable) thoughtful compliments through conversation. All editable. Saved as a List (PRD-06) for delivery tracking throughout the week.
 - **Gratitude:** Quick capture (simple text entry, saves to BOTH Log with marriage life area AND spouse_insights with gratitude category) plus deeper Helm conversation. AI occasionally offers to go deeper when quick capture entry has depth potential.
-- **Cyrano Me:** Communication coaching (`guided_subtype = 'cyrano'`). User brings raw thought → AI asks clarifying questions → crafts upgraded version in user's voice → explains WHY it works better, teaching one of 7 skills (specificity, her_lens, feeling_over_function, timing, callback_power, unsaid_need, presence_proof). Actively works toward making itself unnecessary — after 5+ uses, periodically offers "skill check" mode (feedback on user's own draft instead of rewrite). Never dishonest, never overwrites user's voice, never performative. **Cyrano data stored in dedicated `cyrano_messages` table** — NOT in spouse_insights. Tracks raw input, crafted version, final version, teaching skill, teaching note, sent status. Enables growth tracking, skill rotation, and message export. Copy and Save Draft actions on AI messages in Cyrano mode. Recent teaching skills loaded into AI context for rotation.
+- **Cyrano Me:** Communication coaching (`guided_subtype = 'cyrano'`). **Craft-first flow:** User brings raw thought → AI crafts upgraded version immediately (no clarifying questions before crafting) → includes 1-2 teaching skills and a refinement invitation in one response → user refines or sends. Teaches one of 7 skills per message (specificity, her_lens, feeling_over_function, timing, callback_power, unsaid_need, presence_proof). Actively works toward making itself unnecessary — after 5+ uses, periodically offers "skill check" mode (feedback on user's own draft instead of rewrite). Never dishonest, never overwrites user's voice, never performative. Gender-neutral language throughout. **Cyrano data stored in dedicated `cyrano_messages` table** — NOT in spouse_insights. Tracks raw input, crafted version, final version, teaching skill, teaching note, sent status. Enables growth tracking, skill rotation, and message export. Copy and Save Draft actions on AI messages in Cyrano mode. Recent teaching skills loaded into AI context for rotation.
 - All modes use `guided_mode = 'first_mate_action'` with `guided_subtype` on helm_conversations.
 - All modes can produce Compass tasks (user confirms which to create, life_area = 'spouse_marriage').
 
@@ -799,10 +807,12 @@ Six guided conversation modes accessible from the First Mate page, each opening 
 - **Relationship-aware coaching voices:** AI adapts based on `relationship_type` from the `people` table — parent→child, child/teen→parent, peer→peer, other. Parent→child further adapts by child age (under 8, 8-12, 13-17, 18+).
 - **Skill rotation:** Last 10 teaching skills loaded into AI context to ensure variety. After 5+ total messages with a person, AI periodically offers "skill check" mode (feedback on user's own draft instead of rewrite).
 - **Faith integration:** References Mast principles when faith entries exist and topic connects naturally. Never forced.
-- **Safety:** Defers to Safe Harbor Tier 3 for abuse/danger indicators. Never coaches manipulation. Redirects to human connection.
-- **Entry point:** GraduationCap icon button on PersonDetail toolbar, shown only for `has_rich_context && !is_first_mate` people. (First Mate uses Cyrano Me instead.)
+- **Framework integration:** Applies 7 Habits (Emotional Bank Account, Seek First to Understand, Circle of Influence, Begin with End in Mind), Straight Line Leadership (Owner stance, empowering language, circle/zigzag/straight line), NVC, Crucial Conversations, Gottman, and Boundaries principles naturally in relational contexts. Same "teach principles, not authors" rule as all StewardShip AI.
+- **Safety:** Defers to Safe Harbor Tier 3 for abuse/danger indicators. Never coaches manipulation. Never takes sides. Never replaces professional help. Never shares across accounts. Redirects to human connection.
+- **Entry points:** (1) GraduationCap icon button on PersonDetail toolbar, shown only for `has_rich_context && !is_first_mate` people. (2) GraduationCap toolbar button on main Crew page — opens multi-person select modal (HigginsCrewModal) for selecting one or more crew members before launching Higgins.
+- **Multi-person support:** When launched from Crew page modal, additional person IDs stored in `helm_conversations` metadata as `higgins_people_ids`. Context loader fetches crew_notes for all selected people.
 - **Dedicated table:** `higgins_messages` — mirrors `cyrano_messages` structure with added `mode` column (say_something/navigate_situation) and `people_id` foreign key.
-- **Context loading:** When `crew_action` mode active, contextLoader fetches person details, grouped crew_notes for that person, recent teaching skills, and message count. Person-specific crew notes are grouped by category with truncation.
+- **Context loading:** When `crew_action` mode active, contextLoader fetches person details, grouped crew_notes for that person (or all selected people), recent teaching skills, and message count. Person-specific crew notes are grouped by category with truncation.
 - **HigginsDrafts component:** Collapsible card on PersonDetail page showing saved drafts with mode badge, skill badge, copy/send/delete actions. Mirrors CyranoDrafts pattern.
 - **Not available for First Mate:** Spouse uses Cyrano Me (richer, marriage-specific). Higgins is for all other Crew relationships.
 
@@ -899,7 +909,7 @@ Six guided conversation modes accessible from the First Mate page, each opening 
 - **Appearance/Theme setting:** Lives in Account section. Switches active theme instantly via ThemeProvider context. Persists to `user_settings.theme` column.
 - **Plain language labels** everywhere — "Response Length" not "max_tokens", "Context Depth" not "context_window_size", friendly labels not technical terms.
 - **Deep linking:** other features can link directly to a specific Settings section expanded (e.g., "Notification Settings" from a reminder, "Meeting Schedules" from Meeting Frameworks).
-- **Immediate effect:** all changes take effect instantly — no global Save button. Optimistic updates with periodic sync.
+- **Immediate effect:** all changes take effect instantly — no global Save button. Optimistic updates with periodic sync. Brief inline "Saved" indicator appears next to each field on successful save, holds ~2 seconds, then fades out.
 - **Delete account:** irreversible, two-step confirmation (warning + type "DELETE"). Cascade delete on auth.users removes all related records.
 - **API key:** encrypted storage, "Test Connection" before saving, "Clear" button to revert to developer key.
 - **Data export:** ZIP of JSON files per table, background generation, 24-hour download link expiry.
@@ -1066,7 +1076,7 @@ _This section collects things still needed. Check items off as they're addressed
 - [x] FAB expansion pattern documented
 - [x] Edge Function specifications → Edge Function Inventory table added to CLAUDE.md
 - [ ] PWA manifest and service worker configuration
-- [ ] Remaining onboarding steps (1-2, 5-7)
+- [x] Onboarding flow (Welcome → Gender → Relationship Status → Done) → built
 - [x] Notification/push infrastructure details → built in Phase 10B
 - [ ] Google Calendar OAuth flow (post-launch)
 - [x] Printable journal export implementation details → built in Phase 11D

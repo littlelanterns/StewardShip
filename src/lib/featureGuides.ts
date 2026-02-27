@@ -86,8 +86,8 @@ export const FEATURE_GUIDES: Record<string, FeatureGuideContent> = {
   crew: {
     featureKey: 'crew',
     title: "Crew \u2014 Your People",
-    description: "Profiles for the important people in your life. Add context the AI can use when you're discussing someone \u2014 their personality, your relationship dynamics, important dates. The Sphere of Influence shows how these relationships connect.",
-    tips: ["Important dates generate automatic reminders", "Meeting notes link to specific crew members"],
+    description: "Profiles for the important people in your life. Add context the AI can use when you're discussing someone. Use Higgins (the GraduationCap icon) for help communicating with crew members \u2014 whether you need help finding the right words or navigating a tricky situation.",
+    tips: ["Higgins adapts its coaching based on who you're talking to \u2014 parent, child, friend, or coworker", "Important dates generate automatic reminders"],
   },
   safeharbor: {
     featureKey: 'safeharbor',
