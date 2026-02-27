@@ -6,6 +6,7 @@ import { useHiggins } from '../hooks/useHiggins';
 import { useAuthContext } from '../contexts/AuthContext';
 import type { Person } from '../lib/types';
 import { Plus, GraduationCap } from 'lucide-react';
+import { Card } from '../components/shared';
 import { LoadingSpinner, EmptyState, FloatingActionButton, FeatureGuide } from '../components/shared';
 import { FEATURE_GUIDES } from '../lib/featureGuides';
 import { CrewCategoryView } from '../components/crew/CrewCategoryView';
@@ -111,19 +112,7 @@ export default function Crew() {
   return (
     <div className="page crew-page">
       <div className="crew-page__header">
-        <div className="crew-page__title-row">
-          <h1 className="crew-page__title">Crew</h1>
-          {higginsEligiblePeople.length > 0 && (
-            <button
-              className="crew-page__higgins-btn"
-              onClick={() => setShowHigginsCrewModal(true)}
-              title="Higgins"
-              type="button"
-            >
-              <GraduationCap size={20} />
-            </button>
-          )}
-        </div>
+        <h1 className="crew-page__title">Crew</h1>
         <div className="crew-page__view-toggle">
           <button
             className={`crew-page__toggle-btn ${!isSphere ? 'crew-page__toggle-btn--active' : ''}`}
@@ -141,6 +130,20 @@ export default function Crew() {
       </div>
 
       <FeatureGuide {...FEATURE_GUIDES.crew} />
+
+      {higginsEligiblePeople.length > 0 && !isSphere && (
+        <Card className="crew-page__higgins-card">
+          <button
+            className="crew-page__higgins-item"
+            onClick={() => setShowHigginsCrewModal(true)}
+            type="button"
+          >
+            <GraduationCap size={20} className="crew-page__higgins-icon" />
+            <div className="crew-page__higgins-label">Higgins</div>
+            <div className="crew-page__higgins-desc">Help me talk to someone</div>
+          </button>
+        </Card>
+      )}
 
       {isSphere ? (
         <div className="crew-page__content">
