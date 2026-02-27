@@ -11,6 +11,7 @@ import { FEATURE_GUIDES } from '../lib/featureGuides';
 import { CrewCategoryView } from '../components/crew/CrewCategoryView';
 import { PersonDetail } from '../components/crew/PersonDetail';
 import { AddCrewmateModal } from '../components/crew/AddCrewmateModal';
+import { BulkAddCrew } from '../components/crew/BulkAddCrew';
 import { SphereView } from '../components/sphere/SphereView';
 import { AddSphereEntityModal } from '../components/sphere/AddSphereEntityModal';
 import '../components/crew/Crew.css';
@@ -47,6 +48,7 @@ export default function Crew() {
 
   const [view, setView] = useState<CrewView>('list');
   const [showAdd, setShowAdd] = useState(false);
+  const [showBulkAdd, setShowBulkAdd] = useState(false);
   const [showAddEntity, setShowAddEntity] = useState(false);
 
   useEffect(() => {
@@ -135,10 +137,19 @@ export default function Crew() {
           <LoadingSpinner size="md" />
         </div>
       ) : people.length === 0 ? (
-        <EmptyState
-          heading="Your Crew"
-          message="Add the people in your life — family, friends, colleagues, mentors. The AI uses this context to help you navigate relationships wisely."
-        />
+        <div className="crew-page__empty">
+          <EmptyState
+            heading="Your Crew"
+            message="Add the people in your life — family, friends, colleagues, mentors. Use the + button to add one at a time, or try Bulk Add to describe everyone at once."
+          />
+          <button
+            type="button"
+            className="crew-page__bulk-add-btn"
+            onClick={() => setShowBulkAdd(true)}
+          >
+            + Bulk Add with AI
+          </button>
+        </div>
       ) : (
         <div className="crew-page__content">
           <CrewCategoryView
@@ -162,15 +173,43 @@ export default function Crew() {
           </button>
         </div>
       ) : (
-        <FloatingActionButton onClick={() => setShowAdd(true)} aria-label="Add Crewmate">
-          <Plus size={24} />
-        </FloatingActionButton>
+        <div className="crew-page__fab-group">
+          <FloatingActionButton onClick={() => setShowAdd(true)} aria-label="Add Crewmate">
+            <Plus size={24} />
+          </FloatingActionButton>
+          <button
+            type="button"
+            className="crew-page__bulk-add-btn"
+            onClick={() => setShowBulkAdd(true)}
+          >
+            + Bulk Add with AI
+          </button>
+        </div>
       )}
 
       {showAdd && (
         <AddCrewmateModal
           onClose={() => setShowAdd(false)}
           onSave={(data) => createPerson(data)}
+        />
+      )}
+
+      {showBulkAdd && (
+        <BulkAddCrew
+          existingNames={people.map((p) => p.name)}
+          onSave={async (members) => {
+            for (const member of members) {
+              await createPerson({
+                name: member.name,
+                relationship_type: member.relationship_type,
+                categories: member.categories,
+                age: member.age ?? undefined,
+                notes: member.notes ?? undefined,
+              });
+            }
+            await fetchPeople();
+          }}
+          onClose={() => setShowBulkAdd(false)}
         />
       )}
 

@@ -434,7 +434,7 @@ RULES:
 - Redirect to human connection: "Have you told her that?" / "Maybe say that to him tonight."`;
 
     case 'crew_action':
-      return getHigginsGuidedPrompt(context);
+      return context ? getHigginsGuidedPrompt(context) : '';
 
     default:
       return `\n\nGUIDED MODE: ${mode.toUpperCase().replace(/_/g, ' ')}

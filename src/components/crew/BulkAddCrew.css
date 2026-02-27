@@ -1,0 +1,226 @@
+.bulk-crew {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.bulk-crew__hint {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.bulk-crew__textarea {
+  width: 100%;
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  background: var(--color-cream);
+  border: 1px solid var(--color-warm-sand);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-sm);
+  outline: none;
+  resize: vertical;
+  min-height: 120px;
+  box-sizing: border-box;
+}
+
+.bulk-crew__textarea:focus {
+  border-color: var(--color-mid-teal);
+}
+
+.bulk-crew__actions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.bulk-crew__input-step,
+.bulk-crew__preview-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+/* Info banner for duplicates */
+.bulk-crew__info-banner {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  background: var(--color-warm-sand);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  margin: 0;
+}
+
+/* Preview list */
+.bulk-crew__preview-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+/* Individual person card in preview */
+.bulk-crew__preview-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  background: var(--color-white);
+  border: 1px solid var(--color-warm-sand);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-sm);
+  transition: opacity 0.2s;
+}
+
+.bulk-crew__preview-card--excluded {
+  opacity: 0.45;
+}
+
+.bulk-crew__preview-card--spouse {
+  border-color: var(--color-cognac);
+  border-style: dashed;
+}
+
+/* Row with checkbox + name */
+.bulk-crew__card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.bulk-crew__checkbox {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  accent-color: var(--color-mid-teal);
+  cursor: pointer;
+}
+
+.bulk-crew__name-input {
+  flex: 1;
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-xs) var(--spacing-xs);
+  outline: none;
+  min-height: 36px;
+}
+
+.bulk-crew__name-input:focus {
+  border-color: var(--color-mid-teal);
+  background: var(--color-cream);
+}
+
+/* Inline field row */
+.bulk-crew__field-row {
+  display: flex;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+  align-items: center;
+  padding-left: 32px; /* align with name after checkbox */
+}
+
+.bulk-crew__field {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.bulk-crew__field-label {
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.bulk-crew__select {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  background: var(--color-cream);
+  border: 1px solid var(--color-warm-sand);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  outline: none;
+  min-height: 32px;
+}
+
+.bulk-crew__select:focus {
+  border-color: var(--color-mid-teal);
+}
+
+.bulk-crew__age-input {
+  width: 60px;
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  background: var(--color-cream);
+  border: 1px solid var(--color-warm-sand);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  outline: none;
+  min-height: 32px;
+}
+
+.bulk-crew__age-input:focus {
+  border-color: var(--color-mid-teal);
+}
+
+/* Notes row */
+.bulk-crew__notes-row {
+  padding-left: 32px;
+}
+
+.bulk-crew__notes-text {
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  font-style: italic;
+  margin: 0;
+}
+
+.bulk-crew__notes-text--spouse {
+  color: var(--color-cognac);
+  font-style: normal;
+  font-weight: 600;
+}
+
+/* Category chips */
+.bulk-crew__category-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-left: 32px;
+}
+
+.bulk-crew__category-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: var(--font-size-xs);
+  background: var(--color-light-gray);
+  color: var(--color-text-secondary);
+}
+
+/* Empty result message */
+.bulk-crew__empty {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  text-align: center;
+  padding: var(--spacing-md);
+}
+
+/* Responsive: stack fields on mobile */
+@media (max-width: 480px) {
+  .bulk-crew__field-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
