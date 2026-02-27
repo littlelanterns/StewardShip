@@ -90,12 +90,14 @@ export default function Meetings() {
     mode: MeetingEntryMode,
     personId?: string,
     templateId?: string,
+    customTitle?: string,
   ) => {
     const meeting = await createMeeting({
       meeting_type: type,
       entry_mode: mode,
       related_person_id: personId,
       template_id: templateId,
+      custom_title: customTitle,
     });
     if (!meeting) return;
 
@@ -298,6 +300,19 @@ export default function Meetings() {
         onDeleteAgendaItem={agenda.deleteItem}
       />
 
+      <MeetingTypeSection
+        meetingType="mentor"
+        schedules={schedules}
+        onStartMeeting={handleStartMeeting}
+        onViewHistory={handleViewHistory}
+        onSetupSchedule={handleSetupSchedule}
+        agendaItems={agenda.items}
+        onFetchAgendaItems={agenda.fetchPendingItems}
+        onAddAgendaItem={agenda.addItem}
+        onUpdateAgendaItem={agenda.updateItem}
+        onDeleteAgendaItem={agenda.deleteItem}
+      />
+
       {hasBusinessSchedules && (
         <MeetingTypeSection
           meetingType="business"
@@ -347,9 +362,11 @@ export default function Meetings() {
             <div key={schedule.id} className="schedule-item">
               <div className="schedule-item__info">
                 <div className="schedule-item__type">
-                  {schedule.person_name
-                    ? `${schedule.person_name} — ${schedule.meeting_type.replace(/_/g, ' ')}`
-                    : schedule.meeting_type.replace(/_/g, ' ')}
+                  {schedule.custom_title
+                    ? schedule.custom_title
+                    : schedule.person_name
+                      ? `${schedule.person_name} — ${schedule.meeting_type.replace(/_/g, ' ')}`
+                      : schedule.meeting_type.replace(/_/g, ' ')}
                 </div>
                 <div className="schedule-item__detail">
                   {schedule.frequency}

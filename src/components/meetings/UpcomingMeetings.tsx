@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { Calendar, Users, BarChart3, Briefcase, Layout } from 'lucide-react';
+import { Calendar, Users, BarChart3, Briefcase, Layout, GraduationCap } from 'lucide-react';
 import type { MeetingType, MeetingEntryMode, MeetingAgendaItem } from '../../lib/types';
 import { MEETING_TYPE_LABELS } from '../../lib/types';
 import type { ScheduleWithPerson } from '../../hooks/useMeetings';
@@ -8,6 +8,7 @@ import { AgendaItemsList } from './AgendaItemsList';
 const TYPE_ICONS: Record<MeetingType, typeof Calendar> = {
   couple: Calendar,
   parent_child: Users,
+  mentor: GraduationCap,
   weekly_review: BarChart3,
   monthly_review: BarChart3,
   quarterly_inventory: BarChart3,
@@ -82,7 +83,7 @@ export function UpcomingMeetings({
             </div>
             <div className="upcoming-card__content">
               <p className="upcoming-card__name">
-                {MEETING_TYPE_LABELS[schedule.meeting_type]}
+                {schedule.custom_title || MEETING_TYPE_LABELS[schedule.meeting_type]}
                 {pendingCount > 0 && (
                   <span className="agenda-badge">
                     {pendingCount} agenda {pendingCount === 1 ? 'item' : 'items'}

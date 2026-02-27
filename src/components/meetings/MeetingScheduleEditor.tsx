@@ -21,6 +21,7 @@ interface MeetingScheduleEditorProps {
   onSave: (data: {
     meeting_type: MeetingType;
     related_person_id?: string;
+    custom_title?: string;
     frequency: MeetingFrequency;
     custom_interval_days?: number;
     preferred_day?: DayOfWeek;
@@ -44,6 +45,7 @@ export function MeetingScheduleEditor({
   const [preferredDay, setPreferredDay] = useState<DayOfWeek | ''>('');
   const [preferredTime, setPreferredTime] = useState<string>('');
   const [notificationType, setNotificationType] = useState<MeetingNotificationType>('reveille');
+  const [customTitle, setCustomTitle] = useState<string>('');
   const [saving, setSaving] = useState(false);
 
   const handleSave = useCallback(async () => {
@@ -52,6 +54,7 @@ export function MeetingScheduleEditor({
       await onSave({
         meeting_type: meetingType,
         related_person_id: personId || undefined,
+        custom_title: customTitle || undefined,
         frequency,
         custom_interval_days: frequency === 'custom' ? parseInt(customDays, 10) || 7 : undefined,
         preferred_day: preferredDay || undefined,
@@ -61,9 +64,9 @@ export function MeetingScheduleEditor({
     } finally {
       setSaving(false);
     }
-  }, [meetingType, personId, frequency, customDays, preferredDay, preferredTime, notificationType, onSave]);
+  }, [meetingType, personId, customTitle, frequency, customDays, preferredDay, preferredTime, notificationType, onSave]);
 
-  const showPersonField = meetingType === 'couple' || meetingType === 'parent_child';
+  const showPersonField = meetingType === 'couple' || meetingType === 'parent_child' || meetingType === 'mentor';
 
   return (
     <div className="schedule-editor">
@@ -84,18 +87,35 @@ export function MeetingScheduleEditor({
         </div>
       )}
 
+      {meetingType === 'mentor' && (
+        <div className="schedule-editor__field">
+          <label className="schedule-editor__label">Meeting Title</label>
+          <input
+            type="text"
+            className="schedule-editor__input"
+            value={customTitle}
+            onChange={e => setCustomTitle(e.target.value)}
+            placeholder="e.g., Piano Lesson with Mrs. Johnson"
+          />
+        </div>
+      )}
+
       {showPersonField && (
         <div className="schedule-editor__field">
-          <label className="schedule-editor__label">Person</label>
+          <label className="schedule-editor__label">
+            {meetingType === 'mentor' ? 'Mentor (optional)' : 'Person'}
+          </label>
           <select
             className="schedule-editor__select"
             value={personId}
             onChange={e => setPersonId(e.target.value)}
           >
-            <option value="">Select a person</option>
-            {people.map(p => (
-              <option key={p.id} value={p.id}>{p.name} ({p.relationship_type})</option>
-            ))}
+            <option value="">{meetingType === 'mentor' ? 'Select a mentor' : 'Select a person'}</option>
+            {people
+              .filter(p => meetingType !== 'mentor' || ['mentor', 'teacher', 'coach', 'spiritual_leader'].includes(p.relationship_type))
+              .map(p => (
+                <option key={p.id} value={p.id}>{p.name} ({p.relationship_type.replace(/_/g, ' ')})</option>
+              ))}
           </select>
         </div>
       )}

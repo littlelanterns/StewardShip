@@ -1,7 +1,7 @@
 # StewardShip: Database Schema
 
 > This is a living document. Updated after each PRD is written.
-> Last updated: After PRD-13A (Higgins) + Accomplishment Rearchitecture (migration 021) + Meeting Agenda Items (migration 022)
+> Last updated: After PRD-13A (Higgins) + Accomplishment Rearchitecture (migration 021) + Meeting Agenda Items (migration 022) + Mentor Meeting Type (migration 023)
 
 ---
 
@@ -1044,9 +1044,10 @@ Individual meeting records — one row per completed or in-progress meeting.
 |--------|------|---------|----------|-------|
 | id | UUID | gen_random_uuid() | NOT NULL | PK |
 | user_id | UUID | | NOT NULL | FK → auth.users |
-| meeting_type | TEXT | | NOT NULL | Enum: 'couple', 'parent_child', 'weekly_review', 'monthly_review', 'quarterly_inventory', 'business', 'custom' |
+| meeting_type | TEXT | | NOT NULL | Enum: 'couple', 'parent_child', 'mentor', 'weekly_review', 'monthly_review', 'quarterly_inventory', 'business', 'custom' |
+| custom_title | TEXT | null | NULL | User-defined meeting title (e.g. "Piano Lesson with Mrs. Johnson") |
 | template_id | UUID | null | NULL | FK → meeting_templates (for custom meetings) |
-| related_person_id | UUID | null | NULL | FK → people (spouse for couple, child for parent_child, null for personal/business) |
+| related_person_id | UUID | null | NULL | FK → people (spouse for couple, child for parent_child, mentor person for mentor, null for personal/business) |
 | status | TEXT | 'in_progress' | NOT NULL | Enum: 'in_progress', 'completed', 'skipped' |
 | entry_mode | TEXT | 'live' | NOT NULL | Enum: 'live', 'record_after' |
 | summary | TEXT | null | NULL | AI-generated meeting summary |
@@ -1081,6 +1082,7 @@ Recurring meeting schedule configuration.
 | id | UUID | gen_random_uuid() | NOT NULL | PK |
 | user_id | UUID | | NOT NULL | FK → auth.users |
 | meeting_type | TEXT | | NOT NULL | Same enum as meetings table |
+| custom_title | TEXT | null | NULL | User-defined meeting title (for mentor and custom types) |
 | template_id | UUID | null | NULL | FK → meeting_templates (for custom) |
 | related_person_id | UUID | null | NULL | FK → people |
 | frequency | TEXT | 'weekly' | NOT NULL | Enum: 'weekly', 'biweekly', 'monthly', 'quarterly', 'custom' |
@@ -1556,6 +1558,7 @@ All tables across PRDs 01-20 have been defined (42 total). Settings (PRD-19) int
 | 020_higgins_messages.sql | Dedicated Higgins Messages table for crew communication coaching — mode, teaching skill tracking, per-person FK |
 | 021_completion_note.sql | Add `completion_note` TEXT column to `compass_tasks` for accomplishment notes |
 | 022_meeting_agenda_items.sql | `meeting_agenda_items` table for between-meeting discussion items with status lifecycle, person/template FKs, RLS, indexes, auto-update trigger |
+| 023_mentor_meeting_custom_title.sql | Add `custom_title` TEXT column to `meetings` and `meeting_schedules` tables for user-defined meeting names (used by mentor type) |
 
 ---
 

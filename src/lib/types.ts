@@ -287,6 +287,7 @@ export type GuidedSubtype =
   | 'monthly_review'
   | 'business'
   | 'custom'
+  | 'mentor'
   | 'template_creation'
   | 'higgins_say'
   | 'higgins_navigate'
@@ -1286,7 +1287,7 @@ export const MANIFEST_STATUS_LABELS: Record<ManifestProcessingStatus, string> = 
 
 // === PRD-17: Meeting Frameworks ===
 
-export type MeetingType = 'couple' | 'parent_child' | 'weekly_review' | 'monthly_review' | 'quarterly_inventory' | 'business' | 'custom';
+export type MeetingType = 'couple' | 'parent_child' | 'mentor' | 'weekly_review' | 'monthly_review' | 'quarterly_inventory' | 'business' | 'custom';
 
 export type MeetingStatus = 'in_progress' | 'completed' | 'skipped';
 
@@ -1310,6 +1311,7 @@ export interface Meeting {
   id: string;
   user_id: string;
   meeting_type: MeetingType;
+  custom_title: string | null;
   template_id: string | null;
   related_person_id: string | null;
   status: MeetingStatus;
@@ -1329,6 +1331,7 @@ export interface MeetingSchedule {
   id: string;
   user_id: string;
   meeting_type: MeetingType;
+  custom_title: string | null;
   template_id: string | null;
   related_person_id: string | null;
   frequency: MeetingFrequency;
@@ -1378,6 +1381,7 @@ export interface MeetingAgendaItem {
 export const MEETING_TYPE_LABELS: Record<MeetingType, string> = {
   couple: 'Couple Meeting',
   parent_child: 'Parent-Child Mentor Meeting',
+  mentor: 'Mentor Meeting',
   weekly_review: 'Weekly Review',
   monthly_review: 'Monthly Review',
   quarterly_inventory: 'Quarterly Inventory',

@@ -182,6 +182,7 @@ export function useMeetings() {
     meeting_type: MeetingType;
     related_person_id?: string;
     template_id?: string;
+    custom_title?: string;
     entry_mode: MeetingEntryMode;
     meeting_date?: string;
   }): Promise<Meeting | null> => {
@@ -193,6 +194,7 @@ export function useMeetings() {
         .insert({
           user_id: user.id,
           meeting_type: data.meeting_type,
+          custom_title: data.custom_title || null,
           related_person_id: data.related_person_id || null,
           template_id: data.template_id || null,
           entry_mode: data.entry_mode,
@@ -382,6 +384,7 @@ export function useMeetings() {
     meeting_type: MeetingType;
     related_person_id?: string;
     template_id?: string;
+    custom_title?: string;
     frequency: MeetingFrequency;
     custom_interval_days?: number;
     preferred_day?: DayOfWeek;
@@ -403,6 +406,7 @@ export function useMeetings() {
         .insert({
           user_id: user.id,
           meeting_type: data.meeting_type,
+          custom_title: data.custom_title || null,
           related_person_id: data.related_person_id || null,
           template_id: data.template_id || null,
           frequency: data.frequency,

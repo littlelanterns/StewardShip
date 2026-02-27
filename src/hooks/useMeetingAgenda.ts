@@ -142,7 +142,7 @@ export function useMeetingAgenda() {
     }
   }, [user]);
 
-  const markDeferred = useCallback(async (id: string): Promise<void> => {
+  const markDeferred = useCallback(async (_id: string): Promise<void> => {
     if (!user) return;
     // Deferred items stay pending — they just got acknowledged
     // No status change needed; this is a no-op by design

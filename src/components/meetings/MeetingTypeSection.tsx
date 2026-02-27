@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Calendar, Users, BarChart3, Briefcase, Layout, ChevronDown } from 'lucide-react';
+import { Calendar, Users, BarChart3, Briefcase, Layout, ChevronDown, GraduationCap } from 'lucide-react';
 import type { MeetingType, MeetingEntryMode, Person, MeetingAgendaItem } from '../../lib/types';
 import { MEETING_TYPE_LABELS, MEETING_FREQUENCY_LABELS } from '../../lib/types';
 import type { ScheduleWithPerson } from '../../hooks/useMeetings';
@@ -8,6 +8,7 @@ import { AgendaItemsList } from './AgendaItemsList';
 const TYPE_ICONS: Record<MeetingType, typeof Calendar> = {
   couple: Calendar,
   parent_child: Users,
+  mentor: GraduationCap,
   weekly_review: BarChart3,
   monthly_review: BarChart3,
   quarterly_inventory: BarChart3,
@@ -21,7 +22,7 @@ interface MeetingTypeSectionProps {
   children?: Person[];
   templateName?: string;
   templateId?: string;
-  onStartMeeting: (type: MeetingType, mode: MeetingEntryMode, personId?: string, templateId?: string) => void;
+  onStartMeeting: (type: MeetingType, mode: MeetingEntryMode, personId?: string, templateId?: string, customTitle?: string) => void;
   onViewHistory: (type: MeetingType, personId?: string) => void;
   onSetupSchedule: (type: MeetingType, personId?: string) => void;
   agendaItems: MeetingAgendaItem[];
@@ -97,8 +98,50 @@ export function MeetingTypeSection({
             </p>
           ))}
 
-          {/* Parent-child: one sub per child */}
-          {meetingType === 'parent_child' && children && children.length > 0 ? (
+          {/* Mentor: one sub per schedule */}
+          {meetingType === 'mentor' && typeSchedules.length > 0 ? (
+            typeSchedules.map(schedule => (
+              <div key={schedule.id} className="meeting-person-sub">
+                <p className="meeting-person-sub__name">
+                  {schedule.custom_title || 'Mentor Meeting'}
+                  {schedule.person_name && <span className="meeting-person-sub__age"> with {schedule.person_name}</span>}
+                </p>
+                <div className="meeting-type-section__actions">
+                  <button
+                    type="button"
+                    className="upcoming-card__btn upcoming-card__btn--primary"
+                    onClick={() => onStartMeeting(meetingType, 'live', schedule.related_person_id || undefined, undefined, schedule.custom_title || undefined)}
+                  >
+                    Start Meeting
+                  </button>
+                  <button
+                    type="button"
+                    className="upcoming-card__btn upcoming-card__btn--secondary"
+                    onClick={() => onStartMeeting(meetingType, 'record_after', schedule.related_person_id || undefined, undefined, schedule.custom_title || undefined)}
+                  >
+                    Record Notes
+                  </button>
+                  <button
+                    type="button"
+                    className="meeting-type-section__history-link"
+                    onClick={() => onViewHistory(meetingType, schedule.related_person_id || undefined)}
+                  >
+                    View History
+                  </button>
+                </div>
+
+                <AgendaItemsList
+                  meetingType={meetingType}
+                  relatedPersonId={schedule.related_person_id}
+                  items={agendaItems}
+                  onFetchItems={onFetchAgendaItems}
+                  onAddItem={onAddAgendaItem}
+                  onUpdateItem={onUpdateAgendaItem}
+                  onDeleteItem={onDeleteAgendaItem}
+                />
+              </div>
+            ))
+          ) : meetingType === 'parent_child' && children && children.length > 0 ? (
             children.map(child => (
               <div key={child.id} className="meeting-person-sub">
                 <p className="meeting-person-sub__name">

@@ -799,9 +799,10 @@ Core data objects referenced by multiple features. Individual PRDs define how ea
 - Sort order (display order)
 
 ### Meetings
-- Meeting type: couple, parent_child, weekly_review, monthly_review, quarterly_inventory, business, custom
+- Meeting type: couple, parent_child, mentor, weekly_review, monthly_review, quarterly_inventory, business, custom
+- Custom title (user-defined meeting name, used for mentor and custom types)
 - Template ID (FK → meeting_templates, for custom meetings)
-- Related person ID (spouse for couple, child for parent_child, null for personal/business)
+- Related person ID (spouse for couple, child for parent_child, mentor person for mentor, null for personal/business)
 - Status: in_progress, completed, skipped
 - Entry mode: live, record_after
 - Summary (AI-generated meeting summary)
