@@ -4,7 +4,8 @@
   align-items: center;
   gap: var(--spacing-sm);
   padding: var(--spacing-sm) var(--spacing-md);
-  border-top: 1px solid color-mix(in srgb, var(--color-slate-gray) 12%, transparent);
+  background: linear-gradient(0deg, var(--color-warm-sand) 0%, var(--color-cream) 100%);
+  border-top: 1px solid color-mix(in srgb, var(--color-cognac) 12%, var(--color-warm-sand));
   flex-shrink: 0;
 }
 

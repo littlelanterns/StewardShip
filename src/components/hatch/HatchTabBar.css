@@ -4,7 +4,8 @@
   align-items: center;
   gap: 2px;
   padding: var(--spacing-xs) var(--spacing-sm);
-  border-bottom: 1px solid color-mix(in srgb, var(--color-slate-gray) 12%, transparent);
+  background-color: color-mix(in srgb, var(--color-warm-sand) 40%, var(--color-cream));
+  border-bottom: 1px solid color-mix(in srgb, var(--color-cognac) 10%, var(--color-warm-sand));
   overflow-x: auto;
   flex-shrink: 0;
   scrollbar-width: none;
@@ -37,9 +38,10 @@
 }
 
 .hatch-tab-bar__tab--active {
-  background-color: color-mix(in srgb, var(--color-deep-teal) 8%, var(--color-cream));
-  color: var(--color-text-heading);
-  border-bottom: 2px solid var(--color-deep-teal);
+  background-color: var(--color-cream);
+  color: var(--color-deep-teal);
+  border-bottom: 2px solid var(--color-cognac);
+  box-shadow: var(--shadow-sm);
 }
 
 /* Tab title — truncated */
