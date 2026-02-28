@@ -202,7 +202,7 @@ export function useSettings() {
         'user_profiles', 'user_settings',
         'mast_entries', 'keel_entries',
         'helm_conversations', 'helm_messages',
-        'log_entries', 'compass_tasks',
+        'journal_entries', 'compass_tasks',
         'lists', 'list_items',
         'goals', 'custom_trackers', 'tracker_entries',
         'victories',

@@ -3,12 +3,12 @@ import { X } from 'lucide-react';
 import { Button, LoadingSpinner } from '../shared';
 import { useJournalExport, type ExportFilters } from '../../hooks/useJournalExport';
 import { useAuthContext } from '../../contexts/AuthContext';
-import { LOG_ENTRY_TYPE_LABELS, LIFE_AREA_LABELS } from '../../lib/types';
-import type { LogEntryType } from '../../lib/types';
+import { JOURNAL_ENTRY_TYPE_LABELS, LIFE_AREA_LABELS } from '../../lib/types';
+import type { JournalEntryType } from '../../lib/types';
 import './JournalExportModal.css';
 
-const ALL_ENTRY_TYPES: LogEntryType[] = [
-  'journal', 'gratitude', 'reflection', 'quick_note',
+const ALL_ENTRY_TYPES: JournalEntryType[] = [
+  'journal_entry', 'gratitude', 'reflection', 'quick_note', 'commonplace', 'kid_quips',
   'meeting_notes', 'transcript', 'helm_conversation', 'brain_dump', 'custom',
 ];
 
@@ -203,7 +203,7 @@ export default function JournalExportModal({ open, onClose }: JournalExportModal
                     checked={selectedTypes.includes(type)}
                     onChange={() => handleTypeToggle(type)}
                   />
-                  {LOG_ENTRY_TYPE_LABELS[type]}
+                  {JOURNAL_ENTRY_TYPE_LABELS[type]}
                 </label>
               ))}
             </div>

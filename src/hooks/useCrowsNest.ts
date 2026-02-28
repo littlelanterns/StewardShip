@@ -98,14 +98,14 @@ export function useCrowsNest() {
           .limit(5),
         // Journal count this week
         supabase
-          .from('log_entries')
+          .from('journal_entries')
           .select('id', { count: 'exact', head: true })
           .eq('user_id', user.id)
           .is('archived_at', null)
           .gte('created_at', weekStart.toISOString()),
         // Last journal entry
         supabase
-          .from('log_entries')
+          .from('journal_entries')
           .select('created_at, text')
           .eq('user_id', user.id)
           .is('archived_at', null)

@@ -133,7 +133,7 @@ export function useReportGenerator() {
       if (config.sections.includes('journal')) {
         queries.push((async () => {
           const { data: entries, error: err } = await supabase
-            .from('log_entries')
+            .from('journal_entries')
             .select('entry_type')
             .eq('user_id', user.id)
             .is('archived_at', null)

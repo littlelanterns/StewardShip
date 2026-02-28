@@ -694,7 +694,7 @@ export function useReminders() {
           title: 'Monthly journal export available',
           body: 'Export last month\'s journal entries from Settings.',
           delivery_method: 'reveille_batch',
-          source_feature: 'log',
+          source_feature: 'journal',
         });
       }
 

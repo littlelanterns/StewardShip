@@ -6,7 +6,7 @@ import type {
   WheelRimEntry,
   WheelStatus,
   WheelBecomingAction,
-  LogEntry,
+  JournalEntry,
   HelmConversation,
 } from '../lib/types';
 
@@ -15,7 +15,7 @@ export function useWheel() {
   const [wheels, setWheels] = useState<WheelInstance[]>([]);
   const [selectedWheel, setSelectedWheel] = useState<WheelInstance | null>(null);
   const [rimEntries, setRimEntries] = useState<WheelRimEntry[]>([]);
-  const [linkedLogEntries, setLinkedLogEntries] = useState<LogEntry[]>([]);
+  const [linkedLogEntries, setLinkedLogEntries] = useState<JournalEntry[]>([]);
   const [linkedConversations, setLinkedConversations] = useState<HelmConversation[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -255,7 +255,7 @@ export function useWheel() {
     try {
       // Primary: entries explicitly linked via related_wheel_id
       const { data: linked, error: err1 } = await supabase
-        .from('log_entries')
+        .from('journal_entries')
         .select('*')
         .eq('user_id', user.id)
         .eq('related_wheel_id', wheelId)
@@ -265,13 +265,13 @@ export function useWheel() {
       if (err1) throw err1;
 
       // Fallback: entries matching the wheel's life_area_tag (not explicitly linked)
-      let tagFallback: LogEntry[] = [];
+      let tagFallback: JournalEntry[] = [];
       if (lifeAreaTag) {
         const wheel = wheels.find((w) => w.id === wheelId) || selectedWheel;
         const createdAfter = wheel?.created_at || '';
 
         const { data: related, error: err2 } = await supabase
-          .from('log_entries')
+          .from('journal_entries')
           .select('*')
           .eq('user_id', user.id)
           .is('archived_at', null)
@@ -282,11 +282,11 @@ export function useWheel() {
           .limit(20);
 
         if (!err2 && related) {
-          tagFallback = related as LogEntry[];
+          tagFallback = related as JournalEntry[];
         }
       }
 
-      const linkedEntries = (linked as LogEntry[]) || [];
+      const linkedEntries = (linked as JournalEntry[]) || [];
       const linkedIds = new Set(linkedEntries.map((e) => e.id));
       const uniqueFallback = tagFallback.filter((e) => !linkedIds.has(e.id));
 

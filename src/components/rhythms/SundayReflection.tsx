@@ -129,7 +129,7 @@ export function SundayReflection({ onDismiss }: SundayReflectionProps) {
                   onClick={handleSaveIntention}
                   disabled={!intentionText.trim() || intentionSaving}
                 >
-                  {intentionSaving ? 'Saving...' : 'Save to Log'}
+                  {intentionSaving ? 'Saving...' : 'Save to Journal'}
                 </button>
                 {intentionText.trim() && !taskCreated && (
                   <button

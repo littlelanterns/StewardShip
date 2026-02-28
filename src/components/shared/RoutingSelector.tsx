@@ -242,7 +242,7 @@ export function RoutingSelector({ entryId, entryText, onRouted, onClose }: Routi
 
   const handleHelmProcess = () => {
     openDrawer();
-    sendMessage(`Processing a Log entry:\n\n"${entryText}"`);
+    sendMessage(`Processing a Journal entry:\n\n"${entryText}"`);
     onClose();
   };
 
@@ -391,7 +391,7 @@ export function RoutingSelector({ entryId, entryText, onRouted, onClose }: Routi
   const suggestions = getSuggestedRoutes(entryText);
 
   const routeItems: { key: RouteKey | 'save' | 'helm'; label: string; desc: string; action: () => void }[] = [
-    { key: 'save', label: 'Just save it', desc: 'Entry stays in the Log', action: onClose },
+    { key: 'save', label: 'Just save it', desc: 'Entry stays in the Journal', action: onClose },
     { key: 'compass', label: 'Create a task', desc: 'Add to your Compass', action: handleRouteToCompass },
     { key: 'list', label: 'Add to a list', desc: 'Save to a flexible list', action: handleOpenLists },
     { key: 'reminder', label: 'Set a reminder', desc: 'Get nudged later', action: () => setSubScreen('reminder') },

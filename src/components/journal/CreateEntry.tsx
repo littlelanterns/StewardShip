@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { ArrowLeft } from 'lucide-react';
-import type { LogEntryType, LogEntry } from '../../lib/types';
-import { LOG_ENTRY_TYPE_LABELS } from '../../lib/types';
+import type { JournalEntryType, JournalEntry } from '../../lib/types';
+import { JOURNAL_ENTRY_TYPE_LABELS } from '../../lib/types';
 import { autoTagEntry } from '../../lib/ai';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
@@ -12,20 +12,20 @@ import { VoiceRecordButton } from '../shared/VoiceRecordButton';
 import './CreateEntry.css';
 
 interface CreateEntryProps {
-  initialType?: LogEntryType;
-  onSave: (text: string, type: LogEntryType, tags: string[]) => Promise<LogEntry | null>;
+  initialType?: JournalEntryType;
+  onSave: (text: string, type: JournalEntryType, tags: string[]) => Promise<JournalEntry | null>;
   onRouted: (entryId: string, target: string, referenceId: string) => void;
   onBack: () => void;
 }
 
-const QUICK_TYPES: LogEntryType[] = ['journal', 'gratitude', 'reflection', 'quick_note', 'custom'];
+const QUICK_TYPES: JournalEntryType[] = ['journal_entry', 'gratitude', 'reflection', 'quick_note', 'commonplace', 'kid_quips', 'custom'];
 
-const TYPE_PROMPTS: Partial<Record<LogEntryType, string>> = {
+const TYPE_PROMPTS: Partial<Record<JournalEntryType, string>> = {
   gratitude: 'What are you feeling grateful for?',
   reflection: "What's on your mind?",
 };
 
-function getHeuristicTags(type: LogEntryType): string[] {
+function getHeuristicTags(type: JournalEntryType): string[] {
   if (type === 'gratitude') return ['spiritual'];
   if (type === 'reflection') return ['emotional'];
   return [];
@@ -35,9 +35,9 @@ export default function CreateEntry({ initialType, onSave, onRouted, onBack }: C
   const { user } = useAuthContext();
   const [text, setText] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [entryType, setEntryType] = useState<LogEntryType>(initialType || 'journal');
+  const [entryType, setEntryType] = useState<JournalEntryType>(initialType || 'journal_entry');
   const [saved, setSaved] = useState(false);
-  const [savedEntry, setSavedEntry] = useState<LogEntry | null>(null);
+  const [savedEntry, setSavedEntry] = useState<JournalEntry | null>(null);
   const [tags, setTags] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [tagsLoading, setTagsLoading] = useState(false);
@@ -91,7 +91,7 @@ export default function CreateEntry({ initialType, onSave, onRouted, onBack }: C
 
         // Update the entry in the database
         await supabase
-          .from('log_entries')
+          .from('journal_entries')
           .update({ life_area_tags: mergedTags })
           .eq('id', savedEntry!.id)
           .eq('user_id', user!.id);
@@ -112,7 +112,7 @@ export default function CreateEntry({ initialType, onSave, onRouted, onBack }: C
     // Persist tag addition
     if (savedEntry && user) {
       await supabase
-        .from('log_entries')
+        .from('journal_entries')
         .update({ life_area_tags: newTags })
         .eq('id', savedEntry.id)
         .eq('user_id', user.id);
@@ -125,7 +125,7 @@ export default function CreateEntry({ initialType, onSave, onRouted, onBack }: C
     // Persist tag removal
     if (savedEntry && user) {
       await supabase
-        .from('log_entries')
+        .from('journal_entries')
         .update({ life_area_tags: newTags })
         .eq('id', savedEntry.id)
         .eq('user_id', user.id);
@@ -143,7 +143,7 @@ export default function CreateEntry({ initialType, onSave, onRouted, onBack }: C
     return (
       <div className="create-entry">
         <div className="create-entry__top-bar">
-          <button type="button" className="create-entry__back" onClick={onBack} aria-label="Back to Log">
+          <button type="button" className="create-entry__back" onClick={onBack} aria-label="Back to Journal">
             <ArrowLeft size={20} strokeWidth={1.5} />
           </button>
           <span className="create-entry__saved-label">Entry saved</span>
@@ -177,7 +177,7 @@ export default function CreateEntry({ initialType, onSave, onRouted, onBack }: C
   return (
     <div className="create-entry">
       <div className="create-entry__top-bar">
-        <button type="button" className="create-entry__back" onClick={onBack} aria-label="Back to Log">
+        <button type="button" className="create-entry__back" onClick={onBack} aria-label="Back to Journal">
           <ArrowLeft size={20} strokeWidth={1.5} />
         </button>
         <span className="create-entry__top-title">New Entry</span>
@@ -192,7 +192,7 @@ export default function CreateEntry({ initialType, onSave, onRouted, onBack }: C
             className={`create-entry__type-chip ${entryType === type ? 'create-entry__type-chip--active' : ''}`}
             onClick={() => setEntryType(type)}
           >
-            {LOG_ENTRY_TYPE_LABELS[type]}
+            {JOURNAL_ENTRY_TYPE_LABELS[type]}
           </button>
         ))}
       </div>

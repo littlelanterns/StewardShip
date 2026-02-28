@@ -184,11 +184,11 @@ export function useUnloadTheHold() {
 
           case 'journal': {
             const { error: logErr } = await supabase
-              .from('log_entries')
+              .from('journal_entries')
               .insert({
                 user_id: user.id,
                 text: item.text,
-                entry_type: item.metadata.entry_type || 'journal',
+                entry_type: item.metadata.entry_type || 'journal_entry',
                 source: 'unload_the_hold',
                 source_reference_id: holdDump.id,
               });
@@ -226,10 +226,10 @@ export function useUnloadTheHold() {
           }
 
           case 'list_item': {
-            // For list items, we need a target list. If none suggested, create a log entry instead.
+            // For list items, we need a target list. If none suggested, create a journal entry instead.
             // TODO: When Lists routing is more sophisticated, allow selecting a target list.
             const { error: listLogErr } = await supabase
-              .from('log_entries')
+              .from('journal_entries')
               .insert({
                 user_id: user.id,
                 text: `[List item] ${item.text}${item.metadata.suggested_list ? ` (suggested list: ${item.metadata.suggested_list})` : ''}`,
@@ -288,7 +288,7 @@ export function useUnloadTheHold() {
             // Fallback: No person matched — save as Log entry
             if (!matched) {
               const { error: pnErr } = await supabase
-                .from('log_entries')
+                .from('journal_entries')
                 .insert({
                   user_id: user.id,
                   text: `[Person note${personName ? `: ${personName}` : ''}] ${item.text}`,
@@ -355,7 +355,7 @@ export function useUnloadTheHold() {
     }
   }, [user, holdDump]);
 
-  // Archive the raw dump text to Log as a brain_dump entry
+  // Archive the raw dump text to Journal as a brain_dump entry
   const archiveToLog = useCallback(async (conversationId: string): Promise<void> => {
     if (!user || !holdDump) return;
     setError(null);
@@ -378,9 +378,9 @@ export function useUnloadTheHold() {
 
       if (!dumpText.trim()) return;
 
-      // Create log entry
+      // Create journal entry
       const { data: logEntry, error: logErr } = await supabase
-        .from('log_entries')
+        .from('journal_entries')
         .insert({
           user_id: user.id,
           text: dumpText,
@@ -404,7 +404,7 @@ export function useUnloadTheHold() {
         setHoldDump((prev) => prev ? { ...prev, log_entry_id: logEntry.id } : prev);
       }
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Failed to archive to Log';
+      const msg = e instanceof Error ? e.message : 'Failed to archive to Journal';
       setError(msg);
     }
   }, [user, holdDump]);

@@ -1,4 +1,4 @@
-.log-filter-bar {
+.journal-filter-bar {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
@@ -6,7 +6,7 @@
 }
 
 /* Search */
-.log-filter-bar__search-toggle {
+.journal-filter-bar__search-toggle {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -19,18 +19,18 @@
   transition: background-color var(--transition-fast), color var(--transition-fast);
 }
 
-.log-filter-bar__search-toggle:hover {
+.journal-filter-bar__search-toggle:hover {
   background-color: var(--color-bg-secondary);
   color: var(--color-text-primary);
 }
 
-.log-filter-bar__search {
+.journal-filter-bar__search {
   display: flex;
   align-items: center;
   gap: var(--spacing-xs);
 }
 
-.log-filter-bar__search-input {
+.journal-filter-bar__search-input {
   flex: 1;
   padding: var(--spacing-xs) var(--spacing-md);
   border: 1px solid var(--color-border);
@@ -44,15 +44,15 @@
   transition: border-color var(--transition-fast);
 }
 
-.log-filter-bar__search-input:focus {
+.journal-filter-bar__search-input:focus {
   border-color: var(--color-border-focus);
 }
 
-.log-filter-bar__search-input::placeholder {
+.journal-filter-bar__search-input::placeholder {
   color: var(--color-text-secondary);
 }
 
-.log-filter-bar__search-clear {
+.journal-filter-bar__search-clear {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -64,12 +64,12 @@
   flex-shrink: 0;
 }
 
-.log-filter-bar__search-clear:hover {
+.journal-filter-bar__search-clear:hover {
   color: var(--color-text-primary);
 }
 
 /* Scrollable chips */
-.log-filter-bar__chips {
+.journal-filter-bar__chips {
   display: flex;
   gap: var(--spacing-xs);
   overflow-x: auto;
@@ -78,11 +78,11 @@
   -ms-overflow-style: none;
 }
 
-.log-filter-bar__chips::-webkit-scrollbar {
+.journal-filter-bar__chips::-webkit-scrollbar {
   display: none;
 }
 
-.log-filter-bar__chip {
+.journal-filter-bar__chip {
   white-space: nowrap;
   padding: var(--spacing-xs) var(--spacing-sm);
   border: 1px solid var(--color-border);
@@ -95,17 +95,17 @@
   flex-shrink: 0;
 }
 
-.log-filter-bar__chip:hover {
+.journal-filter-bar__chip:hover {
   background-color: var(--color-bg-secondary);
 }
 
-.log-filter-bar__chip--active {
+.journal-filter-bar__chip--active {
   background-color: var(--color-mid-teal);
   border-color: var(--color-mid-teal);
   color: var(--color-white);
 }
 
-.log-filter-bar__divider {
+.journal-filter-bar__divider {
   width: 1px;
   height: 24px;
   background-color: var(--color-border);
@@ -113,7 +113,7 @@
   align-self: center;
 }
 
-.log-filter-bar__linked-select {
+.journal-filter-bar__linked-select {
   padding: var(--spacing-xs) var(--spacing-sm);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-full);

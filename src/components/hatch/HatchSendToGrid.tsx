@@ -20,7 +20,7 @@ const PICKER_DESTINATIONS: HatchRoutingDestination[] = ['mast', 'keel', 'agenda'
 type GridDestination = HatchRoutingDestination | 'compass';
 
 const ALL_GRID_DESTINATIONS: GridDestination[] = [
-  'log',
+  'journal',
   'compass',
   'lists',
   'victory',

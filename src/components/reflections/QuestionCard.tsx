@@ -10,7 +10,7 @@ interface QuestionCardProps {
   isAnswered: boolean;
   onSave: (questionId: string, text: string) => Promise<ReflectionResponse | null>;
   onUpdate: (id: string, text: string) => Promise<void>;
-  onRouteToLog: (responseId: string, responseText: string, questionText: string) => Promise<string | null>;
+  onRouteToJournal: (responseId: string, responseText: string, questionText: string) => Promise<string | null>;
   onRouteToVictory: (responseId: string, description: string) => Promise<string | null>;
 }
 
@@ -20,7 +20,7 @@ export default function QuestionCard({
   isAnswered,
   onSave,
   onUpdate,
-  onRouteToLog,
+  onRouteToJournal,
   onRouteToVictory,
 }: QuestionCardProps) {
   const [expanded, setExpanded] = useState(false);
@@ -45,11 +45,11 @@ export default function QuestionCard({
     setSaving(false);
   };
 
-  const handleRouteToLog = async () => {
+  const handleRouteToJournal = async () => {
     if (!existingResponse) return;
-    const id = await onRouteToLog(existingResponse.id, existingResponse.response_text, question.question_text);
+    const id = await onRouteToJournal(existingResponse.id, existingResponse.response_text, question.question_text);
     if (id) {
-      setRouteMessage('Saved to Log');
+      setRouteMessage('Saved to Journal');
       setTimeout(() => setRouteMessage(null), 2000);
     }
   };
@@ -82,8 +82,8 @@ export default function QuestionCard({
               Edit
             </button>
             {!existingResponse.routed_to_log && (
-              <button type="button" className="question-card__action" onClick={handleRouteToLog}>
-                Save to Log
+              <button type="button" className="question-card__action" onClick={handleRouteToJournal}>
+                Save to Journal
               </button>
             )}
             {!existingResponse.routed_to_victory && (

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft } from 'lucide-react';
-import type { RiggingPlan, RiggingMilestone, RiggingObstacle, LogEntry, HelmConversation, CompassTask } from '../../lib/types';
+import type { RiggingPlan, RiggingMilestone, RiggingObstacle, JournalEntry, HelmConversation, CompassTask } from '../../lib/types';
 import { PLANNING_FRAMEWORK_LABELS } from '../../lib/types';
 import { Button } from '../shared';
 import { MilestoneList } from './MilestoneList';
@@ -18,7 +18,7 @@ interface PlanDetailProps {
   plan: RiggingPlan;
   milestones: RiggingMilestone[];
   obstacles: RiggingObstacle[];
-  linkedLogEntries: LogEntry[];
+  linkedLogEntries: JournalEntry[];
   linkedConversations: HelmConversation[];
   linkedTasks: CompassTask[];
   onBack: () => void;

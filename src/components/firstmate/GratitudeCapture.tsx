@@ -38,7 +38,7 @@ export function GratitudeCapture({ spouseName, onSave }: GratitudeCaptureProps) 
         <Button variant="primary" onClick={handleSave} disabled={saving || !text.trim()}>
           {saving ? 'Saving...' : 'Save'}
         </Button>
-        {saved && <span className="gratitude-capture__saved">Saved to Log and insights</span>}
+        {saved && <span className="gratitude-capture__saved">Saved to Journal and insights</span>}
       </div>
     </Card>
   );

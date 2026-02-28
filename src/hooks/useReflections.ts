@@ -284,16 +284,16 @@ export function useReflections() {
     }
   }, [user]);
 
-  const routeToLog = useCallback(async (
+  const routeToJournal = useCallback(async (
     responseId: string,
     responseText: string,
     questionText: string,
   ): Promise<string | null> => {
     if (!user) return null;
     try {
-      // Create log entry
-      const { data: logEntry, error: logErr } = await supabase
-        .from('log_entries')
+      // Create journal entry
+      const { data: journalEntry, error: journalErr } = await supabase
+        .from('journal_entries')
         .insert({
           user_id: user.id,
           text: `${questionText}\n\n${responseText}`,
@@ -306,14 +306,14 @@ export function useReflections() {
         .select()
         .single();
 
-      if (logErr) throw logErr;
+      if (journalErr) throw journalErr;
 
-      // Update response with log link
+      // Update response with journal link
       const { error: updateErr } = await supabase
         .from('reflection_responses')
         .update({
           routed_to_log: true,
-          log_entry_id: logEntry.id,
+          journal_entry_id: journalEntry.id,
         })
         .eq('id', responseId)
         .eq('user_id', user.id);
@@ -321,12 +321,12 @@ export function useReflections() {
       if (updateErr) throw updateErr;
 
       setTodaysResponses((prev) =>
-        prev.map((r) => (r.id === responseId ? { ...r, routed_to_log: true, log_entry_id: logEntry.id } : r)),
+        prev.map((r) => (r.id === responseId ? { ...r, routed_to_log: true, journal_entry_id: journalEntry.id } : r)),
       );
 
-      return logEntry.id;
+      return journalEntry.id;
     } catch (e: unknown) {
-      console.error('Failed to route to Log:', e);
+      console.error('Failed to route to Journal:', e);
       return null;
     }
   }, [user]);
@@ -434,7 +434,7 @@ export function useReflections() {
     fetchPastResponses,
     saveResponse,
     updateResponse,
-    routeToLog,
+    routeToJournal,
     routeToVictory,
     getReflectionSummary,
   };

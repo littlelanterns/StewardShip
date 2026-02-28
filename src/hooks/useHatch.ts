@@ -314,9 +314,9 @@ export function useHatch() {
         const title = firstLine.length > 100 ? firstLine.slice(0, 97) + '...' : firstLine;
 
         switch (destination) {
-          case 'log': {
+          case 'journal': {
             const { data, error: err } = await supabase
-              .from('log_entries')
+              .from('journal_entries')
               .insert({
                 user_id: user.id,
                 text: content,
@@ -524,7 +524,7 @@ export function useHatch() {
 
           case 'note': {
             const { data, error: err } = await supabase
-              .from('log_entries')
+              .from('journal_entries')
               .insert({
                 user_id: user.id,
                 text: content,
@@ -633,13 +633,13 @@ export function useHatch() {
         // Delete the destination record if we have an ID
         if (destinationId) {
           const tableMap: Partial<Record<HatchRoutingDestination, string>> = {
-            log: 'log_entries',
+            journal: 'journal_entries',
             compass_single: 'compass_tasks',
             compass_individual: 'compass_tasks',
             victory: 'victories',
             keel: 'keel_entries',
             mast: 'mast_entries',
-            note: 'log_entries',
+            note: 'journal_entries',
             agenda: 'meeting_agenda_items',
             charts: 'goal_entries',
           };
@@ -802,9 +802,9 @@ export function useHatch() {
 
       // Simplified routing for extracted items (mirrors routeTab logic)
       switch (destination) {
-        case 'log': {
+        case 'journal': {
           const { data, error: err } = await supabase
-            .from('log_entries')
+            .from('journal_entries')
             .insert({
               user_id: user.id,
               text: content,
@@ -891,7 +891,7 @@ export function useHatch() {
         }
         case 'note': {
           const { data, error: err } = await supabase
-            .from('log_entries')
+            .from('journal_entries')
             .insert({
               user_id: user.id,
               text: content,

@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuthContext } from '../contexts/AuthContext';
 import { generateJournalPDF, formatDateRangeFilename } from '../lib/journalExport';
-import type { LogEntry } from '../lib/types';
+import type { JournalEntry } from '../lib/types';
 
 export interface ExportFilters {
   dateRange: { start: string; end: string } | null;
@@ -26,7 +26,7 @@ export function useJournalExport() {
 
     try {
       const { count, error: err } = await supabase
-        .from('log_entries')
+        .from('journal_entries')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', user.id)
         .is('archived_at', null)
@@ -51,13 +51,13 @@ export function useJournalExport() {
     }
   }, [user]);
 
-  const fetchFilteredEntries = useCallback(async (filters: ExportFilters): Promise<LogEntry[]> => {
+  const fetchFilteredEntries = useCallback(async (filters: ExportFilters): Promise<JournalEntry[]> => {
     if (!user) return [];
     setError(null);
 
     try {
       let query = supabase
-        .from('log_entries')
+        .from('journal_entries')
         .select('*')
         .eq('user_id', user.id)
         .is('archived_at', null)
@@ -78,7 +78,7 @@ export function useJournalExport() {
 
       const { data, error: err } = await query;
       if (err) throw err;
-      return (data as LogEntry[]) || [];
+      return (data as JournalEntry[]) || [];
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Failed to fetch entries';
       setError(msg);
@@ -118,7 +118,7 @@ export function useJournalExport() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `StewardShip_Log_${dateStr}.pdf`;
+      a.download = `StewardShip_Journal_${dateStr}.pdf`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

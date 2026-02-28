@@ -10,7 +10,8 @@ import Onboarding from './pages/Onboarding';
 import CrowsNest from './pages/CrowsNest';
 import Compass from './pages/Compass';
 import Helm from './pages/Helm';
-import Log from './pages/Log';
+import Journal from './pages/Journal';
+import ActivityLog from './pages/ActivityLog';
 import Charts from './pages/Charts';
 import Mast from './pages/Mast';
 import Keel from './pages/Keel';
@@ -66,7 +67,8 @@ export default function App() {
               <Route index element={<RhythmInterceptor><CrowsNest /></RhythmInterceptor>} />
               <Route path="compass" element={<Compass />} />
               <Route path="helm" element={<Helm />} />
-              <Route path="log" element={<Log />} />
+              <Route path="journal" element={<Journal />} />
+              <Route path="log" element={<ActivityLog />} />
               <Route path="charts" element={<Charts />} />
               <Route path="mast" element={<Mast />} />
               <Route path="keel" element={<Keel />} />

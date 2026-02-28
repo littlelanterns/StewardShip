@@ -15,7 +15,7 @@ export function JournalSnapshotCard({ thisWeekCount, lastDate, lastPreview }: Jo
   if (thisWeekCount === 0 && !lastPreview) return null;
 
   return (
-    <Card className="cn-card" onClick={() => navigate('/log')}>
+    <Card className="cn-card" onClick={() => navigate('/journal')}>
       <div className="cn-card__header">
         <h3 className="cn-card__title">
           <BookOpen size={16} /> Journal

@@ -1,46 +1,48 @@
 import { useState, useRef, useCallback } from 'react';
 import { Search, X } from 'lucide-react';
-import type { LogFilters, LogEntryType } from '../../lib/types';
+import type { JournalFilters, JournalEntryType } from '../../lib/types';
 import { LIFE_AREA_LABELS } from '../../lib/types';
-import './LogFilterBar.css';
+import './JournalFilterBar.css';
 
 interface LinkedOption {
   id: string;
   label: string;
 }
 
-interface LogFilterBarProps {
-  filters: LogFilters;
-  onFiltersChange: (filters: LogFilters) => void;
+interface JournalFilterBarProps {
+  filters: JournalFilters;
+  onFiltersChange: (filters: JournalFilters) => void;
   linkedWheels?: LinkedOption[];
   linkedPlans?: LinkedOption[];
 }
 
-const DATE_RANGES: { value: LogFilters['dateRange']; label: string }[] = [
+const DATE_RANGES: { value: JournalFilters['dateRange']; label: string }[] = [
   { value: 'all', label: 'All Time' },
   { value: 'today', label: 'Today' },
   { value: 'this_week', label: 'This Week' },
   { value: 'this_month', label: 'This Month' },
 ];
 
-const ENTRY_TYPES: { value: LogEntryType | ''; label: string }[] = [
+const ENTRY_TYPES: { value: JournalEntryType | ''; label: string }[] = [
   { value: '', label: 'All Types' },
-  { value: 'journal', label: 'Journal' },
+  { value: 'journal_entry', label: 'Journal' },
   { value: 'gratitude', label: 'Gratitude' },
   { value: 'reflection', label: 'Reflection' },
   { value: 'quick_note', label: 'Quick Note' },
+  { value: 'commonplace', label: 'Commonplace' },
+  { value: 'kid_quips', label: 'Kid Quips' },
   { value: 'meeting_notes', label: 'Meeting Notes' },
   { value: 'helm_conversation', label: 'Helm' },
 ];
 
 const LIFE_AREAS = Object.entries(LIFE_AREA_LABELS);
 
-export default function LogFilterBar({ filters, onFiltersChange, linkedWheels, linkedPlans }: LogFilterBarProps) {
+export default function JournalFilterBar({ filters, onFiltersChange, linkedWheels, linkedPlans }: JournalFilterBarProps) {
   const [searchOpen, setSearchOpen] = useState(!!filters.searchQuery);
   const [localSearch, setLocalSearch] = useState(filters.searchQuery);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const update = (partial: Partial<LogFilters>) => {
+  const update = (partial: Partial<JournalFilters>) => {
     onFiltersChange({ ...filters, ...partial });
   };
 
@@ -53,13 +55,13 @@ export default function LogFilterBar({ filters, onFiltersChange, linkedWheels, l
   }, [filters, onFiltersChange]);
 
   return (
-    <div className="log-filter-bar">
+    <div className="journal-filter-bar">
       {/* Search toggle / input */}
       {searchOpen ? (
-        <div className="log-filter-bar__search">
+        <div className="journal-filter-bar__search">
           <input
             type="text"
-            className="log-filter-bar__search-input"
+            className="journal-filter-bar__search-input"
             placeholder="Search entries..."
             value={localSearch}
             onChange={(e) => handleSearchChange(e.target.value)}
@@ -67,7 +69,7 @@ export default function LogFilterBar({ filters, onFiltersChange, linkedWheels, l
           />
           <button
             type="button"
-            className="log-filter-bar__search-clear"
+            className="journal-filter-bar__search-clear"
             onClick={() => {
               setLocalSearch('');
               if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -82,7 +84,7 @@ export default function LogFilterBar({ filters, onFiltersChange, linkedWheels, l
       ) : (
         <button
           type="button"
-          className="log-filter-bar__search-toggle"
+          className="journal-filter-bar__search-toggle"
           onClick={() => setSearchOpen(true)}
           aria-label="Search entries"
         >
@@ -91,43 +93,43 @@ export default function LogFilterBar({ filters, onFiltersChange, linkedWheels, l
       )}
 
       {/* Scrollable filter chips */}
-      <div className="log-filter-bar__chips">
+      <div className="journal-filter-bar__chips">
         {/* Date range chips */}
         {DATE_RANGES.map((dr) => (
           <button
             key={dr.value}
             type="button"
-            className={`log-filter-bar__chip ${filters.dateRange === dr.value ? 'log-filter-bar__chip--active' : ''}`}
+            className={`journal-filter-bar__chip ${filters.dateRange === dr.value ? 'journal-filter-bar__chip--active' : ''}`}
             onClick={() => update({ dateRange: dr.value })}
           >
             {dr.label}
           </button>
         ))}
 
-        <span className="log-filter-bar__divider" />
+        <span className="journal-filter-bar__divider" />
 
         {/* Entry type chips */}
         {ENTRY_TYPES.map((et) => (
           <button
             key={et.value || 'all'}
             type="button"
-            className={`log-filter-bar__chip ${
+            className={`journal-filter-bar__chip ${
               (et.value === '' && !filters.entryType) || filters.entryType === et.value
-                ? 'log-filter-bar__chip--active'
+                ? 'journal-filter-bar__chip--active'
                 : ''
             }`}
-            onClick={() => update({ entryType: (et.value || null) as LogEntryType | null })}
+            onClick={() => update({ entryType: (et.value || null) as JournalEntryType | null })}
           >
             {et.label}
           </button>
         ))}
 
-        <span className="log-filter-bar__divider" />
+        <span className="journal-filter-bar__divider" />
 
         {/* Life area chips */}
         <button
           type="button"
-          className={`log-filter-bar__chip ${!filters.lifeAreaTag ? 'log-filter-bar__chip--active' : ''}`}
+          className={`journal-filter-bar__chip ${!filters.lifeAreaTag ? 'journal-filter-bar__chip--active' : ''}`}
           onClick={() => update({ lifeAreaTag: null })}
         >
           All Areas
@@ -136,7 +138,7 @@ export default function LogFilterBar({ filters, onFiltersChange, linkedWheels, l
           <button
             key={value}
             type="button"
-            className={`log-filter-bar__chip ${filters.lifeAreaTag === value ? 'log-filter-bar__chip--active' : ''}`}
+            className={`journal-filter-bar__chip ${filters.lifeAreaTag === value ? 'journal-filter-bar__chip--active' : ''}`}
             onClick={() => update({ lifeAreaTag: value })}
           >
             {label}
@@ -146,9 +148,9 @@ export default function LogFilterBar({ filters, onFiltersChange, linkedWheels, l
         {/* Linked filters */}
         {linkedWheels && linkedWheels.length > 0 && (
           <>
-            <span className="log-filter-bar__divider" />
+            <span className="journal-filter-bar__divider" />
             <select
-              className="log-filter-bar__linked-select"
+              className="journal-filter-bar__linked-select"
               value={filters.relatedWheelId || ''}
               onChange={(e) => update({ relatedWheelId: e.target.value || null })}
             >
@@ -162,9 +164,9 @@ export default function LogFilterBar({ filters, onFiltersChange, linkedWheels, l
 
         {linkedPlans && linkedPlans.length > 0 && (
           <>
-            <span className="log-filter-bar__divider" />
+            <span className="journal-filter-bar__divider" />
             <select
-              className="log-filter-bar__linked-select"
+              className="journal-filter-bar__linked-select"
               value={filters.relatedRiggingPlanId || ''}
               onChange={(e) => update({ relatedRiggingPlanId: e.target.value || null })}
             >

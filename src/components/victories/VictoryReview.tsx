@@ -77,7 +77,7 @@ export function VictoryReview({ victories, mastEntries, onVictoryClick, onClose 
   const handleSaveToLog = async () => {
     if (!user || !narrative) return;
     try {
-      await supabase.from('log_entries').insert({
+      await supabase.from('journal_entries').insert({
         user_id: user.id,
         text: narrative,
         entry_type: 'reflection',
@@ -86,7 +86,7 @@ export function VictoryReview({ victories, mastEntries, onVictoryClick, onClose 
         routed_to: [],
         routed_reference_ids: {},
       });
-      showToast('Saved to Log');
+      showToast('Saved to Journal');
     } catch {
       showToast('Failed to save');
     }
@@ -144,7 +144,7 @@ export function VictoryReview({ victories, mastEntries, onVictoryClick, onClose 
                   <p>{narrative}</p>
                   <div className="victory-review__narrative-actions">
                     <Button variant="text" onClick={handleSaveToLog}>
-                      <BookOpen size={14} /> Save to Log
+                      <BookOpen size={14} /> Save to Journal
                     </Button>
                     <Button variant="text" onClick={handleCopy}>
                       <Copy size={14} /> Copy

@@ -1,4 +1,4 @@
-.log-entry-card {
+.journal-entry-card {
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -11,19 +11,19 @@
   transition: background-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-.log-entry-card:hover {
+.journal-entry-card:hover {
   background-color: var(--color-bg-secondary);
   box-shadow: var(--shadow-sm);
 }
 
-.log-entry-card__header {
+.journal-entry-card__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: var(--spacing-xs);
 }
 
-.log-entry-card__badge {
+.journal-entry-card__badge {
   font-family: var(--font-body);
   font-size: var(--font-size-xs);
   padding: 1px var(--spacing-sm);
@@ -31,14 +31,14 @@
   color: var(--color-white);
 }
 
-.log-entry-card__badge--journal { background-color: var(--color-mid-teal); }
-.log-entry-card__badge--gratitude { background-color: var(--color-cognac); }
-.log-entry-card__badge--reflection { background-color: var(--color-navy); }
-.log-entry-card__badge--quick-note { background-color: var(--color-slate-gray); }
-.log-entry-card__badge--meeting { background-color: var(--color-deep-brown); }
-.log-entry-card__badge--helm { background-color: var(--color-dark-teal); }
+.journal-entry-card__badge--journal { background-color: var(--color-mid-teal); }
+.journal-entry-card__badge--gratitude { background-color: var(--color-cognac); }
+.journal-entry-card__badge--reflection { background-color: var(--color-navy); }
+.journal-entry-card__badge--quick-note { background-color: var(--color-slate-gray); }
+.journal-entry-card__badge--meeting { background-color: var(--color-deep-brown); }
+.journal-entry-card__badge--helm { background-color: var(--color-dark-teal); }
 
-.log-entry-card__date {
+.journal-entry-card__date {
   display: flex;
   align-items: center;
   gap: var(--spacing-xs);
@@ -47,13 +47,13 @@
   color: var(--color-text-secondary);
 }
 
-.log-entry-card__source-icon {
+.journal-entry-card__source-icon {
   display: flex;
   align-items: center;
   color: var(--color-slate-gray);
 }
 
-.log-entry-card__text {
+.journal-entry-card__text {
   font-family: var(--font-body);
   font-size: var(--font-size-sm);
   color: var(--color-text-primary);
@@ -65,7 +65,7 @@
   overflow: hidden;
 }
 
-.log-entry-card__footer {
+.journal-entry-card__footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -73,13 +73,13 @@
   gap: var(--spacing-sm);
 }
 
-.log-entry-card__tags {
+.journal-entry-card__tags {
   display: flex;
   flex-wrap: wrap;
   gap: var(--spacing-xs);
 }
 
-.log-entry-card__tag {
+.journal-entry-card__tag {
   font-family: var(--font-body);
   font-size: var(--font-size-xs);
   padding: 1px var(--spacing-xs);
@@ -88,7 +88,7 @@
   border-radius: var(--radius-full);
 }
 
-.log-entry-card__routed {
+.journal-entry-card__routed {
   font-family: var(--font-body);
   font-size: var(--font-size-xs);
   color: var(--color-mid-teal);

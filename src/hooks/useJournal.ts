@@ -1,11 +1,11 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuthContext } from '../contexts/AuthContext';
-import type { LogEntry, LogEntryType, LogSource, LogFilters } from '../lib/types';
+import type { JournalEntry, JournalEntryType, JournalSource, JournalFilters } from '../lib/types';
 
 const PAGE_SIZE = 20;
 
-function getDateRangeBounds(range: LogFilters['dateRange'], dateFrom: string | null, dateTo: string | null) {
+function getDateRangeBounds(range: JournalFilters['dateRange'], dateFrom: string | null, dateTo: string | null) {
   const now = new Date();
   switch (range) {
     case 'today': {
@@ -28,23 +28,23 @@ function getDateRangeBounds(range: LogFilters['dateRange'], dateFrom: string | n
   }
 }
 
-export function useLog() {
+export function useJournal() {
   const { user } = useAuthContext();
-  const [entries, setEntries] = useState<LogEntry[]>([]);
-  const [archivedEntries, setArchivedEntries] = useState<LogEntry[]>([]);
-  const [selectedEntry, setSelectedEntry] = useState<LogEntry | null>(null);
+  const [entries, setEntries] = useState<JournalEntry[]>([]);
+  const [archivedEntries, setArchivedEntries] = useState<JournalEntry[]>([]);
+  const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
   const [loading, setLoading] = useState(false);
   const [archiveLoading, setArchiveLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchEntries = useCallback(async (filters: LogFilters, offset = 0) => {
+  const fetchEntries = useCallback(async (filters: JournalFilters, offset = 0) => {
     if (!user) return;
     if (offset === 0) setLoading(true);
     setError(null);
     try {
       let query = supabase
-        .from('log_entries')
+        .from('journal_entries')
         .select('*')
         .eq('user_id', user.id)
         .is('archived_at', null)
@@ -82,7 +82,7 @@ export function useLog() {
       const { data, error: err } = await query;
       if (err) throw err;
 
-      const results = (data as LogEntry[]) || [];
+      const results = (data as JournalEntry[]) || [];
       if (offset === 0) {
         setEntries(results);
       } else {
@@ -102,14 +102,14 @@ export function useLog() {
     setError(null);
     try {
       const { data, error: err } = await supabase
-        .from('log_entries')
+        .from('journal_entries')
         .select('*')
         .eq('id', entryId)
         .eq('user_id', user.id)
         .single();
 
       if (err) throw err;
-      const entry = data as LogEntry;
+      const entry = data as JournalEntry;
       setSelectedEntry(entry);
       return entry;
     } catch (e: unknown) {
@@ -121,16 +121,16 @@ export function useLog() {
 
   const createEntry = useCallback(async (
     text: string,
-    entryType: LogEntryType = 'journal',
+    entryType: JournalEntryType = 'journal_entry',
     lifeAreaTags: string[] = [],
-    source: LogSource = 'manual_text',
+    source: JournalSource = 'manual_text',
     sourceReferenceId: string | null = null,
-  ): Promise<LogEntry | null> => {
+  ): Promise<JournalEntry | null> => {
     if (!user) return null;
     setError(null);
     try {
       const { data, error: err } = await supabase
-        .from('log_entries')
+        .from('journal_entries')
         .insert({
           user_id: user.id,
           text,
@@ -143,7 +143,7 @@ export function useLog() {
         .single();
 
       if (err) throw err;
-      const entry = data as LogEntry;
+      const entry = data as JournalEntry;
       setEntries((prev) => [entry, ...prev]);
       return entry;
     } catch (e: unknown) {
@@ -155,13 +155,13 @@ export function useLog() {
 
   const updateEntry = useCallback(async (
     entryId: string,
-    updates: { text?: string; entry_type?: LogEntryType; life_area_tags?: string[] },
-  ): Promise<LogEntry | null> => {
+    updates: { text?: string; entry_type?: JournalEntryType; life_area_tags?: string[] },
+  ): Promise<JournalEntry | null> => {
     if (!user) return null;
     setError(null);
     try {
       const { data, error: err } = await supabase
-        .from('log_entries')
+        .from('journal_entries')
         .update(updates)
         .eq('id', entryId)
         .eq('user_id', user.id)
@@ -169,7 +169,7 @@ export function useLog() {
         .single();
 
       if (err) throw err;
-      const updated = data as LogEntry;
+      const updated = data as JournalEntry;
       setEntries((prev) => prev.map((e) => (e.id === entryId ? updated : e)));
       setSelectedEntry((prev) => (prev?.id === entryId ? updated : prev));
       return updated;
@@ -185,7 +185,7 @@ export function useLog() {
     setError(null);
     try {
       const { error: err } = await supabase
-        .from('log_entries')
+        .from('journal_entries')
         .update({ archived_at: new Date().toISOString() })
         .eq('id', entryId)
         .eq('user_id', user.id);
@@ -204,7 +204,7 @@ export function useLog() {
     setError(null);
     try {
       const { data, error: err } = await supabase
-        .from('log_entries')
+        .from('journal_entries')
         .update({ archived_at: null })
         .eq('id', entryId)
         .eq('user_id', user.id)
@@ -212,7 +212,7 @@ export function useLog() {
         .single();
 
       if (err) throw err;
-      const restored = data as LogEntry;
+      const restored = data as JournalEntry;
       setArchivedEntries((prev) => prev.filter((e) => e.id !== entryId));
       setEntries((prev) => [restored, ...prev]);
     } catch (e: unknown) {
@@ -226,7 +226,7 @@ export function useLog() {
     setError(null);
     try {
       const { error: err } = await supabase
-        .from('log_entries')
+        .from('journal_entries')
         .delete()
         .eq('id', entryId)
         .eq('user_id', user.id);
@@ -245,14 +245,14 @@ export function useLog() {
     setError(null);
     try {
       const { data, error: err } = await supabase
-        .from('log_entries')
+        .from('journal_entries')
         .select('*')
         .eq('user_id', user.id)
         .not('archived_at', 'is', null)
         .order('archived_at', { ascending: false });
 
       if (err) throw err;
-      setArchivedEntries((data as LogEntry[]) || []);
+      setArchivedEntries((data as JournalEntry[]) || []);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Failed to load archived entries';
       setError(msg);
@@ -269,9 +269,8 @@ export function useLog() {
     if (!user) return;
     setError(null);
     try {
-      // Fetch current entry to get existing routing data
       const { data: current, error: fetchErr } = await supabase
-        .from('log_entries')
+        .from('journal_entries')
         .select('routed_to, routed_reference_ids')
         .eq('id', entryId)
         .eq('user_id', user.id)
@@ -287,7 +286,7 @@ export function useLog() {
       const routedRefIds = { ...(current.routed_reference_ids || {}), [routeTarget]: referenceId };
 
       const { data, error: err } = await supabase
-        .from('log_entries')
+        .from('journal_entries')
         .update({
           routed_to: routedTo,
           routed_reference_ids: routedRefIds,
@@ -298,7 +297,7 @@ export function useLog() {
         .single();
 
       if (err) throw err;
-      const updated = data as LogEntry;
+      const updated = data as JournalEntry;
       setEntries((prev) => prev.map((e) => (e.id === entryId ? updated : e)));
       setSelectedEntry((prev) => (prev?.id === entryId ? updated : prev));
     } catch (e: unknown) {

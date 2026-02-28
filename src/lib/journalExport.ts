@@ -1,8 +1,8 @@
 import jsPDF from 'jspdf';
-import type { LogEntry } from './types';
+import type { JournalEntry } from './types';
 
 export interface JournalExportOptions {
-  entries: LogEntry[];
+  entries: JournalEntry[];
   dateRange: { start: Date; end: Date };
   includeRouting: boolean;
   includeMood: boolean;
@@ -73,8 +73,8 @@ function formatExportDate(): string {
   });
 }
 
-function groupEntriesByDate(entries: LogEntry[]): Map<string, LogEntry[]> {
-  const grouped = new Map<string, LogEntry[]>();
+function groupEntriesByDate(entries: JournalEntry[]): Map<string, JournalEntry[]> {
+  const grouped = new Map<string, JournalEntry[]>();
   for (const entry of entries) {
     const dateKey = new Date(entry.created_at).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -108,7 +108,7 @@ function addTitlePage(doc: jsPDF, options: JournalExportOptions): void {
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(28);
   doc.setTextColor(30, 30, 30);
-  doc.text('The Log', centerX, 100, { align: 'center' });
+  doc.text('The Journal', centerX, 100, { align: 'center' });
 
   // Subtitle
   doc.setFont('helvetica', 'italic');
@@ -184,7 +184,7 @@ function addDateHeader(doc: jsPDF, y: number, dateStr: string): number {
 function addEntry(
   doc: jsPDF,
   y: number,
-  entry: LogEntry,
+  entry: JournalEntry,
   options: JournalExportOptions,
 ): number {
   const typeLabel = ENTRY_TYPE_PDF_LABELS[entry.entry_type] || 'Entry';

@@ -1,0 +1,40 @@
+.activity-log-page {
+  padding-bottom: var(--spacing-3xl);
+}
+
+.activity-log-page__header {
+  margin-bottom: var(--spacing-sm);
+}
+
+.activity-log-page__title {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-xl);
+  color: var(--color-text-heading);
+  margin: 0;
+}
+
+.activity-log-page__subtitle {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin: var(--spacing-xs) 0 0;
+  font-style: italic;
+}
+
+.activity-log-page__loading {
+  display: flex;
+  justify-content: center;
+  padding: var(--spacing-2xl);
+}
+
+.activity-log-page__events {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.activity-log-page__load-more {
+  display: flex;
+  justify-content: center;
+  padding: var(--spacing-md) 0;
+}

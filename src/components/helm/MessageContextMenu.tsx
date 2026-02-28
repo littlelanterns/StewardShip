@@ -93,7 +93,7 @@ export default function MessageContextMenu({
     if (!user) return;
     try {
       const { error } = await supabase
-        .from('log_entries')
+        .from('journal_entries')
         .insert({
           user_id: user.id,
           text: message.content,
@@ -103,7 +103,7 @@ export default function MessageContextMenu({
         });
 
       if (error) throw error;
-      showToast('Saved to Log');
+      showToast('Saved to Journal');
     } catch {
       showToast('Failed to save');
     }
@@ -224,7 +224,7 @@ export default function MessageContextMenu({
             Select text
           </button>
           <button type="button" className="message-context-menu__item" role="menuitem" onClick={handleSaveToLog}>
-            Save to Log
+            Save to Journal
           </button>
           <button type="button" className="message-context-menu__item" role="menuitem" onClick={handleCreateTask}>
             Create task

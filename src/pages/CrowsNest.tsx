@@ -134,7 +134,7 @@ export default function CrowsNest() {
         <button
           type="button"
           className="crowsnest__action-btn"
-          onClick={() => navigate('/log')}
+          onClick={() => navigate('/journal')}
         >
           <BookOpen size={16} />
           <span>New Entry</span>

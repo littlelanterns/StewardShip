@@ -150,7 +150,7 @@ export function useCharts() {
 
     const range = getPeriodRange(period);
     const { data } = await supabase
-      .from('log_entries')
+      .from('journal_entries')
       .select('created_at')
       .eq('user_id', user.id)
       .is('archived_at', null)

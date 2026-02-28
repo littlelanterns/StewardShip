@@ -43,9 +43,9 @@ export default function BottomTabBar({ onMorePress, moreOpen }: BottomTabBarProp
         <span className="bottom-tab-bar__label">Helm</span>
       </button>
 
-      <NavLink to="/log" className="bottom-tab-bar__tab">
+      <NavLink to="/journal" className="bottom-tab-bar__tab">
         <BookOpen size={22} strokeWidth={1.5} />
-        <span className="bottom-tab-bar__label">Log</span>
+        <span className="bottom-tab-bar__label">Journal</span>
       </NavLink>
 
       <button

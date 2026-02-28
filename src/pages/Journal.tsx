@@ -2,21 +2,21 @@ import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Download, Plus } from 'lucide-react';
 import { usePageContext } from '../hooks/usePageContext';
-import { useLog } from '../hooks/useLog';
-import type { LogFilters, LogEntryType, LogEntry } from '../lib/types';
+import { useJournal } from '../hooks/useJournal';
+import type { JournalFilters, JournalEntryType, JournalEntry } from '../lib/types';
 import { FloatingActionButton, LoadingSpinner, EmptyState, Button, FeatureGuide } from '../components/shared';
 import { FEATURE_GUIDES } from '../lib/featureGuides';
-import LogFilterBar from '../components/log/LogFilterBar';
-import LogEntryCard from '../components/log/LogEntryCard';
-import CreateEntry from '../components/log/CreateEntry';
-import EntryDetail from '../components/log/EntryDetail';
-import LogArchivedView from '../components/log/LogArchivedView';
-import JournalExportModal from '../components/log/JournalExportModal';
-import './Log.css';
+import JournalFilterBar from '../components/journal/JournalFilterBar';
+import JournalEntryCard from '../components/journal/JournalEntryCard';
+import CreateEntry from '../components/journal/CreateEntry';
+import EntryDetail from '../components/journal/EntryDetail';
+import JournalArchivedView from '../components/journal/JournalArchivedView';
+import JournalExportModal from '../components/journal/JournalExportModal';
+import './Journal.css';
 
-type LogView = 'list' | 'create' | 'detail' | 'archived';
+type JournalView = 'list' | 'create' | 'detail' | 'archived';
 
-const DEFAULT_FILTERS: LogFilters = {
+const DEFAULT_FILTERS: JournalFilters = {
   entryType: null,
   lifeAreaTag: null,
   dateRange: 'all',
@@ -27,8 +27,8 @@ const DEFAULT_FILTERS: LogFilters = {
   relatedRiggingPlanId: null,
 };
 
-export default function Log() {
-  usePageContext({ page: 'log' });
+export default function Journal() {
+  usePageContext({ page: 'journal' });
 
   const {
     entries,
@@ -47,12 +47,12 @@ export default function Log() {
     fetchArchivedEntries,
     updateRouting,
     setSelectedEntry,
-  } = useLog();
+  } = useJournal();
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const [view, setView] = useState<LogView>('list');
-  const [filters, setFilters] = useState<LogFilters>(DEFAULT_FILTERS);
-  const [createType, setCreateType] = useState<LogEntryType | undefined>(undefined);
+  const [view, setView] = useState<JournalView>('list');
+  const [filters, setFilters] = useState<JournalFilters>(DEFAULT_FILTERS);
+  const [createType, setCreateType] = useState<JournalEntryType | undefined>(undefined);
   const [showExportModal, setShowExportModal] = useState(false);
 
   // Auto-open export modal from deep link (?export=true)
@@ -73,7 +73,7 @@ export default function Log() {
     fetchEntries(filters, entries.length);
   }, [fetchEntries, filters, entries.length]);
 
-  const handleEntryClick = useCallback(async (entry: LogEntry) => {
+  const handleEntryClick = useCallback(async (entry: JournalEntry) => {
     await fetchEntry(entry.id);
     setView('detail');
   }, [fetchEntry]);
@@ -83,7 +83,7 @@ export default function Log() {
     setView('create');
   }, []);
 
-  const handleSave = useCallback(async (text: string, type: LogEntryType, tags: string[]) => {
+  const handleSave = useCallback(async (text: string, type: JournalEntryType, tags: string[]) => {
     return await createEntry(text, type, tags);
   }, [createEntry]);
 
@@ -99,7 +99,7 @@ export default function Log() {
 
   if (view === 'create') {
     return (
-      <div className="page log-page">
+      <div className="page journal-page">
         <CreateEntry
           initialType={createType}
           onSave={handleSave}
@@ -112,7 +112,7 @@ export default function Log() {
 
   if (view === 'detail' && selectedEntry) {
     return (
-      <div className="page log-page">
+      <div className="page journal-page">
         <EntryDetail
           entry={selectedEntry}
           onUpdate={updateEntry}
@@ -126,8 +126,8 @@ export default function Log() {
 
   if (view === 'archived') {
     return (
-      <div className="page log-page">
-        <LogArchivedView
+      <div className="page journal-page">
+        <JournalArchivedView
           entries={archivedEntries}
           loading={archiveLoading}
           onRestore={restoreEntry}
@@ -140,16 +140,16 @@ export default function Log() {
   }
 
   return (
-    <div className="page log-page">
-      <div className="log-page__header">
-        <div className="log-page__header-row">
+    <div className="page journal-page">
+      <div className="journal-page__header">
+        <div className="journal-page__header-row">
           <div>
-            <h1 className="log-page__title">The Log</h1>
-            <p className="log-page__subtitle">A record of the voyage.</p>
+            <h1 className="journal-page__title">The Journal</h1>
+            <p className="journal-page__subtitle">Your personal writings and collected wisdom.</p>
           </div>
           <button
             type="button"
-            className="log-page__export-btn"
+            className="journal-page__export-btn"
             onClick={() => setShowExportModal(true)}
             aria-label="Export journal as PDF"
             title="Export as PDF"
@@ -159,23 +159,23 @@ export default function Log() {
         </div>
       </div>
 
-      <FeatureGuide {...FEATURE_GUIDES.log} />
+      <FeatureGuide {...FEATURE_GUIDES.journal} />
 
-      <LogFilterBar filters={filters} onFiltersChange={setFilters} />
+      <JournalFilterBar filters={filters} onFiltersChange={setFilters} />
 
       {loading && entries.length === 0 ? (
-        <div className="log-page__loading">
+        <div className="journal-page__loading">
           <LoadingSpinner size="md" />
         </div>
       ) : entries.length === 0 ? (
         <EmptyState
-          heading="Your Log is empty"
+          heading="Your Journal is empty"
           message="Start capturing your journey. Thoughts, observations, gratitude, reflections — anything worth recording."
         />
       ) : (
-        <div className="log-page__entries">
+        <div className="journal-page__entries">
           {entries.map((entry) => (
-            <LogEntryCard
+            <JournalEntryCard
               key={entry.id}
               entry={entry}
               onClick={() => handleEntryClick(entry)}
@@ -183,7 +183,7 @@ export default function Log() {
           ))}
 
           {hasMore && (
-            <div className="log-page__load-more">
+            <div className="journal-page__load-more">
               <Button variant="text" onClick={handleLoadMore} disabled={loading}>
                 {loading ? 'Loading...' : 'Load More'}
               </Button>
@@ -192,10 +192,10 @@ export default function Log() {
         </div>
       )}
 
-      <div className="log-page__footer">
+      <div className="journal-page__footer">
         <button
           type="button"
-          className="log-page__archived-link"
+          className="journal-page__archived-link"
           onClick={() => setView('archived')}
         >
           View Archived

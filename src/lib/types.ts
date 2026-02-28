@@ -241,7 +241,8 @@ export type HelmPageContext =
   | { page: 'crowsnest' }
   | { page: 'compass'; activeView?: string }
   | { page: 'helm' }
-  | { page: 'log' }
+  | { page: 'journal' }
+  | { page: 'activity_log' }
   | { page: 'charts' }
   | { page: 'mast' }
   | { page: 'keel' }
@@ -336,27 +337,36 @@ export const GUIDED_MODE_LABELS: Record<string, string> = {
   crew_action: 'Higgins',
 };
 
-// === PRD-05: The Log ===
+// === PRD-05: The Journal (formerly The Log) ===
 
-export type LogEntryType =
-  | 'journal'
+export type JournalEntryType =
+  | 'journal_entry'
   | 'gratitude'
   | 'reflection'
   | 'quick_note'
+  | 'commonplace'
+  | 'kid_quips'
   | 'meeting_notes'
   | 'transcript'
   | 'helm_conversation'
   | 'brain_dump'
   | 'custom';
 
-export type LogSource =
+/** @deprecated Use JournalEntryType */
+export type LogEntryType = JournalEntryType;
+
+export type JournalSource =
   | 'manual_text'
   | 'voice_transcription'
   | 'helm_conversation'
   | 'meeting_framework'
-  | 'unload_the_hold';
+  | 'unload_the_hold'
+  | 'hatch';
 
-export type LogRouteTarget =
+/** @deprecated Use JournalSource */
+export type LogSource = JournalSource;
+
+export type JournalRouteTarget =
   | 'compass_task'
   | 'list_item'
   | 'reminder'
@@ -365,6 +375,9 @@ export type LogRouteTarget =
   | 'victory'
   | 'spouse_insight'
   | 'crew_note';
+
+/** @deprecated Use JournalRouteTarget */
+export type LogRouteTarget = JournalRouteTarget;
 
 export type LifeAreaTag =
   | 'spiritual'
@@ -391,11 +404,13 @@ export const LIFE_AREA_LABELS: Record<string, string> = {
   service: 'Service',
 };
 
-export const LOG_ENTRY_TYPE_LABELS: Record<LogEntryType, string> = {
-  journal: 'Journal',
+export const JOURNAL_ENTRY_TYPE_LABELS: Record<JournalEntryType, string> = {
+  journal_entry: 'Journal',
   gratitude: 'Gratitude',
   reflection: 'Reflection',
   quick_note: 'Quick Note',
+  commonplace: 'Commonplace',
+  kid_quips: 'Kid Quips',
   meeting_notes: 'Meeting Notes',
   transcript: 'Transcript',
   helm_conversation: 'Helm Conversation',
@@ -403,13 +418,16 @@ export const LOG_ENTRY_TYPE_LABELS: Record<LogEntryType, string> = {
   custom: 'Custom',
 };
 
-export interface LogEntry {
+/** @deprecated Use JOURNAL_ENTRY_TYPE_LABELS */
+export const LOG_ENTRY_TYPE_LABELS = JOURNAL_ENTRY_TYPE_LABELS;
+
+export interface JournalEntry {
   id: string;
   user_id: string;
   text: string;
-  entry_type: LogEntryType;
+  entry_type: JournalEntryType;
   life_area_tags: string[];
-  source: LogSource;
+  source: JournalSource;
   source_reference_id: string | null;
   audio_file_path: string | null;
   routed_to: string[];
@@ -422,8 +440,11 @@ export interface LogEntry {
   updated_at: string;
 }
 
-export interface LogFilters {
-  entryType: LogEntryType | null;
+/** @deprecated Use JournalEntry */
+export type LogEntry = JournalEntry;
+
+export interface JournalFilters {
+  entryType: JournalEntryType | null;
   lifeAreaTag: string | null;
   dateRange: 'today' | 'this_week' | 'this_month' | 'all' | 'custom';
   dateFrom: string | null;
@@ -431,6 +452,43 @@ export interface LogFilters {
   searchQuery: string;
   relatedWheelId: string | null;
   relatedRiggingPlanId: string | null;
+}
+
+/** @deprecated Use JournalFilters */
+export type LogFilters = JournalFilters;
+
+// === Activity Log ===
+
+export type ActivityLogEventType =
+  | 'task_completed'
+  | 'victory_recorded'
+  | 'meeting_completed'
+  | 'helm_conversation_started'
+  | 'journal_entry_created'
+  | 'keel_entry_added'
+  | 'mast_entry_added';
+
+export const ACTIVITY_LOG_EVENT_LABELS: Record<ActivityLogEventType, string> = {
+  task_completed: 'Task Completed',
+  victory_recorded: 'Victory Recorded',
+  meeting_completed: 'Meeting Held',
+  helm_conversation_started: 'Conversation Started',
+  journal_entry_created: 'Journal Entry',
+  keel_entry_added: 'Keel Updated',
+  mast_entry_added: 'Mast Updated',
+};
+
+export interface ActivityLogEvent {
+  id: string;
+  user_id: string;
+  event_type: ActivityLogEventType;
+  display_text: string;
+  source_table: string | null;
+  source_record_id: string | null;
+  source_url: string | null;
+  metadata: Record<string, unknown>;
+  hidden: boolean;
+  created_at: string;
 }
 
 // === PRD-06 Part 3: Lists ===
@@ -1459,7 +1517,7 @@ export type ReminderEntityType =
 
 export type ReminderSourceFeature =
   | 'compass' | 'meetings' | 'first_mate' | 'crew' | 'wheel'
-  | 'rigging' | 'charts' | 'lists' | 'log' | 'rhythms' | 'settings' | 'user';
+  | 'rigging' | 'charts' | 'lists' | 'log' | 'journal' | 'rhythms' | 'settings' | 'user';
 
 export type RhythmType = 'friday_overview' | 'sunday_reflection' | 'monthly_review' | 'quarterly_inventory';
 
@@ -1698,7 +1756,7 @@ export type HatchTabStatus = 'active' | 'routed' | 'archived';
 export type HatchSourceType = 'manual' | 'helm_edit' | 'review_route' | 'voice';
 
 export type HatchRoutingDestination =
-  | 'log'
+  | 'journal'
   | 'compass_individual'
   | 'compass_single'
   | 'lists'
@@ -1742,7 +1800,7 @@ export const HATCH_DESTINATION_CONFIG: Record<
   HatchRoutingDestination,
   { label: string; icon: string; accentColor: string }
 > = {
-  log: { label: 'The Log', icon: 'BookOpen', accentColor: 'var(--color-deep-teal)' },
+  journal: { label: 'The Journal', icon: 'BookOpen', accentColor: 'var(--color-deep-teal)' },
   compass_individual: { label: 'Tasks (Break Down)', icon: 'CheckSquare', accentColor: 'var(--color-gold)' },
   compass_single: { label: 'Tasks (Single)', icon: 'ClipboardCheck', accentColor: 'var(--color-gold)' },
   lists: { label: 'Lists', icon: 'List', accentColor: 'var(--color-mid-teal)' },

@@ -30,7 +30,7 @@ export default function Reflections() {
     fetchPastResponses,
     saveResponse,
     updateResponse,
-    routeToLog,
+    routeToJournal,
     routeToVictory,
   } = useReflections();
 
@@ -104,7 +104,7 @@ export default function Reflections() {
                     isAnswered={answeredIds.has(q.id)}
                     onSave={saveResponse}
                     onUpdate={updateResponse}
-                    onRouteToLog={routeToLog}
+                    onRouteToJournal={routeToJournal}
                     onRouteToVictory={routeToVictory}
                   />
                 );

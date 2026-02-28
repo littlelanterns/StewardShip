@@ -403,9 +403,9 @@ Rules:
     if (!user || !spouse) return null;
     setError(null);
     try {
-      // Save to log_entries
+      // Save to journal_entries
       const { data: logEntry, error: logError } = await supabase
-        .from('log_entries')
+        .from('journal_entries')
         .insert({
           user_id: user.id,
           text,

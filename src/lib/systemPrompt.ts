@@ -1,4 +1,4 @@
-import type { MastEntry, KeelEntry, LogEntry, Victory, GuidedMode, HelmMessage, SpouseInsight, SpouseInsightCategory, Person, CrewNote, CrewNoteCategory, SphereEntity, SphereLevel, MeetingTemplateSection } from './types';
+import type { MastEntry, KeelEntry, JournalEntry, Victory, GuidedMode, HelmMessage, SpouseInsight, SpouseInsightCategory, Person, CrewNote, CrewNoteCategory, SphereEntity, SphereLevel, MeetingTemplateSection } from './types';
 import { MAST_TYPE_ORDER, MAST_TYPE_LABELS } from './types';
 import { KEEL_CATEGORY_ORDER, KEEL_CATEGORY_LABELS } from './types';
 import { SPOUSE_INSIGHT_CATEGORY_LABELS, SPOUSE_INSIGHT_CATEGORY_ORDER, CREW_NOTE_CATEGORY_LABELS } from './types';
@@ -15,7 +15,7 @@ export interface SystemPromptContext {
   displayName: string;
   mastEntries: MastEntry[];
   keelEntries?: KeelEntry[];
-  recentLogEntries?: LogEntry[];
+  recentJournalEntries?: JournalEntry[];
   recentVictories?: Victory[];
   compassContext?: string;
   chartsContext?: string;
@@ -147,10 +147,10 @@ function formatKeelEntries(entries: KeelEntry[]): string {
   return result;
 }
 
-function formatRecentLogEntries(entries: LogEntry[]): string {
+function formatRecentJournalEntries(entries: JournalEntry[]): string {
   if (entries.length === 0) return '';
 
-  let result = '\n\nRECENT LOG ENTRIES (last 7 days):\n';
+  let result = '\n\nRECENT JOURNAL ENTRIES (last 7 days):\n';
   for (const entry of entries.slice(0, 10)) {
     const date = new Date(entry.created_at).toLocaleDateString();
     const truncated = entry.text.length > 200 ? entry.text.slice(0, 197) + '...' : entry.text;
@@ -592,7 +592,7 @@ function formatPageContext(pageContext: string): string {
     crowsnest: 'Crow\'s Nest (Dashboard)',
     compass: 'The Compass (Tasks)',
     helm: 'The Helm (Chat)',
-    log: 'The Log (Journal)',
+    journal: 'The Journal',
     charts: 'Charts (Progress)',
     mast: 'The Mast (Principles)',
     keel: 'The Keel (Self-Knowledge)',
@@ -640,8 +640,8 @@ export function buildSystemPrompt(context: SystemPromptContext): string {
     }
   }
 
-  if (context.recentLogEntries && context.recentLogEntries.length > 0) {
-    const logSection = formatRecentLogEntries(context.recentLogEntries);
+  if (context.recentJournalEntries && context.recentJournalEntries.length > 0) {
+    const logSection = formatRecentJournalEntries(context.recentJournalEntries);
     const logTokens = estimateTokens(logSection);
     if (currentTokens + logTokens < budget) {
       prompt += logSection;
@@ -883,7 +883,7 @@ const KEEL_KEYWORDS = [
   'who i am', 'how i', 'my nature', 'self',
 ];
 
-const LOG_KEYWORDS = [
+const JOURNAL_KEYWORDS = [
   'yesterday', 'this week', 'last week', 'recently', 'today',
   'journal', 'wrote', 'logged', 'entry', 'noted',
   'earlier', 'before', 'remember when', 'i mentioned',
@@ -898,10 +898,10 @@ export function shouldLoadKeel(message: string, pageContext: string, guidedMode?
   return KEEL_KEYWORDS.some((kw) => lower.includes(kw));
 }
 
-export function shouldLoadLog(message: string, pageContext: string): boolean {
-  if (pageContext === 'log' || pageContext === 'safeharbor') return true;
+export function shouldLoadJournal(message: string, pageContext: string): boolean {
+  if (pageContext === 'journal' || pageContext === 'safeharbor') return true;
   const lower = message.toLowerCase();
-  return LOG_KEYWORDS.some((kw) => lower.includes(kw));
+  return JOURNAL_KEYWORDS.some((kw) => lower.includes(kw));
 }
 
 const COMPASS_KEYWORDS = [
@@ -1142,9 +1142,9 @@ After the meeting: Help them process what was discussed, create action items, an
 function getMeetingRulesText(subtype: string): string {
   const rules: Record<string, string> = {
     couple: `RULES: Spend more time where the user engages deeply. Move quickly through sections they want to skip. Never rush. Never guilt about skipped sections. Reference First Mate context naturally. Three-tier relationship safety applies.
-After completion, summarize the meeting, list action items for Compass confirmation, and offer to save insights to First Mate/Log/Keel.`,
+After completion, summarize the meeting, list action items for Compass confirmation, and offer to save insights to First Mate/Journal/Keel.`,
     parent_child: `RULES: Reference the child's personality and interests from Crew context. Coach the parent to listen actively. Never judgmental about unmet goals.
-After completion, save notes to crew_notes, create Compass tasks, save to Log.`,
+After completion, save notes to crew_notes, create Compass tasks, save to Journal.`,
     mentor: `PRINCIPLES TO EMBODY:
 - Self-directed learning: The user drives the agenda, not the mentor and not you.
 - Inspire, don't require: Encourage curiosity and ownership, never force.
@@ -1232,7 +1232,7 @@ Sections:
 7. Closing prayer
 
 RULES: Reference the child's personality and interests from Crew context. Coach the parent to listen actively. Never judgmental about unmet goals.
-After completion, save notes to crew_notes, create Compass tasks, save to Log.
+After completion, save notes to crew_notes, create Compass tasks, save to Journal.
 When presenting summary, format: MEETING_SUMMARY:{"summary": "...", "action_items": ["..."], "impressions": "..."}`,
 
     weekly_review: `\n\nGUIDED MODE: PERSONAL WEEKLY REVIEW

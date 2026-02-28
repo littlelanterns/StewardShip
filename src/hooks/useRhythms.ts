@@ -874,7 +874,7 @@ export function useRhythms() {
     const entryType = type === 'gratitude' ? 'gratitude' : 'reflection';
 
     await supabase
-      .from('log_entries')
+      .from('journal_entries')
       .insert({
         user_id: user.id,
         text,
@@ -900,7 +900,7 @@ export function useRhythms() {
     if (!user) return {};
 
     const { data: logEntry } = await supabase
-      .from('log_entries')
+      .from('journal_entries')
       .insert({
         user_id: user.id,
         text,

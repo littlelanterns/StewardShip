@@ -23,6 +23,7 @@ import {
   Sun,
   Moon,
   Settings,
+  Clock,
 } from 'lucide-react';
 import { useHelm } from '../../contexts/HelmContext';
 import { useHatchContext } from '../../contexts/HatchContext';
@@ -73,9 +74,9 @@ export default function Sidebar() {
             </button>
           </li>
           <li>
-            <NavLink to="/log" className="sidebar__link">
+            <NavLink to="/journal" className="sidebar__link">
               <BookOpen size={18} strokeWidth={1.5} />
-              <span>Log</span>
+              <span>Journal</span>
             </NavLink>
           </li>
           <li>
@@ -226,6 +227,12 @@ export default function Sidebar() {
             <NavLink to="/reports" className="sidebar__link">
               <FileText size={18} strokeWidth={1.5} />
               <span>Reports</span>
+            </NavLink>
+          </li>
+          <li>
+            <NavLink to="/log" className="sidebar__link">
+              <Clock size={18} strokeWidth={1.5} />
+              <span>Activity Log</span>
             </NavLink>
           </li>
         </ul>

@@ -1,11 +1,11 @@
 import { useEffect } from 'react';
-import type { LogEntry, RiggingPlan } from '../../lib/types';
+import type { JournalEntry, RiggingPlan } from '../../lib/types';
 import { Card } from '../shared/Card';
 import { EmptyState, LoadingSpinner } from '../shared';
 
 interface PlanJournalTabProps {
   plan: RiggingPlan;
-  entries: LogEntry[];
+  entries: JournalEntry[];
   loading?: boolean;
   onLoad: (planId: string) => void;
 }

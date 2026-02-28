@@ -1,26 +1,26 @@
 import { useState, useCallback } from 'react';
 import { ArrowLeft } from 'lucide-react';
-import type { LogEntry, LogEntryType } from '../../lib/types';
-import { LOG_ENTRY_TYPE_LABELS, LIFE_AREA_LABELS } from '../../lib/types';
+import type { JournalEntry, JournalEntryType } from '../../lib/types';
+import { JOURNAL_ENTRY_TYPE_LABELS, LIFE_AREA_LABELS } from '../../lib/types';
 import { Button } from '../shared';
 import { TagChips } from '../shared/TagChips';
 import { RoutingSelector } from '../shared/RoutingSelector';
 import './EntryDetail.css';
 
 interface EntryDetailProps {
-  entry: LogEntry;
-  onUpdate: (id: string, updates: { text?: string; entry_type?: LogEntryType; life_area_tags?: string[] }) => Promise<LogEntry | null>;
+  entry: JournalEntry;
+  onUpdate: (id: string, updates: { text?: string; entry_type?: JournalEntryType; life_area_tags?: string[] }) => Promise<JournalEntry | null>;
   onArchive: (id: string) => void;
   onRouted: (entryId: string, target: string, referenceId: string) => void;
   onBack: () => void;
 }
 
-const QUICK_TYPES: LogEntryType[] = ['journal', 'gratitude', 'reflection', 'quick_note', 'custom'];
+const QUICK_TYPES: JournalEntryType[] = ['journal_entry', 'gratitude', 'reflection', 'quick_note', 'commonplace', 'kid_quips', 'custom'];
 
 export default function EntryDetail({ entry, onUpdate, onArchive, onRouted, onBack }: EntryDetailProps) {
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(entry.text);
-  const [editType, setEditType] = useState<LogEntryType>(entry.entry_type);
+  const [editType, setEditType] = useState<JournalEntryType>(entry.entry_type);
   const [tags, setTags] = useState<string[]>(entry.life_area_tags);
   const [showRouting, setShowRouting] = useState(false);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
@@ -90,7 +90,7 @@ export default function EntryDetail({ entry, onUpdate, onArchive, onRouted, onBa
   return (
     <div className="entry-detail">
       <div className="entry-detail__top-bar">
-        <button type="button" className="entry-detail__back" onClick={onBack} aria-label="Back to Log">
+        <button type="button" className="entry-detail__back" onClick={onBack} aria-label="Back to Journal">
           <ArrowLeft size={20} strokeWidth={1.5} />
         </button>
         <span className="entry-detail__top-title">Entry Detail</span>
@@ -114,13 +114,13 @@ export default function EntryDetail({ entry, onUpdate, onArchive, onRouted, onBa
               className={`entry-detail__type-chip ${editType === type ? 'entry-detail__type-chip--active' : ''}`}
               onClick={() => setEditType(type)}
             >
-              {LOG_ENTRY_TYPE_LABELS[type]}
+              {JOURNAL_ENTRY_TYPE_LABELS[type]}
             </button>
           ))}
         </div>
       ) : (
         <span className="entry-detail__type-badge">
-          {LOG_ENTRY_TYPE_LABELS[entry.entry_type]}
+          {JOURNAL_ENTRY_TYPE_LABELS[entry.entry_type]}
         </span>
       )}
 

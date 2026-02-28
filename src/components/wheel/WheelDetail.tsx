@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft } from 'lucide-react';
-import type { WheelInstance, WheelRimEntry, LogEntry, HelmConversation } from '../../lib/types';
+import type { WheelInstance, WheelRimEntry, JournalEntry, HelmConversation } from '../../lib/types';
 import { WHEEL_STATUS_LABELS } from '../../lib/types';
 import { Card } from '../shared/Card';
 import { Button } from '../shared';
@@ -14,7 +14,7 @@ type DetailTab = 'spokes' | 'journal' | 'conversations';
 interface WheelDetailProps {
   wheel: WheelInstance;
   rimEntries: WheelRimEntry[];
-  linkedLogEntries: LogEntry[];
+  linkedLogEntries: JournalEntry[];
   linkedConversations: HelmConversation[];
   onBack: () => void;
   onContinueAtHelm: (wheel: WheelInstance) => void;

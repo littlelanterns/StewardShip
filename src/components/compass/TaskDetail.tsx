@@ -17,7 +17,7 @@ interface TaskDetailProps {
 const SOURCE_LABELS: Record<string, string> = {
   manual: 'Created manually',
   helm_conversation: 'Created from Helm',
-  log_routed: 'Created from Log',
+  log_routed: 'Created from Journal',
   meeting_action: 'From Meeting',
   rigging_output: 'From Rigging',
   wheel_commitment: 'From Wheel',

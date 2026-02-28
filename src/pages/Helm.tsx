@@ -88,7 +88,7 @@ export default function Helm() {
   }, [sendMessage]);
 
   const handleSaveToLog = useCallback(() => {
-    // Stub — will wire to Log in later phase
+    // Stub — will wire to Journal in later phase
     setMenuOpen(false);
   }, []);
 
@@ -117,11 +117,11 @@ export default function Helm() {
     }
   }, [activeConversation, startDump, triggerTriage]);
 
-  // Handle routing completion — also archive raw dump to Log
+  // Handle routing completion — also archive raw dump to Journal
   const handleRouteAll = useCallback(async (items: typeof triageItems) => {
     const counts = await routeAll(items);
 
-    // Archive raw dump text to Log as brain_dump entry
+    // Archive raw dump text to Journal as brain_dump entry
     if (activeConversation) {
       await archiveToLog(activeConversation.id);
     }
@@ -199,7 +199,7 @@ export default function Helm() {
                     role="menuitem"
                     onClick={handleSaveToLog}
                   >
-                    Save to Log
+                    Save to Journal
                   </button>
                   <button
                     type="button"

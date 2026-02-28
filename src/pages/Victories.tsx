@@ -122,7 +122,7 @@ export default function Victories() {
   const handleSaveNarrativeToLog = async () => {
     if (!user || !celebrationNarrative) return;
     try {
-      await supabase.from('log_entries').insert({
+      await supabase.from('journal_entries').insert({
         user_id: user.id,
         text: celebrationNarrative,
         entry_type: 'reflection',
@@ -131,7 +131,7 @@ export default function Victories() {
         routed_to: [],
         routed_reference_ids: {},
       });
-      setToast('Saved to Log');
+      setToast('Saved to Journal');
       setTimeout(() => setToast(null), 2500);
     } catch {
       setToast('Failed to save');
@@ -235,7 +235,7 @@ export default function Victories() {
           <p className="victories__narrative-text">{celebrationNarrative}</p>
           <div className="victories__narrative-actions">
             <button type="button" className="victories__narrative-btn" onClick={handleSaveNarrativeToLog}>
-              <BookOpen size={14} /> Save to Log
+              <BookOpen size={14} /> Save to Journal
             </button>
             <button type="button" className="victories__narrative-btn" onClick={handleCopyNarrative}>
               <Copy size={14} /> Copy

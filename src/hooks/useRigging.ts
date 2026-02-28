@@ -6,7 +6,7 @@ import type {
   RiggingPlanStatus,
   RiggingMilestone,
   RiggingObstacle,
-  LogEntry,
+  JournalEntry,
   HelmConversation,
   CompassTask,
 } from '../lib/types';
@@ -17,7 +17,7 @@ export function useRigging() {
   const [selectedPlan, setSelectedPlan] = useState<RiggingPlan | null>(null);
   const [milestones, setMilestones] = useState<RiggingMilestone[]>([]);
   const [obstacles, setObstacles] = useState<RiggingObstacle[]>([]);
-  const [linkedLogEntries, setLinkedLogEntries] = useState<LogEntry[]>([]);
+  const [linkedLogEntries, setLinkedLogEntries] = useState<JournalEntry[]>([]);
   const [linkedConversations, setLinkedConversations] = useState<HelmConversation[]>([]);
   const [linkedTasks, setLinkedTasks] = useState<CompassTask[]>([]);
   const [loading, setLoading] = useState(false);
@@ -346,7 +346,7 @@ export function useRigging() {
     if (!user) return;
     try {
       const { data, error: err } = await supabase
-        .from('log_entries')
+        .from('journal_entries')
         .select('*')
         .eq('user_id', user.id)
         .eq('related_rigging_plan_id', planId)
@@ -354,7 +354,7 @@ export function useRigging() {
         .order('created_at', { ascending: false });
 
       if (err) throw err;
-      setLinkedLogEntries((data as LogEntry[]) || []);
+      setLinkedLogEntries((data as JournalEntry[]) || []);
     } catch (err) {
       setError((err as Error).message);
     }

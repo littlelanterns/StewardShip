@@ -303,8 +303,8 @@ export function useRhythmCards() {
           .not('recurrence_rule', 'is', null)
           .eq('status', 'completed')
           .gte('completed_at', weekStart + 'T00:00:00'),
-        // Log entries this week — get life area tags
-        supabase.from('log_entries').select('life_area_tags')
+        // Journal entries this week — get life area tags
+        supabase.from('journal_entries').select('life_area_tags')
           .eq('user_id', user.id).is('archived_at', null)
           .gte('created_at', weekStart + 'T00:00:00'),
         // Next week tasks
@@ -511,7 +511,7 @@ export function useRhythmCards() {
         .eq('user_id', user.id).is('archived_at', null)
         .gte('created_at', lastMonthStart + 'T00:00:00')
         .lte('created_at', lastMonthEnd + 'T23:59:59'),
-      supabase.from('log_entries').select('id')
+      supabase.from('journal_entries').select('id')
         .eq('user_id', user.id).is('archived_at', null)
         .gte('created_at', lastMonthStart + 'T00:00:00')
         .lte('created_at', lastMonthEnd + 'T23:59:59'),
@@ -547,12 +547,12 @@ export function useRhythmCards() {
     return { name, monthsSinceLastUpdate: monthsSince };
   }, [user, name]);
 
-  // Save reflection response to Log
+  // Save reflection response to Journal
   const saveReflectionToLog = useCallback(async (text: string): Promise<string | null> => {
     if (!user || !text.trim()) return null;
 
     const { data, error: err } = await supabase
-      .from('log_entries')
+      .from('journal_entries')
       .insert({
         user_id: user.id,
         text: text.trim(),

@@ -70,7 +70,7 @@ export default function TriageReview({
       summaryLines.push(`${routingCounts.tasksCreated} task${routingCounts.tasksCreated !== 1 ? 's' : ''} to Compass`);
     }
     if (routingCounts.journalEntriesCreated > 0) {
-      summaryLines.push(`${routingCounts.journalEntriesCreated} entr${routingCounts.journalEntriesCreated !== 1 ? 'ies' : 'y'} to Log`);
+      summaryLines.push(`${routingCounts.journalEntriesCreated} entr${routingCounts.journalEntriesCreated !== 1 ? 'ies' : 'y'} to Journal`);
     }
     if (routingCounts.insightsCreated > 0) {
       summaryLines.push(`${routingCounts.insightsCreated} insight${routingCounts.insightsCreated !== 1 ? 's' : ''} to Keel`);

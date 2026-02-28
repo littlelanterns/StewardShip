@@ -30,11 +30,20 @@ export const FEATURE_GUIDES: Record<string, FeatureGuideContent> = {
     description: "The Helm is where you talk through anything \u2014 plans, decisions, struggles, celebrations. The AI knows your principles, personality, goals, and relationships. It's also the engine behind guided processes throughout the app.",
     tips: ["The drawer pulls up from any page", "Try voice input for hands-free journaling"],
   },
-  log: {
-    featureKey: 'log',
-    title: "The Log \u2014 A Record of the Voyage",
-    description: "Capture anything \u2014 journal entries, gratitude, reflections, quick notes. After saving, route entries to other features: create a task, flag a victory, save a principle. The Log is your universal inbox.",
+  journal: {
+    featureKey: 'journal',
+    title: "The Journal \u2014 A Record of the Voyage",
+    description: "Capture anything \u2014 journal entries, gratitude, reflections, quick notes, commonplace book observations. After saving, route entries to other features: create a task, flag a victory, save a principle. The Journal is your universal inbox for the inner voyage.",
     tips: ["AI auto-tags your life areas", "Route entries to Compass, Mast, or Victory Recorder after saving"],
+  },
+  activity_log: {
+    featureKey: 'activity_log',
+    title: 'The Log \u2014 Your Voyage Timeline',
+    description: 'A read-only timeline of everything that happens across your voyage. Tasks completed, victories recorded, journal entries created, meetings held \u2014 all in one chronological feed.',
+    tips: [
+      'Tap any event to jump to its source.',
+      'Hide events you don\'t need to see \u2014 they can be shown again anytime.',
+    ],
   },
   compass: {
     featureKey: 'compass',
@@ -81,7 +90,7 @@ export const FEATURE_GUIDES: Record<string, FeatureGuideContent> = {
     featureKey: 'firstmate',
     title: "First Mate \u2014 Your Relationship Partner",
     description: "Build a profile of your spouse through conversation, uploads, and observations. The AI uses this to help you love better \u2014 planning dates, writing encouragement, noticing patterns, and preparing for important conversations.",
-    tips: ["The Marriage Toolbox has guided modes for different relationship goals", "Quick-capture gratitude saves to both your Log and spouse profile"],
+    tips: ["The Marriage Toolbox has guided modes for different relationship goals", "Quick-capture gratitude saves to both your Journal and spouse profile"],
   },
   crew: {
     featureKey: 'crew',
@@ -105,7 +114,7 @@ export const FEATURE_GUIDES: Record<string, FeatureGuideContent> = {
     featureKey: 'meetings',
     title: "Meeting Frameworks \u2014 Structured Conversations",
     description: "Recurring meeting templates for your most important relationships \u2014 couple meetings, parent-child mentoring, weekly reviews, and custom meetings. The AI guides each session through a purposeful agenda and captures action items.",
-    tips: ["Meeting notes auto-save to your Log", "Action items become Compass tasks"],
+    tips: ["Meeting notes auto-save to your Journal", "Action items become Compass tasks"],
   },
   lists: {
     featureKey: 'lists',
@@ -121,7 +130,7 @@ export const FEATURE_GUIDES: Record<string, FeatureGuideContent> = {
   reflections: {
     featureKey: 'reflections',
     title: "Reflections \u2014 Daily Questions to Guide Your Thinking",
-    description: "Answer a rotating set of questions each day to build self-awareness and track your growth over time. Route any response to your Log or flag it as a Victory. Add your own questions or use the defaults.",
+    description: "Answer a rotating set of questions each day to build self-awareness and track your growth over time. Route any response to your Journal or flag it as a Victory. Add your own questions or use the defaults.",
     tips: ["Manage your question list on the Manage tab", "Past reflections are grouped by date for easy review"],
   },
   reports: {
@@ -133,7 +142,7 @@ export const FEATURE_GUIDES: Record<string, FeatureGuideContent> = {
   hatch: {
     featureKey: 'hatch',
     title: 'The Hatch',
-    description: 'Capture anything here \u2014 type or speak. When you\'re ready, tap "Send to..." and route it to The Log, Compass, Lists, or anywhere else. One place to start, ten places it can end up.',
+    description: 'Capture anything here \u2014 type or speak. When you\'re ready, tap "Send to..." and route it to The Journal, Compass, Lists, or anywhere else. One place to start, ten places it can end up.',
     tips: ["Use voice input for hands-free capture", "Tabs persist across sessions until you send or archive them"],
   },
 };

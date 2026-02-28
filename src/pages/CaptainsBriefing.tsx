@@ -138,7 +138,7 @@ const VOYAGE_STAGES: VoyageStage[] = [
         name: 'The Helm — Your AI Companion',
         icon: <MessageCircle size={18} />,
         description:
-          'Talk through anything — plans, decisions, struggles, celebrations. The AI knows your principles, personality, goals, tasks, journal, and relationships. It loads relevant context automatically based on what you\'re discussing. Available as a pull-up drawer from any page, or as a dedicated full-screen page.',
+          'Talk through anything — plans, decisions, struggles, celebrations. The AI knows your principles, personality, goals, tasks, Journal entries, and relationships. It loads relevant context automatically based on what you\'re discussing. Available as a pull-up drawer from any page, or as a dedicated full-screen page.',
         connections:
           'Connected to: Everything. The Helm reads from and can write to almost every feature in the app.',
         route: '/helm',
@@ -153,7 +153,7 @@ const VOYAGE_STAGES: VoyageStage[] = [
             name: 'Voice Input',
             brief: 'Speak instead of type',
             detail:
-              'Tap the microphone icon to record your thoughts. Your audio is transcribed and sent as a message. Available in both the Helm and The Log for hands-free journaling or conversation.',
+              'Tap the microphone icon to record your thoughts. Your audio is transcribed and sent as a message. Available in both the Helm and The Journal for hands-free journaling or conversation.',
           },
           {
             name: 'Helm Drawer',
@@ -167,31 +167,31 @@ const VOYAGE_STAGES: VoyageStage[] = [
   },
   {
     number: 3,
-    name: 'Keep the Log',
-    tagline: 'The Log — A Record of the Voyage',
+    name: 'Keep the Journal',
+    tagline: 'The Journal — A Record of the Voyage',
     narrative:
-      'Every captain keeps a log — not because someone requires it, but because the voyage is worth recording. Your Log is a universal inbox for thoughts, gratitude, reflections, meeting notes, and anything else worth capturing. Write it down, then decide what to do with it.',
+      'Every captain keeps a journal — not because someone requires it, but because the voyage is worth recording. Your Journal is a universal inbox for thoughts, gratitude, reflections, meeting notes, and anything else worth capturing. Write it down, then decide what to do with it.',
     features: [
       {
-        name: 'The Log — Your Journal',
+        name: 'The Journal — Your Commonplace Book',
         icon: <BookOpen size={18} />,
         description:
           'Capture anything: journal entries, gratitude, reflections, quick notes, meeting notes, or voice recordings. After saving, you can route entries to other features — create a task, flag a victory, save a principle to your Mast, or add self-knowledge to your Keel. The AI auto-tags your entries by life area.',
         connections:
           'Routes to: Compass (tasks), Mast (principles), Keel (self-knowledge), Victory Recorder, Reminders.',
-        route: '/log',
+        route: '/journal',
         subTools: [
           {
             name: 'Entry Routing',
             brief: 'Send entries to other features after saving',
             detail:
-              'After saving a Log entry, routing options appear: create a Compass task from it, save a principle to your Mast, add self-knowledge to your Keel, flag it as a victory, or set a reminder. Your original entry stays in the Log — routing creates a new item in the destination.',
+              'After saving a Journal entry, routing options appear: create a Compass task from it, save a principle to your Mast, add self-knowledge to your Keel, flag it as a victory, or set a reminder. Your original entry stays in the Journal — routing creates a new item in the destination.',
           },
           {
             name: 'Voice Recording',
             brief: 'Speak your journal entries',
             detail:
-              'Tap the microphone to record your thoughts. The audio is transcribed and saved as a Log entry. Perfect for capturing ideas on the go or processing thoughts aloud.',
+              'Tap the microphone to record your thoughts. The audio is transcribed and saved as a Journal entry. Perfect for capturing ideas on the go or processing thoughts aloud.',
           },
         ],
       },
@@ -208,9 +208,9 @@ const VOYAGE_STAGES: VoyageStage[] = [
         name: 'The Hatch — Universal Capture',
         icon: <Inbox size={18} />,
         description:
-          'A quick-access notepad that lives in a right-side drawer. Jot down anything — type or speak — without deciding where it belongs yet. When you\'re ready, tap "Send to..." and route your content to The Log, The Compass, Victory, Lists, Charts, The Mast, The Keel, a Meeting Agenda, or just save it as a Note. Multiple tabs let you work on several thoughts at once. Everything autosaves across sessions.',
+          'A quick-access notepad that lives in a right-side drawer. Jot down anything — type or speak — without deciding where it belongs yet. When you\'re ready, tap "Send to..." and route your content to The Journal, The Compass, Victory, Lists, Charts, The Mast, The Keel, a Meeting Agenda, or just save it as a Note. Multiple tabs let you work on several thoughts at once. Everything autosaves across sessions.',
         connections:
-          'Routes to: Log (journal entries), Compass (tasks), Lists (checklists), Victory (accomplishments), Mast (principles), Keel (self-knowledge), Charts (progress tracking), Meetings (agenda items). Receives from: Helm ("Edit in Hatch" on any AI conversation).',
+          'Routes to: Journal (entries), Compass (tasks), Lists (checklists), Victory (accomplishments), Mast (principles), Keel (self-knowledge), Charts (progress tracking), Meetings (agenda items). Receives from: Helm ("Edit in Hatch" on any AI conversation).',
         route: '/hatch',
         subTools: [
           {
@@ -248,7 +248,7 @@ const VOYAGE_STAGES: VoyageStage[] = [
         description:
           'Your daily action hub. Quick-add tasks with minimal friction, and the AI suggests life area tags automatically. Toggle between seven prioritization views — same tasks, different frameworks — to find what needs your attention right now.',
         connections:
-          'Fed by: Log routing, Helm suggestions, Rigging milestones, Unload the Hold triage. Feeds into: Crow\'s Nest summary, Charts tracking, Reveille/Reckoning priorities.',
+          'Fed by: Journal routing, Helm suggestions, Rigging milestones, Unload the Hold triage. Feeds into: Crow\'s Nest summary, Charts tracking, Reveille/Reckoning priorities.',
         route: '/compass',
         subTools: [
           {
@@ -290,7 +290,7 @@ const VOYAGE_STAGES: VoyageStage[] = [
         name: 'Crow\'s Nest — Your Dashboard',
         icon: <Eye size={18} />,
         description:
-          'Your daily command center. Summary cards surface what\'s happening across every feature — today\'s tasks, active streaks, recent victories, goal progress, journal snapshots, and a rotating thought from your Mast. Cards only appear when they have data, so it fills in naturally as you use the app.',
+          'Your daily command center. Summary cards surface what\'s happening across every feature — today\'s tasks, active streaks, recent victories, goal progress, recent journal entries, and a rotating thought from your Mast. Cards only appear when they have data, so it fills in naturally as you use the app.',
         connections:
           'Reads from: Every major feature. The Crow\'s Nest is read-only — it aggregates, never creates.',
         route: '/',
@@ -301,7 +301,7 @@ const VOYAGE_STAGES: VoyageStage[] = [
         description:
           'Visualize your journey with task completion rates, active streaks, goal progress bars, victory summaries, and journal activity over time. Create custom trackers to measure anything daily — count, yes/no, or scale type.',
         connections:
-          'Reads from: Compass tasks, Victories, Log entries. Custom trackers prompt in Reveille and Reckoning.',
+          'Reads from: Compass tasks, Victories, Journal entries. Custom trackers prompt in Reveille and Reckoning.',
         route: '/charts',
         subTools: [
           {
@@ -322,9 +322,9 @@ const VOYAGE_STAGES: VoyageStage[] = [
         name: 'Victory Recorder — Celebrate Your Wins',
         icon: <Award size={18} />,
         description:
-          'Record accomplishments large and small. The AI generates identity-based celebration text that connects your wins to your principles — not generic praise, but recognition rooted in who you\'re becoming. Victories can come from manual entry, Log routing, task completion, or routine completion.',
+          'Record accomplishments large and small. The AI generates identity-based celebration text that connects your wins to your principles — not generic praise, but recognition rooted in who you\'re becoming. Victories can come from manual entry, Journal routing, task completion, or routine completion.',
         connections:
-          'Fed by: Log routing, Compass completions, Routine completions. Feeds into: Crow\'s Nest, Charts, Reckoning Victory Review.',
+          'Fed by: Journal routing, Compass completions, Routine completions. Feeds into: Crow\'s Nest, Charts, Reckoning Victory Review.',
         route: '/victories',
       },
     ],
@@ -351,7 +351,7 @@ const VOYAGE_STAGES: VoyageStage[] = [
         description:
           'An evening card for reviewing the day. Triage today\'s victories, carry forward incomplete tasks, set tomorrow\'s top priorities, log a prompted journal entry, and update your trackers. Includes a Victory Review — the AI weaves your day\'s wins into a brief narrative.',
         connections:
-          'Reads from: Compass, Log, Victories, Charts. Writes to: Compass (tomorrow\'s priorities), Log (prompted entries).',
+          'Reads from: Compass, Journal, Victories, Charts. Writes to: Compass (tomorrow\'s priorities), Journal (prompted entries).',
         route: '/reckoning',
       },
       {
@@ -520,7 +520,7 @@ const VOYAGE_STAGES: VoyageStage[] = [
         description:
           'A specialized space for processing stress, difficult emotions, or hard seasons. The AI uses a three-tier safety system: capacity building for everyday stress, professional support suggestions when things are heavier, and immediate crisis resources when needed. It draws on your Mast, Keel, and Manifest for grounding, and always redirects toward human connection and faith.',
         connections:
-          'Uses: Mast, Keel, Manifest, First Mate, Crew, Wheel, Life Inventory. Routes to: Log (processing notes), Compass (action items), Keel (self-insights), Victory Recorder (overcoming).',
+          'Uses: Mast, Keel, Manifest, First Mate, Crew, Wheel, Life Inventory. Routes to: Journal (processing notes), Compass (action items), Keel (self-insights), Victory Recorder (overcoming).',
         route: '/safe-harbor',
         subTools: [
           {
@@ -546,7 +546,7 @@ const VOYAGE_STAGES: VoyageStage[] = [
         description:
           'Templates for recurring meetings: Couple Meetings with your spouse, Parent-Child check-ins, Weekly Reviews, Monthly Reviews, Business meetings, and custom templates you create. Each meeting type loads relevant context and guides the conversation with prompts and note-taking.',
         connections:
-          'Uses: First Mate (couple meetings), Crew (parent-child meetings). Notes save to: Log, linked Crew members.',
+          'Uses: First Mate (couple meetings), Crew (parent-child meetings). Notes save to: Journal, linked Crew members.',
         route: '/meetings',
       },
       {
@@ -564,7 +564,7 @@ const VOYAGE_STAGES: VoyageStage[] = [
         description:
           'Generate progress reports that pull from across the app — task completion, victories, journal highlights, reflection responses, routine performance, and more. A snapshot of your week in one view.',
         connections:
-          'Reads from: Compass, Victories, Log, Reflections, Routines, Charts.',
+          'Reads from: Compass, Victories, Journal, Reflections, Routines, Charts.',
         route: '/reports',
       },
       {
@@ -573,7 +573,7 @@ const VOYAGE_STAGES: VoyageStage[] = [
         description:
           'When your mind is overflowing, dump everything into the Helm and let the AI sort it out. Talk or type everything that\'s on your mind. The AI triages your thoughts into categories — tasks, ideas, concerns, things to discuss — and presents a structured review where you can route each item to the right place in batch.',
         connections:
-          'Routes to: Compass (tasks), Log (notes), Crew (conversations), Reminders, First Mate (relationship items).',
+          'Routes to: Compass (tasks), Journal (notes), Crew (conversations), Reminders, First Mate (relationship items).',
         route: '/unload-the-hold',
       },
     ],

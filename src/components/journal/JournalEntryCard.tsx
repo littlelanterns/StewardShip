@@ -1,10 +1,10 @@
 import { MessageCircle, Mic, Users } from 'lucide-react';
-import type { LogEntry } from '../../lib/types';
-import { LOG_ENTRY_TYPE_LABELS, LIFE_AREA_LABELS } from '../../lib/types';
-import './LogEntryCard.css';
+import type { JournalEntry } from '../../lib/types';
+import { JOURNAL_ENTRY_TYPE_LABELS, LIFE_AREA_LABELS } from '../../lib/types';
+import './JournalEntryCard.css';
 
-interface LogEntryCardProps {
-  entry: LogEntry;
+interface JournalEntryCardProps {
+  entry: JournalEntry;
   onClick: () => void;
 }
 
@@ -28,14 +28,16 @@ function formatDate(dateStr: string): string {
 }
 
 const TYPE_CLASS_MAP: Record<string, string> = {
-  journal: 'log-entry-card__badge--journal',
-  gratitude: 'log-entry-card__badge--gratitude',
-  reflection: 'log-entry-card__badge--reflection',
-  quick_note: 'log-entry-card__badge--quick-note',
-  meeting_notes: 'log-entry-card__badge--meeting',
-  helm_conversation: 'log-entry-card__badge--helm',
-  transcript: 'log-entry-card__badge--helm',
-  custom: 'log-entry-card__badge--journal',
+  journal_entry: 'journal-entry-card__badge--journal',
+  gratitude: 'journal-entry-card__badge--gratitude',
+  reflection: 'journal-entry-card__badge--reflection',
+  quick_note: 'journal-entry-card__badge--quick-note',
+  commonplace: 'journal-entry-card__badge--journal',
+  kid_quips: 'journal-entry-card__badge--journal',
+  meeting_notes: 'journal-entry-card__badge--meeting',
+  helm_conversation: 'journal-entry-card__badge--helm',
+  transcript: 'journal-entry-card__badge--helm',
+  custom: 'journal-entry-card__badge--journal',
 };
 
 function SourceIcon({ source }: { source: string }) {
@@ -45,16 +47,16 @@ function SourceIcon({ source }: { source: string }) {
   return null;
 }
 
-export default function LogEntryCard({ entry, onClick }: LogEntryCardProps) {
+export default function JournalEntryCard({ entry, onClick }: JournalEntryCardProps) {
   return (
-    <button type="button" className="log-entry-card" onClick={onClick}>
-      <div className="log-entry-card__header">
-        <span className={`log-entry-card__badge ${TYPE_CLASS_MAP[entry.entry_type] || ''}`}>
-          {LOG_ENTRY_TYPE_LABELS[entry.entry_type] || entry.entry_type}
+    <button type="button" className="journal-entry-card" onClick={onClick}>
+      <div className="journal-entry-card__header">
+        <span className={`journal-entry-card__badge ${TYPE_CLASS_MAP[entry.entry_type] || ''}`}>
+          {JOURNAL_ENTRY_TYPE_LABELS[entry.entry_type] || entry.entry_type}
         </span>
-        <span className="log-entry-card__date">
+        <span className="journal-entry-card__date">
           {entry.source !== 'manual_text' && (
-            <span className="log-entry-card__source-icon">
+            <span className="journal-entry-card__source-icon">
               <SourceIcon source={entry.source} />
             </span>
           )}
@@ -62,24 +64,24 @@ export default function LogEntryCard({ entry, onClick }: LogEntryCardProps) {
         </span>
       </div>
 
-      <p className="log-entry-card__text">{truncateText(entry.text)}</p>
+      <p className="journal-entry-card__text">{truncateText(entry.text)}</p>
 
       {(entry.life_area_tags.length > 0 || entry.routed_to.length > 0) && (
-        <div className="log-entry-card__footer">
+        <div className="journal-entry-card__footer">
           {entry.life_area_tags.length > 0 && (
-            <div className="log-entry-card__tags">
+            <div className="journal-entry-card__tags">
               {entry.life_area_tags.slice(0, 3).map((tag) => (
-                <span key={tag} className="log-entry-card__tag">
+                <span key={tag} className="journal-entry-card__tag">
                   {LIFE_AREA_LABELS[tag] || tag}
                 </span>
               ))}
               {entry.life_area_tags.length > 3 && (
-                <span className="log-entry-card__tag">+{entry.life_area_tags.length - 3}</span>
+                <span className="journal-entry-card__tag">+{entry.life_area_tags.length - 3}</span>
               )}
             </div>
           )}
           {entry.routed_to.length > 0 && (
-            <span className="log-entry-card__routed">
+            <span className="journal-entry-card__routed">
               Routed
             </span>
           )}

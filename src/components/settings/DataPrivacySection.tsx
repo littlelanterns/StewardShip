@@ -57,7 +57,7 @@ export function DataPrivacySection({
         <p className="settings-field__description">
           Generate a printable PDF of your journal entries with date range and type filters.
         </p>
-        <Button variant="secondary" onClick={() => navigate('/log?export=true')}>
+        <Button variant="secondary" onClick={() => navigate('/journal?export=true')}>
           Export Journal
         </Button>
       </div>

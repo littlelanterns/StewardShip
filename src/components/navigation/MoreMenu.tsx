@@ -20,6 +20,7 @@ import {
   Moon,
   Settings,
   X,
+  Clock,
 } from 'lucide-react';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useHelmContext } from '../../contexts/HelmContext';
@@ -210,6 +211,12 @@ export default function MoreMenu({ open, onClose }: MoreMenuProps) {
               <NavLink to="/reports" className="more-menu__link" onClick={onClose}>
                 <FileText size={20} strokeWidth={1.5} />
                 <span>Reports</span>
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/log" className="more-menu__link" onClick={onClose}>
+                <Clock size={20} strokeWidth={1.5} />
+                <span>Activity Log</span>
               </NavLink>
             </li>
           </ul>

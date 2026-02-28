@@ -143,7 +143,7 @@ export async function triggerHatchExtraction(
   const systemPrompt = `You are an extraction assistant for a personal growth app.
 Analyze the provided text and extract discrete items that could be:
 - Action items (tasks to do) → suggested_destination: "compass_single" or "compass_individual"
-- Reflections or emotional insights (journal-worthy) → suggested_destination: "log"
+- Reflections or emotional insights (journal-worthy) → suggested_destination: "journal"
 - Personal revelations (self-knowledge) → suggested_destination: "keel"
 - Values or commitments (guiding principles) → suggested_destination: "mast"
 - Victories or accomplishments → suggested_destination: "victory"
@@ -155,7 +155,7 @@ Analyze the provided text and extract discrete items that could be:
 For each extracted item, provide:
 1. extracted_text: The exact text (cleaned up from speech if needed)
 2. item_type: One of: action_item, reflection, revelation, value, victory, trackable, meeting_followup, list_item, general
-3. suggested_destination: One of: log, compass_single, compass_individual, lists, victory, keel, mast, note, agenda, charts
+3. suggested_destination: One of: journal, compass_single, compass_individual, lists, victory, keel, mast, note, agenda, charts
 4. confidence: A score from 0 to 1
 
 ${contextInfo.length > 0 ? '\nUser context:\n' + contextInfo.join('\n') : ''}

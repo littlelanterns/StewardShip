@@ -745,7 +745,7 @@ export function ReckoningScreen() {
           <button
             type="button"
             className="rhythm-actions__secondary"
-            onClick={() => { dismissReckoning(); navigate('/log'); }}
+            onClick={() => { dismissReckoning(); navigate('/journal'); }}
           >
             Journal
           </button>

@@ -1,10 +1,10 @@
 import { supabase } from './supabase';
-import type { MastEntry, KeelEntry, LogEntry, Victory, CompassTask, GuidedMode, GuidedSubtype, HelmMessage, WheelInstance, LifeInventoryArea, RiggingPlan, Person, SpouseInsight, SphereEntity, ManifestSearchResult, Meeting, CrewNote, MeetingAgendaItem, MeetingTemplateSection } from './types';
+import type { MastEntry, KeelEntry, JournalEntry, Victory, CompassTask, GuidedMode, GuidedSubtype, HelmMessage, WheelInstance, LifeInventoryArea, RiggingPlan, Person, SpouseInsight, SphereEntity, ManifestSearchResult, Meeting, CrewNote, MeetingAgendaItem, MeetingTemplateSection } from './types';
 import { SPOKE_LABELS, PLANNING_FRAMEWORK_LABELS, CREW_NOTE_CATEGORY_LABELS } from './types';
 import { searchManifest } from './rag';
 import {
   shouldLoadKeel,
-  shouldLoadLog,
+  shouldLoadJournal,
   shouldLoadCompass,
   shouldLoadVictories,
   shouldLoadCharts,
@@ -79,7 +79,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
 
   // Conditionally fetch based on keyword detection
   const needKeel = shouldLoadKeel(message, pageContext, guidedMode);
-  const needLog = shouldLoadLog(message, pageContext) || pageContext === 'reveille' || pageContext === 'reckoning';
+  const needJournal = shouldLoadJournal(message, pageContext) || pageContext === 'reveille' || pageContext === 'reckoning';
   const needCompass = shouldLoadCompass(message, pageContext) || pageContext === 'reveille' || pageContext === 'reckoning';
   const needVictories = shouldLoadVictories(message, pageContext);
   const needCharts = shouldLoadCharts(message, pageContext);
@@ -122,7 +122,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
   }
 
   let keelEntries: KeelEntry[] | undefined;
-  let recentLogEntries: LogEntry[] | undefined;
+  let recentJournalEntries: JournalEntry[] | undefined;
   let compassContext: string | undefined;
   let recentVictories: Victory[] | undefined;
   let chartsContext: string | undefined;
@@ -158,9 +158,9 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-  const logPromise = needLog
+  const journalPromise = needJournal
     ? supabase
-        .from('log_entries')
+        .from('journal_entries')
         .select('*')
         .eq('user_id', userId)
         .is('archived_at', null)
@@ -367,9 +367,9 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     }
   }
 
-  const [keelResult, logResult, compassResult, victoriesResult, wheelResult, lifeInvResult, riggingResult, firstMateResult, spouseInsightsResult, crewResult, sphereEntitiesResult, frameworksResult, manifestResults, meetingResult, agendaResult, reflectionsResult, hatchResult, meetingSectionsResult] = await Promise.all([
+  const [keelResult, journalResult, compassResult, victoriesResult, wheelResult, lifeInvResult, riggingResult, firstMateResult, spouseInsightsResult, crewResult, sphereEntitiesResult, frameworksResult, manifestResults, meetingResult, agendaResult, reflectionsResult, hatchResult, meetingSectionsResult] = await Promise.all([
     keelPromise,
-    logPromise,
+    journalPromise,
     compassPromise,
     victoriesPromise,
     wheelPromise,
@@ -391,8 +391,8 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
   if (keelResult?.data) {
     keelEntries = keelResult.data as KeelEntry[];
   }
-  if (logResult?.data) {
-    recentLogEntries = logResult.data as LogEntry[];
+  if (journalResult?.data) {
+    recentJournalEntries = journalResult.data as JournalEntry[];
   }
   if (compassResult?.data && compassResult.data.length > 0) {
     compassContext = formatCompassContext(compassResult.data as CompassTask[]);
@@ -678,7 +678,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     displayName,
     mastEntries,
     keelEntries,
-    recentLogEntries,
+    recentJournalEntries,
     recentVictories,
     compassContext,
     chartsContext,
@@ -771,7 +771,7 @@ async function buildChartsContext(userId: string, today: string): Promise<string
 
     // Get this week's journal count
     const { count: journalCount } = await supabase
-      .from('log_entries')
+      .from('journal_entries')
       .select('id', { count: 'exact', head: true })
       .eq('user_id', userId)
       .is('archived_at', null)
@@ -892,8 +892,8 @@ async function buildReckoningContext(
       .limit(5);
 
     // Get today's log entries
-    const { data: todayLogs } = await supabase
-      .from('log_entries')
+    const { data: todayJournalEntries } = await supabase
+      .from('journal_entries')
       .select('text, entry_type')
       .eq('user_id', userId)
       .is('archived_at', null)
@@ -919,8 +919,8 @@ The user just saw their Reckoning evening review and tapped "Talk to The Helm."\
       result += `Tomorrow's priorities: ${(tomorrowTasks as { title: string }[]).map((t) => t.title).join(', ')}\n`;
     }
 
-    if (todayLogs && todayLogs.length > 0) {
-      result += `Today's journal entries: ${todayLogs.length}\n`;
+    if (todayJournalEntries && todayJournalEntries.length > 0) {
+      result += `Today's journal entries: ${todayJournalEntries.length}\n`;
     }
 
     result += `\nAI style: Be reflective, not evaluative. Example openings:

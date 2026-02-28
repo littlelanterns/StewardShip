@@ -1,11 +1,11 @@
 import { useEffect } from 'react';
-import type { LogEntry, WheelInstance } from '../../lib/types';
+import type { JournalEntry, WheelInstance } from '../../lib/types';
 import { Card } from '../shared/Card';
 import { EmptyState, LoadingSpinner } from '../shared';
 
 interface WheelJournalTabProps {
   wheel: WheelInstance;
-  entries: LogEntry[];
+  entries: JournalEntry[];
   loading?: boolean;
   onLoad: (wheelId: string, lifeAreaTag?: string | null) => void;
 }

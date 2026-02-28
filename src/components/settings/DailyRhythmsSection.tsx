@@ -37,7 +37,7 @@ const ANTICIPATION_FREQ_OPTIONS = [
 const READING_SOURCE_OPTIONS = [
   { value: 'mast', label: 'Mast (your principles)' },
   { value: 'manifest', label: 'Manifest (your library)' },
-  { value: 'log', label: 'Log (past entries)' },
+  { value: 'journal', label: 'Journal (past entries)' },
 ];
 
 export function DailyRhythmsSection({
