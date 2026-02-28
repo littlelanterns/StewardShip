@@ -8,28 +8,34 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 64px;
-  background-color: var(--color-bg-card);
-  border: 1px solid color-mix(in srgb, var(--color-slate-gray) 20%, transparent);
+  width: 30px;
+  height: 72px;
+  background: linear-gradient(135deg, var(--color-cream) 0%, var(--color-warm-sand) 100%);
+  border: 1.5px solid color-mix(in srgb, var(--color-cognac) 30%, transparent);
   border-right: none;
-  border-radius: var(--radius-md) 0 0 var(--radius-md);
-  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.08);
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+  box-shadow: -3px 1px 10px rgba(0, 0, 0, 0.1), inset 1px 0 0 color-mix(in srgb, var(--color-white) 50%, transparent);
   color: var(--color-cognac);
   cursor: pointer;
-  transition: width var(--transition-fast), background-color var(--transition-fast), color var(--transition-fast);
+  transition: width var(--transition-fast), background var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
 }
 
 .hatch-drawer__pull-tab:hover {
-  width: 34px;
-  background-color: color-mix(in srgb, var(--color-cognac) 8%, var(--color-bg-card));
-  color: var(--color-cognac-dark, var(--color-cognac));
+  width: 36px;
+  background: linear-gradient(135deg, var(--color-warm-sand) 0%, color-mix(in srgb, var(--color-cognac) 12%, var(--color-cream)) 100%);
+  border-color: color-mix(in srgb, var(--color-cognac) 50%, transparent);
+  color: var(--color-deep-brown);
+  box-shadow: -4px 2px 14px rgba(0, 0, 0, 0.14), inset 1px 0 0 color-mix(in srgb, var(--color-white) 60%, transparent);
 }
 
-/* Hide pull tab on mobile — use nav buttons instead */
+/* Mobile: smaller pull tab, above bottom nav */
 @media (max-width: 767px) {
   .hatch-drawer__pull-tab {
-    display: none;
+    top: auto;
+    bottom: calc(var(--nav-height, 64px) + 24px);
+    transform: none;
+    width: 26px;
+    height: 56px;
   }
 }
 
