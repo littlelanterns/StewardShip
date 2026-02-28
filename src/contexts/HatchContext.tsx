@@ -109,8 +109,28 @@ export function HatchProvider({ children }: { children: ReactNode }) {
 
   const openHatch = useCallback(() => {
     setIsOpen(true);
-    // Always create a fresh tab when opening via pull tab
-    hatch.createTab();
+
+    // Only create a new tab if there are no tabs at all,
+    // or if every existing tab already has content
+    const hasEmptyTab = hatch.tabs.some(
+      (t) => !t.content || t.content.trim() === ''
+    );
+
+    if (hatch.tabs.length === 0) {
+      // No tabs at all — create one
+      hatch.createTab();
+    } else if (!hasEmptyTab) {
+      // All tabs have content — create a fresh blank one
+      hatch.createTab();
+    } else {
+      // There's already an empty tab — just activate it
+      const emptyTab = hatch.tabs.find(
+        (t) => !t.content || t.content.trim() === ''
+      );
+      if (emptyTab) {
+        hatch.setActiveTabId(emptyTab.id);
+      }
+    }
   }, [hatch]);
 
   const closeHatch = useCallback(() => {

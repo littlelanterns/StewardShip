@@ -63,8 +63,16 @@ export default function MessageContextMenu({
   };
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(message.content);
-    showToast('Copied');
+    const selection = window.getSelection();
+    const selectedText = selection?.toString().trim();
+
+    if (selectedText && selectedText.length > 0) {
+      navigator.clipboard.writeText(selectedText);
+      showToast('Selection copied');
+    } else {
+      navigator.clipboard.writeText(message.content);
+      showToast('Copied');
+    }
   };
 
   const handleSelectText = () => {

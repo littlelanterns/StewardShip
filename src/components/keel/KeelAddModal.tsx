@@ -28,7 +28,7 @@ export function KeelAddModal({ onClose, onCreate, preselectedCategory }: KeelAdd
   const { user } = useAuthContext();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [mode, setMode] = useState<'select' | 'write' | 'file' | 'review'>(preselectedCategory ? 'write' : 'select');
+  const [mode, setMode] = useState<'select' | 'write' | 'file' | 'review'>('select');
   const [category, setCategory] = useState<KeelCategory>(preselectedCategory || 'personality_assessment');
   const [text, setText] = useState('');
   const [source, setSource] = useState('');

@@ -36,7 +36,7 @@ export function AddInsightModal({ onClose, onSave, preselectedCategory }: AddIns
   const { user } = useAuthContext();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [mode, setMode] = useState<'select' | 'write' | 'file' | 'review'>(preselectedCategory ? 'write' : 'select');
+  const [mode, setMode] = useState<'select' | 'write' | 'file' | 'review'>('select');
   const [text, setText] = useState('');
   const [category, setCategory] = useState<SpouseInsightCategory>(preselectedCategory || 'general');
   const [source, setSource] = useState('');
