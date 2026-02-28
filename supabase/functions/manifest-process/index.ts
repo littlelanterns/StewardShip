@@ -82,7 +82,7 @@ serve(async (req: Request) => {
         }
 
         const arrayBuffer = await fileData.arrayBuffer();
-        fullText = extractTextFromPDF(new Uint8Array(arrayBuffer));
+        fullText = await extractTextFromPDF(new Uint8Array(arrayBuffer));
 
         await supabase
           .from('manifest_items')
@@ -367,43 +367,71 @@ function chunkText(
 }
 
 /**
- * Basic PDF text extraction for Deno.
- * Extracts text from PDF content streams by finding text operators (BT...ET blocks).
- * Works for most text-based PDFs. Scanned/image PDFs need OCR (post-MVP).
+ * PDF text extraction for Deno.
+ * Handles both uncompressed and FlateDecode-compressed content streams.
+ * Extracts text from PDF text operators (BT...ET blocks with Tj/TJ).
+ * Scanned/image-only PDFs still need OCR (post-MVP).
  */
-function extractTextFromPDF(bytes: Uint8Array): string {
+async function extractTextFromPDF(bytes: Uint8Array): Promise<string> {
+  const { inflateSync } = await import('https://esm.sh/fflate@0.8.2');
   const decoder = new TextDecoder('latin1');
   const raw = decoder.decode(bytes);
 
+  // Collect all content stream data (both compressed and uncompressed)
+  const streamContents: string[] = [];
+
+  // Find PDF stream objects: look for "stream\r\n...endstream" blocks
+  const streamRegex = /\/FlateDecode[\s\S]{0,200}?stream\r?\n([\s\S]*?)endstream/g;
+  let sMatch;
+
+  while ((sMatch = streamRegex.exec(raw)) !== null) {
+    try {
+      // Convert latin1 string back to bytes for decompression
+      const streamBytes = new Uint8Array(sMatch[1].length);
+      for (let i = 0; i < sMatch[1].length; i++) {
+        streamBytes[i] = sMatch[1].charCodeAt(i);
+      }
+      const decompressed = inflateSync(streamBytes);
+      streamContents.push(new TextDecoder('latin1').decode(decompressed));
+    } catch {
+      // Not all FlateDecode streams are page content — skip failures silently
+    }
+  }
+
+  // Also include the raw content for uncompressed streams
+  streamContents.push(raw);
+
   const textParts: string[] = [];
 
-  // Find text between BT...ET blocks (PDF text objects)
-  const btRegex = /BT\s([\s\S]*?)ET/g;
-  let match;
+  for (const content of streamContents) {
+    // Find text between BT...ET blocks (PDF text objects)
+    const btRegex = /BT\s([\s\S]*?)ET/g;
+    let match;
 
-  while ((match = btRegex.exec(raw)) !== null) {
-    const block = match[1];
-    // Extract text from Tj and TJ operators
-    const tjRegex = /\(([^)]*)\)\s*Tj/g;
-    let tjMatch;
-    while ((tjMatch = tjRegex.exec(block)) !== null) {
-      textParts.push(decodePDFString(tjMatch[1]));
-    }
+    while ((match = btRegex.exec(content)) !== null) {
+      const block = match[1];
+      // Extract text from Tj and TJ operators
+      const tjRegex = /\(([^)]*)\)\s*Tj/g;
+      let tjMatch;
+      while ((tjMatch = tjRegex.exec(block)) !== null) {
+        textParts.push(decodePDFString(tjMatch[1]));
+      }
 
-    // TJ arrays: [(text) kerning (text) ...]
-    const tjArrayRegex = /\[(.*?)\]\s*TJ/g;
-    let tjArrMatch;
-    while ((tjArrMatch = tjArrayRegex.exec(block)) !== null) {
-      const arrContent = tjArrMatch[1];
-      const strRegex = /\(([^)]*)\)/g;
-      let strMatch;
-      while ((strMatch = strRegex.exec(arrContent)) !== null) {
-        textParts.push(decodePDFString(strMatch[1]));
+      // TJ arrays: [(text) kerning (text) ...]
+      const tjArrayRegex = /\[(.*?)\]\s*TJ/g;
+      let tjArrMatch;
+      while ((tjArrMatch = tjArrayRegex.exec(block)) !== null) {
+        const arrContent = tjArrMatch[1];
+        const strRegex = /\(([^)]*)\)/g;
+        let strMatch;
+        while ((strMatch = strRegex.exec(arrContent)) !== null) {
+          textParts.push(decodePDFString(strMatch[1]));
+        }
       }
     }
   }
 
-  // Fallback: look for readable text patterns
+  // Fallback: look for readable text patterns in raw content
   if (textParts.length === 0) {
     const readableRegex = /[\x20-\x7E]{20,}/g;
     let readableMatch;
