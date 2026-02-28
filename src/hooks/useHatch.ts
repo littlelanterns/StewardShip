@@ -12,6 +12,7 @@ import type {
   HatchHistoryFilters,
   MastEntryType,
   KeelCategory,
+  JournalEntryType,
 } from '../lib/types';
 
 export function useHatch() {
@@ -296,6 +297,7 @@ export function useHatch() {
       options?: {
         mastType?: MastEntryType;
         keelCategory?: KeelCategory;
+        journalEntryType?: JournalEntryType;
         meetingId?: string;
         listId?: string;
         trackerId?: string;
@@ -320,7 +322,7 @@ export function useHatch() {
               .insert({
                 user_id: user.id,
                 text: content,
-                entry_type: 'journal',
+                entry_type: options?.journalEntryType || 'journal_entry',
                 source: 'hatch',
                 source_reference_id: tabId,
                 life_area_tags: [],
@@ -781,7 +783,7 @@ export function useHatch() {
     async (
       itemId: string,
       destination: HatchRoutingDestination,
-      options?: { meetingId?: string; mastType?: MastEntryType; keelCategory?: KeelCategory; listId?: string; trackerId?: string },
+      options?: { meetingId?: string; mastType?: MastEntryType; keelCategory?: KeelCategory; journalEntryType?: JournalEntryType; listId?: string; trackerId?: string },
     ) => {
       if (!user) return;
 
@@ -808,7 +810,7 @@ export function useHatch() {
             .insert({
               user_id: user.id,
               text: content,
-              entry_type: 'journal',
+              entry_type: options?.journalEntryType || 'journal_entry',
               source: 'hatch',
               source_reference_id: item.hatch_tab_id,
               life_area_tags: [],

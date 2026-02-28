@@ -217,6 +217,25 @@ export function useCrowsNest() {
       // Last journal entry
       const lastJournal = (lastJournalResult.data || [])[0] as { created_at: string; text: string } | undefined;
 
+      // Filter out reminders for completed/archived tasks (safety net for trigger timing)
+      let upcomingReminders = (remindersResult.data as Reminder[]) || [];
+      const taskReminderIds = upcomingReminders
+        .filter(r => r.related_entity_type === 'compass_task' && r.related_entity_id)
+        .map(r => r.related_entity_id!);
+
+      if (taskReminderIds.length > 0) {
+        const { data: completedTasks } = await supabase
+          .from('compass_tasks')
+          .select('id')
+          .in('id', taskReminderIds)
+          .or('status.eq.completed,archived_at.not.is.null');
+
+        const completedIds = new Set((completedTasks || []).map(t => t.id));
+        upcomingReminders = upcomingReminders.filter(r =>
+          r.related_entity_type !== 'compass_task' || !completedIds.has(r.related_entity_id!)
+        );
+      }
+
       setData({
         todayTasks: { total: tasks.length, completed: completedCount, pending: pendingTasks },
         streaks: streaks.slice(0, 5),
@@ -228,7 +247,7 @@ export function useCrowsNest() {
         lastJournalPreview: lastJournal ? (lastJournal.text.length > 100 ? lastJournal.text.slice(0, 97) + '...' : lastJournal.text) : null,
         mastThought,
         activeWheels: (wheelsResult.data as WheelInstance[]) || [],
-        upcomingReminders: (remindersResult.data as Reminder[]) || [],
+        upcomingReminders,
         reflectionsThisWeek: reflectionsResult.count || 0,
       });
     } catch {

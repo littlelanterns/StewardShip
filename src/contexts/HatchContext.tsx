@@ -10,6 +10,7 @@ import type {
   HatchHistoryFilters,
   MastEntryType,
   KeelCategory,
+  JournalEntryType,
 } from '../lib/types';
 
 interface HatchContextValue {
@@ -47,6 +48,7 @@ interface HatchContextValue {
     options?: {
       mastType?: MastEntryType;
       keelCategory?: KeelCategory;
+      journalEntryType?: JournalEntryType;
       meetingId?: string;
       listId?: string;
       trackerId?: string;
@@ -63,7 +65,7 @@ interface HatchContextValue {
   routeExtractedItem: (
     itemId: string,
     destination: HatchRoutingDestination,
-    options?: { meetingId?: string; mastType?: MastEntryType; keelCategory?: KeelCategory; listId?: string; trackerId?: string },
+    options?: { meetingId?: string; mastType?: MastEntryType; keelCategory?: KeelCategory; journalEntryType?: JournalEntryType; listId?: string; trackerId?: string },
   ) => Promise<void>;
   skipExtractedItem: (itemId: string) => Promise<void>;
   updateExtractedItemText: (itemId: string, newText: string) => Promise<void>;
@@ -154,6 +156,7 @@ export function HatchProvider({ children }: { children: ReactNode }) {
       options?: {
         mastType?: MastEntryType;
         keelCategory?: KeelCategory;
+        journalEntryType?: JournalEntryType;
         meetingId?: string;
         listId?: string;
         trackerId?: string;

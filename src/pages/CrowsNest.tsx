@@ -69,6 +69,20 @@ export default function CrowsNest() {
     getAccomplishmentCount('this_week').then(setWeekAccomplishmentCount);
   }, [fetchDashboard, getRecentAccomplishments, getAccomplishmentCount]);
 
+  // Refresh dashboard when page becomes visible (e.g., navigating back from Compass)
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        fetchDashboard();
+        getRecentAccomplishments(3).then(setRecentAccomplishments);
+        getAccomplishmentCount('this_week').then(setWeekAccomplishmentCount);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [fetchDashboard, getRecentAccomplishments, getAccomplishmentCount]);
+
   // Check if Evening Review button should show
   useEffect(() => {
     if (!user) return;

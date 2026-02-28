@@ -4,7 +4,7 @@ import HatchDestinationButton from './HatchDestinationButton';
 import HatchInlinePickerOverlay from './HatchInlinePickerOverlay';
 import HatchUndoToast from './HatchUndoToast';
 import { LoadingSpinner } from '../shared';
-import type { HatchRoutingDestination, MastEntryType, KeelCategory } from '../../lib/types';
+import type { HatchRoutingDestination, MastEntryType, KeelCategory, JournalEntryType } from '../../lib/types';
 import { HATCH_DESTINATION_CONFIG } from '../../lib/types';
 import './HatchSendToGrid.css';
 
@@ -14,7 +14,7 @@ interface HatchSendToGridProps {
 }
 
 // Destinations that need an inline picker
-const PICKER_DESTINATIONS: HatchRoutingDestination[] = ['mast', 'keel', 'agenda', 'charts'];
+const PICKER_DESTINATIONS: HatchRoutingDestination[] = ['mast', 'keel', 'journal', 'agenda', 'charts'];
 
 // 'compass' is a virtual button that opens the task sub-picker
 type GridDestination = HatchRoutingDestination | 'compass';
@@ -99,7 +99,7 @@ export default function HatchSendToGrid({ tabId, onClose }: HatchSendToGridProps
   const handlePickerRoute = useCallback(
     async (
       destination: HatchRoutingDestination,
-      options: { mastType?: MastEntryType; keelCategory?: KeelCategory; meetingId?: string; trackerId?: string },
+      options: { mastType?: MastEntryType; keelCategory?: KeelCategory; journalEntryType?: JournalEntryType; meetingId?: string; trackerId?: string },
     ) => {
       setRouting(true);
       const tab = tabs.find((t) => t.id === tabId);

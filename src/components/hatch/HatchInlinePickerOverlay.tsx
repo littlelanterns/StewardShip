@@ -3,7 +3,7 @@ import { ArrowLeft } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { LoadingSpinner } from '../shared';
-import type { HatchRoutingDestination, MastEntryType, KeelCategory } from '../../lib/types';
+import type { HatchRoutingDestination, MastEntryType, KeelCategory, JournalEntryType } from '../../lib/types';
 import { MAST_TYPE_LABELS, KEEL_CATEGORY_LABELS } from '../../lib/types';
 import './HatchInlinePickerOverlay.css';
 
@@ -14,6 +14,7 @@ interface HatchInlinePickerOverlayProps {
     options: {
       mastType?: MastEntryType;
       keelCategory?: KeelCategory;
+      journalEntryType?: JournalEntryType;
       meetingId?: string;
       trackerId?: string;
     },
@@ -36,6 +37,8 @@ export default function HatchInlinePickerOverlay({
   const [loading, setLoading] = useState(false);
   const [selectedMastType, setSelectedMastType] = useState<MastEntryType>('value');
   const [selectedKeelCategory, setSelectedKeelCategory] = useState<KeelCategory>('general');
+  const [selectedJournalType, setSelectedJournalType] = useState<JournalEntryType>('journal_entry');
+  const [showCommonplaceTooltip, setShowCommonplaceTooltip] = useState(false);
 
   // Load data for agenda and charts pickers
   useEffect(() => {
@@ -98,6 +101,10 @@ export default function HatchInlinePickerOverlay({
     onRoute('keel', { keelCategory: selectedKeelCategory });
   }, [onRoute, selectedKeelCategory]);
 
+  const handleJournalConfirm = useCallback(() => {
+    onRoute('journal', { journalEntryType: selectedJournalType });
+  }, [onRoute, selectedJournalType]);
+
   const handleMeetingSelect = useCallback(
     (meetingId: string) => {
       onRoute('agenda', { meetingId });
@@ -116,6 +123,7 @@ export default function HatchInlinePickerOverlay({
     switch (destination) {
       case 'mast': return 'Save to The Mast';
       case 'keel': return 'Save to The Keel';
+      case 'journal': return 'Save to Journal';
       case 'agenda': return 'Add to Agenda';
       case 'charts': return 'Track Progress';
       default: return 'Select';
@@ -180,6 +188,46 @@ export default function HatchInlinePickerOverlay({
             onClick={handleKeelConfirm}
           >
             Save to Keel
+          </button>
+        </div>
+      )}
+
+      {/* Journal entry type picker */}
+      {destination === 'journal' && (
+        <div className="hatch-picker__options">
+          {([
+            ['journal_entry', 'Journal Entry'],
+            ['reflection', 'Reflection'],
+            ['gratitude', 'Gratitude'],
+            ['quick_note', 'Quick Note'],
+            ['commonplace', 'Commonplace'],
+            ['kid_quips', 'Kid Quips'],
+            ['custom', 'Custom'],
+          ] as [JournalEntryType, string][]).map(([type, label]) => (
+            <div key={type} style={{ position: 'relative' }}>
+              <button
+                type="button"
+                className={`hatch-picker__option ${selectedJournalType === type ? 'hatch-picker__option--selected' : ''}`}
+                onClick={() => setSelectedJournalType(type)}
+                onMouseEnter={() => type === 'commonplace' && setShowCommonplaceTooltip(true)}
+                onMouseLeave={() => type === 'commonplace' && setShowCommonplaceTooltip(false)}
+              >
+                {label}
+              </button>
+              {type === 'commonplace' && showCommonplaceTooltip && (
+                <div className="hatch-picker__tooltip">
+                  A centuries-old practice of collecting quotes, observations, and passages that resonate with you.
+                </div>
+              )}
+            </div>
+          ))}
+          <button
+            type="button"
+            className="hatch-picker__option"
+            style={{ marginTop: 'var(--spacing-sm)', fontWeight: 'var(--font-weight-medium)', color: 'var(--color-cognac)' }}
+            onClick={handleJournalConfirm}
+          >
+            Save to Journal
           </button>
         </div>
       )}
