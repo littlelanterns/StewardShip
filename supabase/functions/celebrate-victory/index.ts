@@ -64,6 +64,13 @@ serve(async (req: Request) => {
     }
 
     if (!apiKey) {
+      console.error('[celebrate-victory] No API key available');
+      if (mode === 'review' || mode === 'monthly' || mode === 'collection') {
+        return new Response(
+          JSON.stringify({ narrative: null, error: 'No API key' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
       return new Response(
         JSON.stringify({ items: [{ celebration_text: null, life_area_tag: null, mast_connection_id: null, wheel_connection_id: null, description }] }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
@@ -71,6 +78,7 @@ serve(async (req: Request) => {
     }
 
     const model = settings?.ai_model || 'anthropic/claude-sonnet-4';
+    console.log(`[celebrate-victory] mode=${mode}, model=${model}, apiKey=${apiKey ? 'present' : 'missing'}`);
 
     // Build system prompt based on mode
     let systemPrompt: string;
@@ -175,6 +183,17 @@ Respond with ONLY valid JSON, nothing else.`;
     });
 
     if (!openRouterResponse.ok) {
+      const errBody = await openRouterResponse.text();
+      console.error(`[celebrate-victory] OpenRouter error ${openRouterResponse.status}: ${errBody}`);
+
+      // Return mode-appropriate error response
+      if (mode === 'review' || mode === 'monthly' || mode === 'collection') {
+        return new Response(
+          JSON.stringify({ narrative: null, error: `OpenRouter ${openRouterResponse.status}` }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+
       return new Response(
         JSON.stringify({ items: [{ celebration_text: null, life_area_tag: null, mast_connection_id: null, wheel_connection_id: null, description }] }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },

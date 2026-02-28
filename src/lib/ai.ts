@@ -273,6 +273,8 @@ export async function celebrateVictory(
   wheelHubs?: string,
 ): Promise<CelebrateVictoryItem[]> {
   try {
+    console.log('[celebrateVictory] Calling celebrate-victory Edge Function');
+
     const { data, error } = await supabase.functions.invoke('celebrate-victory', {
       body: {
         description,
@@ -282,7 +284,15 @@ export async function celebrateVictory(
       },
     });
 
-    if (error || data?.error) {
+    console.log('[celebrateVictory] Response:', JSON.stringify({ data, error }, null, 2));
+
+    if (error) {
+      console.error('[celebrateVictory] Supabase invoke error:', error);
+      return [{ description, celebration_text: null, life_area_tag: null, mast_connection_id: null, wheel_connection_id: null }];
+    }
+
+    if (data?.error) {
+      console.error('[celebrateVictory] Edge Function returned error:', data.error);
       return [{ description, celebration_text: null, life_area_tag: null, mast_connection_id: null, wheel_connection_id: null }];
     }
 
@@ -305,7 +315,8 @@ export async function celebrateVictory(
       mast_connection_id: data?.mast_connection_id || null,
       wheel_connection_id: data?.wheel_connection_id || null,
     }];
-  } catch {
+  } catch (err) {
+    console.error('[celebrateVictory] Exception:', err);
     return [{ description, celebration_text: null, life_area_tag: null, mast_connection_id: null, wheel_connection_id: null }];
   }
 }
@@ -317,6 +328,8 @@ export async function generateVictoryNarrative(
   mode: 'review' | 'monthly' = 'review',
 ): Promise<string | null> {
   try {
+    console.log('[generateVictoryNarrative] Calling celebrate-victory with mode=' + mode);
+
     const { data, error } = await supabase.functions.invoke('celebrate-victory', {
       body: {
         description: victoriesText,
@@ -326,9 +339,26 @@ export async function generateVictoryNarrative(
       },
     });
 
-    if (error || data?.error) return null;
-    return data?.narrative || null;
-  } catch {
+    console.log('[generateVictoryNarrative] Response:', JSON.stringify({ data, error }, null, 2));
+
+    if (error) {
+      console.error('[generateVictoryNarrative] Supabase invoke error:', error);
+      return null;
+    }
+
+    if (data?.error) {
+      console.error('[generateVictoryNarrative] Edge Function returned error:', data.error);
+      return null;
+    }
+
+    if (!data?.narrative) {
+      console.error('[generateVictoryNarrative] No narrative in response. Full data:', data);
+      return null;
+    }
+
+    return data.narrative;
+  } catch (err) {
+    console.error('[generateVictoryNarrative] Exception:', err);
     return null;
   }
 }
@@ -340,6 +370,8 @@ export async function celebrateCollection(
   mastEntries?: string,
 ): Promise<string | null> {
   try {
+    console.log('[celebrateCollection] Calling celebrate-victory with mode=collection, period=' + periodLabel);
+
     const { data, error } = await supabase.functions.invoke('celebrate-victory', {
       body: {
         description: accomplishments,
@@ -350,9 +382,26 @@ export async function celebrateCollection(
       },
     });
 
-    if (error || data?.error) return null;
-    return data?.narrative || null;
-  } catch {
+    console.log('[celebrateCollection] Response:', JSON.stringify({ data, error }, null, 2));
+
+    if (error) {
+      console.error('[celebrateCollection] Supabase invoke error:', error);
+      return null;
+    }
+
+    if (data?.error) {
+      console.error('[celebrateCollection] Edge Function returned error:', data.error);
+      return null;
+    }
+
+    if (!data?.narrative) {
+      console.error('[celebrateCollection] No narrative in response. Full data:', data);
+      return null;
+    }
+
+    return data.narrative;
+  } catch (err) {
+    console.error('[celebrateCollection] Exception:', err);
     return null;
   }
 }

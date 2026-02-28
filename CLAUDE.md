@@ -26,6 +26,16 @@ StewardShip is an AI-powered personal growth companion app with nautical theming
 - **Transcription:** OpenAI Whisper API
 - **Embeddings:** Supabase pgvector
 
+### OpenRouter Model IDs (Current as of Feb 2026)
+When referencing models in Edge Functions or user settings, use these exact OpenRouter model IDs:
+- **Sonnet (default for guided modes):** `anthropic/claude-sonnet-4` (released May 2025, still active)
+- **Haiku (default for casual chat):** `anthropic/claude-haiku-4.5`
+- **Newer Sonnet versions (available but not yet adopted):** `anthropic/claude-sonnet-4.5`, `anthropic/claude-sonnet-4.6`
+- **Embeddings (OpenAI, NOT OpenRouter):** `text-embedding-ada-002`
+- **Whisper (OpenAI, NOT OpenRouter):** `whisper-1`
+
+All Edge Functions using `settings?.ai_model` fall back to `anthropic/claude-sonnet-4` when the user has no override. The `chat` function uses smart routing: Sonnet for guided modes, Haiku for casual chat. If OpenRouter model IDs change or are deprecated, update the fallback strings in ALL Edge Functions (see Edge Function Inventory below).
+
 ---
 
 ## Project Structure
