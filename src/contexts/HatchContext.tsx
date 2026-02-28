@@ -1,7 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import { useHatch } from '../hooks/useHatch';
 import { useAuthContext } from './AuthContext';
-import { supabase } from '../lib/supabase';
 import type {
   HatchTab,
   HatchSourceType,
@@ -93,28 +92,10 @@ export function HatchProvider({ children }: { children: ReactNode }) {
 
   const hatch = useHatch();
 
-  // Load initial drawer state from user_settings
+  // Always start closed — user opens via pull tab
   useEffect(() => {
     if (!user || initialLoaded) return;
-
-    const loadPreference = async () => {
-      try {
-        const { data } = await supabase
-          .from('user_settings')
-          .select('hatch_drawer_open')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (data?.hatch_drawer_open != null) {
-          setIsOpen(data.hatch_drawer_open);
-        }
-      } catch {
-        // Default to closed on error
-      }
-      setInitialLoaded(true);
-    };
-
-    loadPreference();
+    setInitialLoaded(true);
   }, [user, initialLoaded]);
 
   // Load tabs and routing stats when user is available
@@ -128,10 +109,8 @@ export function HatchProvider({ children }: { children: ReactNode }) {
 
   const openHatch = useCallback(() => {
     setIsOpen(true);
-    // Create a tab if none exist
-    if (hatch.tabs.length === 0) {
-      hatch.createTab();
-    }
+    // Always create a fresh tab when opening via pull tab
+    hatch.createTab();
   }, [hatch]);
 
   const closeHatch = useCallback(() => {
@@ -146,6 +125,42 @@ export function HatchProvider({ children }: { children: ReactNode }) {
       openHatch();
     }
   }, [isOpen, openHatch, closeHatch]);
+
+  // Wrap routeTab to auto-close drawer when no tabs remain
+  const routeTabAndAutoClose = useCallback(
+    async (
+      tabId: string,
+      destination: HatchRoutingDestination,
+      options?: {
+        mastType?: MastEntryType;
+        keelCategory?: KeelCategory;
+        meetingId?: string;
+        listId?: string;
+        trackerId?: string;
+      },
+    ) => {
+      const result = await hatch.routeTab(tabId, destination, options);
+      // After routing, check if any active tabs remain (subtract 1 for the tab just routed)
+      const remainingCount = hatch.tabs.filter((t) => t.id !== tabId).length;
+      if (result.success && remainingCount === 0) {
+        setIsOpen(false);
+      }
+      return result;
+    },
+    [hatch],
+  );
+
+  // Wrap closeTab to auto-close drawer when no tabs remain
+  const closeTabAndAutoClose = useCallback(
+    async (tabId: string) => {
+      await hatch.closeTab(tabId);
+      const remainingCount = hatch.tabs.filter((t) => t.id !== tabId).length;
+      if (remainingCount === 0) {
+        setIsOpen(false);
+      }
+    },
+    [hatch],
+  );
 
   const enterFullPage = useCallback(() => {
     setIsFullPage(true);
@@ -172,8 +187,8 @@ export function HatchProvider({ children }: { children: ReactNode }) {
     createTab: hatch.createTab,
     updateTabContent: hatch.updateTabContent,
     updateTabTitle: hatch.updateTabTitle,
-    closeTab: hatch.closeTab,
-    routeTab: hatch.routeTab,
+    closeTab: closeTabAndAutoClose,
+    routeTab: routeTabAndAutoClose,
     undoRoute: hatch.undoRoute,
     extractItems: hatch.extractItems,
     routeExtractedItem: hatch.routeExtractedItem,

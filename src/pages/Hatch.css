@@ -14,6 +14,29 @@
   flex-shrink: 0;
 }
 
+.hatch-page__title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.hatch-page__back-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  color: var(--color-mid-teal);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.hatch-page__back-btn:hover {
+  background-color: color-mix(in srgb, var(--color-mid-teal) 10%, transparent);
+  color: var(--color-deep-teal);
+}
+
 .hatch-page__tabs {
   display: flex;
   gap: 0.25rem;

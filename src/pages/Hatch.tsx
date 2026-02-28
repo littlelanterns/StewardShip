@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import { useHatchContext } from '../contexts/HatchContext';
 import { usePageContext } from '../hooks/usePageContext';
 import { FeatureGuide } from '../components/shared';
@@ -12,6 +14,7 @@ type HatchPageTab = 'workspace' | 'history';
 
 export default function Hatch() {
   usePageContext({ page: 'hatch' });
+  const navigate = useNavigate();
   const {
     enterFullPage,
     exitFullPage,
@@ -30,19 +33,22 @@ export default function Hatch() {
     return () => exitFullPage();
   }, [enterFullPage, exitFullPage]);
 
-  // Create a tab if none exist when entering workspace
-  useEffect(() => {
-    if (activePageTab === 'workspace' && tabs.length === 0) {
-      createTab();
-    }
-  }, [activePageTab, tabs.length, createTab]);
-
   const activeTab = tabs.find((t) => t.id === activeTabId);
 
   return (
     <div className="page-container hatch-page">
       <div className="hatch-page__header">
-        <h1 className="page-title">The Hatch</h1>
+        <div className="hatch-page__title-row">
+          <button
+            type="button"
+            className="hatch-page__back-btn"
+            onClick={() => navigate(-1)}
+            aria-label="Go back"
+          >
+            <ArrowLeft size={20} strokeWidth={1.5} />
+          </button>
+          <h1 className="page-title">The Hatch</h1>
+        </div>
         <div className="hatch-page__tabs">
           <button
             type="button"
