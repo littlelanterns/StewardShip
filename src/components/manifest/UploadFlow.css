@@ -98,7 +98,12 @@
 }
 
 .upload-flow__input {
-  display: none;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
 }
 
 .upload-flow__actions {

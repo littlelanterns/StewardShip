@@ -106,7 +106,7 @@ export function UploadFlow({ onUpload, onCheckDuplicate, onClose }: UploadFlowPr
         ref={fileInputRef}
         type="file"
         className="upload-flow__input"
-        accept=".pdf,.epub,.docx,.txt,.md,audio/*,image/*"
+        accept=".pdf,.epub,.docx,.txt,.md,.mp3,.m4a,.wav,.ogg,.webm,.png,.jpg,.jpeg,.webp"
         onChange={handleFileSelect}
       />
 
