@@ -12,14 +12,14 @@ interface HatchHistoryItemProps {
 }
 
 const DESTINATION_ROUTES: Partial<Record<HatchRoutingDestination, string>> = {
-  log: '/log',
+  journal: '/journal',
   compass_individual: '/compass',
   compass_single: '/compass',
   lists: '/compass',
   victory: '/victories',
   keel: '/keel',
   mast: '/mast',
-  note: '/log',
+  note: '/journal',
   agenda: '/meetings',
   charts: '/charts',
 };

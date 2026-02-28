@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Plus, BookOpen, Sparkles, Copy, Archive } from 'lucide-react';
+import { Plus, Sparkles, Archive } from 'lucide-react';
 import { usePageContext } from '../hooks/usePageContext';
 import { useAccomplishments, type AccomplishmentPeriod, type Accomplishment } from '../hooks/useAccomplishments';
 import { useVictories } from '../hooks/useVictories';
