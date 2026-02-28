@@ -27,13 +27,16 @@
   box-shadow: -2px 0 16px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
-  transform: translateX(100%);
-  transition: transform var(--transition-normal);
+  transform: translateX(calc(100% + 20px));
+  transition: transform var(--transition-normal), visibility 0s linear var(--transition-normal);
+  visibility: hidden;
   overflow: hidden;
 }
 
 .hatch-drawer--open {
   transform: translateX(0);
+  visibility: visible;
+  transition: transform var(--transition-normal), visibility 0s linear 0s;
 }
 
 /* Mobile: full width */
