@@ -12,13 +12,13 @@ interface IntakeFlowProps {
   existingFolders: string[];
 }
 
-const USAGE_OPTIONS: { value: ManifestUsageDesignation; label: string; description: string }[] = [
-  { value: 'general_reference', label: 'General Reference', description: 'AI draws from this when relevant' },
-  { value: 'framework_source', label: 'Extract as AI Framework', description: 'Actionable principles, always available' },
-  { value: 'mast_extraction', label: 'Extract Principles for Mast', description: 'Values and declarations' },
-  { value: 'keel_info', label: 'Inform The Keel', description: 'Personality and self-knowledge' },
-  { value: 'goal_specific', label: 'Goal/Wheel Specific', description: 'Tied to a specific goal' },
-  { value: 'store_only', label: 'Store Only', description: 'Keep but don\'t use in AI context' },
+const USAGE_OPTIONS: { value: ManifestUsageDesignation; label: string; description: string; tooltip: string }[] = [
+  { value: 'general_reference', label: 'General Reference', description: 'AI draws from this when relevant', tooltip: 'This content becomes searchable by the AI. When your conversations touch on related topics, the AI can draw from this material to give more informed, personalized responses.' },
+  { value: 'framework_source', label: 'Extract as AI Framework', description: 'Actionable principles, always available', tooltip: 'The AI will extract actionable principles from this content and keep them loaded in every conversation — similar to your Mast principles. Best for books on leadership, habits, character development, etc.' },
+  { value: 'mast_extraction', label: 'Extract Principles for Mast', description: 'Values and declarations', tooltip: 'The AI will identify values, declarations, and guiding principles from this content and let you review them before adding to your Mast — the core of who you\'re choosing to become.' },
+  { value: 'keel_info', label: 'Inform The Keel', description: 'Personality and self-knowledge', tooltip: 'The AI will extract personality insights, traits, and self-knowledge from this content for your Keel — your profile of who you are right now. Great for assessment results, personality tests, etc.' },
+  { value: 'goal_specific', label: 'Goal/Wheel Specific', description: 'Tied to a specific goal', tooltip: 'This content relates to a specific goal or Wheel change you\'re working on. The AI will reference it when those topics come up in conversation.' },
+  { value: 'store_only', label: 'Store Only', description: 'Keep but don\'t use in AI context', tooltip: 'The file will be stored safely in your Manifest but won\'t be used by the AI in conversations. You can always change this later.' },
 ];
 
 export function IntakeFlow({ item, onRunIntake, onApplyIntake, onSkip, existingFolders }: IntakeFlowProps) {
@@ -115,6 +115,7 @@ export function IntakeFlow({ item, onRunIntake, onApplyIntake, onSkip, existingF
               type="button"
               className={`intake-flow__usage-btn${selectedUsage.includes(opt.value) ? ' intake-flow__usage-btn--active' : ''}`}
               onClick={() => handleToggleUsage(opt.value)}
+              title={opt.tooltip}
             >
               <span className="intake-flow__usage-label">{opt.label}</span>
               <span className="intake-flow__usage-desc">{opt.description}</span>
