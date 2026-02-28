@@ -1,18 +1,21 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Plus, BookOpen, Sparkles, Copy } from 'lucide-react';
+import { Plus, BookOpen, Sparkles, Copy, Archive } from 'lucide-react';
 import { usePageContext } from '../hooks/usePageContext';
 import { useAccomplishments, type AccomplishmentPeriod, type Accomplishment } from '../hooks/useAccomplishments';
 import { useVictories } from '../hooks/useVictories';
+import { useCelebrationArchive } from '../hooks/useCelebrationArchive';
 import { useAuthContext } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { celebrateCollection } from '../lib/ai';
 import type { Victory, MastEntry } from '../lib/types';
 import { LIFE_AREA_LABELS, COMPASS_LIFE_AREA_LABELS } from '../lib/types';
-import { EmptyState, FloatingActionButton, FeatureGuide, LoadingSpinner, SparkleOverlay, Card } from '../components/shared';
+import { EmptyState, FloatingActionButton, FeatureGuide, SparkleOverlay } from '../components/shared';
 import { FEATURE_GUIDES } from '../lib/featureGuides';
 import { VictoryDetail } from '../components/victories/VictoryDetail';
 import { RecordVictory } from '../components/victories/RecordVictory';
+import { CelebrationModal } from '../components/victories/CelebrationModal';
+import { CelebrationArchive } from '../components/victories/CelebrationArchive';
 import './Victories.css';
 
 const PERIOD_LABELS: Record<AccomplishmentPeriod, string> = {
@@ -38,6 +41,7 @@ export default function Victories() {
     updateVictory,
     archiveVictory,
   } = useVictories();
+  const { saveCelebration } = useCelebrationArchive();
 
   const [period, setPeriod] = useState<AccomplishmentPeriod>('this_week');
   const [lifeAreaFilter, setLifeAreaFilter] = useState<string | null>(null);
@@ -46,10 +50,18 @@ export default function Victories() {
   const [mastEntries, setMastEntries] = useState<MastEntry[]>([]);
   const [prefillData, setPrefillData] = useState<{ description: string; source: string } | null>(null);
 
-  // Collection celebration state
+  // Celebration modal state
+  const [showCelebrationModal, setShowCelebrationModal] = useState(false);
   const [celebrationNarrative, setCelebrationNarrative] = useState<string | null>(null);
   const [celebrationLoading, setCelebrationLoading] = useState(false);
+  const celebrationSavedRef = useRef(false);
+
+  // Archive view state
+  const [showArchive, setShowArchive] = useState(false);
+
+  // Quick sparkle for individual task completions (kept separate)
   const [showSparkle, setShowSparkle] = useState(false);
+
   const [toast, setToast] = useState<string | null>(null);
 
   // Handle prefill query params from other pages (Rigging, Goals, etc.)
@@ -79,11 +91,6 @@ export default function Victories() {
       });
   }, [user]);
 
-  // Reset celebration when period changes
-  useEffect(() => {
-    setCelebrationNarrative(null);
-  }, [period]);
-
   // Filter by life area
   const filtered = lifeAreaFilter
     ? accomplishments.filter((a) => a.life_area === lifeAreaFilter)
@@ -103,21 +110,53 @@ export default function Victories() {
 
   const handleCelebrate = useCallback(async () => {
     if (!user || filtered.length === 0) return;
-    setCelebrationLoading(true);
 
-    const text = filtered
-      .map((a) => `- ${a.title}${a.note ? ` (${a.note})` : ''}`)
+    // Open modal immediately — fireworks start
+    setShowCelebrationModal(true);
+    setCelebrationLoading(true);
+    setCelebrationNarrative(null);
+    celebrationSavedRef.current = false;
+
+    try {
+      const text = filtered
+        .map((a) => `- ${a.title}${a.note ? ` (${a.note})` : ''}`)
+        .join('\n');
+
+      const mastContext = mastEntries.length > 0
+        ? mastEntries.map((m) => `${m.type}: ${m.text}`).join('\n')
+        : undefined;
+
+      const narrative = await celebrateCollection(text, PERIOD_LABELS[period], user.id, mastContext);
+
+      if (narrative && narrative.trim()) {
+        setCelebrationNarrative(narrative);
+      } else {
+        setCelebrationNarrative('Your accomplishments speak for themselves. Well done.');
+      }
+    } catch (err) {
+      console.error('Celebration generation failed:', err);
+      setCelebrationNarrative('Your accomplishments speak for themselves. Well done.');
+    } finally {
+      setCelebrationLoading(false);
+    }
+  }, [user, filtered, mastEntries, period]);
+
+  // Auto-save to archive (called once per celebration)
+  const saveToArchive = useCallback(async () => {
+    if (celebrationSavedRef.current || !celebrationNarrative || !user) return;
+    celebrationSavedRef.current = true;
+
+    const summary = filtered
+      .map((a) => `- ${a.title}`)
       .join('\n');
 
-    const mastContext = mastEntries.length > 0
-      ? mastEntries.map((m) => `${m.type}: ${m.text}`).join('\n')
-      : undefined;
-
-    const narrative = await celebrateCollection(text, PERIOD_LABELS[period], user.id, mastContext);
-    setCelebrationNarrative(narrative);
-    setCelebrationLoading(false);
-    setShowSparkle(true);
-  }, [user, filtered, mastEntries, period]);
+    await saveCelebration(
+      celebrationNarrative,
+      PERIOD_LABELS[period],
+      filtered.length,
+      summary,
+    );
+  }, [celebrationNarrative, user, filtered, period, saveCelebration]);
 
   const handleSaveNarrativeToLog = async () => {
     if (!user || !celebrationNarrative) return;
@@ -137,9 +176,11 @@ export default function Victories() {
       setToast('Failed to save');
       setTimeout(() => setToast(null), 2500);
     }
+    // Also archive
+    await saveToArchive();
   };
 
-  const handleCopyNarrative = () => {
+  const handleCopyNarrative = async () => {
     if (celebrationNarrative) {
       navigator.clipboard.writeText(celebrationNarrative);
       setToast('Copied to clipboard');
@@ -147,9 +188,15 @@ export default function Victories() {
     }
   };
 
+  const handleCelebrationDismiss = useCallback(async () => {
+    // Auto-save to archive before closing
+    await saveToArchive();
+    setShowCelebrationModal(false);
+    setCelebrationNarrative(null);
+  }, [saveToArchive]);
+
   const handleAccomplishmentClick = (a: Accomplishment) => {
     if (a.source === 'victory') {
-      // Fetch the victory for detail view
       supabase
         .from('victories')
         .select('*')
@@ -164,7 +211,16 @@ export default function Victories() {
   return (
     <div className="page victories">
       <div className="victories__header">
-        <h1>Accomplishments</h1>
+        <div className="victories__header-row">
+          <h1>Accomplishments</h1>
+          <button
+            type="button"
+            className="victories__past-celebrations-btn"
+            onClick={() => setShowArchive(true)}
+          >
+            <Archive size={14} /> Past Celebrations
+          </button>
+        </div>
         <p className="victories__subtitle">Evidence of the {genderWord} you're becoming.</p>
       </div>
 
@@ -175,15 +231,13 @@ export default function Victories() {
           <span className="victories__count">
             {filtered.length} {filtered.length === 1 ? 'accomplishment' : 'accomplishments'}
           </span>
-          {!celebrationLoading && !celebrationNarrative && (
-            <button
-              type="button"
-              className="victories__celebrate-btn"
-              onClick={handleCelebrate}
-            >
-              <Sparkles size={14} /> Celebrate this!
-            </button>
-          )}
+          <button
+            type="button"
+            className="victories__celebrate-btn"
+            onClick={handleCelebrate}
+          >
+            <Sparkles size={14} /> Celebrate this!
+          </button>
         </div>
       )}
 
@@ -223,26 +277,6 @@ export default function Victories() {
           </div>
         )}
       </div>
-
-      {celebrationLoading && (
-        <div className="victories__celebrating">
-          <LoadingSpinner /> Reflecting on your accomplishments...
-        </div>
-      )}
-
-      {celebrationNarrative && (
-        <Card className="victories__narrative-card">
-          <p className="victories__narrative-text">{celebrationNarrative}</p>
-          <div className="victories__narrative-actions">
-            <button type="button" className="victories__narrative-btn" onClick={handleSaveNarrativeToLog}>
-              <BookOpen size={14} /> Save to Journal
-            </button>
-            <button type="button" className="victories__narrative-btn" onClick={handleCopyNarrative}>
-              <Copy size={14} /> Copy
-            </button>
-          </div>
-        </Card>
-      )}
 
       {loading && filtered.length === 0 ? (
         <div className="victories__loading">Loading...</div>
@@ -298,7 +332,20 @@ export default function Victories() {
         <Plus size={24} />
       </FloatingActionButton>
 
-      <SparkleOverlay show={showSparkle} size="full" onComplete={() => setShowSparkle(false)} />
+      {/* Quick sparkle for individual task completions */}
+      <SparkleOverlay show={showSparkle} size="quick" onComplete={() => setShowSparkle(false)} />
+
+      {/* Enhanced celebration modal */}
+      <CelebrationModal
+        open={showCelebrationModal}
+        loading={celebrationLoading}
+        narrative={celebrationNarrative}
+        period={PERIOD_LABELS[period]}
+        accomplishmentCount={filtered.length}
+        onSaveToLog={handleSaveNarrativeToLog}
+        onCopy={handleCopyNarrative}
+        onDismiss={handleCelebrationDismiss}
+      />
 
       {showRecord && (
         <RecordVictory
@@ -319,6 +366,10 @@ export default function Victories() {
           onArchive={archiveVictory}
           onClose={() => setSelectedVictory(null)}
         />
+      )}
+
+      {showArchive && (
+        <CelebrationArchive onClose={() => setShowArchive(false)} />
       )}
 
       {toast && <div className="victories__toast">{toast}</div>}

@@ -660,6 +660,16 @@ export const VICTORY_SOURCE_LABELS: Record<VictorySource, string> = {
   routine_completion: 'Routine Completion',
 };
 
+export interface VictoryCelebration {
+  id: string;
+  user_id: string;
+  narrative: string;
+  period: string;
+  accomplishment_count: number;
+  accomplishment_summary: string | null;
+  created_at: string;
+}
+
 // === PRD-07: Charts ===
 
 export type GoalStatus = 'active' | 'completed' | 'paused' | 'archived';

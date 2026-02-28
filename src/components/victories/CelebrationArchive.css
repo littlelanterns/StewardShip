@@ -1,0 +1,206 @@
+/* CelebrationArchive overlay */
+.celebration-archive__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: archiveFadeIn 0.2s ease-out;
+}
+
+@keyframes archiveFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Modal */
+.celebration-archive {
+  width: 92%;
+  max-width: 520px;
+  max-height: 85vh;
+  background: var(--color-bg-primary);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+.celebration-archive__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.celebration-archive__title {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-lg);
+  color: var(--color-text-heading);
+  margin: 0;
+}
+
+.celebration-archive__close {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: var(--spacing-xs);
+  line-height: 1;
+}
+
+.celebration-archive__close:hover {
+  color: var(--color-text-primary);
+}
+
+/* Body — scrollable list */
+.celebration-archive__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--spacing-md) var(--spacing-lg);
+}
+
+/* Empty state */
+.celebration-archive__empty {
+  text-align: center;
+  padding: var(--spacing-xl) 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+/* Loading */
+.celebration-archive__loading {
+  text-align: center;
+  padding: var(--spacing-xl) 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+/* Individual archive card */
+.celebration-archive__card {
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--color-gold);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  background: var(--color-bg-primary);
+}
+
+.celebration-archive__card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-sm);
+}
+
+.celebration-archive__card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.celebration-archive__card-period {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-gold);
+}
+
+.celebration-archive__card-date {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.celebration-archive__card-count {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  background: var(--color-bg-secondary);
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.celebration-archive__card-narrative {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  font-style: italic;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  margin: 0 0 var(--spacing-sm);
+}
+
+.celebration-archive__card-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.celebration-archive__card-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-mid-teal);
+  font-size: var(--font-size-xs);
+  font-family: var(--font-body);
+  padding: 0;
+}
+
+.celebration-archive__card-btn:hover {
+  color: var(--color-dark-teal);
+}
+
+.celebration-archive__card-btn--delete {
+  color: var(--color-text-secondary);
+}
+
+.celebration-archive__card-btn--delete:hover {
+  color: var(--color-deep-brown);
+}
+
+/* Confirm delete inline */
+.celebration-archive__confirm {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.celebration-archive__confirm-btn {
+  padding: 2px var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  font-family: var(--font-body);
+  border: none;
+}
+
+.celebration-archive__confirm-btn--yes {
+  background: var(--color-deep-brown);
+  color: var(--color-white);
+}
+
+.celebration-archive__confirm-btn--no {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  .celebration-archive {
+    width: 100%;
+    max-height: 90vh;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    margin-top: auto;
+  }
+
+  .celebration-archive__overlay {
+    align-items: flex-end;
+  }
+}

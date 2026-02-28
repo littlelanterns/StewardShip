@@ -2,8 +2,33 @@
   margin-bottom: var(--spacing-md);
 }
 
-.victories__header h1 {
+.victories__header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: var(--spacing-xs);
+}
+
+.victories__header-row h1 {
+  margin: 0;
+}
+
+.victories__past-celebrations-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-family: var(--font-body);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  white-space: nowrap;
+}
+
+.victories__past-celebrations-btn:hover {
+  color: var(--color-mid-teal);
 }
 
 .victories__subtitle {
@@ -80,49 +105,7 @@
   color: var(--color-text-secondary);
 }
 
-.victories__celebrating {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-md);
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-}
-
-.victories__narrative-card {
-  margin-bottom: var(--spacing-md);
-  border-left: 3px solid var(--color-gold) !important;
-}
-
-.victories__narrative-text {
-  margin: 0 0 var(--spacing-sm);
-  font-size: var(--font-size-sm);
-  color: var(--color-text-primary);
-  line-height: 1.6;
-  white-space: pre-wrap;
-}
-
-.victories__narrative-actions {
-  display: flex;
-  gap: var(--spacing-sm);
-}
-
-.victories__narrative-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--color-mid-teal);
-  font-size: var(--font-size-xs);
-  font-family: var(--font-body);
-  padding: 0;
-}
-
-.victories__narrative-btn:hover {
-  color: var(--color-dark-teal);
-}
+/* Old inline celebrating/narrative styles removed — now handled by CelebrationModal */
 
 .victories__list {
   display: flex;

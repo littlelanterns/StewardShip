@@ -11,7 +11,7 @@
 html {
   font-size: 16px;
   -webkit-text-size-adjust: 100%;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 html.font-scale-large {
@@ -29,7 +29,7 @@ body {
   color: var(--color-text-primary);
   background-color: var(--color-bg-primary);
   min-height: 100dvh;
-  overflow-x: hidden;
+  overflow-x: clip;
   width: 100%;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -39,7 +39,7 @@ body {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  overflow-x: hidden;
+  overflow-x: clip;
   width: 100%;
 }
 
@@ -120,7 +120,7 @@ select {
   margin: 0 auto;
   padding: var(--spacing-lg);
   padding-bottom: calc(var(--nav-height) + var(--spacing-lg) + var(--drawer-handle-height));
-  overflow-x: hidden;
+  overflow-x: clip;
   word-wrap: break-word;
   overflow-wrap: break-word;
 }
