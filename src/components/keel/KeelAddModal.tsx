@@ -74,7 +74,7 @@ export function KeelAddModal({ onClose, onCreate, preselectedCategory }: KeelAdd
 
     try {
       const ext = file.name.split('.').pop()?.toLowerCase() || '';
-      const storagePath = `keel/${user.id}/${Date.now()}_${file.name}`;
+      const storagePath = `${user.id}/keel/${Date.now()}_${file.name}`;
 
       const { error: uploadErr } = await supabase.storage
         .from('manifest-files')

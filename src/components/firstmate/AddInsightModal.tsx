@@ -80,7 +80,7 @@ export function AddInsightModal({ onClose, onSave, preselectedCategory }: AddIns
     try {
       // Upload to storage
       const ext = file.name.split('.').pop()?.toLowerCase() || '';
-      const storagePath = `firstmate/${user.id}/${Date.now()}_${file.name}`;
+      const storagePath = `${user.id}/firstmate/${Date.now()}_${file.name}`;
 
       const { error: uploadErr } = await supabase.storage
         .from('manifest-files')
