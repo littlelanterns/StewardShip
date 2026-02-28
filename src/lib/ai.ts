@@ -86,6 +86,112 @@ export async function autoTitleConversation(
   }
 }
 
+export async function autoTitleHatchTab(
+  tabContent: string,
+  userId: string,
+): Promise<string | null> {
+  try {
+    const snippet = tabContent.slice(0, 500);
+    const { data, error } = await supabase.functions.invoke('chat', {
+      body: {
+        system_prompt: 'You generate short titles for notes. Respond with ONLY the title, nothing else.',
+        messages: [
+          {
+            role: 'user',
+            content: `Given this note content, generate a 3-6 word descriptive title. Respond with ONLY the title, nothing else.\n\nContent: "${snippet}"`,
+          },
+        ],
+        max_tokens: 20,
+        user_id: userId,
+      },
+    });
+
+    if (error || data?.error || !data?.content) return null;
+    return data.content.replace(/^["']|["']$/g, '').trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+export interface HatchExtractedItemRaw {
+  extracted_text: string;
+  item_type: string;
+  suggested_destination: string;
+  confidence: number;
+}
+
+export async function triggerHatchExtraction(
+  content: string,
+  userId: string,
+  context?: {
+    tracker_names?: string[];
+    meeting_names?: string[];
+    mast_declarations?: string[];
+  },
+): Promise<HatchExtractedItemRaw[]> {
+  const contextInfo = [];
+  if (context?.tracker_names?.length) {
+    contextInfo.push(`User's trackers: ${context.tracker_names.join(', ')}`);
+  }
+  if (context?.meeting_names?.length) {
+    contextInfo.push(`Upcoming meetings: ${context.meeting_names.join(', ')}`);
+  }
+  if (context?.mast_declarations?.length) {
+    contextInfo.push(`User's guiding principles: ${context.mast_declarations.slice(0, 5).join('; ')}`);
+  }
+
+  const systemPrompt = `You are an extraction assistant for a personal growth app.
+Analyze the provided text and extract discrete items that could be:
+- Action items (tasks to do) → suggested_destination: "compass_single" or "compass_individual"
+- Reflections or emotional insights (journal-worthy) → suggested_destination: "log"
+- Personal revelations (self-knowledge) → suggested_destination: "keel"
+- Values or commitments (guiding principles) → suggested_destination: "mast"
+- Victories or accomplishments → suggested_destination: "victory"
+- Trackable data points (numbers, durations, quantities) → suggested_destination: "charts"
+- Meeting follow-ups (agenda items) → suggested_destination: "agenda"
+- List items (shopping, packing, etc.) → suggested_destination: "lists"
+- General notes → suggested_destination: "note"
+
+For each extracted item, provide:
+1. extracted_text: The exact text (cleaned up from speech if needed)
+2. item_type: One of: action_item, reflection, revelation, value, victory, trackable, meeting_followup, list_item, general
+3. suggested_destination: One of: log, compass_single, compass_individual, lists, victory, keel, mast, note, agenda, charts
+4. confidence: A score from 0 to 1
+
+${contextInfo.length > 0 ? '\nUser context:\n' + contextInfo.join('\n') : ''}
+
+Return ONLY a JSON array of objects. No other text.`;
+
+  const { data, error } = await supabase.functions.invoke('chat', {
+    body: {
+      system_prompt: systemPrompt,
+      messages: [
+        {
+          role: 'user',
+          content: `Extract discrete items from this text:\n\n${content}`,
+        },
+      ],
+      max_tokens: 2000,
+      user_id: userId,
+    },
+  });
+
+  if (error || data?.error || !data?.content) {
+    throw new Error(error?.message || data?.error || 'Failed to extract items');
+  }
+
+  try {
+    const raw = data.content.trim();
+    // Handle potential markdown code fences
+    const jsonStr = raw.replace(/^```json?\s*\n?/i, '').replace(/\n?```\s*$/i, '');
+    const items: HatchExtractedItemRaw[] = JSON.parse(jsonStr);
+    if (!Array.isArray(items)) throw new Error('Expected array');
+    return items;
+  } catch {
+    throw new Error('Failed to parse extraction results');
+  }
+}
+
 export async function breakDownTask(
   taskTitle: string,
   taskDescription: string | null,

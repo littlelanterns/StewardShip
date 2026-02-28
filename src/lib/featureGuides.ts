@@ -130,4 +130,10 @@ export const FEATURE_GUIDES: Record<string, FeatureGuideContent> = {
     description: "Generate progress reports across any time period. Choose which sections to include \u2014 tasks, journal entries, victories, goals, streaks, and more \u2014 then preview and export as PDF or Markdown.",
     tips: ["Use custom date ranges for quarterly or annual reviews", "Download as PDF to share or archive your progress"],
   },
+  hatch: {
+    featureKey: 'hatch',
+    title: 'The Hatch',
+    description: 'Capture anything here \u2014 type or speak. When you\'re ready, tap "Send to..." and route it to The Log, Compass, Lists, or anywhere else. One place to start, ten places it can end up.',
+    tips: ["Use voice input for hands-free capture", "Tabs persist across sessions until you send or archive them"],
+  },
 };

@@ -15,6 +15,7 @@ import {
   Calendar,
   ListChecks,
   PackageOpen,
+  Inbox,
   Sun,
   Moon,
   Settings,
@@ -22,6 +23,7 @@ import {
 } from 'lucide-react';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useHelmContext } from '../../contexts/HelmContext';
+import { useHatchContext } from '../../contexts/HatchContext';
 import './MoreMenu.css';
 
 interface MoreMenuProps {
@@ -32,6 +34,7 @@ interface MoreMenuProps {
 export default function MoreMenu({ open, onClose }: MoreMenuProps) {
   const { profile } = useAuthContext();
   const { startGuidedConversation } = useHelmContext();
+  const { openHatch } = useHatchContext();
   const showFirstMate = profile?.relationship_status && profile.relationship_status !== 'single';
 
   if (!open) return null;
@@ -39,6 +42,11 @@ export default function MoreMenu({ open, onClose }: MoreMenuProps) {
   const handleUnloadTheHold = () => {
     onClose();
     startGuidedConversation('unload_the_hold');
+  };
+
+  const handleOpenHatch = () => {
+    onClose();
+    openHatch();
   };
 
   return (
@@ -107,6 +115,16 @@ export default function MoreMenu({ open, onClose }: MoreMenuProps) {
           {/* Planning & Action */}
           <div className="more-menu__section-label">Planning</div>
           <ul className="more-menu__group">
+            <li>
+              <button
+                type="button"
+                className="more-menu__link more-menu__link--button"
+                onClick={handleOpenHatch}
+              >
+                <Inbox size={20} strokeWidth={1.5} />
+                <span>The Hatch</span>
+              </button>
+            </li>
             <li>
               <button
                 type="button"

@@ -13,6 +13,7 @@ import { RhythmsSection } from '../components/settings/RhythmsSection';
 import { MeetingSchedulesSection } from '../components/settings/MeetingSchedulesSection';
 import { CompassSection } from '../components/settings/CompassSection';
 import { DataPrivacySection } from '../components/settings/DataPrivacySection';
+import { HatchSection } from '../components/settings/HatchSection';
 // About section hidden for now — re-enable when ready
 // import { AboutSection } from '../components/settings/AboutSection';
 import { LoadingSpinner, FeatureGuide } from '../components/shared';
@@ -25,6 +26,7 @@ const SECTIONS = [
   { key: 'notifications', name: 'Notifications', description: 'Push, quiet hours, delivery preferences' },
   { key: 'rhythms', name: 'Rhythms', description: 'Friday Overview, Sunday Reflection, monthly, quarterly' },
   { key: 'meetings', name: 'Meeting Schedules', description: 'Recurring meeting configuration' },
+  { key: 'hatch', name: 'The Hatch', description: 'Quick capture drawer, default behavior' },
   { key: 'compass', name: 'Compass', description: 'Default task view' },
   { key: 'data', name: 'Data & Privacy', description: 'Export data, storage info' },
   { key: 'ai', name: 'BYOK (Bring Your Own Key)', description: 'Use your own AI API key for customized model access' },
@@ -189,6 +191,12 @@ export default function Settings() {
               )}
               {section.key === 'meetings' && (
                 <MeetingSchedulesSection />
+              )}
+              {section.key === 'hatch' && (
+                <HatchSection
+                  settings={settings}
+                  onUpdateSetting={updateSetting}
+                />
               )}
               {section.key === 'compass' && (
                 <CompassSection

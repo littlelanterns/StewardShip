@@ -35,7 +35,8 @@ import {
   Lightbulb,
   Brain,
   Eye,
-  Award
+  Award,
+  Inbox
 } from 'lucide-react';
 import './CaptainsBriefing.css';
 
@@ -198,6 +199,44 @@ const VOYAGE_STAGES: VoyageStage[] = [
   },
   {
     number: 4,
+    name: 'Open The Hatch',
+    tagline: 'The Hatch — Capture Anything, Route It Anywhere',
+    narrative:
+      'Every thought has to land somewhere before it can become something. The Hatch is where everything drops in first — a quick note, a voice brain dump, a meeting idea, a task you\'ll forget in ten seconds. Capture it now, decide where it goes later. One place to start, ten places it can end up.',
+    features: [
+      {
+        name: 'The Hatch — Universal Capture',
+        icon: <Inbox size={18} />,
+        description:
+          'A quick-access notepad that lives in a right-side drawer. Jot down anything — type or speak — without deciding where it belongs yet. When you\'re ready, tap "Send to..." and route your content to The Log, The Compass, Victory, Lists, Charts, The Mast, The Keel, a Meeting Agenda, or just save it as a Note. Multiple tabs let you work on several thoughts at once. Everything autosaves across sessions.',
+        connections:
+          'Routes to: Log (journal entries), Compass (tasks), Lists (checklists), Victory (accomplishments), Mast (principles), Keel (self-knowledge), Charts (progress tracking), Meetings (agenda items). Receives from: Helm ("Edit in Hatch" on any AI conversation).',
+        route: '/hatch',
+        subTools: [
+          {
+            name: 'Review & Route',
+            brief: 'AI extracts and sorts your content',
+            detail:
+              'For longer notes or voice brain dumps, tap "Review & Route" and the AI scans your content, extracts individual items (tasks, reflections, victories, trackable data, agenda items), and presents each as a card with suggested destinations. Route them one by one or all at once. Especially powerful with voice capture — talk for five minutes, let the AI sort the chaos.',
+          },
+          {
+            name: 'Edit in Hatch',
+            brief: 'Refine AI content before saving',
+            detail:
+              'Anywhere you see AI-generated content — a Helm conversation, Cyrano\'s message drafts, Higgins\' talking points — you can send it to The Hatch for editing. Refine the wording, add your own thoughts, then route it to its permanent home. Nothing from an AI conversation enters your permanent record without your review.',
+          },
+          {
+            name: 'Voice Capture',
+            brief: 'Speak your thoughts, sort them later',
+            detail:
+              'Tap the microphone to record directly into a Hatch tab. Your audio is transcribed in real-time. Edit the transcript, then use "Send to..." for quick routing or "Review & Route" for AI-powered extraction. Great for morning brain dumps, end-of-day recaps, or capturing ideas while your hands are full.',
+          },
+        ],
+      },
+    ],
+  },
+  {
+    number: 5,
     name: 'Set Your Compass',
     tagline: 'Navigate Your Daily Actions',
     narrative:
@@ -241,7 +280,7 @@ const VOYAGE_STAGES: VoyageStage[] = [
     ],
   },
   {
-    number: 5,
+    number: 6,
     name: 'Scan the Horizon',
     tagline: 'See Where You\'ve Been and Where You\'re Headed',
     narrative:
@@ -291,7 +330,7 @@ const VOYAGE_STAGES: VoyageStage[] = [
     ],
   },
   {
-    number: 6,
+    number: 7,
     name: 'Morning and Evening Watch',
     tagline: 'The Daily Rhythms of a Well-Run Ship',
     narrative:
@@ -327,7 +366,7 @@ const VOYAGE_STAGES: VoyageStage[] = [
     ],
   },
   {
-    number: 7,
+    number: 8,
     name: 'Plot Deeper Waters',
     tagline: 'Tools for Transformation and Planning',
     narrative:
@@ -408,7 +447,7 @@ const VOYAGE_STAGES: VoyageStage[] = [
     ],
   },
   {
-    number: 8,
+    number: 9,
     name: 'Know Your Crew',
     tagline: 'The People Sailing With You',
     narrative:
@@ -469,7 +508,7 @@ const VOYAGE_STAGES: VoyageStage[] = [
     ],
   },
   {
-    number: 9,
+    number: 10,
     name: 'When Storms Come',
     tagline: 'Safe Harbor — A Port in Every Storm',
     narrative:
@@ -495,7 +534,7 @@ const VOYAGE_STAGES: VoyageStage[] = [
     ],
   },
   {
-    number: 10,
+    number: 11,
     name: 'Your Ship\'s Operations',
     tagline: 'Keep Everything Running Smoothly',
     narrative:

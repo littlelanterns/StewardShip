@@ -1,0 +1,46 @@
+/* Tab content area */
+.hatch-tab-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  position: relative;
+}
+
+/* Textarea */
+.hatch-tab-content__textarea {
+  flex: 1;
+  width: 100%;
+  padding: var(--spacing-md);
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  line-height: 1.6;
+  color: var(--color-text-primary);
+  background-color: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  min-height: 120px;
+  overflow-y: auto;
+}
+
+.hatch-tab-content__textarea::placeholder {
+  color: var(--color-text-secondary);
+  opacity: 0.6;
+}
+
+/* Autosave indicator */
+.hatch-tab-content__save-indicator {
+  position: absolute;
+  top: var(--spacing-xs);
+  right: var(--spacing-sm);
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.hatch-tab-content__save-indicator--visible {
+  opacity: 0.6;
+}

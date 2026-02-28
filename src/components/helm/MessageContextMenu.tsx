@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { autoTagTask } from '../../lib/ai';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useHelmContext } from '../../contexts/HelmContext';
+import { useHatchContext } from '../../contexts/HatchContext';
 import type { HelmMessage } from '../../lib/types';
 import './MessageContextMenu.css';
 
@@ -19,6 +20,7 @@ export default function MessageContextMenu({
 }: MessageContextMenuProps) {
   const { user } = useAuthContext();
   const { regenerateMessage, resendShorter, resendLonger, isThinking, activeConversation } = useHelmContext();
+  const { createTab, openHatch } = useHatchContext();
   const menuRef = useRef<HTMLDivElement>(null);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -165,6 +167,16 @@ export default function MessageContextMenu({
     showToast('Draft copied');
   };
 
+  const handleEditInHatch = async () => {
+    try {
+      await createTab('helm_edit', message.content, message.conversation_id);
+      openHatch();
+      showToast('Opened in Hatch');
+    } catch {
+      showToast('Failed to open');
+    }
+  };
+
   const handleSaveDraft = async () => {
     if (!user || !activeConversation?.guided_mode_reference_id) return;
     try {
@@ -208,6 +220,9 @@ export default function MessageContextMenu({
           </button>
           <button type="button" className="message-context-menu__item" role="menuitem" onClick={handleCreateTask}>
             Create task
+          </button>
+          <button type="button" className="message-context-menu__item" role="menuitem" onClick={handleEditInHatch}>
+            Edit in Hatch
           </button>
           {isAiMessage && (
             <>

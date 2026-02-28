@@ -61,6 +61,7 @@ export interface UserSettings {
   show_feature_guides: boolean;
   dismissed_guides: string[];
   google_calendar_token: string | null;
+  hatch_drawer_open: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -258,7 +259,8 @@ export type HelmPageContext =
   | { page: 'reveille' }
   | { page: 'reckoning' }
   | { page: 'reflections' }
-  | { page: 'reports' };
+  | { page: 'reports' }
+  | { page: 'hatch' };
 
 export type GuidedMode =
   | 'wheel'
@@ -1687,4 +1689,106 @@ export interface ReportData {
   reflections?: ReportReflectionData;
   goals?: ReportGoalData[];
   streaks?: ReportStreakData[];
+}
+
+// PRD-21: The Hatch — Universal Capture & Routing
+
+export type HatchTabStatus = 'active' | 'routed' | 'archived';
+
+export type HatchSourceType = 'manual' | 'helm_edit' | 'review_route' | 'voice';
+
+export type HatchRoutingDestination =
+  | 'log'
+  | 'compass_individual'
+  | 'compass_single'
+  | 'lists'
+  | 'victory'
+  | 'keel'
+  | 'mast'
+  | 'note'
+  | 'agenda'
+  | 'charts';
+
+export interface HatchTab {
+  id: string;
+  user_id: string;
+  title: string;
+  content: string;
+  status: HatchTabStatus;
+  routed_to: HatchRoutingDestination | null;
+  routed_destination_id: string | null;
+  routed_meeting_id: string | null;
+  source_type: HatchSourceType;
+  source_helm_conversation_id: string | null;
+  sort_order: number;
+  is_auto_named: boolean;
+  archived_at: string | null;
+  routed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface HatchRoutingStat {
+  id: string;
+  user_id: string;
+  destination: string;
+  route_count: number;
+  last_used_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export const HATCH_DESTINATION_CONFIG: Record<
+  HatchRoutingDestination,
+  { label: string; icon: string; accentColor: string }
+> = {
+  log: { label: 'The Log', icon: 'BookOpen', accentColor: 'var(--color-deep-teal)' },
+  compass_individual: { label: 'Tasks (Individual)', icon: 'CheckSquare', accentColor: 'var(--color-gold)' },
+  compass_single: { label: 'Single Task', icon: 'ClipboardCheck', accentColor: 'var(--color-gold)' },
+  lists: { label: 'Lists', icon: 'List', accentColor: 'var(--color-mid-teal)' },
+  victory: { label: 'Victory', icon: 'Trophy', accentColor: 'var(--color-gold)' },
+  keel: { label: 'The Keel', icon: 'Compass', accentColor: 'var(--color-cognac)' },
+  mast: { label: 'The Mast', icon: 'Star', accentColor: 'var(--color-gold)' },
+  note: { label: 'Note', icon: 'StickyNote', accentColor: 'var(--color-slate-gray)' },
+  agenda: { label: 'Agenda', icon: 'Users', accentColor: 'var(--color-deep-brown)' },
+  charts: { label: 'Charts + Goals', icon: 'BarChart2', accentColor: 'var(--color-mid-teal)' },
+};
+
+// PRD-21 Phase B: Hatch extracted items
+export type HatchExtractedItemType =
+  | 'action_item'
+  | 'reflection'
+  | 'revelation'
+  | 'value'
+  | 'victory'
+  | 'trackable'
+  | 'meeting_followup'
+  | 'list_item'
+  | 'general';
+
+export type HatchExtractedItemStatus = 'pending' | 'routed' | 'skipped';
+
+export interface HatchExtractedItem {
+  id: string;
+  user_id: string;
+  hatch_tab_id: string;
+  extracted_text: string;
+  item_type: HatchExtractedItemType;
+  suggested_destination: HatchRoutingDestination;
+  actual_destination: HatchRoutingDestination | null;
+  destination_record_id: string | null;
+  confidence: number;
+  status: HatchExtractedItemStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface HatchHistoryFilters {
+  status?: HatchTabStatus | 'all';
+  destination?: HatchRoutingDestination;
+  dateFrom?: string;
+  dateTo?: string;
+  searchQuery?: string;
+  sortBy?: 'created_at' | 'updated_at' | 'title' | 'status';
+  sortOrder?: 'asc' | 'desc';
 }

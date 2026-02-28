@@ -1,7 +1,7 @@
 # StewardShip: Database Schema
 
 > This is a living document. Updated after each PRD is written.
-> Last updated: After PRD-13A (Higgins) + Accomplishment Rearchitecture (migration 021) + Meeting Agenda Items (migration 022) + Mentor Meeting Type (migration 023)
+> Last updated: After PRD-21 (The Hatch, migration 025) + PRD-13A (Higgins) + Accomplishment Rearchitecture (migration 021) + Meeting Agenda Items (migration 022) + Mentor Meeting Type (migration 023)
 
 ---
 
@@ -89,6 +89,7 @@
 | notification_custom | TEXT | 'push' | NOT NULL | Enum: 'push', 'reveille_batch' |
 | show_feature_guides | BOOLEAN | true | NOT NULL | Global toggle for feature introduction cards |
 | dismissed_guides | TEXT[] | '{}' | NOT NULL | Array of feature keys the user has dismissed |
+| hatch_drawer_open | BOOLEAN | true | NOT NULL | Whether The Hatch drawer starts open on login |
 | google_calendar_token | TEXT | null | NULL | OAuth token, encrypted. Post-launch. |
 | created_at | TIMESTAMPTZ | now() | NOT NULL | |
 | updated_at | TIMESTAMPTZ | now() | NOT NULL | Auto-trigger |
@@ -1594,6 +1595,8 @@ All tables across PRDs 01-20 have been defined (43 total). Settings (PRD-19) int
 | 022_meeting_agenda_items.sql | `meeting_agenda_items` table for between-meeting discussion items with status lifecycle, person/template FKs, RLS, indexes, auto-update trigger |
 | 023_mentor_meeting_custom_title.sql | Add `custom_title` TEXT column to `meetings` and `meeting_schedules` tables for user-defined meeting names (used by mentor type) |
 | 024_meeting_template_sections.sql | `meeting_template_sections` table for per-user customizable agenda sections with auto-seeded defaults, archive/restore, partial unique index on default_key, RLS, auto-update trigger |
+| 025_hatch.sql | `hatch_tabs` table, `hatch_routing_stats` table, `hatch_drawer_open` column on `user_settings`, RLS policies, indexes, auto-update triggers |
+| 026_hatch_phase_b.sql | `hatch_extracted_items` table (Review & Route), `source_hatch_tab_id` column on `meeting_agenda_items`, RLS policies, indexes, auto-update trigger |
 
 ---
 
@@ -1663,6 +1666,107 @@ Indexes: user_id, question_id, response_date DESC, (user_id, response_date). RLS
 | updated_at | TIMESTAMPTZ | Auto-trigger |
 
 Indexes: user_id, list_id, status. RLS: users own data only.
+
+---
+
+## PRD-21: The Hatch (Universal Capture)
+
+#### `hatch_tabs`
+
+| Column | Type | Default | Nullable | Notes |
+|--------|------|---------|----------|-------|
+| id | UUID | gen_random_uuid() | NOT NULL | PK |
+| user_id | UUID | | NOT NULL | FK → auth.users |
+| title | TEXT | 'Untitled' | NOT NULL | Tab title (auto-generated or user-set) |
+| content | TEXT | '' | NOT NULL | Tab content (autosaved) |
+| status | TEXT | 'active' | NOT NULL | Enum: 'active', 'routed', 'archived' |
+| routed_to | TEXT | null | NULL | Destination name when routed (e.g., 'log', 'compass_single') |
+| routed_destination_id | UUID | null | NULL | FK → destination record created by routing |
+| routed_meeting_id | UUID | null | NULL | FK → meetings (for agenda routing) |
+| source_type | TEXT | 'manual' | NOT NULL | Enum: 'manual', 'helm_edit', 'review_route', 'voice' |
+| source_helm_conversation_id | UUID | null | NULL | FK → helm_conversations (for Edit in Hatch) |
+| sort_order | INTEGER | 0 | NOT NULL | Tab ordering |
+| is_auto_named | BOOLEAN | true | NOT NULL | Whether title was auto-generated |
+| archived_at | TIMESTAMPTZ | null | NULL | When tab was archived |
+| routed_at | TIMESTAMPTZ | null | NULL | When tab was routed |
+| created_at | TIMESTAMPTZ | now() | NOT NULL | |
+| updated_at | TIMESTAMPTZ | now() | NOT NULL | Auto-trigger |
+
+**RLS:** Users CRUD own tabs only.
+**Indexes:**
+- `user_id, status, sort_order` (active tabs list)
+- `user_id, status, updated_at DESC` (history view)
+
+**Trigger:**
+```sql
+CREATE TRIGGER set_updated_at BEFORE UPDATE ON hatch_tabs FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
+```
+
+---
+
+#### `hatch_routing_stats`
+
+Tracks per-user routing frequency by destination for Favorites sorting.
+
+| Column | Type | Default | Nullable | Notes |
+|--------|------|---------|----------|-------|
+| id | UUID | gen_random_uuid() | NOT NULL | PK |
+| user_id | UUID | | NOT NULL | FK → auth.users |
+| destination | TEXT | | NOT NULL | Routing destination name |
+| route_count | INTEGER | 1 | NOT NULL | Number of times routed to this destination |
+| last_used_at | TIMESTAMPTZ | now() | NOT NULL | Last routing time |
+| created_at | TIMESTAMPTZ | now() | NOT NULL | |
+| updated_at | TIMESTAMPTZ | now() | NOT NULL | Auto-trigger |
+
+**RLS:** Users CRUD own stats only.
+**Indexes:**
+- `user_id, route_count DESC` (favorites ordering)
+
+**Unique constraint:** `(user_id, destination)`
+
+**Trigger:**
+```sql
+CREATE TRIGGER set_updated_at BEFORE UPDATE ON hatch_routing_stats FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
+```
+
+---
+
+#### `hatch_extracted_items`
+
+Stores items extracted via Review & Route for tracking and undo.
+
+| Column | Type | Default | Nullable | Notes |
+|--------|------|---------|----------|-------|
+| id | UUID | gen_random_uuid() | NOT NULL | PK |
+| user_id | UUID | | NOT NULL | FK → auth.users |
+| hatch_tab_id | UUID | | NOT NULL | FK → hatch_tabs |
+| extracted_text | TEXT | | NOT NULL | The text of the extracted item |
+| item_type | TEXT | | NOT NULL | Enum: 'action_item', 'reflection', 'revelation', 'value', 'victory', 'trackable', 'meeting_followup', 'list_item', 'general' |
+| suggested_destination | TEXT | | NOT NULL | AI's primary suggestion |
+| actual_destination | TEXT | null | NULL | Where user actually routed it (null if skipped) |
+| destination_record_id | UUID | null | NULL | FK to created record |
+| confidence | REAL | 0.5 | NOT NULL | AI confidence score 0-1 |
+| status | TEXT | 'pending' | NOT NULL | Enum: 'pending', 'routed', 'skipped' |
+| created_at | TIMESTAMPTZ | now() | NOT NULL | |
+| updated_at | TIMESTAMPTZ | now() | NOT NULL | Auto-trigger |
+
+**RLS:** Users CRUD own items only.
+**Indexes:**
+- `hatch_tab_id` (items per tab)
+- `user_id, status` (pending items)
+
+**Trigger:**
+```sql
+CREATE TRIGGER set_updated_at BEFORE UPDATE ON hatch_extracted_items FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
+```
+
+---
+
+#### `meeting_agenda_items` — Column Addition
+
+| Column | Type | Notes |
+|--------|------|-------|
+| source_hatch_tab_id | UUID | FK → hatch_tabs. Nullable. Added in 026_hatch_phase_b.sql. Tracks agenda items created from Hatch routing. |
 
 ---
 

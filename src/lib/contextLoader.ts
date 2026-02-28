@@ -21,6 +21,7 @@ import {
   shouldLoadManifest,
   shouldLoadMeeting,
   shouldLoadReflections,
+  shouldLoadHatch,
   shouldLoadAppGuide,
   formatFirstMateContext,
   formatCrewContext,
@@ -29,6 +30,7 @@ import {
   formatManifestContext,
   formatMeetingContext,
   formatReflectionsContext,
+  formatHatchContext,
   type SystemPromptContext,
   type GuidedModeContext,
 } from './systemPrompt';
@@ -94,6 +96,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
   const needManifest = shouldLoadManifest(message, pageContext, guidedMode);
   const needMeeting = shouldLoadMeeting(message, pageContext, guidedMode);
   const needReflections = shouldLoadReflections(message, pageContext);
+  const needHatch = shouldLoadHatch(message, pageContext);
   const needAppGuide = shouldLoadAppGuide(message, pageContext);
 
   // Name recognition: lightweight fetch of all crew names to detect mentions
@@ -139,6 +142,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
   let meetingContext: string | undefined;
   let meetingSections: MeetingTemplateSection[] | undefined;
   let reflectionsContext: string | undefined;
+  let hatchContext: string | undefined;
   let appGuideContext: string | undefined;
 
   // Fetch conditional data in parallel
@@ -319,6 +323,16 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
         .limit(10)
     : null;
 
+  const hatchPromise = needHatch
+    ? supabase
+        .from('hatch_tabs')
+        .select('title, content')
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .order('sort_order', { ascending: true })
+        .limit(5)
+    : null;
+
   // Manifest RAG search — depth varies by mode
   const isManifestDiscuss = guidedMode === 'manifest_discuss';
   let manifestPromise: Promise<ManifestSearchResult[]> | null = null;
@@ -353,7 +367,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     }
   }
 
-  const [keelResult, logResult, compassResult, victoriesResult, wheelResult, lifeInvResult, riggingResult, firstMateResult, spouseInsightsResult, crewResult, sphereEntitiesResult, frameworksResult, manifestResults, meetingResult, agendaResult, reflectionsResult, meetingSectionsResult] = await Promise.all([
+  const [keelResult, logResult, compassResult, victoriesResult, wheelResult, lifeInvResult, riggingResult, firstMateResult, spouseInsightsResult, crewResult, sphereEntitiesResult, frameworksResult, manifestResults, meetingResult, agendaResult, reflectionsResult, hatchResult, meetingSectionsResult] = await Promise.all([
     keelPromise,
     logPromise,
     compassPromise,
@@ -370,6 +384,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     meetingPromise,
     agendaPromise,
     reflectionsPromise,
+    hatchPromise,
     meetingSectionsPromise,
   ]);
 
@@ -624,6 +639,13 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     reflectionsContext = formatReflectionsContext(formatted);
   }
 
+  // Hatch context — active tabs
+  if (hatchResult?.data && hatchResult.data.length > 0) {
+    hatchContext = formatHatchContext(
+      hatchResult.data as Array<{ title: string; content: string }>,
+    );
+  }
+
   // App guide context — static, no async needed
   if (needAppGuide) {
     appGuideContext = getAppGuideContext();
@@ -676,6 +698,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     meetingContext,
     meetingSections,
     reflectionsContext,
+    hatchContext,
     appGuideContext,
     pageContext,
     guidedMode: guidedMode || null,

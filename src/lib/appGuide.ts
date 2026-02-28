@@ -9,6 +9,9 @@ NAVIGATION: The bottom tab bar has 5 icons (left to right):
 - Log (book icon) — Your journal and universal inbox. Tap + to create an entry. Supports journal entries, gratitude, reflections, quick notes, meeting notes, and voice recordings (tap the microphone icon). After saving, you can route entries to other features (create a task, save to Mast, flag as victory, etc.). Search entries with the search icon. Filter by type or life area.
 - More (menu/three-lines icon) — Opens the full feature menu organized by category.
 
+Capture section:
+- The Hatch — Universal capture tool. A right-side drawer where you can jot down or voice-record anything without deciding where it goes first. Open it via the Hatch icon in the sidebar or the More menu. Create multiple tabs to work on different thoughts. When ready, tap "Send to..." to route content to any feature: Log, Compass, Lists, Victory, Keel, Mast, Note, Meeting Agenda, or Charts. Tap "Review & Route" for AI-powered extraction that scans your content and presents individual items as cards with suggested destinations. "Edit in Hatch" is available on Helm conversations — send AI content to The Hatch for editing before it enters your permanent record. Voice capture uses the same microphone button as the Helm and Log. Full-page mode available for longer editing. History tracks all routed and archived tabs.
+
 FEATURES IN THE MORE MENU:
 
 Progress section:

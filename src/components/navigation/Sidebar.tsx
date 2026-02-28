@@ -19,16 +19,19 @@ import {
   Calendar,
   ListChecks,
   PackageOpen,
+  Inbox,
   Sun,
   Moon,
   Settings,
 } from 'lucide-react';
 import { useHelm } from '../../contexts/HelmContext';
+import { useHatchContext } from '../../contexts/HatchContext';
 import { useAuthContext } from '../../contexts/AuthContext';
 import './Sidebar.css';
 
 export default function Sidebar() {
   const { toggleDrawer, drawerState, startGuidedConversation } = useHelm();
+  const { toggleHatch, isOpen: hatchOpen } = useHatchContext();
   const { profile } = useAuthContext();
   const showFirstMate = profile?.relationship_status && profile.relationship_status !== 'single';
 
@@ -74,6 +77,18 @@ export default function Sidebar() {
               <BookOpen size={18} strokeWidth={1.5} />
               <span>Log</span>
             </NavLink>
+          </li>
+          <li>
+            <button
+              type="button"
+              className={`sidebar__link sidebar__link--button ${
+                hatchOpen ? 'sidebar__link--active' : ''
+              }`}
+              onClick={toggleHatch}
+            >
+              <Inbox size={18} strokeWidth={1.5} />
+              <span>Hatch</span>
+            </button>
           </li>
         </ul>
 

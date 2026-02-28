@@ -55,6 +55,7 @@ This is the "map." The individual PRDs are the detailed blueprints for each loca
 | 12 | **The Manifest** | PDF knowledge base (RAG) | High |
 | 13 | **Rigging** | Planning tool for projects and larger goals | High |
 | 14 | **Settings** | All configuration | Critical |
+| 15 | **The Hatch** | Universal capture notepad — right drawer, multi-tab, routing | High |
 
 ### Tools (Features Within Other Features)
 
@@ -66,6 +67,13 @@ This is the "map." The individual PRDs are the detailed blueprints for each loca
 | 18 | **Lists** | The Compass (or standalone) | Flexible shareable lists |
 | 19 | **Sphere of Influence** | Crew (alternate view) | Relationship influence visualization |
 | 20 | **Unload the Hold** | The Helm (guided mode) | Helm-based brain dump with AI triage and batch routing |
+| 21 | **Routines** | Lists (routine list type) | Resettable checklist lists with streak tracking |
+| 22 | **Reflections** | Own page (accessed from LI, Reckoning, Crow's Nest) | Daily reflection questions with response history |
+| 23 | **Reports** | Own page | Progress report generator with PDF/Markdown export |
+| 24 | **Cyrano Me** | First Mate (Marriage Toolbox) | Communication coaching for spouse |
+| 25 | **Higgins** | Crew | Communication coaching for crew members |
+| 26 | **Captain's Briefing** | Settings | Interactive feature guide / tour |
+| 27 | **Onboarding** | Standalone | New user welcome flow |
 
 ### Rhythms (Time-Based Experiences)
 
@@ -240,12 +248,12 @@ Detecting misalignment between behavior and intention:
 
 ## First Mate: Spouse Questions
 
-In addition to the pre-loaded profile and relationship nudges, the AI generates questions the user can ask his spouse. The user enters her responses, building the First Mate profile over time.
+In addition to the pre-loaded profile and relationship nudges, the AI generates questions the user can ask their spouse/partner. The user enters the responses, building the First Mate profile over time.
 
 ### Flow
-1. AI generates a question based on what's already known and what gaps exist in the spouse profile
-2. User asks his spouse the question (in real life, not through the app)
-3. User enters her response in the app
+1. AI generates a question based on what's already known and what gaps exist in the partner profile
+2. User asks their partner the question (in real life, not through the app)
+3. User enters the response in the app
 4. Response is stored in First Mate profile as context
 5. AI uses this for future relationship advice, compliment suggestions, and conversation starters
 6. AI periodically generates new questions as the relationship context deepens
@@ -499,7 +507,7 @@ WRITES TO:
 ```
 WRITTEN BY:
   Direct user editing (profile setup)
-  Spouse question responses (user asks, enters her answer)
+  Spouse question responses (user asks partner, enters their answer)
   The Helm (relationship insights from conversation)
   Meeting Frameworks: Couple Meeting (notes and goals)
 
@@ -638,6 +646,30 @@ CONTROLS:
   Per-type delivery preferences in user_settings
   Max 5 push notifications per day (excess batched to Reveille)
   Important dates advance notice: 0, 1, 3, or 7 days
+```
+
+### The Hatch (Universal Capture → Everything)
+
+```
+ROUTES TO:
+  The Log (journal entries, source = 'hatch')
+  The Compass (tasks — individual or single, source = 'hatch')
+  Lists (new list with checkboxes)
+  Victory Recorder (accomplishment, source = 'hatch')
+  The Keel (self-knowledge entries)
+  The Mast (principle/declaration updates)
+  Notes (general notes)
+  Meeting Frameworks (agenda items via meeting_agenda_items, source_hatch_tab_id)
+  Charts + Goals (tracker data points via inline picker)
+
+RECEIVES FROM:
+  The Helm ("Edit in Hatch" action on any message)
+  Voice input (VoiceRecordButton + whisper-transcribe)
+
+AI INTEGRATION:
+  hatch-extract Edge Function (Review & Route)
+  hatch-auto-title Edge Function (tab auto-naming)
+  Helm context (active tabs summary via shouldLoadHatch)
 ```
 
 ---
@@ -1193,98 +1225,150 @@ Every AI interaction includes these context layers (loaded dynamically based on 
 45. **Parent/child task cascade** (Compass tasks: completing all subtasks auto-completes parent + victory prompt, parent→children cascade, bidirectional uncheck) — **BUILT** ✅
 46. **Completed task 7-day filter** (fetchTasksByCategory filters completed tasks to last 7 days in framework views) — **BUILT** ✅
 
+### Phase 13: The Hatch
+47. **Phase 13A:** The Hatch Core (right drawer, tabs, autosave, voice, Send To routing, 10 destinations, inline pickers, routing stats, Settings section) — BUILT
+48. **Phase 13B:** The Hatch AI (Review & Route extraction, hatch-extract Edge Function, full-page mode, history, Edit in Hatch on Helm messages, Helm context integration) — BUILT
+
 ---
 
 ## File Structure
 
 ```
 stewardship/
-â”œâ”€â”€ public/
-â”‚   â”œâ”€â”€ manifest.json
-â”‚   â”œâ”€â”€ sw.js
-â”‚   â””â”€â”€ icons/
-â”œâ”€â”€ src/
-â”‚   â”œâ”€â”€ main.tsx
-â”‚   â”œâ”€â”€ App.tsx
-â”‚   â”œâ”€â”€ styles/
-â”‚   â”‚   â”œâ”€â”€ theme.css          (CSS variables)
-â”‚   â”‚   â””â”€â”€ global.css
-â”‚   â”œâ”€â”€ lib/
-â”‚   â”‚   â”œâ”€â”€ supabase.ts
-â”‚   â”‚   â”œâ”€â”€ ai.ts              (AI provider adapter)
-â”‚   â”‚   â”œâ”€â”€ rag.ts             (embed, store, query)
-â”‚   â”‚   â”œâ”€â”€ whisper.ts         (transcription)
-â”‚   â”‚   â””â”€â”€ types.ts           (ALL shared TypeScript interfaces)
-â”‚   â”œâ”€â”€ hooks/
-â”‚   â”‚   â”œâ”€â”€ useAuth.ts
-â”‚   â”‚   â”œâ”€â”€ useMast.ts
-â”‚   â”‚   â”œâ”€â”€ useKeel.ts
-â”‚   â”‚   â”œâ”€â”€ useLog.ts
-â”‚   â”‚   â”œâ”€â”€ useCompass.ts
-â”‚   â”‚   â”œâ”€â”€ useCharts.ts
-â”‚   â”‚   â”œâ”€â”€ useVictories.ts
-â”‚   â”‚   â”œâ”€â”€ useWheel.ts
-â”‚   â”‚   â”œâ”€â”€ useCrew.ts
-â”‚   â”‚   â”œâ”€â”€ useSphere.ts
-â”‚   â”‚   â”œâ”€â”€ useFirstMate.ts
-â”‚   â”‚   â”œâ”€â”€ useManifest.ts
-â”‚   â”‚   â”œâ”€â”€ useRigging.ts
-â”‚   â”‚   â”œâ”€â”€ useLists.ts
-â”‚   â”‚   â”œâ”€â”€ useMeetings.ts
-â”‚   â”‚   â”œâ”€â”€ useReminders.ts
-â”‚   â”‚   â””â”€â”€ useAI.ts
-â”‚   â”œâ”€â”€ components/
-â”‚   â”‚   â”œâ”€â”€ shared/            (buttons, cards, inputs, modals, tooltips)
-â”‚   â”‚   â”œâ”€â”€ navigation/        (bottom bar, sidebar, routing)
-â”‚   â”‚   â”œâ”€â”€ helm/              (chat UI, message bubbles, voice input, drawer)
-â”‚   â”‚   â”œâ”€â”€ log/               (entry, entry list, tags, routing selector)
-â”‚   â”‚   â”œâ”€â”€ compass/           (task list, view toggles, task item, task breaker, hover descriptions)
-â”‚   â”‚   â”œâ”€â”€ charts/            (graphs, streaks, trackers)
-â”‚   â”‚   â”œâ”€â”€ crowsnest/         (dashboard cards, summary widgets)
-â”‚   â”‚   â”œâ”€â”€ mast/              (principle cards, declaration editor)
-â”‚   â”‚   â”œâ”€â”€ keel/              (personality display, flexible input)
-â”‚   â”‚   â”œâ”€â”€ firstmate/         (spouse profile, nudges, spouse questions)
-â”‚   â”‚   â”œâ”€â”€ crew/              (people list, person card, mentor notes, category view)
-â”‚   â”‚   â”œâ”€â”€ sphere/            (concentric circles visualization, drag/tap)
-â”‚   â”‚   â”œâ”€â”€ safeharbor/        (entry, resource display)
-â”‚   â”‚   â”œâ”€â”€ victories/         (victory list, celebration, filters)
-â”‚   â”‚   â”œâ”€â”€ reveille/          (morning card)
-â”‚   â”‚   â”œâ”€â”€ reckoning/         (evening card, tomorrow prep)
-â”‚   â”‚   â”œâ”€â”€ wheel/             (wheel page, spoke display, rim checkin)
-â”‚   â”‚   â”œâ”€â”€ manifest/          (upload, intake flow, file list)
-â”‚   â”‚   â”œâ”€â”€ rigging/           (plan view, framework selectors, milestone display)
-â”‚   â”‚   â”œâ”€â”€ lists/             (list CRUD, share UI)
-â”‚   â”‚   â”œâ”€â”€ meetings/          (templates, agenda, scheduling)
-â”‚   â”‚   â”œâ”€â”€ lifeinventory/     (assessment, area ratings, gap display)
-â”‚   â”‚   â””â”€â”€ settings/          (all settings panels)
-â”‚   â””â”€â”€ pages/
-â”‚       â”œâ”€â”€ CrowsNest.tsx
-â”‚       â”œâ”€â”€ Compass.tsx
-â”‚       â”œâ”€â”€ Helm.tsx
-â”‚       â”œâ”€â”€ Log.tsx
-â”‚       â”œâ”€â”€ Mast.tsx
-â”‚       â”œâ”€â”€ Keel.tsx
-â”‚       â”œâ”€â”€ Wheel.tsx
-â”‚       â”œâ”€â”€ LifeInventory.tsx
-â”‚       â”œâ”€â”€ Rigging.tsx
-â”‚       â”œâ”€â”€ FirstMate.tsx
-â”‚       â”œâ”€â”€ Crew.tsx
-â”‚       â”œâ”€â”€ Charts.tsx
-â”‚       â”œâ”€â”€ Victories.tsx
-â”‚       â”œâ”€â”€ SafeHarbor.tsx
-â”‚       â”œâ”€â”€ Manifest.tsx
-â”‚       â”œâ”€â”€ Lists.tsx
-â”‚       â”œâ”€â”€ Settings.tsx
-â”‚       â”œâ”€â”€ Onboarding.tsx
-â”‚       â””â”€â”€ Auth.tsx
-â”œâ”€â”€ supabase/
-â”‚   â”œâ”€â”€ migrations/
-â”‚   â””â”€â”€ functions/
-â”œâ”€â”€ CLAUDE.md
-â”œâ”€â”€ package.json
-â”œâ”€â”€ vite.config.ts
-â”œâ”€â”€ tsconfig.json
-â””â”€â”€ README.md
+├── public/
+│   ├── manifest.json
+│   ├── sw.js
+│   └── icons/
+├── src/
+│   ├── main.tsx
+│   ├── App.tsx
+│   ├── styles/
+│   │   ├── theme.css          (CSS variables)
+│   │   ├── global.css
+│   │   └── themes/            (deep-waters.css, hearthstone.css)
+│   ├── contexts/
+│   │   ├── AuthContext.tsx
+│   │   ├── HelmContext.tsx
+│   │   └── ThemeContext.tsx
+│   ├── lib/
+│   │   ├── supabase.ts
+│   │   ├── ai.ts              (AI provider adapter)
+│   │   ├── aiPlacement.ts     (AI task placement for Compass views)
+│   │   ├── appGuide.ts        (in-app help content for AI)
+│   │   ├── bulkCrewParse.ts   (bulk crew import)
+│   │   ├── bulkParse.ts       (AI bulk list item parsing)
+│   │   ├── contextLoader.ts   (AI context assembly)
+│   │   ├── featureGuides.ts   (feature guide content)
+│   │   ├── journalExport.ts   (journal PDF export)
+│   │   ├── meetingAgendas.ts  (default meeting agenda sections)
+│   │   ├── pushNotifications.ts
+│   │   ├── rag.ts             (embed, store, query)
+│   │   ├── reportExport.ts    (report PDF/Markdown export)
+│   │   ├── systemPrompt.ts    (AI system prompt assembly)
+│   │   ├── types.ts           (ALL shared TypeScript interfaces)
+│   │   └── whisper.ts         (transcription)
+│   ├── hooks/
+│   │   ├── useAccomplishments.ts
+│   │   ├── useAuth.ts
+│   │   ├── useCharts.ts
+│   │   ├── useCompass.ts
+│   │   ├── useCrew.ts
+│   │   ├── useCrowsNest.ts
+│   │   ├── useCyrano.ts
+│   │   ├── useFeatureGuide.ts
+│   │   ├── useFirstMate.ts
+│   │   ├── useFrameworks.ts
+│   │   ├── useGoals.ts
+│   │   ├── useHelmData.ts
+│   │   ├── useHiggins.ts
+│   │   ├── useJournalExport.ts
+│   │   ├── useKeel.ts
+│   │   ├── useLifeInventory.ts
+│   │   ├── useLists.ts
+│   │   ├── useLog.ts
+│   │   ├── useManifest.ts
+│   │   ├── useMast.ts
+│   │   ├── useMeetingAgenda.ts
+│   │   ├── useMeetings.ts
+│   │   ├── useMeetingTemplateSections.ts
+│   │   ├── usePageContext.ts
+│   │   ├── usePushNotifications.ts
+│   │   ├── useReflections.ts
+│   │   ├── useReminders.ts
+│   │   ├── useReportGenerator.ts
+│   │   ├── useRhythmCards.ts
+│   │   ├── useRhythms.ts
+│   │   ├── useRigging.ts
+│   │   ├── useRoutineAssignment.ts
+│   │   ├── useRoutineReset.ts
+│   │   ├── useSettings.ts
+│   │   ├── useSphere.ts
+│   │   ├── useUnloadTheHold.ts
+│   │   ├── useVictories.ts
+│   │   ├── useVoiceRecording.ts
+│   │   └── useWheel.ts
+│   ├── components/
+│   │   ├── shared/            (buttons, cards, inputs, modals, tooltips)
+│   │   ├── navigation/        (bottom bar, sidebar, routing)
+│   │   ├── charts/            (graphs, streaks, trackers)
+│   │   ├── compass/           (task list, view toggles, task breaker, lists/)
+│   │   ├── crew/              (people list, person card, Higgins, category view)
+│   │   ├── crowsnest/         (dashboard cards, summary widgets)
+│   │   ├── firstmate/         (partner profile, Cyrano Me, spouse questions)
+│   │   ├── hatch/             (drawer, tabs, routing grid, extraction, history) — Phase 13
+│   │   ├── helm/              (chat UI, message bubbles, voice input, drawer)
+│   │   ├── keel/              (personality display, flexible input)
+│   │   ├── lifeinventory/     (assessment, area display, gap analysis)
+│   │   ├── log/               (entry, entry list, tags, routing selector)
+│   │   ├── manifest/          (upload, intake flow, file list)
+│   │   ├── mast/              (principle cards, declaration editor)
+│   │   ├── meetings/          (templates, agenda, scheduling)
+│   │   ├── reckoning/         (evening card, tomorrow prep)
+│   │   ├── reflections/       (daily questions, response history)
+│   │   ├── reminders/         (reminder list, notification UI)
+│   │   ├── reveille/          (morning card)
+│   │   ├── rhythms/           (rhythm cards)
+│   │   ├── rigging/           (plan view, framework selectors, milestone display)
+│   │   ├── safeharbor/        (entry, resource display)
+│   │   ├── settings/          (all settings panels)
+│   │   ├── sphere/            (sphere view, entity management)
+│   │   ├── victories/         (victory list, celebration, filters)
+│   │   └── wheel/             (wheel page, spoke display, rim checkin)
+│   └── pages/
+│       ├── Auth.tsx
+│       ├── CaptainsBriefing.tsx
+│       ├── Charts.tsx
+│       ├── Compass.tsx
+│       ├── Crew.tsx
+│       ├── CrowsNest.tsx
+│       ├── FirstMate.tsx
+│       ├── Helm.tsx
+│       ├── Keel.tsx
+│       ├── LifeInventory.tsx
+│       ├── Lists.tsx
+│       ├── Log.tsx
+│       ├── Manifest.tsx
+│       ├── Mast.tsx
+│       ├── Meetings.tsx
+│       ├── Onboarding.tsx
+│       ├── Reckoning.tsx
+│       ├── Reflections.tsx
+│       ├── Reports.tsx
+│       ├── Reveille.tsx
+│       ├── Rigging.tsx
+│       ├── SafeHarbor.tsx
+│       ├── Settings.tsx
+│       ├── UnloadTheHold.tsx
+│       ├── Victories.tsx
+│       └── Wheel.tsx
+├── supabase/
+│   ├── migrations/
+│   └── functions/             (14 Edge Functions — see CLAUDE.md inventory)
+├── CLAUDE.md
+├── package.json
+├── vite.config.ts
+├── tsconfig.json
+└── README.md
 ```
 
 ---
@@ -1319,6 +1403,7 @@ stewardship/
 | Phase 9.5+: Routine & List Enhancements | Built ✅ |
 | Accomplishment Rearchitecture | Built ✅ (Victory → Accomplishment model, SparkleOverlay, CompletionNotePrompt, useAccomplishments) |
 | Onboarding Flow | Built ✅ (Welcome → Gender → Relationship Status → Done) |
+| PRD-21: The Hatch (Smart Notepad) | Phase 13 — Not Started |
 
 ---
 

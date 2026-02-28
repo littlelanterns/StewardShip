@@ -1,0 +1,87 @@
+/* Inline picker overlay */
+.hatch-picker {
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-sm) var(--spacing-md) var(--spacing-md);
+  border-top: 1px solid color-mix(in srgb, var(--color-slate-gray) 12%, transparent);
+  flex-shrink: 0;
+  max-height: 50%;
+  overflow-y: auto;
+}
+
+.hatch-picker__header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+}
+
+.hatch-picker__back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.hatch-picker__back:hover {
+  background-color: var(--color-bg-secondary);
+}
+
+.hatch-picker__title {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-heading);
+  margin: 0;
+}
+
+/* Option list */
+.hatch-picker__options {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hatch-picker__option {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  min-height: var(--touch-target-min, 44px);
+  transition: background-color var(--transition-fast);
+}
+
+.hatch-picker__option:hover {
+  background-color: var(--color-bg-secondary);
+}
+
+.hatch-picker__option--selected {
+  background-color: color-mix(in srgb, var(--color-deep-teal) 10%, transparent);
+  font-weight: var(--font-weight-medium);
+}
+
+/* Empty state */
+.hatch-picker__empty {
+  padding: var(--spacing-md);
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+/* Loading */
+.hatch-picker__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-lg);
+}

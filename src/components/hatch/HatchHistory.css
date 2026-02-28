@@ -1,0 +1,120 @@
+.hatch-history {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.hatch-history__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--color-warm-sand);
+  flex-shrink: 0;
+}
+
+.hatch-history__search {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.hatch-history__search-icon {
+  position: absolute;
+  left: 0.5rem;
+  color: var(--color-slate-gray);
+  pointer-events: none;
+}
+
+.hatch-history__search-input {
+  width: 100%;
+  padding: 0.4rem 0.5rem 0.4rem 1.75rem;
+  font-size: 0.85rem;
+  font-family: var(--font-body, Arial, sans-serif);
+  border: 1px solid var(--color-warm-sand);
+  border-radius: 6px;
+  background: var(--color-white);
+  color: var(--color-navy);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.hatch-history__search-input:focus {
+  border-color: var(--color-mid-teal);
+}
+
+.hatch-history__filter-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: 1px solid var(--color-warm-sand);
+  border-radius: 6px;
+  color: var(--color-slate-gray);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.hatch-history__filter-toggle:hover,
+.hatch-history__filter-toggle--active {
+  border-color: var(--color-mid-teal);
+  color: var(--color-mid-teal);
+}
+
+.hatch-history__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--color-warm-sand);
+  flex-shrink: 0;
+}
+
+.hatch-history__filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1;
+  min-width: 100px;
+}
+
+.hatch-history__filter-label {
+  font-size: 0.7rem;
+  color: var(--color-slate-gray);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.hatch-history__filter-select {
+  padding: 0.3rem 0.4rem;
+  font-size: 0.8rem;
+  font-family: var(--font-body, Arial, sans-serif);
+  border: 1px solid var(--color-warm-sand);
+  border-radius: 4px;
+  background: var(--color-white);
+  color: var(--color-navy);
+  cursor: pointer;
+}
+
+.hatch-history__list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem 0.75rem;
+}
+
+.hatch-history__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.hatch-history__empty {
+  text-align: center;
+  color: var(--color-slate-gray);
+  font-size: 0.9rem;
+  padding: 2rem 1rem;
+}

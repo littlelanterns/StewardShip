@@ -4,6 +4,7 @@ import BottomTabBar from './BottomTabBar';
 import Sidebar from './Sidebar';
 import MoreMenu from './MoreMenu';
 import HelmDrawer from '../helm/HelmDrawer';
+import HatchDrawer from '../hatch/HatchDrawer';
 import GuidedHelmModal from '../helm/GuidedHelmModal';
 import { SundayReflection } from '../rhythms/SundayReflection';
 import { useRhythmCards } from '../../hooks/useRhythmCards';
@@ -51,6 +52,7 @@ export default function AppLayout() {
       <BottomTabBar onMorePress={handleMorePress} moreOpen={moreOpen} />
       <MoreMenu open={moreOpen} onClose={handleMoreClose} />
       <HelmDrawer />
+      <HatchDrawer />
       <GuidedHelmModal />
 
       {/* Sunday Reflection overlay — shows on configured day */}

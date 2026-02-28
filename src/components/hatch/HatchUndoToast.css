@@ -1,0 +1,71 @@
+/* Undo toast */
+.hatch-undo-toast {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  margin: var(--spacing-sm) var(--spacing-md);
+  background-color: color-mix(in srgb, var(--color-deep-teal) 10%, var(--color-cream));
+  border: 1px solid color-mix(in srgb, var(--color-deep-teal) 20%, transparent);
+  border-radius: var(--radius-md);
+  animation: hatch-undo-slide-in 0.2s ease-out;
+}
+
+@keyframes hatch-undo-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hatch-undo-toast__message {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hatch-undo-toast__btn {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-cognac);
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  transition: background-color var(--transition-fast);
+}
+
+.hatch-undo-toast__btn:hover {
+  background-color: color-mix(in srgb, var(--color-cognac) 10%, transparent);
+}
+
+/* Progress bar */
+.hatch-undo-toast__progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background-color: var(--color-cognac);
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  animation: hatch-undo-countdown 5s linear forwards;
+}
+
+@keyframes hatch-undo-countdown {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}

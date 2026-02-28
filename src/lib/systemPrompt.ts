@@ -35,6 +35,7 @@ export interface SystemPromptContext {
   meetingContext?: string;
   meetingSections?: MeetingTemplateSection[];
   reflectionsContext?: string;
+  hatchContext?: string;
   appGuideContext?: string;
   pageContext: string;
   guidedMode?: GuidedMode;
@@ -608,6 +609,7 @@ function formatPageContext(pageContext: string): string {
     lists: 'Lists',
     reveille: 'Reveille (Morning)',
     reckoning: 'Reckoning (Evening)',
+    hatch: 'The Hatch (Capture & Route)',
   };
 
   const label = pageLabels[pageContext] || pageContext;
@@ -834,6 +836,14 @@ When referencing this material: paraphrase, attribute the source by title, never
     if (currentTokens + reflTokens < budget) {
       prompt += context.reflectionsContext;
       currentTokens += reflTokens;
+    }
+  }
+
+  if (context.hatchContext) {
+    const hatchTokens = estimateTokens(context.hatchContext);
+    if (currentTokens + hatchTokens < budget) {
+      prompt += context.hatchContext;
+      currentTokens += hatchTokens;
     }
   }
 
@@ -1429,6 +1439,8 @@ const APP_GUIDE_KEYWORDS = [
   'settings', 'where are my', 'how do you',
   'what features', 'what can you do', 'what can i do',
   'tutorial', 'walkthrough', 'getting started',
+  'hatch', 'notepad', 'capture', 'send to', 'route', 'review and route',
+  'edit in hatch', 'jot down', 'quick note', 'brain dump',
 ];
 
 // --- Reflections context ---
@@ -1452,6 +1464,32 @@ export function formatReflectionsContext(
   let result = '\n\nRECENT REFLECTIONS:\n';
   for (const r of responses.slice(0, 10)) {
     result += `- [${r.response_date}] Q: ${r.question_text}\n  A: ${r.response_text.length > 150 ? r.response_text.slice(0, 147) + '...' : r.response_text}\n`;
+  }
+  return result;
+}
+
+// --- Hatch context ---
+
+const HATCH_KEYWORDS = [
+  'notepad', 'hatch', 'note', 'jotted', 'wrote down',
+  'captured', 'drafting', 'jot', 'scratch pad',
+];
+
+export function shouldLoadHatch(message: string, pageContext: string): boolean {
+  if (pageContext === 'hatch') return true;
+  const lower = message.toLowerCase();
+  return HATCH_KEYWORDS.some((kw) => lower.includes(kw));
+}
+
+export function formatHatchContext(
+  tabs: Array<{ title: string; content: string }>,
+): string {
+  if (tabs.length === 0) return '';
+
+  let result = `\n\nACTIVE HATCH TABS:\nThe user has ${tabs.length} active tab${tabs.length !== 1 ? 's' : ''} in The Hatch:\n`;
+  for (const tab of tabs.slice(0, 5)) {
+    const preview = tab.content.length > 100 ? tab.content.slice(0, 97) + '...' : tab.content;
+    result += `- "${tab.title}" — ${preview}\n`;
   }
   return result;
 }

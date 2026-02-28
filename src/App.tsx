@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { HelmProvider } from './contexts/HelmContext';
+import { HatchProvider } from './contexts/HatchContext';
 import ProtectedRoute from './components/shared/ProtectedRoute';
 import AppLayout from './components/navigation/AppLayout';
 import Auth from './pages/Auth';
@@ -29,6 +30,7 @@ import Reports from './pages/Reports';
 import Reveille from './pages/Reveille';
 import Reckoning from './pages/Reckoning';
 import UnloadTheHold from './pages/UnloadTheHold';
+import Hatch from './pages/Hatch';
 import CaptainsBriefing from './pages/CaptainsBriefing';
 import { RhythmInterceptor } from './components/navigation/RhythmInterceptor';
 
@@ -54,7 +56,9 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <HelmProvider>
-                    <AppLayout />
+                    <HatchProvider>
+                      <AppLayout />
+                    </HatchProvider>
                   </HelmProvider>
                 </ProtectedRoute>
               }
@@ -82,6 +86,7 @@ export default function App() {
               <Route path="reveille" element={<Reveille />} />
               <Route path="reckoning" element={<Reckoning />} />
               <Route path="unload-the-hold" element={<UnloadTheHold />} />
+              <Route path="hatch" element={<Hatch />} />
               <Route path="captains-briefing" element={<CaptainsBriefing />} />
             </Route>
 

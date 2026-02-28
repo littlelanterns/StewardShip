@@ -1,0 +1,208 @@
+.hatch-extracted-card {
+  background: var(--color-white);
+  border: 1px solid var(--color-warm-sand);
+  border-radius: 8px;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.hatch-extracted-card--routed,
+.hatch-extracted-card--skipped {
+  opacity: 0.5;
+  padding: 0.5rem 0.75rem;
+}
+
+.hatch-extracted-card__routed-label,
+.hatch-extracted-card__skipped-label {
+  font-size: 0.8rem;
+  color: var(--color-slate-gray);
+  font-style: italic;
+}
+
+.hatch-extracted-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.hatch-extracted-card__type-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-mid-teal);
+  background: color-mix(in srgb, var(--color-mid-teal) 10%, transparent);
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+}
+
+.hatch-extracted-card__confidence {
+  font-size: 0.7rem;
+  color: var(--color-slate-gray);
+}
+
+.hatch-extracted-card__body {
+  margin-bottom: 0.5rem;
+}
+
+.hatch-extracted-card__text {
+  font-size: 0.9rem;
+  color: var(--color-navy);
+  line-height: 1.4;
+  margin: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+}
+
+.hatch-extracted-card__edit-btn {
+  background: none;
+  border: none;
+  color: var(--color-slate-gray);
+  cursor: pointer;
+  padding: 2px;
+  flex-shrink: 0;
+  opacity: 0.5;
+  transition: opacity 0.15s;
+}
+
+.hatch-extracted-card__edit-btn:hover {
+  opacity: 1;
+}
+
+.hatch-extracted-card__edit-textarea {
+  width: 100%;
+  font-size: 0.9rem;
+  font-family: var(--font-body, Arial, sans-serif);
+  color: var(--color-navy);
+  border: 1px solid var(--color-mid-teal);
+  border-radius: 4px;
+  padding: 0.5rem;
+  resize: vertical;
+  line-height: 1.4;
+}
+
+.hatch-extracted-card__edit-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+
+.hatch-extracted-card__edit-save,
+.hatch-extracted-card__edit-cancel {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+}
+
+.hatch-extracted-card__edit-save {
+  background: var(--color-mid-teal);
+  color: var(--color-white);
+}
+
+.hatch-extracted-card__edit-cancel {
+  background: var(--color-warm-sand);
+  color: var(--color-navy);
+}
+
+.hatch-extracted-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.hatch-extracted-card__accept {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: var(--color-mid-teal);
+  color: var(--color-white);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.hatch-extracted-card__accept:hover:not(:disabled) {
+  background: var(--color-dark-teal);
+}
+
+.hatch-extracted-card__change-dest {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem;
+  background: var(--color-warm-sand);
+  color: var(--color-navy);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.hatch-extracted-card__change-dest:hover:not(:disabled) {
+  background: var(--color-slate-gray);
+  color: var(--color-white);
+}
+
+.hatch-extracted-card__skip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem;
+  background: none;
+  color: var(--color-slate-gray);
+  border: 1px solid var(--color-warm-sand);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.hatch-extracted-card__skip:hover:not(:disabled) {
+  border-color: var(--color-slate-gray);
+  color: var(--color-navy);
+}
+
+.hatch-extracted-card__accept:disabled,
+.hatch-extracted-card__change-dest:disabled,
+.hatch-extracted-card__skip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.hatch-extracted-card__dest-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--color-warm-sand);
+}
+
+.hatch-extracted-card__dest-option {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--color-warm-sand);
+  border-radius: 4px;
+  background: var(--color-white);
+  color: var(--color-navy);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.hatch-extracted-card__dest-option:hover {
+  background: var(--color-warm-sand);
+}
+
+.hatch-extracted-card__dest-option--suggested {
+  border-color: var(--color-mid-teal);
+  background: color-mix(in srgb, var(--color-mid-teal) 8%, transparent);
+}

@@ -1,0 +1,121 @@
+.hatch-history-item {
+  background: var(--color-white);
+  border: 1px solid var(--color-warm-sand);
+  border-radius: 8px;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  transition: border-color 0.15s;
+}
+
+.hatch-history-item:hover {
+  border-color: var(--color-slate-gray);
+}
+
+.hatch-history-item--routed {
+  border-left: 3px solid var(--color-mid-teal);
+}
+
+.hatch-history-item--archived {
+  opacity: 0.75;
+}
+
+.hatch-history-item__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.hatch-history-item__title {
+  font-family: var(--font-heading, Georgia, serif);
+  font-size: 0.9rem;
+  color: var(--color-navy);
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hatch-history-item__date {
+  font-size: 0.7rem;
+  color: var(--color-slate-gray);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.hatch-history-item__preview {
+  font-size: 0.8rem;
+  color: var(--color-slate-gray);
+  line-height: 1.4;
+  margin: 0 0 0.5rem;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.hatch-history-item__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.hatch-history-item__status {
+  flex: 1;
+}
+
+.hatch-history-item__dest-tag {
+  font-size: 0.7rem;
+  padding: 0.1rem 0.4rem;
+  border: 1px solid;
+  border-radius: 4px;
+  color: var(--color-navy);
+}
+
+.hatch-history-item__archived-tag {
+  font-size: 0.7rem;
+  padding: 0.1rem 0.4rem;
+  border: 1px solid var(--color-warm-sand);
+  border-radius: 4px;
+  color: var(--color-slate-gray);
+}
+
+.hatch-history-item__active-tag {
+  font-size: 0.7rem;
+  padding: 0.1rem 0.4rem;
+  border: 1px solid var(--color-mid-teal);
+  border-radius: 4px;
+  color: var(--color-mid-teal);
+}
+
+.hatch-history-item__actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.hatch-history-item__action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: none;
+  border: 1px solid var(--color-warm-sand);
+  border-radius: 6px;
+  color: var(--color-slate-gray);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.hatch-history-item__action-btn:hover {
+  border-color: var(--color-slate-gray);
+  color: var(--color-navy);
+}
+
+.hatch-history-item__action-btn--delete:hover {
+  border-color: var(--color-cognac);
+  color: var(--color-cognac);
+}

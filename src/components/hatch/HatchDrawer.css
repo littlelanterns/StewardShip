@@ -1,0 +1,112 @@
+/* Backdrop — only on mobile */
+.hatch-drawer__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 149;
+  background-color: rgba(0, 0, 0, 0.3);
+  transition: opacity var(--transition-normal);
+}
+
+@media (min-width: 768px) {
+  .hatch-drawer__backdrop {
+    display: none;
+  }
+}
+
+/* Drawer container — right side */
+.hatch-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 380px;
+  max-width: 100vw;
+  z-index: 150;
+  background-color: var(--color-bg-card);
+  border-left: 1px solid color-mix(in srgb, var(--color-slate-gray) 20%, transparent);
+  box-shadow: -2px 0 16px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform var(--transition-normal);
+  overflow: hidden;
+}
+
+.hatch-drawer--open {
+  transform: translateX(0);
+}
+
+/* Mobile: full width */
+@media (max-width: 767px) {
+  .hatch-drawer {
+    width: 100vw;
+  }
+}
+
+/* Header */
+.hatch-drawer__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-slate-gray) 15%, transparent);
+  flex-shrink: 0;
+}
+
+.hatch-drawer__title {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-md);
+  color: var(--color-text-heading);
+  margin: 0;
+}
+
+.hatch-drawer__controls {
+  display: flex;
+  gap: var(--spacing-xs);
+  flex-shrink: 0;
+}
+
+.hatch-drawer__control-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.hatch-drawer__control-btn:hover {
+  background-color: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+}
+
+/* Content area */
+.hatch-drawer__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Empty state */
+.hatch-drawer__empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xl);
+  text-align: center;
+}
+
+.hatch-drawer__empty-text {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}

@@ -1,0 +1,108 @@
+/* Tab bar container */
+.hatch-tab-bar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-slate-gray) 12%, transparent);
+  overflow-x: auto;
+  flex-shrink: 0;
+  scrollbar-width: none;
+}
+
+.hatch-tab-bar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Individual tab */
+.hatch-tab-bar__tab {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-heading);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  max-width: 140px;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.hatch-tab-bar__tab:hover {
+  background-color: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+}
+
+.hatch-tab-bar__tab--active {
+  background-color: color-mix(in srgb, var(--color-deep-teal) 8%, var(--color-cream));
+  color: var(--color-text-heading);
+  border-bottom: 2px solid var(--color-deep-teal);
+}
+
+/* Tab title — truncated */
+.hatch-tab-bar__tab-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* Editable tab title */
+.hatch-tab-bar__tab-title--editing {
+  outline: none;
+  border-bottom: 1px dashed var(--color-mid-teal);
+}
+
+/* Close button on tab */
+.hatch-tab-bar__tab-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity var(--transition-fast), background-color var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.hatch-tab-bar__tab:hover .hatch-tab-bar__tab-close {
+  opacity: 1;
+}
+
+.hatch-tab-bar__tab-close:hover {
+  background-color: color-mix(in srgb, var(--color-slate-gray) 20%, transparent);
+  color: var(--color-text-primary);
+}
+
+/* New tab button */
+.hatch-tab-bar__new {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  color: var(--color-mid-teal);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color var(--transition-fast);
+}
+
+.hatch-tab-bar__new:hover {
+  background-color: color-mix(in srgb, var(--color-mid-teal) 10%, transparent);
+}
+
+/* Tab count warning */
+.hatch-tab-bar__warning {
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  color: var(--color-cognac);
+  padding: 0 var(--spacing-xs);
+  flex-shrink: 0;
+}
