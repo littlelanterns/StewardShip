@@ -1,3 +1,38 @@
+/* Pull tab — visible on right edge when drawer is closed */
+.hatch-drawer__pull-tab {
+  position: fixed;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 148;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 64px;
+  background-color: var(--color-bg-card);
+  border: 1px solid color-mix(in srgb, var(--color-slate-gray) 20%, transparent);
+  border-right: none;
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.08);
+  color: var(--color-cognac);
+  cursor: pointer;
+  transition: width var(--transition-fast), background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.hatch-drawer__pull-tab:hover {
+  width: 34px;
+  background-color: color-mix(in srgb, var(--color-cognac) 8%, var(--color-bg-card));
+  color: var(--color-cognac-dark, var(--color-cognac));
+}
+
+/* Hide pull tab on mobile — use nav buttons instead */
+@media (max-width: 767px) {
+  .hatch-drawer__pull-tab {
+    display: none;
+  }
+}
+
 /* Backdrop — only on mobile */
 .hatch-drawer__backdrop {
   position: fixed;

@@ -1,6 +1,6 @@
 import { useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Maximize2, X } from 'lucide-react';
+import { Inbox, Maximize2, X } from 'lucide-react';
 import { useHatchContext } from '../../contexts/HatchContext';
 import HatchTabBar from './HatchTabBar';
 import HatchTabContent from './HatchTabContent';
@@ -10,6 +10,7 @@ import './HatchDrawer.css';
 export default function HatchDrawer() {
   const {
     isOpen,
+    openHatch,
     closeHatch,
     tabs,
     activeTabId,
@@ -46,6 +47,19 @@ export default function HatchDrawer() {
 
   return (
     <>
+      {/* Pull tab — always visible on right edge when drawer is closed */}
+      {!isOpen && (
+        <button
+          type="button"
+          className="hatch-drawer__pull-tab"
+          onClick={openHatch}
+          aria-label="Open The Hatch"
+          title="The Hatch"
+        >
+          <Inbox size={16} strokeWidth={1.5} />
+        </button>
+      )}
+
       {/* Backdrop — mobile only */}
       {isOpen && (
         <div
