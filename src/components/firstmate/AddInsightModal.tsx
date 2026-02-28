@@ -234,7 +234,7 @@ export function AddInsightModal({ onClose, onSave, preselectedCategory }: AddIns
                 ref={fileInputRef}
                 type="file"
                 accept=".pdf,.png,.jpg,.jpeg,.webp,.md,.txt,.docx"
-                style={{ display: 'none' }}
+                style={{ position: 'absolute', width: '1px', height: '1px', opacity: 0, overflow: 'hidden', pointerEvents: 'none' }}
                 onChange={handleFileSelect}
               />
               <Button
