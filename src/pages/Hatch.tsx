@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useHatchContext } from '../contexts/HatchContext';
 import { usePageContext } from '../hooks/usePageContext';
-import { useFeatureGuide } from '../hooks/useFeatureGuide';
 import { FeatureGuide } from '../components/shared';
 import HatchTabBar from '../components/hatch/HatchTabBar';
 import HatchTabContent from '../components/hatch/HatchTabContent';
@@ -26,8 +25,6 @@ export default function Hatch() {
   } = useHatchContext();
 
   const [activePageTab, setActivePageTab] = useState<HatchPageTab>('workspace');
-  const featureGuide = useFeatureGuide('hatch');
-
   useEffect(() => {
     enterFullPage();
     return () => exitFullPage();
@@ -64,12 +61,12 @@ export default function Hatch() {
         </div>
       </div>
 
-      {featureGuide.show && (
-        <FeatureGuide
-          featureKey="hatch"
-          onDismiss={featureGuide.dismiss}
-        />
-      )}
+      <FeatureGuide
+        featureKey="hatch"
+        title="The Hatch"
+        description="Capture anything here — type or speak. When you're ready, tap &quot;Send to...&quot; and route it to The Log, Compass, Lists, or anywhere else."
+        tips={["Use voice input for hands-free capture", "Tabs persist across sessions until you send or archive them"]}
+      />
 
       {activePageTab === 'workspace' ? (
         <div className="hatch-page__workspace">
@@ -77,7 +74,7 @@ export default function Hatch() {
             tabs={tabs}
             activeTabId={activeTabId}
             onSelectTab={setActiveTabId}
-            onCreateTab={() => createTab()}
+            onNewTab={() => createTab()}
             onCloseTab={closeTab}
             onRenameTab={updateTabTitle}
           />
