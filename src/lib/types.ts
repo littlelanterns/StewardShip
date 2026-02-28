@@ -1743,8 +1743,8 @@ export const HATCH_DESTINATION_CONFIG: Record<
   { label: string; icon: string; accentColor: string }
 > = {
   log: { label: 'The Log', icon: 'BookOpen', accentColor: 'var(--color-deep-teal)' },
-  compass_individual: { label: 'Tasks (Individual)', icon: 'CheckSquare', accentColor: 'var(--color-gold)' },
-  compass_single: { label: 'Single Task', icon: 'ClipboardCheck', accentColor: 'var(--color-gold)' },
+  compass_individual: { label: 'Tasks (Break Down)', icon: 'CheckSquare', accentColor: 'var(--color-gold)' },
+  compass_single: { label: 'Tasks (Single)', icon: 'ClipboardCheck', accentColor: 'var(--color-gold)' },
   lists: { label: 'Lists', icon: 'List', accentColor: 'var(--color-mid-teal)' },
   victory: { label: 'Victory', icon: 'Trophy', accentColor: 'var(--color-gold)' },
   keel: { label: 'The Keel', icon: 'Compass', accentColor: 'var(--color-cognac)' },

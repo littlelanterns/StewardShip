@@ -316,13 +316,16 @@ export function useHatch() {
         switch (destination) {
           case 'log': {
             const { data, error: err } = await supabase
-              .from('journal_entries')
+              .from('log_entries')
               .insert({
                 user_id: user.id,
-                content,
+                text: content,
                 entry_type: 'journal',
                 source: 'hatch',
                 source_reference_id: tabId,
+                life_area_tags: [],
+                routed_to: [],
+                routed_reference_ids: {},
               })
               .select('id')
               .single();
@@ -521,13 +524,16 @@ export function useHatch() {
 
           case 'note': {
             const { data, error: err } = await supabase
-              .from('journal_entries')
+              .from('log_entries')
               .insert({
                 user_id: user.id,
-                content,
+                text: content,
                 entry_type: 'quick_note',
                 source: 'hatch',
                 source_reference_id: tabId,
+                life_area_tags: [],
+                routed_to: [],
+                routed_reference_ids: {},
               })
               .select('id')
               .single();
@@ -544,7 +550,7 @@ export function useHatch() {
               .from('meeting_agenda_items')
               .insert({
                 user_id: user.id,
-                meeting_id: options.meetingId,
+                discussed_in_meeting_id: options.meetingId,
                 text: content,
                 source_hatch_tab_id: tabId,
                 sort_order: 0,
@@ -627,13 +633,13 @@ export function useHatch() {
         // Delete the destination record if we have an ID
         if (destinationId) {
           const tableMap: Partial<Record<HatchRoutingDestination, string>> = {
-            log: 'journal_entries',
+            log: 'log_entries',
             compass_single: 'compass_tasks',
             compass_individual: 'compass_tasks',
             victory: 'victories',
             keel: 'keel_entries',
             mast: 'mast_entries',
-            note: 'journal_entries',
+            note: 'log_entries',
             agenda: 'meeting_agenda_items',
             charts: 'goal_entries',
           };
@@ -721,7 +727,7 @@ export function useHatch() {
             .from('custom_trackers')
             .select('name')
             .eq('user_id', user.id)
-            .eq('is_active', true),
+            .is('archived_at', null),
           supabase
             .from('meeting_schedules')
             .select('meeting_type, custom_title')
@@ -798,13 +804,16 @@ export function useHatch() {
       switch (destination) {
         case 'log': {
           const { data, error: err } = await supabase
-            .from('journal_entries')
+            .from('log_entries')
             .insert({
               user_id: user.id,
-              content,
+              text: content,
               entry_type: 'journal',
               source: 'hatch',
               source_reference_id: item.hatch_tab_id,
+              life_area_tags: [],
+              routed_to: [],
+              routed_reference_ids: {},
             })
             .select('id')
             .single();
@@ -882,13 +891,16 @@ export function useHatch() {
         }
         case 'note': {
           const { data, error: err } = await supabase
-            .from('journal_entries')
+            .from('log_entries')
             .insert({
               user_id: user.id,
-              content,
+              text: content,
               entry_type: 'quick_note',
               source: 'hatch',
               source_reference_id: item.hatch_tab_id,
+              life_area_tags: [],
+              routed_to: [],
+              routed_reference_ids: {},
             })
             .select('id')
             .single();

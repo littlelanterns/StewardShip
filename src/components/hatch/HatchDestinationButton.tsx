@@ -1,7 +1,6 @@
 import {
   BookOpen,
   CheckSquare,
-  ClipboardCheck,
   List,
   Trophy,
   Compass,
@@ -17,7 +16,6 @@ import './HatchDestinationButton.css';
 const ICON_MAP: Record<string, React.ComponentType<{ size?: number; strokeWidth?: number }>> = {
   BookOpen,
   CheckSquare,
-  ClipboardCheck,
   List,
   Trophy,
   Compass,
@@ -27,10 +25,19 @@ const ICON_MAP: Record<string, React.ComponentType<{ size?: number; strokeWidth?
   BarChart2,
 };
 
+// Virtual 'compass' button config (not a real HatchRoutingDestination)
+const COMPASS_VIRTUAL_CONFIG = {
+  label: 'Tasks',
+  icon: 'CheckSquare',
+  accentColor: 'var(--color-gold)',
+};
+
+type ButtonDestination = HatchRoutingDestination | 'compass';
+
 interface HatchDestinationButtonProps {
-  destination: HatchRoutingDestination;
+  destination: ButtonDestination;
   variant?: 'default' | 'favorite';
-  onClick: (destination: HatchRoutingDestination) => void;
+  onClick: (destination: ButtonDestination) => void;
 }
 
 export default function HatchDestinationButton({
@@ -38,7 +45,10 @@ export default function HatchDestinationButton({
   variant = 'default',
   onClick,
 }: HatchDestinationButtonProps) {
-  const config = HATCH_DESTINATION_CONFIG[destination];
+  const config =
+    destination === 'compass'
+      ? COMPASS_VIRTUAL_CONFIG
+      : HATCH_DESTINATION_CONFIG[destination];
   const IconComponent = ICON_MAP[config.icon];
 
   return (

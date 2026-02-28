@@ -66,6 +66,45 @@
   color: var(--color-text-primary);
 }
 
+/* Compass task mode picker */
+.hatch-send-grid__compass-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.hatch-send-grid__compass-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background-color: color-mix(in srgb, var(--color-gold) 6%, var(--color-cream));
+  border: 1px solid color-mix(in srgb, var(--color-gold) 20%, transparent);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: left;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.hatch-send-grid__compass-option:hover {
+  background-color: color-mix(in srgb, var(--color-gold) 12%, var(--color-cream));
+  border-color: color-mix(in srgb, var(--color-gold) 40%, transparent);
+}
+
+.hatch-send-grid__compass-option-title {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-deep-brown);
+}
+
+.hatch-send-grid__compass-option-desc {
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  color: var(--color-slate-gray);
+}
+
 /* Loading overlay */
 .hatch-send-grid__loading {
   display: flex;
