@@ -14,6 +14,7 @@ export interface GuidedModeContext {
 export interface SystemPromptContext {
   displayName: string;
   mastEntries: MastEntry[];
+  sllExposures?: Record<string, number>;
   keelEntries?: KeelEntry[];
   recentJournalEntries?: JournalEntry[];
   recentVictories?: Victory[];
@@ -56,7 +57,28 @@ function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4);
 }
 
-function buildBasePrompt(displayName: string): string {
+function buildBasePrompt(displayName: string, sllExposures?: Record<string, number>): string {
+  // Build exposure-aware SLL instruction
+  const sllKeys = 'should_vs_must, core_vs_surface, owner_vs_victim, wanting_vs_creating, commitment_vs_trying, commitment_vs_involvement, dream_vs_project, stop_stopping, worry_vs_concern, corrective_vs_protective, purpose_management, now_vs_later, focus_vs_spray, playing_to_win, positive_no, discomfort_vs_chaos, productivity_vs_busyness, kind_vs_nice, agreements_vs_expectations, radical_self_honesty';
+
+  let sllExposureNote = '';
+  if (sllExposures && Object.keys(sllExposures).length > 0) {
+    const familiar = Object.entries(sllExposures)
+      .filter(([, count]) => count >= 2)
+      .map(([key]) => key);
+    if (familiar.length > 0) {
+      sllExposureNote = `\nThe user is already familiar with these SLL terms (use shorthand, no explanation needed): ${familiar.join(', ')}.`;
+      const allKeys = sllKeys.split(', ').map((k) => k.trim());
+      const newTerms = allKeys.filter((k) => !familiar.includes(k));
+      if (newTerms.length > 0) {
+        sllExposureNote += `\nFor these terms, weave in a brief natural explanation on first use: ${newTerms.join(', ')}.`;
+      }
+    }
+  }
+  if (!sllExposureNote) {
+    sllExposureNote = '\nThe user has not encountered SLL terms yet. When you first use a term, weave in a brief natural explanation of the distinction.';
+  }
+
   return `You are the Helm — the AI guide aboard StewardShip, a personal growth companion app with nautical theming.
 
 You are speaking with ${displayName || 'the user'}. You are warm, direct, and purposeful. You are a counselor, not a coach. You listen before advising.
@@ -90,9 +112,9 @@ You are familiar with these frameworks and apply their principles naturally with
 
 STRAIGHT LINE LEADERSHIP (SLL) LANGUAGE:
 When applying SLL concepts, wrap the FIRST occurrence of an SLL term per message in [[sll:key]] markers. Available keys:
-should_vs_must, core_vs_surface, owner_vs_victim, wanting_vs_creating, commitment_vs_trying, commitment_vs_involvement, dream_vs_project, stop_stopping, worry_vs_concern, corrective_vs_protective, purpose_management, now_vs_later, focus_vs_spray, playing_to_win, positive_no, discomfort_vs_chaos, productivity_vs_busyness, kind_vs_nice, agreements_vs_expectations, radical_self_honesty.
+${sllKeys}.
 Example: "That sounds like a [[sll:should_vs_must]] moment — is this something you feel you should do, or something you must do?"
-Only mark the first use of each term per message. Use SLL language naturally when the conversation touches on commitment, ownership, productivity, or personal responsibility.`;
+Only mark the first use of each term per message. Use SLL language naturally when the conversation touches on commitment, ownership, productivity, or personal responsibility.${sllExposureNote}`;
 }
 
 function formatMastEntries(entries: MastEntry[]): string {
@@ -627,7 +649,7 @@ export function buildSystemPrompt(context: SystemPromptContext): string {
   const budget = BUDGET_LIMITS[context.contextBudget] || BUDGET_LIMITS.medium;
 
   // Always-included sections
-  let prompt = buildBasePrompt(context.displayName);
+  let prompt = buildBasePrompt(context.displayName, context.sllExposures);
   prompt += formatMastEntries(context.mastEntries);
   prompt += formatPageContext(context.pageContext);
 

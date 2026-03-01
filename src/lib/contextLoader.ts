@@ -61,11 +61,11 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     contextBudget = 'medium',
   } = options;
 
-  // Always fetch: user profile and Mast entries
+  // Always fetch: user profile (with SLL exposures) and Mast entries
   const [profileResult, mastResult] = await Promise.all([
     supabase
       .from('user_profiles')
-      .select('display_name')
+      .select('display_name, sll_exposures')
       .eq('user_id', userId)
       .maybeSingle(),
     supabase
@@ -77,6 +77,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
   ]);
 
   const displayName = profileResult.data?.display_name || '';
+  const sllExposures = (profileResult.data?.sll_exposures as Record<string, number>) || {};
   const mastEntries = (mastResult.data as MastEntry[]) || [];
 
   // Conditionally fetch based on keyword detection
@@ -696,6 +697,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
   return {
     displayName,
     mastEntries,
+    sllExposures,
     keelEntries,
     recentJournalEntries,
     recentVictories,
