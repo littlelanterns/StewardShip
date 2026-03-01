@@ -106,7 +106,7 @@ export function PrioritiesView({ onAddClick }: PrioritiesViewProps) {
       <EmptyState
         heading="No priorities yet"
         message="Add priorities to track what you're committed to. Organize them by tier to keep your focus sharp."
-        action={{ label: 'Add Priority', onClick: onAddClick }}
+        action={<button type="button" className="btn btn--primary" onClick={onAddClick}>Add Priority</button>}
       />
     );
   }

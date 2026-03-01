@@ -73,7 +73,7 @@ export function BulkAddWithAISort({
         const parsed = JSON.parse(jsonMatch[0]);
         if (Array.isArray(parsed)) {
           const items: ParsedBulkItem[] = parsed
-            .map((item) => {
+            .map((item): ParsedBulkItem | null => {
               if (typeof item === 'string') {
                 return { text: item.trim(), category: defaultCategory, selected: true };
               }

@@ -115,11 +115,10 @@ export default function Rigging() {
     });
     if (plan) {
       for (let i = 0; i < items.length; i++) {
-        await createMilestone({
-          plan_id: plan.id,
+        await createMilestone(plan.id, {
           title: items[i].text,
           sort_order: i,
-          status: 'pending',
+          status: 'not_started',
         });
       }
       await fetchPlan(plan.id);
