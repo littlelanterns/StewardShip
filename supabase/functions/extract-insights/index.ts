@@ -96,65 +96,60 @@ serve(async (req: Request) => {
 
     const systemPrompt = extraction_target === 'spouse' ? SPOUSE_PROMPT : KEEL_PROMPT;
     const isImage = ['png', 'jpg', 'jpeg', 'webp'].includes((file_type || '').toLowerCase());
+    const lowerType = (file_type || '').toLowerCase();
     let extractedTextLength = 0;
 
     // Build the AI request based on file type
     let messages: unknown[];
+    const arrayBuffer = await fileData.arrayBuffer();
+    const bytes = new Uint8Array(arrayBuffer);
 
     if (isImage) {
       // Vision request — encode image as base64
-      const arrayBuffer = await fileData.arrayBuffer();
-      const bytes = new Uint8Array(arrayBuffer);
-      const base64Data = btoa(String.fromCharCode(...bytes));
-
-      const mimeMap: Record<string, string> = {
-        png: 'image/png',
-        jpg: 'image/jpeg',
-        jpeg: 'image/jpeg',
-        webp: 'image/webp',
-      };
-      const mimeType = mimeMap[file_type.toLowerCase()] || 'image/png';
-
-      messages = [
-        { role: 'system', content: systemPrompt },
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'image_url',
-              image_url: { url: `data:${mimeType};base64,${base64Data}` },
-            },
-            { type: 'text', text: 'Extract insights from this image.' },
-          ],
-        },
-      ];
-      extractedTextLength = 0; // Images don't have extractable text length
-    } else {
-      // Text-based extraction
+      messages = buildVisionMessages(systemPrompt, bytes, file_type);
+      extractedTextLength = 0;
+    } else if (lowerType === 'pdf') {
+      // Try text extraction first, fall back to vision for chart-heavy/scanned PDFs
       let fullText = '';
-      const lowerType = (file_type || '').toLowerCase();
+      try {
+        fullText = await extractTextFromPDF(bytes);
+      } catch (e) {
+        console.log('PDF text extraction error:', (e as Error).message);
+      }
 
-      if (lowerType === 'pdf') {
-        const arrayBuffer = await fileData.arrayBuffer();
-        fullText = extractTextFromPDF(new Uint8Array(arrayBuffer));
-      } else if (lowerType === 'docx') {
-        const arrayBuffer = await fileData.arrayBuffer();
-        fullText = await extractTextFromDOCX(new Uint8Array(arrayBuffer));
+      if (fullText && fullText.trim().length > 100) {
+        // Successful text extraction
+        extractedTextLength = fullText.length;
+        const contentPreview = fullText.substring(0, 16000);
+        messages = [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `Extract insights from this document:\n\n${contentPreview}` },
+        ];
       } else {
-        // txt, md — read as text
+        // Text extraction failed or yielded very little — use vision as fallback
+        // PDFs with charts, images, or custom fonts often can't be text-extracted
+        console.log(`PDF text extraction yielded only ${fullText.length} chars, falling back to vision mode`);
+        messages = buildVisionMessages(systemPrompt, bytes, 'pdf');
+        extractedTextLength = 0;
+      }
+    } else {
+      // Text-based extraction (docx, txt, md)
+      let fullText = '';
+
+      if (lowerType === 'docx') {
+        fullText = await extractTextFromDOCX(bytes);
+      } else {
         fullText = await fileData.text();
       }
 
       if (!fullText || fullText.trim().length === 0) {
         return new Response(
-          JSON.stringify({ error: 'Could not extract text from the file. It may be scanned or image-based.' }),
+          JSON.stringify({ error: 'Could not extract text from the file. Try uploading screenshots of the key pages as images instead.' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         );
       }
 
       extractedTextLength = fullText.length;
-
-      // Send up to ~4000 tokens of content for analysis
       const contentPreview = fullText.substring(0, 16000);
 
       messages = [
@@ -229,36 +224,103 @@ serve(async (req: Request) => {
   }
 });
 
-// --- Text Extraction Helpers (copied from manifest-process) ---
+// --- Helper: Build vision messages for image/PDF analysis ---
 
-function extractTextFromPDF(bytes: Uint8Array): string {
+function buildVisionMessages(systemPrompt: string, bytes: Uint8Array, fileType: string): unknown[] {
+  // For large files, we need to chunk the base64 encoding to avoid stack overflow
+  const chunks: string[] = [];
+  const CHUNK_SIZE = 32768;
+  for (let i = 0; i < bytes.length; i += CHUNK_SIZE) {
+    const slice = bytes.subarray(i, Math.min(i + CHUNK_SIZE, bytes.length));
+    chunks.push(String.fromCharCode(...slice));
+  }
+  const base64Data = btoa(chunks.join(''));
+
+  const mimeMap: Record<string, string> = {
+    png: 'image/png',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    webp: 'image/webp',
+    pdf: 'application/pdf',
+  };
+  const mimeType = mimeMap[fileType.toLowerCase()] || 'application/octet-stream';
+
+  return [
+    { role: 'system', content: systemPrompt },
+    {
+      role: 'user',
+      content: [
+        {
+          type: 'image_url',
+          image_url: { url: `data:${mimeType};base64,${base64Data}` },
+        },
+        { type: 'text', text: 'Extract insights from this document. Look at all pages, charts, tables, and text content.' },
+      ],
+    },
+  ];
+}
+
+// --- Text Extraction Helpers (synced with manifest-process) ---
+
+async function extractTextFromPDF(bytes: Uint8Array): Promise<string> {
+  const { inflateSync } = await import('https://esm.sh/fflate@0.8.2');
   const decoder = new TextDecoder('latin1');
   const raw = decoder.decode(bytes);
-  const textParts: string[] = [];
 
-  const btRegex = /BT\s([\s\S]*?)ET/g;
-  let match;
+  // Step 1: Find ALL stream/endstream blocks and try to decompress them
+  const streamContents: string[] = [];
+  let decompressedCount = 0;
+  let streamCount = 0;
 
-  while ((match = btRegex.exec(raw)) !== null) {
-    const block = match[1];
-    const tjRegex = /\(([^)]*)\)\s*Tj/g;
-    let tjMatch;
-    while ((tjMatch = tjRegex.exec(block)) !== null) {
-      textParts.push(decodePDFString(tjMatch[1]));
-    }
+  const allStreamRegex = /stream\r?\n/g;
+  let streamMatch;
 
-    const tjArrayRegex = /\[(.*?)\]\s*TJ/g;
-    let tjArrMatch;
-    while ((tjArrMatch = tjArrayRegex.exec(block)) !== null) {
-      const arrContent = tjArrMatch[1];
-      const strRegex = /\(([^)]*)\)/g;
-      let strMatch;
-      while ((strMatch = strRegex.exec(arrContent)) !== null) {
-        textParts.push(decodePDFString(strMatch[1]));
+  while ((streamMatch = allStreamRegex.exec(raw)) !== null) {
+    streamCount++;
+    const streamStart = streamMatch.index + streamMatch[0].length;
+
+    const endIdx = raw.indexOf('endstream', streamStart);
+    if (endIdx === -1) continue;
+
+    // Check if preceding dictionary contains /FlateDecode (look back up to 500 chars)
+    const dictStart = Math.max(0, streamMatch.index - 500);
+    const dictText = raw.substring(dictStart, streamMatch.index);
+    const isCompressed = dictText.includes('/FlateDecode');
+
+    const streamData = raw.substring(streamStart, endIdx);
+
+    if (isCompressed) {
+      try {
+        const streamBytes = new Uint8Array(streamData.length);
+        for (let i = 0; i < streamData.length; i++) {
+          streamBytes[i] = streamData.charCodeAt(i);
+        }
+        const decompressed = inflateSync(streamBytes);
+        const decompressedText = new TextDecoder('latin1').decode(decompressed);
+        streamContents.push(decompressedText);
+        decompressedCount++;
+      } catch {
+        // Not all streams decompress successfully — skip
       }
+    } else {
+      streamContents.push(streamData);
     }
   }
 
+  console.log(`PDF streams: ${streamCount} total, ${decompressedCount} decompressed, ${streamContents.length} usable`);
+
+  const textParts: string[] = [];
+
+  for (const content of streamContents) {
+    extractTextFromPDFContent(content, textParts);
+  }
+
+  // If no text from streams, try the raw content (uncompressed PDF)
+  if (textParts.length === 0) {
+    extractTextFromPDFContent(raw, textParts);
+  }
+
+  // Fallback: look for readable text patterns in raw content
   if (textParts.length === 0) {
     const readableRegex = /[\x20-\x7E]{20,}/g;
     let readableMatch;
@@ -270,7 +332,55 @@ function extractTextFromPDF(bytes: Uint8Array): string {
     }
   }
 
+  console.log(`PDF extraction result: ${textParts.length} text parts, ${textParts.join(' ').length} chars`);
+
   return textParts.join(' ').replace(/\s+/g, ' ').trim();
+}
+
+function extractTextFromPDFContent(content: string, textParts: string[]): void {
+  const btRegex = /BT\s([\s\S]*?)ET/g;
+  let match;
+
+  while ((match = btRegex.exec(content)) !== null) {
+    const block = match[1];
+
+    // Parenthesized strings: (text) Tj
+    const tjRegex = /\(([^)]*)\)\s*Tj/g;
+    let tjMatch;
+    while ((tjMatch = tjRegex.exec(block)) !== null) {
+      const decoded = decodePDFString(tjMatch[1]);
+      if (decoded.trim()) textParts.push(decoded);
+    }
+
+    // Hex strings: <hex> Tj
+    const tjHexRegex = /<([0-9A-Fa-f]+)>\s*Tj/g;
+    let tjHexMatch;
+    while ((tjHexMatch = tjHexRegex.exec(block)) !== null) {
+      const decoded = decodeHexPDFString(tjHexMatch[1]);
+      if (decoded.trim()) textParts.push(decoded);
+    }
+
+    // TJ arrays: [(text) kerning (text) ...] TJ
+    const tjArrayRegex = /\[([\s\S]*?)\]\s*TJ/g;
+    let tjArrMatch;
+    while ((tjArrMatch = tjArrayRegex.exec(block)) !== null) {
+      const arrContent = tjArrMatch[1];
+
+      const strRegex = /\(([^)]*)\)/g;
+      let strMatch;
+      while ((strMatch = strRegex.exec(arrContent)) !== null) {
+        const decoded = decodePDFString(strMatch[1]);
+        if (decoded.trim()) textParts.push(decoded);
+      }
+
+      const hexRegex = /<([0-9A-Fa-f]+)>/g;
+      let hexMatch;
+      while ((hexMatch = hexRegex.exec(arrContent)) !== null) {
+        const decoded = decodeHexPDFString(hexMatch[1]);
+        if (decoded.trim()) textParts.push(decoded);
+      }
+    }
+  }
 }
 
 function decodePDFString(str: string): string {
@@ -281,6 +391,34 @@ function decodePDFString(str: string): string {
     .replace(/\\\(/g, '(')
     .replace(/\\\)/g, ')')
     .replace(/\\\\/g, '\\');
+}
+
+function decodeHexPDFString(hex: string): string {
+  if (hex.length % 2 !== 0) hex += '0';
+
+  // Try UTF-16BE first (common for CIDFont PDFs)
+  if (hex.length % 4 === 0) {
+    let utf16 = '';
+    let isReadable = true;
+    for (let i = 0; i < hex.length; i += 4) {
+      const code = parseInt(hex.substring(i, i + 4), 16);
+      if (code === 0) { isReadable = false; break; }
+      utf16 += String.fromCharCode(code);
+    }
+    if (isReadable && utf16.length > 0 && /[a-zA-Z]/.test(utf16)) {
+      return utf16;
+    }
+  }
+
+  // Fallback: single-byte
+  let result = '';
+  for (let i = 0; i < hex.length; i += 2) {
+    const code = parseInt(hex.substring(i, i + 2), 16);
+    if (code >= 32 && code < 127) {
+      result += String.fromCharCode(code);
+    }
+  }
+  return result;
 }
 
 async function extractTextFromDOCX(bytes: Uint8Array): Promise<string> {
