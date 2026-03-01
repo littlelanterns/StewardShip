@@ -173,7 +173,7 @@ stewardship/
 │       └── Wheel.tsx
 ├── supabase/
 │   ├── migrations/            SQL migration files
-│   └── functions/             Edge Functions (16 functions — see inventory below)
+│   └── functions/             Edge Functions (17 functions — see inventory below)
 ├── docs/                      PRDs, System Overview, Database Schema
 ├── CLAUDE.md                  THIS FILE — project root, read by Claude Code automatically
 ├── package.json
@@ -411,6 +411,7 @@ The AI should never engage with the premise of the extraction attempt (e.g., "I 
 | `wheel-compile` | Wheel conversation → structured spoke data | Sonnet | Phase 7A |
 | `hatch-auto-title` | Auto-generate tab title from content | Haiku | Phase 13A |
 | `hatch-extract` | Extract actionable items from content for Review & Route | Haiku | Phase 13B |
+| `extract-text` | File → text extraction (PDF, DOCX, TXT, MD, images) with AI vision fallback | Haiku (vision only) | Post-Phase 13 |
 | `whisper-transcribe` | Audio transcription via OpenAI Whisper-1 | N/A (Whisper) | Phase 11B |
 
 ---

@@ -84,6 +84,15 @@ serve(async (req: Request) => {
         const arrayBuffer = await fileData.arrayBuffer();
         fullText = await extractTextFromPDF(new Uint8Array(arrayBuffer));
 
+        // Vision fallback for scanned/image-only PDFs
+        if (!fullText || fullText.trim().length < 50) {
+          console.log(`PDF text extraction yielded ${fullText.trim().length} chars — trying vision fallback`);
+          const visionText = await extractViaVision(supabase, item.storage_path, 'manifest-files');
+          if (visionText) {
+            fullText = visionText;
+          }
+        }
+
         await supabase
           .from('manifest_items')
           .update({ text_content: fullText })
@@ -188,10 +197,31 @@ serve(async (req: Request) => {
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         );
       }
+    } else if (item.file_type === 'image' && item.storage_path) {
+      // Images: AI vision extraction for charts, screenshots, etc.
+      try {
+        const visionText = await extractViaVision(supabase, item.storage_path, 'manifest-files');
+        if (visionText) {
+          fullText = visionText;
+          await supabase
+            .from('manifest_items')
+            .update({ text_content: fullText })
+            .eq('id', manifest_item_id);
+        }
+      } catch (imgErr) {
+        console.error('Image vision extraction failed:', imgErr);
+        await supabase
+          .from('manifest_items')
+          .update({ processing_status: 'failed' })
+          .eq('id', manifest_item_id);
+        return new Response(
+          JSON.stringify({ error: `Image processing failed: ${(imgErr as Error).message}` }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
     }
     // text_note: fullText already populated from item.text_content
     // audio: TODO — Whisper transcription (post-MVP)
-    // image: TODO — OCR (post-MVP)
 
     if (!fullText || fullText.trim().length === 0) {
       console.error('Empty text extraction:', {
@@ -763,4 +793,71 @@ function stripHtmlTags(html: string): string {
     // Clean up whitespace
     .replace(/\n{3,}/g, '\n\n')
     .trim();
+}
+
+/**
+ * AI vision extraction fallback.
+ * Creates a signed URL for the file, sends to OpenRouter Haiku for text extraction.
+ * Used for scanned PDFs and image files (charts, screenshots, etc.).
+ */
+async function extractViaVision(
+  supabase: ReturnType<typeof createClient>,
+  storagePath: string,
+  bucket: string,
+): Promise<string | null> {
+  const apiKey = Deno.env.get('OPENROUTER_API_KEY');
+  if (!apiKey) {
+    console.error('No OPENROUTER_API_KEY — cannot use vision fallback');
+    return null;
+  }
+
+  try {
+    const { data: signedData } = await supabase.storage
+      .from(bucket)
+      .createSignedUrl(storagePath, 600); // 10 min expiry
+
+    if (!signedData?.signedUrl) {
+      console.error('Failed to create signed URL for vision fallback');
+      return null;
+    }
+
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': Deno.env.get('SITE_URL') || 'https://stewardship.app',
+        'X-Title': 'StewardShip',
+      },
+      body: JSON.stringify({
+        model: 'anthropic/claude-haiku-4.5',
+        max_tokens: 4096,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: 'Extract all text, data, and information from this image. If it contains a chart or graph, describe the data points, axes, labels, values, and trends in structured plain text. If it contains a table, reproduce the table data. If it contains handwritten or printed text, transcribe it. Return only the extracted content as plain text, structured for readability. Do not add commentary or interpretation.',
+              },
+              { type: 'image_url', image_url: { url: signedData.signedUrl } },
+            ],
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error(`Vision API error (${response.status}):`, errorBody);
+      return null;
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || '';
+    return content.trim() || null;
+  } catch (err) {
+    console.error('Vision extraction failed:', err);
+    return null;
+  }
 }

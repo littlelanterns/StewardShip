@@ -155,13 +155,52 @@ serve(async (req: Request) => {
           }
         }
       } else if (isPdf) {
-        // For PDFs, note the attachment — full extraction requires manifest-process pipeline
-        const lastIdx = processedMessages.length - 1;
-        if (lastIdx >= 0 && processedMessages[lastIdx].role === 'user') {
-          processedMessages[lastIdx] = {
-            ...processedMessages[lastIdx],
-            content: `${processedMessages[lastIdx].content}\n\n[Attached PDF: ${file_name}. PDF text extraction is available through the Manifest. For now, I can see the filename but not the PDF content. You can upload this to the Manifest for full processing, or describe what you'd like to discuss from it.]`,
-          };
+        // For PDFs: try text extraction, fall back to vision for scanned/image PDFs
+        const { data: fileData } = await supabase.storage
+          .from('helm-attachments')
+          .download(storage_path);
+
+        if (fileData) {
+          const arrayBuffer = await fileData.arrayBuffer();
+          let pdfText = await extractTextFromPDF(new Uint8Array(arrayBuffer));
+
+          // If text extraction yielded very little, fall back to vision
+          if (!pdfText || pdfText.trim().length < 50) {
+            console.log(`PDF text extraction yielded ${pdfText.trim().length} chars — trying vision fallback`);
+            const { data: signedData } = await supabase.storage
+              .from('helm-attachments')
+              .createSignedUrl(storage_path, 600);
+
+            if (signedData?.signedUrl) {
+              const visionText = await extractPdfViaVision(signedData.signedUrl, apiKey);
+              if (visionText) {
+                pdfText = visionText;
+              }
+            }
+          }
+
+          if (pdfText && pdfText.trim().length > 0) {
+            const truncated = pdfText.length > 8000
+              ? pdfText.slice(0, 8000) + '\n\n[Content truncated — full file available in storage]'
+              : pdfText;
+
+            const lastIdx = processedMessages.length - 1;
+            if (lastIdx >= 0 && processedMessages[lastIdx].role === 'user') {
+              processedMessages[lastIdx] = {
+                ...processedMessages[lastIdx],
+                content: `${processedMessages[lastIdx].content}\n\n--- Attached PDF: ${file_name} ---\n${truncated}`,
+              };
+            }
+          } else {
+            // Extraction failed entirely — inform user
+            const lastIdx = processedMessages.length - 1;
+            if (lastIdx >= 0 && processedMessages[lastIdx].role === 'user') {
+              processedMessages[lastIdx] = {
+                ...processedMessages[lastIdx],
+                content: `${processedMessages[lastIdx].content}\n\n[Attached PDF: ${file_name}. Could not extract text — this may be an encrypted or corrupted PDF. You can describe the content to discuss it.]`,
+              };
+            }
+          }
         }
       }
     }
@@ -222,3 +261,181 @@ serve(async (req: Request) => {
     );
   }
 });
+
+// --- PDF Text Extraction Helpers ---
+
+async function extractTextFromPDF(bytes: Uint8Array): Promise<string> {
+  const { inflateSync } = await import('https://esm.sh/fflate@0.8.2');
+  const decoder = new TextDecoder('latin1');
+  const raw = decoder.decode(bytes);
+
+  const streamContents: string[] = [];
+  const allStreamRegex = /stream\r?\n/g;
+  let streamMatch;
+
+  while ((streamMatch = allStreamRegex.exec(raw)) !== null) {
+    const streamStart = streamMatch.index + streamMatch[0].length;
+    const endIdx = raw.indexOf('endstream', streamStart);
+    if (endIdx === -1) continue;
+
+    const dictStart = Math.max(0, streamMatch.index - 500);
+    const dictText = raw.substring(dictStart, streamMatch.index);
+    const isCompressed = dictText.includes('/FlateDecode');
+    const streamData = raw.substring(streamStart, endIdx);
+
+    if (isCompressed) {
+      try {
+        const streamBytes = new Uint8Array(streamData.length);
+        for (let i = 0; i < streamData.length; i++) {
+          streamBytes[i] = streamData.charCodeAt(i);
+        }
+        const decompressed = inflateSync(streamBytes);
+        streamContents.push(new TextDecoder('latin1').decode(decompressed));
+      } catch {
+        // Not all streams decompress — skip
+      }
+    } else {
+      streamContents.push(streamData);
+    }
+  }
+
+  const textParts: string[] = [];
+
+  for (const content of streamContents) {
+    extractPdfTextFromContent(content, textParts);
+  }
+
+  if (textParts.length === 0) {
+    extractPdfTextFromContent(raw, textParts);
+  }
+
+  if (textParts.length === 0) {
+    const readableRegex = /[\x20-\x7E]{20,}/g;
+    let readableMatch;
+    while ((readableMatch = readableRegex.exec(raw)) !== null) {
+      const text = readableMatch[0].trim();
+      if (text.length > 30 && /[a-zA-Z]/.test(text)) {
+        textParts.push(text);
+      }
+    }
+  }
+
+  return textParts.join(' ').replace(/\s+/g, ' ').trim();
+}
+
+function extractPdfTextFromContent(content: string, textParts: string[]): void {
+  const btRegex = /BT\s([\s\S]*?)ET/g;
+  let match;
+
+  while ((match = btRegex.exec(content)) !== null) {
+    const block = match[1];
+
+    const tjRegex = /\(([^)]*)\)\s*Tj/g;
+    let tjMatch;
+    while ((tjMatch = tjRegex.exec(block)) !== null) {
+      const decoded = decodePdfString(tjMatch[1]);
+      if (decoded.trim()) textParts.push(decoded);
+    }
+
+    const tjHexRegex = /<([0-9A-Fa-f]+)>\s*Tj/g;
+    let tjHexMatch;
+    while ((tjHexMatch = tjHexRegex.exec(block)) !== null) {
+      const decoded = decodePdfHexString(tjHexMatch[1]);
+      if (decoded.trim()) textParts.push(decoded);
+    }
+
+    const tjArrayRegex = /\[([\s\S]*?)\]\s*TJ/g;
+    let tjArrMatch;
+    while ((tjArrMatch = tjArrayRegex.exec(block)) !== null) {
+      const arrContent = tjArrMatch[1];
+
+      const strRegex = /\(([^)]*)\)/g;
+      let strMatch;
+      while ((strMatch = strRegex.exec(arrContent)) !== null) {
+        const decoded = decodePdfString(strMatch[1]);
+        if (decoded.trim()) textParts.push(decoded);
+      }
+
+      const hexRegex = /<([0-9A-Fa-f]+)>/g;
+      let hexMatch;
+      while ((hexMatch = hexRegex.exec(arrContent)) !== null) {
+        const decoded = decodePdfHexString(hexMatch[1]);
+        if (decoded.trim()) textParts.push(decoded);
+      }
+    }
+  }
+}
+
+function decodePdfString(str: string): string {
+  return str
+    .replace(/\\n/g, '\n')
+    .replace(/\\r/g, '\r')
+    .replace(/\\t/g, '\t')
+    .replace(/\\\(/g, '(')
+    .replace(/\\\)/g, ')')
+    .replace(/\\\\/g, '\\');
+}
+
+function decodePdfHexString(hex: string): string {
+  if (hex.length % 2 !== 0) hex += '0';
+
+  if (hex.length % 4 === 0) {
+    let utf16 = '';
+    let isReadable = true;
+    for (let i = 0; i < hex.length; i += 4) {
+      const code = parseInt(hex.substring(i, i + 4), 16);
+      if (code === 0) { isReadable = false; break; }
+      utf16 += String.fromCharCode(code);
+    }
+    if (isReadable && utf16.length > 0 && /[a-zA-Z]/.test(utf16)) {
+      return utf16;
+    }
+  }
+
+  let result = '';
+  for (let i = 0; i < hex.length; i += 2) {
+    const code = parseInt(hex.substring(i, i + 2), 16);
+    if (code >= 32 && code < 127) {
+      result += String.fromCharCode(code);
+    }
+  }
+  return result;
+}
+
+async function extractPdfViaVision(signedUrl: string, apiKey: string): Promise<string | null> {
+  try {
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': Deno.env.get('SITE_URL') || 'https://stewardship.app',
+        'X-Title': 'StewardShip',
+      },
+      body: JSON.stringify({
+        model: 'anthropic/claude-haiku-4.5',
+        max_tokens: 4096,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: 'Extract all text content from this PDF page. If it contains charts or tables, describe the data. Return only the extracted content as plain text.' },
+              { type: 'image_url', image_url: { url: signedUrl } },
+            ],
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      console.error('PDF vision fallback failed:', response.status);
+      return null;
+    }
+
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content?.trim() || null;
+  } catch (err) {
+    console.error('PDF vision extraction error:', err);
+    return null;
+  }
+}
