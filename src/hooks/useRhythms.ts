@@ -451,59 +451,6 @@ export function useRhythms() {
     }
   }, [user, timezone, getOrCreateRhythmStatus, selectMastThought, fetchSettings]);
 
-  // Check if a prompted entry is due based on frequency
-  const isPromptDue = useCallback(async (
-    type: 'gratitude' | 'joy' | 'anticipation',
-    status: DailyRhythmStatus,
-    settings: UserSettings | null,
-  ): Promise<boolean> => {
-    if (!user || !settings) return false;
-
-    // If already completed today
-    if (type === 'gratitude' && status.gratitude_prompt_completed) return false;
-    if (type === 'joy' && status.joy_prompt_completed) return false;
-    if (type === 'anticipation' && status.anticipation_prompt_completed) return false;
-
-    const frequency = type === 'gratitude'
-      ? settings.gratitude_prompt_frequency
-      : type === 'joy'
-        ? settings.joy_prompt_frequency
-        : settings.anticipation_prompt_frequency;
-
-    if (frequency === 'off') return false;
-    if (frequency === 'daily') return true;
-
-    // Look at history to determine if prompt is due
-    const field = `${type}_prompt_completed`;
-    const { data: history } = await supabase
-      .from('daily_rhythm_status')
-      .select('rhythm_date')
-      .eq('user_id', user.id)
-      .eq(field, true)
-      .order('rhythm_date', { ascending: false })
-      .limit(1);
-
-    const lastCompleted = history?.[0]?.rhythm_date as string | undefined;
-    if (!lastCompleted) return true; // Never completed, show it
-
-    const daysSince = Math.floor(
-      (new Date().getTime() - new Date(lastCompleted + 'T12:00:00').getTime()) / (1000 * 60 * 60 * 24)
-    );
-
-    switch (frequency) {
-      case 'every_other_day':
-        return daysSince >= 2;
-      case 'every_few_days':
-        return daysSince >= 3;
-      case 'weekly':
-        return daysSince >= 7;
-      case 'biweekly':
-        return daysSince >= 14;
-      default:
-        return false;
-    }
-  }, [user]);
-
   // Build AI suggestion for tomorrow's priorities
   const buildAiSuggestion = useCallback((
     incompleteTasks: CompassTask[],
