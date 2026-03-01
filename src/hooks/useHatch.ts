@@ -627,6 +627,43 @@ export function useHatch() {
     [user, tabs, activeTabId, incrementRoutingStat],
   );
 
+  // ─── Bulk route tab (mark routed without creating entries) ──
+  const bulkRouteTab = useCallback(
+    async (tabId: string, destination: HatchRoutingDestination): Promise<void> => {
+      if (!user) return;
+      try {
+        const { error: routeErr } = await supabase
+          .from('hatch_tabs')
+          .update({
+            status: 'routed' as HatchTabStatus,
+            routed_to: destination,
+            routed_at: new Date().toISOString(),
+          })
+          .eq('id', tabId)
+          .eq('user_id', user.id);
+
+        if (routeErr) throw routeErr;
+
+        if (mountedRef.current) {
+          setTabs((prev) => {
+            const remaining = prev.filter((t) => t.id !== tabId);
+            if (activeTabId === tabId && remaining.length > 0) {
+              setActiveTabId(remaining[0].id);
+            } else if (remaining.length === 0) {
+              setActiveTabId(null);
+            }
+            return remaining;
+          });
+        }
+
+        incrementRoutingStat(destination);
+      } catch {
+        // Non-critical — tab may remain active
+      }
+    },
+    [user, activeTabId, incrementRoutingStat],
+  );
+
   // ─── Undo a route ─────────────────────────────────────────
   const undoRoute = useCallback(
     async (tabId: string, destination: HatchRoutingDestination, destinationId?: string) => {
@@ -1096,6 +1133,7 @@ export function useHatch() {
     updateTabTitle,
     closeTab,
     routeTab,
+    bulkRouteTab,
     undoRoute,
     reorderTabs,
 

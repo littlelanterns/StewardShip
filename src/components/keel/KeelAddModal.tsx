@@ -1,13 +1,18 @@
 import { useState, useRef } from 'react';
-import { PenLine, MessageSquare, Upload } from 'lucide-react';
+import { PenLine, MessageSquare, Upload, ListPlus } from 'lucide-react';
 import { AddEntryModal } from '../shared/AddEntryModal';
 import { Button } from '../shared/Button';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
+import { BulkAddWithAISort, type ParsedBulkItem } from '../shared/BulkAddWithAISort';
 import { useHelmContext } from '../../contexts/HelmContext';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import type { KeelCategory, KeelSourceType } from '../../lib/types';
 import { KEEL_CATEGORY_LABELS, KEEL_CATEGORY_ORDER } from '../../lib/types';
+
+const KEEL_BULK_CATEGORIES = KEEL_CATEGORY_ORDER.map((c) => ({ value: c, label: KEEL_CATEGORY_LABELS[c] }));
+
+const KEEL_BULK_PROMPT = `You are parsing text into self-knowledge entries for a personal growth app's Keel (self-knowledge profile). Each item should be categorized as one of: "personality_assessment" (personality test results or assessments), "trait_tendency" (behavioral patterns or tendencies), "strength" (personal strengths), "growth_area" (areas for growth — never call these weaknesses), "you_inc" (professional self-knowledge), or "general" (other self-knowledge). Extract individual insights from the input. Return a JSON array of objects with "text" and "category" fields.`;
 
 interface ExtractedInsight {
   text: string;
@@ -28,7 +33,17 @@ export function KeelAddModal({ onClose, onCreate, preselectedCategory }: KeelAdd
   const { user } = useAuthContext();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [mode, setMode] = useState<'select' | 'write' | 'file' | 'review'>('select');
+  const [mode, setMode] = useState<'select' | 'write' | 'file' | 'review' | 'bulk'>('select');
+
+  const handleBulkSave = async (items: ParsedBulkItem[]) => {
+    for (const item of items) {
+      await onCreate({
+        category: (item.category as KeelCategory) || 'general',
+        text: item.text,
+        source: 'bulk_add',
+      });
+    }
+  };
   const [category, setCategory] = useState<KeelCategory>(preselectedCategory || 'personality_assessment');
   const [text, setText] = useState('');
   const [source, setSource] = useState('');
@@ -198,7 +213,23 @@ export function KeelAddModal({ onClose, onCreate, preselectedCategory }: KeelAdd
               <div className="add-entry-method__desc">Guided self-discovery conversation</div>
             </div>
           </button>
+          <button className="add-entry-method" onClick={() => setMode('bulk')}>
+            <ListPlus size={22} className="add-entry-method__icon" />
+            <div className="add-entry-method__content">
+              <div className="add-entry-method__label">Bulk Add</div>
+              <div className="add-entry-method__desc">Paste multiple self-knowledge items</div>
+            </div>
+          </button>
         </div>
+      ) : mode === 'bulk' ? (
+        <BulkAddWithAISort
+          title="Bulk Add to Keel"
+          placeholder={"Paste self-observations, test results, personality notes...\n\nENFJ personality type\nStrong verbal communicator\nTend to overthink decisions under pressure\nGood at seeing the big picture"}
+          categories={KEEL_BULK_CATEGORIES}
+          parsePrompt={KEEL_BULK_PROMPT}
+          onSave={handleBulkSave}
+          onClose={onClose}
+        />
       ) : mode === 'file' ? (
         <div className="add-entry-form">
           <button className="add-entry-form__back" onClick={() => setMode('select')}>

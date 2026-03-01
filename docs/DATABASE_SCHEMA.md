@@ -1,7 +1,7 @@
 # StewardShip: Database Schema
 
 > This is a living document. Updated after each PRD is written.
-> Last updated: After PRD-21 (The Hatch, migration 025) + PRD-13A (Higgins) + Accomplishment Rearchitecture (migration 021) + Meeting Agenda Items (migration 022) + Mentor Meeting Type (migration 023)
+> Last updated: After PRD-22 (Priorities + SLL, migration 031) + PRD-21 (The Hatch, migration 025) + PRD-13A (Higgins) + Accomplishment Rearchitecture (migration 021) + Meeting Agenda Items (migration 022) + Mentor Meeting Type (migration 023)
 
 ---
 
@@ -1767,6 +1767,51 @@ CREATE TRIGGER set_updated_at BEFORE UPDATE ON hatch_extracted_items FOR EACH RO
 | Column | Type | Notes |
 |--------|------|-------|
 | source_hatch_tab_id | UUID | FK → hatch_tabs. Nullable. Added in 026_hatch_phase_b.sql. Tracks agenda items created from Hatch routing. |
+
+---
+
+### PRD-22: Priorities + SLL Integration
+
+#### `priorities`
+
+Commitment management with 4-tier system. Max 7 items in committed_now tier (enforced client-side).
+
+| Column | Type | Default | Nullable | Notes |
+|--------|------|---------|----------|-------|
+| id | UUID | gen_random_uuid() | NOT NULL | PK |
+| user_id | UUID | | NOT NULL | FK → auth.users |
+| title | TEXT | | NOT NULL | CHECK length(trim(title)) > 0 |
+| description | TEXT | null | NULL | Optional description |
+| tier | TEXT | 'interested' | NOT NULL | Enum: 'interested', 'committed_later', 'committed_now', 'achieved' |
+| sort_order | INTEGER | 0 | NOT NULL | Order within tier |
+| linked_plan_id | UUID | null | NULL | FK → rigging_plans. ON DELETE SET NULL |
+| linked_goal_id | UUID | null | NULL | FK → goals. ON DELETE SET NULL |
+| linked_wheel_id | UUID | null | NULL | FK → wheel_instances. ON DELETE SET NULL |
+| source | TEXT | 'manual' | NOT NULL | How the priority was created |
+| source_reference_id | UUID | null | NULL | FK to originating record |
+| promoted_at | TIMESTAMPTZ | null | NULL | When tier was upgraded |
+| achieved_at | TIMESTAMPTZ | null | NULL | When marked achieved |
+| archived_at | TIMESTAMPTZ | null | NULL | Soft delete |
+| created_at | TIMESTAMPTZ | now() | NOT NULL | |
+| updated_at | TIMESTAMPTZ | now() | NOT NULL | Auto-trigger |
+
+**RLS:** Users CRUD own priorities only.
+**Indexes:**
+- `(user_id, tier, archived_at)` — tier-based queries
+- Partial index on `(user_id) WHERE tier = 'committed_now' AND archived_at IS NULL` — fast committed_now count
+
+**Trigger:**
+```sql
+CREATE TRIGGER set_priorities_updated_at BEFORE UPDATE ON priorities FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
+```
+
+---
+
+#### `user_profiles` — Column Addition (PRD-22)
+
+| Column | Type | Default | Notes |
+|--------|------|---------|-------|
+| sll_exposures | JSONB | '{}' | Tracks how many times each SLL term has been shown. Keys are SLL distinction keys, values are counts. |
 
 ---
 

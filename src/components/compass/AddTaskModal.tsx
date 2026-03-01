@@ -1,12 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronUp, ListPlus } from 'lucide-react';
 import type { CompassLifeArea, RecurrenceRule } from '../../lib/types';
 import { COMPASS_LIFE_AREA_LABELS } from '../../lib/types';
 import { autoTagTask } from '../../lib/ai';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { Button } from '../shared/Button';
+import { BulkAddWithAISort, type ParsedBulkItem } from '../shared/BulkAddWithAISort';
 import './AddTaskModal.css';
+
+const TASK_BULK_PROMPT = `You are parsing text into individual tasks for a personal task manager. Extract each distinct action item or task from the input. Keep task titles concise and actionable. Return a JSON array of strings, one per task. Example: ["Buy groceries", "Call dentist", "Finish report"]`;
 
 interface AddTaskPrefill {
   title?: string;
@@ -43,6 +46,7 @@ function getTodayDate(): string {
 
 export default function AddTaskModal({ onSave, onBack, prefill }: AddTaskModalProps) {
   const { user } = useAuthContext();
+  const [addMode, setAddMode] = useState<'single' | 'bulk'>('single');
   const [title, setTitle] = useState(prefill?.title || '');
   const [description, setDescription] = useState(prefill?.description || '');
   const [dueDate, setDueDate] = useState(getTodayDate());
@@ -54,6 +58,13 @@ export default function AddTaskModal({ onSave, onBack, prefill }: AddTaskModalPr
   const [tagging, setTagging] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
   const tagDebounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  const handleBulkSave = async (items: ParsedBulkItem[]) => {
+    for (const item of items) {
+      await onSave({ title: item.text });
+    }
+    onBack();
+  };
 
   useEffect(() => {
     titleRef.current?.focus();
@@ -116,6 +127,26 @@ export default function AddTaskModal({ onSave, onBack, prefill }: AddTaskModalPr
     setSaving(false);
   };
 
+  if (addMode === 'bulk') {
+    return (
+      <div className="add-task">
+        <div className="add-task__top-bar">
+          <button type="button" className="add-task__back" onClick={onBack} aria-label="Back">
+            <ArrowLeft size={20} strokeWidth={1.5} />
+          </button>
+          <span className="add-task__top-title">Bulk Add Tasks</span>
+        </div>
+        <BulkAddWithAISort
+          title="Bulk Add Tasks"
+          placeholder={"Paste a messy to-do list, brain dump of tasks...\n\nBuy groceries\nCall dentist to schedule appointment\nFinish quarterly report\nPick up kids from practice"}
+          parsePrompt={TASK_BULK_PROMPT}
+          onSave={handleBulkSave}
+          onClose={onBack}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="add-task">
       <div className="add-task__top-bar">
@@ -123,6 +154,9 @@ export default function AddTaskModal({ onSave, onBack, prefill }: AddTaskModalPr
           <ArrowLeft size={20} strokeWidth={1.5} />
         </button>
         <span className="add-task__top-title">New Task</span>
+        <button type="button" className="add-task__bulk-toggle" onClick={() => setAddMode('bulk')} title="Bulk add multiple tasks">
+          <ListPlus size={18} />
+        </button>
       </div>
 
       <div className="add-task__form">

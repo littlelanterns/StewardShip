@@ -1,13 +1,18 @@
 import { useState, useRef } from 'react';
-import { PenLine, MessageSquare, Upload } from 'lucide-react';
+import { PenLine, MessageSquare, Upload, ListPlus } from 'lucide-react';
 import { AddEntryModal } from '../shared/AddEntryModal';
 import { Button } from '../shared/Button';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
+import { BulkAddWithAISort, type ParsedBulkItem } from '../shared/BulkAddWithAISort';
 import { useHelmContext } from '../../contexts/HelmContext';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import type { SpouseInsightCategory, SpouseInsightSourceType } from '../../lib/types';
 import { SPOUSE_INSIGHT_CATEGORY_LABELS, SPOUSE_INSIGHT_CATEGORY_ORDER } from '../../lib/types';
+
+const INSIGHT_BULK_CATEGORIES = SPOUSE_INSIGHT_CATEGORY_ORDER.map((c) => ({ value: c, label: SPOUSE_INSIGHT_CATEGORY_LABELS[c] }));
+
+const INSIGHT_BULK_PROMPT = `You are parsing text into insights about a user's partner/spouse for a personal growth app. Each item should be categorized as one of: "personality" (personality traits), "love_appreciation" (love language, appreciation style), "communication" (communication preferences), "dreams_goals" (their dreams and goals), "challenges_needs" (challenges or needs), "their_world" (their world — interests, activities), "observation" (your observations about them), "their_response" (how they respond to things), "gratitude" (things you're grateful for about them), or "general" (other). Extract individual insights from the input. Return a JSON array of objects with "text" and "category" fields.`;
 
 interface ExtractedInsight {
   text: string;
@@ -36,7 +41,17 @@ export function AddInsightModal({ onClose, onSave, preselectedCategory }: AddIns
   const { user } = useAuthContext();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [mode, setMode] = useState<'select' | 'write' | 'file' | 'review'>('select');
+  const [mode, setMode] = useState<'select' | 'write' | 'file' | 'review' | 'bulk'>('select');
+
+  const handleBulkSave = async (items: ParsedBulkItem[]) => {
+    for (const item of items) {
+      await onSave({
+        text: item.text,
+        category: (item.category as SpouseInsightCategory) || 'general',
+        source_label: 'bulk_add',
+      });
+    }
+  };
   const [text, setText] = useState('');
   const [category, setCategory] = useState<SpouseInsightCategory>(preselectedCategory || 'general');
   const [source, setSource] = useState('');
@@ -213,7 +228,23 @@ export function AddInsightModal({ onClose, onSave, preselectedCategory }: AddIns
               <div className="add-entry-method__desc">Guided conversation about your partner</div>
             </div>
           </button>
+          <button className="add-entry-method" onClick={() => setMode('bulk')}>
+            <ListPlus size={22} className="add-entry-method__icon" />
+            <div className="add-entry-method__content">
+              <div className="add-entry-method__label">Bulk Add</div>
+              <div className="add-entry-method__desc">Paste multiple insights at once</div>
+            </div>
+          </button>
         </div>
+      ) : mode === 'bulk' ? (
+        <BulkAddWithAISort
+          title="Bulk Add Insights"
+          placeholder={"Paste things you've learned about your partner...\n\nLoves quality time together\nFeels appreciated through acts of service\nPrefers direct communication\nDreams of traveling to Italy"}
+          categories={INSIGHT_BULK_CATEGORIES}
+          parsePrompt={INSIGHT_BULK_PROMPT}
+          onSave={handleBulkSave}
+          onClose={onClose}
+        />
       ) : mode === 'file' ? (
         <div className="add-entry-form">
           <button className="add-entry-form__back" onClick={() => setMode('select')}>

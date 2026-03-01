@@ -23,6 +23,8 @@ import {
   shouldLoadReflections,
   shouldLoadHatch,
   shouldLoadAppGuide,
+  shouldLoadPriorities,
+  formatPrioritiesContext,
   formatFirstMateContext,
   formatCrewContext,
   formatSphereContext,
@@ -89,6 +91,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
   const needWheel = shouldLoadWheel(message, pageContext);
   const needLifeInventory = shouldLoadLifeInventory(message, pageContext);
   const needRigging = shouldLoadRigging(message, pageContext);
+  const needPriorities = shouldLoadPriorities(message, pageContext);
   const needFirstMate = shouldLoadFirstMate(message, pageContext, guidedMode);
   let needCrew = shouldLoadCrew(message, pageContext, guidedMode);
   const needSphere = shouldLoadSphere(message, pageContext);
@@ -132,6 +135,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
   let wheelContext: string | undefined;
   let lifeInventoryContext: string | undefined;
   let riggingContext: string | undefined;
+  let prioritiesContext: string | undefined;
   let firstMateContext: string | undefined;
   let crewContext: string | undefined;
   let sphereContext: string | undefined;
@@ -222,6 +226,17 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
         .in('status', ['active', 'paused'])
         .order('updated_at', { ascending: false })
         .limit(5)
+    : null;
+
+  const prioritiesPromise = needPriorities
+    ? supabase
+        .from('priorities')
+        .select('title, tier, description')
+        .eq('user_id', userId)
+        .is('archived_at', null)
+        .neq('tier', 'achieved')
+        .order('tier')
+        .order('sort_order')
     : null;
 
   const firstMatePromise = needFirstMate
@@ -367,7 +382,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     }
   }
 
-  const [keelResult, journalResult, compassResult, victoriesResult, wheelResult, lifeInvResult, riggingResult, firstMateResult, spouseInsightsResult, crewResult, sphereEntitiesResult, frameworksResult, manifestResults, meetingResult, agendaResult, reflectionsResult, hatchResult, meetingSectionsResult] = await Promise.all([
+  const [keelResult, journalResult, compassResult, victoriesResult, wheelResult, lifeInvResult, riggingResult, prioritiesResult, firstMateResult, spouseInsightsResult, crewResult, sphereEntitiesResult, frameworksResult, manifestResults, meetingResult, agendaResult, reflectionsResult, hatchResult, meetingSectionsResult] = await Promise.all([
     keelPromise,
     journalPromise,
     compassPromise,
@@ -375,6 +390,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     wheelPromise,
     lifeInvPromise,
     riggingPromise,
+    prioritiesPromise,
     firstMatePromise,
     spouseInsightsPromise,
     crewPromise,
@@ -408,6 +424,9 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
   }
   if (riggingResult?.data && riggingResult.data.length > 0) {
     riggingContext = buildRiggingContext(riggingResult.data as RiggingPlan[]);
+  }
+  if (prioritiesResult?.data && prioritiesResult.data.length > 0) {
+    prioritiesContext = formatPrioritiesContext(prioritiesResult.data as { title: string; tier: string; description: string | null }[]);
   }
   // Meeting context — format previous meetings
   if (meetingResult?.data && meetingResult.data.length > 0) {
@@ -688,6 +707,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     wheelContext,
     lifeInventoryContext,
     riggingContext,
+    prioritiesContext,
     firstMateContext,
     crewContext,
     sphereContext,

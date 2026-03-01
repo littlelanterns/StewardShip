@@ -54,6 +54,7 @@ interface HatchContextValue {
       trackerId?: string;
     },
   ) => Promise<{ success: boolean; destinationId?: string }>;
+  bulkRouteTab: (tabId: string, destination: HatchRoutingDestination) => Promise<void>;
   undoRoute: (
     tabId: string,
     destination: HatchRoutingDestination,
@@ -173,6 +174,18 @@ export function HatchProvider({ children }: { children: ReactNode }) {
     [hatch],
   );
 
+  // Wrap bulkRouteTab to auto-close drawer when no tabs remain
+  const bulkRouteTabAndAutoClose = useCallback(
+    async (tabId: string, destination: HatchRoutingDestination) => {
+      await hatch.bulkRouteTab(tabId, destination);
+      const remainingCount = hatch.tabs.filter((t) => t.id !== tabId).length;
+      if (remainingCount === 0) {
+        setIsOpen(false);
+      }
+    },
+    [hatch],
+  );
+
   // Wrap closeTab to auto-close drawer when no tabs remain
   const closeTabAndAutoClose = useCallback(
     async (tabId: string) => {
@@ -212,6 +225,7 @@ export function HatchProvider({ children }: { children: ReactNode }) {
     updateTabTitle: hatch.updateTabTitle,
     closeTab: closeTabAndAutoClose,
     routeTab: routeTabAndAutoClose,
+    bulkRouteTab: bulkRouteTabAndAutoClose,
     undoRoute: hatch.undoRoute,
     extractItems: hatch.extractItems,
     routeExtractedItem: hatch.routeExtractedItem,

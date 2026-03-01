@@ -25,6 +25,7 @@ export interface SystemPromptContext {
   wheelContext?: string;
   lifeInventoryContext?: string;
   riggingContext?: string;
+  prioritiesContext?: string;
   firstMateContext?: string;
   crewContext?: string;
   sphereContext?: string;
@@ -82,10 +83,16 @@ CRITICAL RULES:
 FRAMEWORK AWARENESS:
 You are familiar with these frameworks and apply their principles naturally without naming them unless asked:
 - 5 Levels of Consciousness (controllability of actions, thoughts, feelings, context, unconscious)
-- Straight Line Leadership (Owner vs. Victim stance, empowering language)
+- Straight Line Leadership (Owner vs. Victim stance, empowering language, circle/zigzag/straight line)
 - 7 Habits (Circle of Influence, Begin with End in Mind)
 - Change Wheel process (for deep character change)
-- Swedenborg's spiritual growth concepts (regeneration, ruling love)`;
+- Swedenborg's spiritual growth concepts (regeneration, ruling love)
+
+STRAIGHT LINE LEADERSHIP (SLL) LANGUAGE:
+When applying SLL concepts, wrap the FIRST occurrence of an SLL term per message in [[sll:key]] markers. Available keys:
+should_vs_must, core_vs_surface, owner_vs_victim, wanting_vs_creating, commitment_vs_trying, commitment_vs_involvement, dream_vs_project, stop_stopping, worry_vs_concern, corrective_vs_protective, purpose_management, now_vs_later, focus_vs_spray, playing_to_win, positive_no, discomfort_vs_chaos, productivity_vs_busyness, kind_vs_nice, agreements_vs_expectations, radical_self_honesty.
+Example: "That sounds like a [[sll:should_vs_must]] moment — is this something you feel you should do, or something you must do?"
+Only mark the first use of each term per message. Use SLL language naturally when the conversation touches on commitment, ownership, productivity, or personal responsibility.`;
 }
 
 function formatMastEntries(entries: MastEntry[]): string {
@@ -722,6 +729,14 @@ export function buildSystemPrompt(context: SystemPromptContext): string {
     }
   }
 
+  if (context.prioritiesContext) {
+    const prioritiesTokens = estimateTokens(context.prioritiesContext);
+    if (currentTokens + prioritiesTokens < budget) {
+      prompt += context.prioritiesContext;
+      currentTokens += prioritiesTokens;
+    }
+  }
+
   if (context.firstMateContext) {
     const fmSection = context.firstMateContext + `\n\nSPOUSE INSIGHT AWARENESS:
 When the user shares something substantive about their spouse (a new observation about personality, a meaningful moment, a challenge, a need, or something they appreciate), you may offer to save it: "That's a great observation about [spouse name]. Want me to save that to your First Mate profile so I can remember it?"
@@ -979,6 +994,44 @@ export function shouldLoadRigging(message: string, pageContext: string): boolean
   if (pageContext === 'rigging') return true;
   const lower = message.toLowerCase();
   return RIGGING_KEYWORDS.some((kw) => lower.includes(kw));
+}
+
+const PRIORITY_KEYWORDS = [
+  'priority', 'priorities', 'commitment', 'commitments', 'committed',
+  'interested in', 'focus', 'what matters', 'important', 'top priorities',
+];
+
+export function shouldLoadPriorities(message: string, pageContext: string): boolean {
+  if (pageContext === 'rigging' || pageContext === 'crowsnest') return true;
+  const lower = message.toLowerCase();
+  return PRIORITY_KEYWORDS.some((kw) => lower.includes(kw));
+}
+
+export function formatPrioritiesContext(priorities: { title: string; tier: string; description: string | null }[]): string {
+  const committedNow = priorities.filter((p) => p.tier === 'committed_now');
+  const committedLater = priorities.filter((p) => p.tier === 'committed_later');
+  const interested = priorities.filter((p) => p.tier === 'interested');
+
+  let result = '\n\nPRIORITIES (user\'s current commitments):\n';
+
+  if (committedNow.length > 0) {
+    result += '\nCommitted Now (actively working on):\n';
+    for (const p of committedNow) {
+      result += `- ${p.title}`;
+      if (p.description) result += ` — ${p.description.slice(0, 100)}`;
+      result += '\n';
+    }
+  }
+
+  if (committedLater.length > 0) {
+    result += `\nCommitted Later (${committedLater.length} items queued)\n`;
+  }
+
+  if (interested.length > 0) {
+    result += `\nInterested (${interested.length} items exploring)\n`;
+  }
+
+  return result;
 }
 
 export function shouldLoadDashboard(_message: string, pageContext: string): boolean {

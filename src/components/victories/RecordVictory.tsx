@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, Sparkles, ChevronDown, ChevronUp, ListPlus } from 'lucide-react';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { celebrateVictory, type CelebrateVictoryItem } from '../../lib/ai';
 import { supabase } from '../../lib/supabase';
@@ -8,7 +8,10 @@ import { LIFE_AREA_LABELS } from '../../lib/types';
 import { Button } from '../shared/Button';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
 import { SparkleOverlay } from '../shared/SparkleOverlay';
+import { BulkAddWithAISort, type ParsedBulkItem } from '../shared/BulkAddWithAISort';
 import './RecordVictory.css';
+
+const VICTORY_BULK_PROMPT = `You are parsing text into individual accomplishments/victories for a personal growth app. Each item should be a distinct accomplishment or win. Keep descriptions concise. Return a JSON array of strings. Example: ["Completed 5K run", "Had a meaningful talk with my son", "Finished the project ahead of deadline"]`;
 
 interface RecordVictoryProps {
   onSave: (data: {
@@ -30,6 +33,7 @@ interface RecordVictoryProps {
 
 export function RecordVictory({ onSave, onClose, prefill }: RecordVictoryProps) {
   const { user } = useAuthContext();
+  const [addMode, setAddMode] = useState<'single' | 'bulk'>('single');
   const [description, setDescription] = useState(prefill?.description || '');
   const [items, setItems] = useState<CelebrateVictoryItem[]>([]);
   const [expandedItem, setExpandedItem] = useState<number | null>(null);
@@ -37,6 +41,13 @@ export function RecordVictory({ onSave, onClose, prefill }: RecordVictoryProps) 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [mastEntries, setMastEntries] = useState<MastEntry[]>([]);
+
+  const handleBulkSave = async (bulkItems: ParsedBulkItem[]) => {
+    for (const item of bulkItems) {
+      await onSave({ description: item.text, source: 'manual' });
+    }
+    onClose();
+  };
 
   // Load mast entries for AI context
   useEffect(() => {
@@ -119,14 +130,49 @@ export function RecordVictory({ onSave, onClose, prefill }: RecordVictoryProps) 
   const connectedMast = (id: string | null) => mastEntries.find((m) => m.id === id);
   const isMulti = items.length > 1;
 
+  if (addMode === 'bulk') {
+    return (
+      <div className="record-victory-overlay" onClick={onClose}>
+        <div className="record-victory" onClick={(e) => e.stopPropagation()}>
+          <div className="record-victory__header">
+            <h2>Bulk Record Victories</h2>
+            <button type="button" className="record-victory__close" onClick={onClose} aria-label="Close">
+              <X size={20} />
+            </button>
+          </div>
+          <div className="record-victory__body">
+            <BulkAddWithAISort
+              title="Bulk Add Victories"
+              placeholder={"Paste your wins this week...\n\nCompleted 5K run\nHad a meaningful talk with my son\nFinished the project ahead of deadline"}
+              parsePrompt={VICTORY_BULK_PROMPT}
+              onSave={handleBulkSave}
+              onClose={onClose}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="record-victory-overlay" onClick={onClose}>
       <div className={`record-victory ${saved ? 'record-victory--saved' : ''}`} onClick={(e) => e.stopPropagation()}>
         <div className="record-victory__header">
           <h2>Record a Victory</h2>
-          <button type="button" className="record-victory__close" onClick={onClose} aria-label="Close">
-            <X size={20} />
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              type="button"
+              className="record-victory__close"
+              onClick={() => setAddMode('bulk')}
+              aria-label="Bulk add"
+              title="Bulk add multiple victories"
+            >
+              <ListPlus size={18} />
+            </button>
+            <button type="button" className="record-victory__close" onClick={onClose} aria-label="Close">
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         <div className="record-victory__body">

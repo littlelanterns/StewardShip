@@ -1,10 +1,15 @@
 import { useState } from 'react';
-import { PenLine, MessageSquare } from 'lucide-react';
+import { PenLine, MessageSquare, ListPlus } from 'lucide-react';
 import { AddEntryModal } from '../shared/AddEntryModal';
 import { Button } from '../shared/Button';
+import { BulkAddWithAISort, type ParsedBulkItem } from '../shared/BulkAddWithAISort';
 import { useHelmContext } from '../../contexts/HelmContext';
 import type { MastEntryType } from '../../lib/types';
 import { MAST_TYPE_LABELS, MAST_TYPE_ORDER } from '../../lib/types';
+
+const MAST_BULK_CATEGORIES = MAST_TYPE_ORDER.map((t) => ({ value: t, label: MAST_TYPE_LABELS[t] }));
+
+const MAST_BULK_PROMPT = `You are parsing text into guiding principles for a personal growth app. Each item should be categorized as one of: "value" (core values), "declaration" (commitment statements about who the user is choosing to become), "faith_foundation" (faith or spiritual beliefs), "scripture_quote" (scriptures, quotes, or sayings), or "vision" (vision statements about the future). Extract individual principles from the input. Return a JSON array of objects with "text" and "category" fields.`;
 
 interface MastAddModalProps {
   onClose: () => void;
@@ -14,12 +19,21 @@ interface MastAddModalProps {
 
 export function MastAddModal({ onClose, onCreate, preselectedType }: MastAddModalProps) {
   const { startGuidedConversation } = useHelmContext();
-  const [mode, setMode] = useState<'select' | 'write'>(preselectedType ? 'write' : 'select');
+  const [mode, setMode] = useState<'select' | 'write' | 'bulk'>(preselectedType ? 'write' : 'select');
   const [type, setType] = useState<MastEntryType>(preselectedType || 'value');
   const [text, setText] = useState('');
   const [category, setCategory] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleBulkSave = async (items: ParsedBulkItem[]) => {
+    for (const item of items) {
+      await onCreate({
+        type: (item.category as MastEntryType) || 'value',
+        text: item.text,
+      });
+    }
+  };
 
   async function handleSave() {
     if (!text.trim()) {
@@ -56,7 +70,23 @@ export function MastAddModal({ onClose, onCreate, preselectedType }: MastAddModa
               <div className="add-entry-method__desc">Guided conversation to articulate your principle</div>
             </div>
           </button>
+          <button className="add-entry-method" onClick={() => setMode('bulk')}>
+            <ListPlus size={22} className="add-entry-method__icon" />
+            <div className="add-entry-method__content">
+              <div className="add-entry-method__label">Bulk Add</div>
+              <div className="add-entry-method__desc">Paste multiple principles at once</div>
+            </div>
+          </button>
         </div>
+      ) : mode === 'bulk' ? (
+        <BulkAddWithAISort
+          title="Bulk Add Principles"
+          placeholder={"Paste principles, beliefs, vision statements...\n\nI choose to lead with patience.\nFamily is my highest priority.\n\"Trust in the Lord with all thine heart\" - Proverbs 3:5"}
+          categories={MAST_BULK_CATEGORIES}
+          parsePrompt={MAST_BULK_PROMPT}
+          onSave={handleBulkSave}
+          onClose={onClose}
+        />
       ) : (
         <div className="add-entry-form">
           {!preselectedType && (

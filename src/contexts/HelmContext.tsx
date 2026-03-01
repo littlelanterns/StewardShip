@@ -4,11 +4,46 @@ import { useAuthContext } from './AuthContext';
 import { sendChatMessage, autoTitleConversation } from '../lib/ai';
 import { loadContext } from '../lib/contextLoader';
 import { buildSystemPrompt } from '../lib/systemPrompt';
+import { supabase } from '../lib/supabase';
 import type { HelmPageContext, HelmConversation, HelmMessage, GuidedMode, GuidedSubtype } from '../lib/types';
 
 export type { HelmPageContext };
 
 type DrawerState = 'closed' | 'peek' | 'full';
+
+const SLL_MARKER_REGEX = /\[\[sll:(\w+)\]\]/g;
+
+/**
+ * Track SLL term exposures — fire-and-forget after AI response.
+ * Increments counts in user_profiles.sll_exposures JSONB.
+ */
+function trackSllExposures(aiResponse: string, userId: string) {
+  const keys = new Set<string>();
+  let match: RegExpExecArray | null;
+  SLL_MARKER_REGEX.lastIndex = 0;
+  while ((match = SLL_MARKER_REGEX.exec(aiResponse)) !== null) {
+    keys.add(match[1]);
+  }
+  if (keys.size === 0) return;
+
+  // Fire-and-forget: fetch current exposures, increment, save
+  supabase
+    .from('user_profiles')
+    .select('sll_exposures')
+    .eq('user_id', userId)
+    .maybeSingle()
+    .then(({ data }) => {
+      const current: Record<string, number> = (data?.sll_exposures as Record<string, number>) || {};
+      for (const key of keys) {
+        current[key] = (current[key] || 0) + 1;
+      }
+      supabase
+        .from('user_profiles')
+        .update({ sll_exposures: current })
+        .eq('user_id', userId)
+        .then(() => {});
+    });
+}
 
 /**
  * Window conversation history to prevent unbounded context growth.
@@ -228,6 +263,9 @@ export function HelmProvider({ children }: { children: ReactNode }) {
         aiResponse,
         pageContext.page,
       );
+
+      // Track SLL exposures in background (fire-and-forget)
+      trackSllExposures(aiResponse, user.id);
 
       // Auto-title in background after first AI response
       if (!conversation.title) {

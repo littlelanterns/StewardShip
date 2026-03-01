@@ -5,6 +5,38 @@
   color: var(--color-text-primary);
 }
 
+.rigging-page__tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: var(--spacing-md);
+  border-bottom: 2px solid var(--color-border);
+}
+
+.rigging-page__tab {
+  flex: 1;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  font-family: var(--font-heading);
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: center;
+}
+
+.rigging-page__tab:hover {
+  color: var(--color-mid-teal);
+}
+
+.rigging-page__tab--active {
+  color: var(--color-mid-teal);
+  border-bottom-color: var(--color-mid-teal);
+  font-weight: 600;
+}
+
 .rigging-page__controls {
   display: flex;
   align-items: center;

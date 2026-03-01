@@ -86,6 +86,12 @@ export const FEATURE_GUIDES: Record<string, FeatureGuideContent> = {
     description: "For goals and projects that need real planning. The AI helps you choose the right framework \u2014 milestones, prioritization, obstacle mapping, or decision analysis \u2014 then breaks the plan into actionable steps for your Compass.",
     tips: ["Five planning frameworks adapt to what you're building", "Milestones can be broken into tasks with Task Breaker"],
   },
+  priorities: {
+    featureKey: 'priorities',
+    title: "Priorities \u2014 What You're Committed To",
+    description: "Track what matters most. Organize priorities into three tiers: Committed Now (actively pursuing, max 7), Committed Later (queued for future), and Interested (exploring). When you achieve one, promote something from your queue.",
+    tips: ["Keep Committed Now to 5-7 items for real focus", "Achieving a priority creates a victory automatically"],
+  },
   firstmate: {
     featureKey: 'firstmate',
     title: "First Mate \u2014 Your Relationship Partner",

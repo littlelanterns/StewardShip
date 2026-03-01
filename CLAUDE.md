@@ -70,6 +70,7 @@ stewardship/
 │   │   ├── pushNotifications.ts Push notification utilities
 │   │   ├── rag.ts             RAG utilities
 │   │   ├── reportExport.ts    Report PDF/Markdown export
+│   │   ├── sllDefinitions.ts   SLL distinction definitions (20 terms)
 │   │   ├── systemPrompt.ts    AI system prompt assembly
 │   │   ├── types.ts           ALL shared TypeScript interfaces
 │   │   └── whisper.ts         Transcription
@@ -105,6 +106,7 @@ stewardship/
 │   │   ├── useReportGenerator.ts
 │   │   ├── useRhythmCards.ts
 │   │   ├── useRhythms.ts
+│   │   ├── usePriorities.ts
 │   │   ├── useRigging.ts
 │   │   ├── useRoutineAssignment.ts
 │   │   ├── useRoutineReset.ts
@@ -1014,6 +1016,19 @@ Six guided conversation modes accessible from the First Mate page, each opening 
 - **Context loading for Rigging guided mode:** Mast + active Rigging plans always loaded. Keel, Life Inventory, Goals, Manifest RAG, active Wheels loaded when relevant.
 - **Plan revision:** Plans are living documents. Inline editing on Plan Detail page. "Continue Planning" reopens at Helm for deeper revision. Additional frameworks can be applied to existing plans.
 - **Plan completion:** When all milestones complete or user manually marks complete → AI offers identity-based reflection + victory prompt. Completed plans viewable under collapsed section on Rigging page.
+- **Sprint Import:** Available from Rigging FAB modal. Uses BulkAddWithAISort to paste multi-line project milestones, AI parses into items, user reviews, saves as new plan + milestones.
+- **Priorities tab:** Rigging page has Plans | Priorities tab toggle. Priorities are 4-tier commitments (interested, committed_later, committed_now max 7, achieved). Managed via `usePriorities` hook, stored in `priorities` table (migration 031). Crow's Nest shows committed_now items in CurrentCommitmentsCard. AI context loads committed_now items when on rigging/crowsnest pages or commitment-related keywords detected.
+- **Four tables:** `rigging_plans`, `rigging_milestones`, `rigging_obstacles`, `priorities` (commitment management with tier-based grouping).
+
+### Straight Line Leadership (SLL) Integration
+- **20 SLL distinctions** defined in `src/lib/sllDefinitions.ts` (key, term, contrast, oneLiner, description, category).
+- **AI marker format:** `[[sll:key]]` — AI wraps the first occurrence of each SLL term per message. MessageBubble parses markers and renders tappable `SLLTerm` components with dotted cognac underline and popover showing contrast + oneLiner.
+- **Exposure tracking:** `user_profiles.sll_exposures` JSONB column tracks how many times each term has been shown. Incremented fire-and-forget in HelmContext after each AI response. AI adjusts teaching depth based on exposure count (0 = explain inline, 2+ = shorthand).
+
+### Bulk Add + AI Sort (Universal)
+- **Shared component:** `src/components/shared/BulkAddWithAISort.tsx` — two-step flow: textarea input → "Sort This" → AI-parsed preview with editable items, optional category dropdowns, checkboxes, delete. Fallback: line splitting if AI fails.
+- **Rolled out to:** Mast, Keel, First Mate (insights), Crew (notes), Compass (tasks), Victories, Rigging (sprint import), Hatch (bulk routing to mast/keel/victory).
+- **Hatch bulk routing:** When routing to mast, keel, or victory from The Hatch, user sees "Send as one" vs "Bulk sort into multiple" choice. Bulk sort opens BulkAddWithAISort pre-filled with tab content.
 
 ### Meeting Frameworks Conventions
 - **Meeting Frameworks provides structured, recurring meeting templates** guided by AI at The Helm (`guided_mode = 'meeting'`). Five built-in types: Couple, Parent-Child, Mentor, Personal Review (weekly/monthly/quarterly), Business Review. Plus user-created custom templates.

@@ -79,3 +79,46 @@
   font-size: var(--font-size-sm);
   opacity: 0.8;
 }
+
+/* SLL Term — tappable inline term */
+.sll-term {
+  position: relative;
+  display: inline;
+  cursor: pointer;
+}
+
+.sll-term__text {
+  border-bottom: 1px dotted var(--color-cognac);
+  color: inherit;
+  font-weight: 600;
+}
+
+.sll-term__tooltip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-cognac);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  min-width: 200px;
+  max-width: 280px;
+  z-index: 50;
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2xs);
+}
+
+.sll-term__tooltip-contrast {
+  font-weight: 700;
+  font-size: var(--font-size-sm);
+  color: var(--color-cognac);
+}
+
+.sll-term__tooltip-liner {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+}

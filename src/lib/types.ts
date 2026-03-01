@@ -11,6 +11,7 @@ export interface UserProfile {
   onboarding_completed: boolean;
   gender: Gender | null;
   relationship_status: RelationshipStatus | null;
+  sll_exposures: Record<string, number> | null;
   created_at: string;
   updated_at: string;
 }
@@ -976,6 +977,40 @@ export const OBSTACLE_STATUS_LABELS: Record<ObstacleStatus, string> = {
   triggered: 'Triggered',
   resolved: 'Resolved',
 };
+
+// === PRD-22: Priorities ===
+
+export type PriorityTier = 'interested' | 'committed_later' | 'committed_now' | 'achieved';
+
+export interface Priority {
+  id: string;
+  user_id: string;
+  title: string;
+  description: string | null;
+  tier: PriorityTier;
+  sort_order: number;
+  linked_plan_id: string | null;
+  linked_goal_id: string | null;
+  linked_wheel_id: string | null;
+  source: string;
+  source_reference_id: string | null;
+  promoted_at: string | null;
+  achieved_at: string | null;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const PRIORITY_TIER_LABELS: Record<PriorityTier, string> = {
+  committed_now: 'Committed Now',
+  committed_later: 'Committed Later',
+  interested: 'Interested',
+  achieved: 'Achieved',
+};
+
+export const PRIORITY_TIER_ORDER: PriorityTier[] = [
+  'committed_now', 'committed_later', 'interested', 'achieved',
+];
 
 // === PRD-12: First Mate + PRD-13: Crew ===
 

@@ -16,6 +16,7 @@ import { JournalSnapshotCard } from '../components/crowsnest/JournalSnapshotCard
 import { MastThoughtCard } from '../components/crowsnest/MastThoughtCard';
 import { WheelProgressCard } from '../components/wheel/WheelProgressCard';
 import { UpcomingRemindersCard } from '../components/crowsnest/UpcomingRemindersCard';
+import { CurrentCommitmentsCard } from '../components/crowsnest/CurrentCommitmentsCard';
 import './CrowsNest.css';
 
 function getGreeting(timezone: string): string {
@@ -118,7 +119,8 @@ export default function CrowsNest() {
   const hasWheels = data && data.activeWheels.length > 0;
   const hasReminders = data && data.upcomingReminders.length > 0;
   const hasReflections = data && data.reflectionsThisWeek > 0;
-  const hasAnyData = hasTaskData || hasStreaks || hasVictories || hasGoals || hasJournal || hasMast || hasWheels || hasReminders || hasReflections;
+  const hasCommitments = data && data.currentCommitments.length > 0;
+  const hasAnyData = hasTaskData || hasStreaks || hasVictories || hasGoals || hasJournal || hasMast || hasWheels || hasReminders || hasReflections || hasCommitments;
 
   return (
     <div className="page crowsnest" onTouchEnd={handleRefresh}>
@@ -195,6 +197,10 @@ export default function CrowsNest() {
               accomplishments={recentAccomplishments}
               weekCount={weekAccomplishmentCount}
             />
+          )}
+
+          {hasCommitments && (
+            <CurrentCommitmentsCard commitments={data.currentCommitments} />
           )}
 
           {hasGoals && (

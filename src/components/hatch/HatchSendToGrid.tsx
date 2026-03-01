@@ -1,9 +1,12 @@
 import { useState, useCallback } from 'react';
 import { useHatchContext } from '../../contexts/HatchContext';
+import { useAuthContext } from '../../contexts/AuthContext';
+import { supabase } from '../../lib/supabase';
 import HatchDestinationButton from './HatchDestinationButton';
 import HatchInlinePickerOverlay from './HatchInlinePickerOverlay';
 import HatchUndoToast from './HatchUndoToast';
 import { LoadingSpinner } from '../shared';
+import { BulkAddWithAISort, type ParsedBulkItem } from '../shared/BulkAddWithAISort';
 import type { HatchRoutingDestination, MastEntryType, KeelCategory, JournalEntryType } from '../../lib/types';
 import { HATCH_DESTINATION_CONFIG } from '../../lib/types';
 import './HatchSendToGrid.css';
@@ -15,6 +18,9 @@ interface HatchSendToGridProps {
 
 // Destinations that need an inline picker
 const PICKER_DESTINATIONS: HatchRoutingDestination[] = ['mast', 'keel', 'journal', 'agenda', 'charts'];
+
+// Destinations that support bulk add
+const BULK_DESTINATIONS: HatchRoutingDestination[] = ['mast', 'keel', 'victory'];
 
 // 'compass' is a virtual button that opens the task sub-picker
 type GridDestination = HatchRoutingDestination | 'compass';
@@ -37,8 +43,48 @@ const normalizeFavorite = (dest: string): GridDestination => {
   return dest as GridDestination;
 };
 
+// Bulk add configuration per destination
+const BULK_CONFIG: Record<string, {
+  title: string;
+  placeholder: string;
+  parsePrompt: string;
+  categories?: { value: string; label: string }[];
+}> = {
+  mast: {
+    title: 'Bulk Add to Mast',
+    placeholder: 'Paste your values, principles, declarations...',
+    parsePrompt: 'You are parsing a list of personal values, principles, or declarations into individual Mast entries. Each item should be a distinct value, declaration, faith foundation, scripture/quote, or vision statement. Return a JSON array of objects with "text" and "category" fields.',
+    categories: [
+      { value: 'value', label: 'Value' },
+      { value: 'declaration', label: 'Declaration' },
+      { value: 'faith_foundation', label: 'Faith Foundation' },
+      { value: 'scripture_quote', label: 'Scripture / Quote' },
+      { value: 'vision', label: 'Vision' },
+    ],
+  },
+  keel: {
+    title: 'Bulk Add to Keel',
+    placeholder: 'Paste your personality traits, strengths, growth areas...',
+    parsePrompt: 'You are parsing a list of personality traits, self-knowledge, or personal characteristics into individual Keel entries. Each item should be a distinct trait, assessment result, strength, or growth area. Return a JSON array of objects with "text" and "category" fields.',
+    categories: [
+      { value: 'personality_assessment', label: 'Personality Assessment' },
+      { value: 'trait_tendency', label: 'Trait / Tendency' },
+      { value: 'strength', label: 'Strength' },
+      { value: 'growth_area', label: 'Growth Area' },
+      { value: 'you_inc', label: 'You, Inc.' },
+      { value: 'general', label: 'General' },
+    ],
+  },
+  victory: {
+    title: 'Bulk Add Victories',
+    placeholder: 'Paste your accomplishments, wins, milestones...',
+    parsePrompt: 'You are parsing a list of accomplishments or victories. Each item should be a distinct achievement or win worth recording. Return a JSON array of strings, one per victory.',
+  },
+};
+
 export default function HatchSendToGrid({ tabId, onClose }: HatchSendToGridProps) {
-  const { routeTab, routingStats, tabs, undoRoute } = useHatchContext();
+  const { user } = useAuthContext();
+  const { routeTab, bulkRouteTab, routingStats, tabs, undoRoute } = useHatchContext();
   const [routing, setRouting] = useState(false);
   const [pickerDestination, setPickerDestination] = useState<HatchRoutingDestination | null>(null);
   const [undoData, setUndoData] = useState<{
@@ -47,6 +93,12 @@ export default function HatchSendToGrid({ tabId, onClose }: HatchSendToGridProps
     destinationId?: string;
     tabTitle: string;
   } | null>(null);
+
+  // Bulk routing state
+  const [bulkPickerDest, setBulkPickerDest] = useState<HatchRoutingDestination | null>(null);
+  const [bulkAddDest, setBulkAddDest] = useState<HatchRoutingDestination | null>(null);
+
+  const tabContent = tabs.find((t) => t.id === tabId)?.content || '';
 
   // Get top 3 favorites sorted by route_count, dedup compass variants
   const favorites = (() => {
@@ -73,6 +125,12 @@ export default function HatchSendToGrid({ tabId, onClose }: HatchSendToGridProps
         return;
       }
 
+      // Bulk-capable destinations show one/bulk choice
+      if (BULK_DESTINATIONS.includes(destination)) {
+        setBulkPickerDest(destination);
+        return;
+      }
+
       // Destinations needing a sub-picker
       if (PICKER_DESTINATIONS.includes(destination)) {
         setPickerDestination(destination);
@@ -95,6 +153,89 @@ export default function HatchSendToGrid({ tabId, onClose }: HatchSendToGridProps
     },
     [tabId, routeTab, tabs],
   );
+
+  // "Send as one" from bulk picker — route to existing single-item flow
+  const handleBulkPickerSendAsOne = useCallback((dest: HatchRoutingDestination) => {
+    setBulkPickerDest(null);
+    // mast/keel need the inline picker for type/category
+    if (PICKER_DESTINATIONS.includes(dest)) {
+      setPickerDestination(dest);
+    } else {
+      // victory routes directly
+      setRouting(true);
+      const tab = tabs.find((t) => t.id === tabId);
+      routeTab(tabId, dest).then((result) => {
+        setRouting(false);
+        if (result.success) {
+          setUndoData({
+            tabId,
+            destination: dest,
+            destinationId: result.destinationId,
+            tabTitle: tab?.title || 'Tab',
+          });
+        }
+      });
+    }
+  }, [tabId, routeTab, tabs]);
+
+  // "Bulk sort" from bulk picker — open BulkAddWithAISort
+  const handleBulkPickerBulkSort = useCallback((dest: HatchRoutingDestination) => {
+    setBulkPickerDest(null);
+    setBulkAddDest(dest);
+  }, []);
+
+  // Save handler for bulk add
+  const handleBulkSave = useCallback(async (items: ParsedBulkItem[]) => {
+    if (!user || !bulkAddDest) return;
+
+    const selected = items.filter((item) => item.selected && item.text.trim().length > 0);
+    if (selected.length === 0) return;
+
+    switch (bulkAddDest) {
+      case 'mast':
+        for (let i = 0; i < selected.length; i++) {
+          await supabase.from('mast_entries').insert({
+            user_id: user.id,
+            type: selected[i].category || 'value',
+            text: selected[i].text,
+            source: 'hatch',
+            source_reference_id: tabId,
+            sort_order: i,
+          });
+        }
+        break;
+
+      case 'keel':
+        for (let i = 0; i < selected.length; i++) {
+          await supabase.from('keel_entries').insert({
+            user_id: user.id,
+            category: selected[i].category || 'general',
+            text: selected[i].text,
+            source: 'hatch',
+            source_type: 'hatch',
+            source_reference_id: tabId,
+            sort_order: i,
+          });
+        }
+        break;
+
+      case 'victory':
+        for (const item of selected) {
+          await supabase.from('victories').insert({
+            user_id: user.id,
+            description: item.text,
+            source: 'hatch',
+            source_reference_id: tabId,
+          });
+        }
+        break;
+    }
+
+    // Mark tab as routed and clean up
+    await bulkRouteTab(tabId, bulkAddDest);
+    setBulkAddDest(null);
+    onClose();
+  }, [user, bulkAddDest, tabId, bulkRouteTab, onClose]);
 
   const handlePickerRoute = useCallback(
     async (
@@ -185,6 +326,63 @@ export default function HatchSendToGrid({ tabId, onClose }: HatchSendToGridProps
         </button>
       </div>
     );
+  }
+
+  // Show bulk mode picker (send as one vs bulk sort)
+  if (bulkPickerDest) {
+    const destLabel = HATCH_DESTINATION_CONFIG[bulkPickerDest]?.label || bulkPickerDest;
+    return (
+      <div className="hatch-send-grid">
+        <div className="hatch-send-grid__header">
+          <h4 className="hatch-send-grid__title">Send to {destLabel}</h4>
+        </div>
+        <div className="hatch-send-grid__compass-options">
+          <button
+            type="button"
+            className="hatch-send-grid__compass-option"
+            onClick={() => handleBulkPickerSendAsOne(bulkPickerDest)}
+          >
+            <span className="hatch-send-grid__compass-option-title">Send as one item</span>
+            <span className="hatch-send-grid__compass-option-desc">The whole note becomes a single entry</span>
+          </button>
+          <button
+            type="button"
+            className="hatch-send-grid__compass-option"
+            onClick={() => handleBulkPickerBulkSort(bulkPickerDest)}
+          >
+            <span className="hatch-send-grid__compass-option-title">Bulk sort into multiple</span>
+            <span className="hatch-send-grid__compass-option-desc">AI parses into separate entries</span>
+          </button>
+        </div>
+        <button
+          type="button"
+          className="hatch-send-grid__cancel"
+          onClick={() => setBulkPickerDest(null)}
+        >
+          Back
+        </button>
+      </div>
+    );
+  }
+
+  // Show bulk add with AI sort
+  if (bulkAddDest) {
+    const config = BULK_CONFIG[bulkAddDest];
+    if (config) {
+      return (
+        <div className="hatch-send-grid">
+          <BulkAddWithAISort
+            title={config.title}
+            placeholder={config.placeholder}
+            parsePrompt={config.parsePrompt}
+            categories={config.categories}
+            initialText={tabContent}
+            onSave={handleBulkSave}
+            onClose={() => setBulkAddDest(null)}
+          />
+        </div>
+      );
+    }
   }
 
   // Show inline picker

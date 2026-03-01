@@ -24,6 +24,24 @@
   cursor: pointer;
 }
 
+.add-task__bulk-toggle {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: none;
+  border: 1px solid var(--color-warm-sand);
+  border-radius: var(--radius-sm);
+  color: var(--color-mid-teal);
+  cursor: pointer;
+}
+
+.add-task__bulk-toggle:hover {
+  background: var(--color-cream);
+}
+
 .add-task__top-title {
   font-family: var(--font-heading);
   font-size: var(--font-size-lg);
