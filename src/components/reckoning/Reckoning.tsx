@@ -1,14 +1,14 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { useRhythms } from '../../hooks/useRhythms';
+import { useReflections } from '../../hooks/useReflections';
 import { useReminders } from '../../hooks/useReminders';
 import { useAuthContext } from '../../contexts/AuthContext';
-import { supabase } from '../../lib/supabase';
 import { TrackerPrompts } from '../reveille/TrackerPrompts';
 import { ReminderBatchSection } from '../reminders/ReminderBatchSection';
 import { MAST_TYPE_LABELS, LIFE_AREA_LABELS, MEETING_TYPE_LABELS } from '../../lib/types';
-import type { MastEntryType, CompassTask, Reminder, SnoozePreset } from '../../lib/types';
+import type { MastEntryType, CompassTask, Reminder, SnoozePreset, ReflectionQuestion, ReflectionResponse } from '../../lib/types';
 import '../reveille/Reveille.css';
 
 function getGreeting(timezone: string): string {
@@ -35,6 +35,38 @@ function formatDate(): string {
   });
 }
 
+function getDailyReflectionQuestions(
+  allQuestions: ReflectionQuestion[],
+  todaysResponses: ReflectionResponse[],
+  count: number,
+): ReflectionQuestion[] {
+  if (allQuestions.length === 0) return [];
+
+  // Date-seeded pseudo-random for deterministic daily rotation
+  const today = new Date();
+  const seed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+
+  // Mulberry32 PRNG
+  let t = seed;
+  const rand = () => {
+    t = (t + 0x6D2B79F5) | 0;
+    let r = Math.imul(t ^ (t >>> 15), 1 | t);
+    r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+
+  const answeredIds = new Set(todaysResponses.map((r) => r.question_id));
+  const unanswered = allQuestions.filter((q) => !answeredIds.has(q.id));
+  const answered = allQuestions.filter((q) => answeredIds.has(q.id));
+
+  // Shuffle each group deterministically, prioritize unanswered
+  const shuffled = [
+    ...[...unanswered].sort(() => rand() - 0.5),
+    ...[...answered].sort(() => rand() - 0.5),
+  ];
+  return shuffled.slice(0, count);
+}
+
 const LIFE_AREAS = Object.entries(LIFE_AREA_LABELS);
 
 export function ReckoningScreen() {
@@ -49,7 +81,6 @@ export function ReckoningScreen() {
     cancelTask,
     addTomorrowTask,
     logTrackerEntry,
-    savePromptedEntry,
     saveVictoryReviewNote,
     createTaskFromNote,
   } = useRhythms();
@@ -78,14 +109,27 @@ export function ReckoningScreen() {
   const [triageSaved, setTriageSaved] = useState(false);
   const [triageTaskCreated, setTriageTaskCreated] = useState(false);
 
-  // Prompted entries state
-  const [promptTexts, setPromptTexts] = useState<Record<string, string>>({});
-  const [promptSaved, setPromptSaved] = useState<Record<string, boolean>>({});
-  const [promptSaving, setPromptSaving] = useState<Record<string, boolean>>({});
+  // Reflections inline section
+  const {
+    questions: allReflectionQuestions,
+    todaysResponses: reflectionTodaysResponses,
+    fetchQuestions: fetchReflectionQuestions,
+    fetchTodaysResponses: fetchReflectionTodaysResponses,
+    saveResponse: saveReflectionResponse,
+  } = useReflections();
+
+  const [reflectionTexts, setReflectionTexts] = useState<Record<string, string>>({});
+  const [reflectionSaving, setReflectionSaving] = useState<Record<string, boolean>>({});
+  const [reflectionSaved, setReflectionSaved] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     fetchReckoningData();
   }, [fetchReckoningData]);
+
+  useEffect(() => {
+    fetchReflectionQuestions();
+    fetchReflectionTodaysResponses();
+  }, [fetchReflectionQuestions, fetchReflectionTodaysResponses]);
 
   useEffect(() => {
     if (reckoningData) {
@@ -105,33 +149,10 @@ export function ReckoningScreen() {
     return () => { mounted = false; };
   }, [reckoningData, fetchReckoningReminders]);
 
-  // Reflections nudge
-  const [reflectionsTodayCount, setReflectionsTodayCount] = useState(0);
-  const [reflectionsRandomQ, setReflectionsRandomQ] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!profile) return;
-    const today = new Date().toISOString().split('T')[0];
-    Promise.all([
-      supabase
-        .from('reflection_responses')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', profile.user_id || '')
-        .eq('response_date', today),
-      supabase
-        .from('reflection_questions')
-        .select('question_text')
-        .eq('user_id', profile.user_id || '')
-        .is('archived_at', null)
-        .limit(20),
-    ]).then(([countRes, questionsRes]) => {
-      setReflectionsTodayCount(countRes.count || 0);
-      const qs = questionsRes.data || [];
-      if (qs.length > 0) {
-        setReflectionsRandomQ(qs[Math.floor(Math.random() * qs.length)].question_text);
-      }
-    });
-  }, [profile]);
+  const dailyReflections = useMemo(
+    () => getDailyReflectionQuestions(allReflectionQuestions, reflectionTodaysResponses, 3),
+    [allReflectionQuestions, reflectionTodaysResponses],
+  );
 
   const timezone = profile?.timezone || 'America/Chicago';
   const greeting = getGreeting(timezone);
@@ -188,14 +209,14 @@ export function ReckoningScreen() {
     setTriageTaskCreated(true);
   }, [triageText, createTaskFromNote]);
 
-  const handlePromptSave = useCallback(async (type: 'gratitude' | 'joy' | 'anticipation') => {
-    const text = promptTexts[type];
+  const handleReflectionSave = useCallback(async (questionId: string) => {
+    const text = reflectionTexts[questionId];
     if (!text?.trim()) return;
-    setPromptSaving((p) => ({ ...p, [type]: true }));
-    await savePromptedEntry(type, text.trim());
-    setPromptSaved((p) => ({ ...p, [type]: true }));
-    setPromptSaving((p) => ({ ...p, [type]: false }));
-  }, [promptTexts, savePromptedEntry]);
+    setReflectionSaving((p) => ({ ...p, [questionId]: true }));
+    await saveReflectionResponse(questionId, text.trim());
+    setReflectionSaved((p) => ({ ...p, [questionId]: true }));
+    setReflectionSaving((p) => ({ ...p, [questionId]: false }));
+  }, [reflectionTexts, saveReflectionResponse]);
 
   const handleHelmOpen = useCallback(() => {
     dismissReckoning();
@@ -236,7 +257,6 @@ export function ReckoningScreen() {
   const hasTomorrow = localTomorrowTasks.length > 0;
   const hasMast = !!reckoningData.mastThought;
   const hasTrackers = reckoningData.trackers.length > 0;
-  const hasPrompts = reckoningData.promptsDue.gratitude || reckoningData.promptsDue.joy || reckoningData.promptsDue.anticipation;
   const hasMeetings = reckoningData.completedMeetings.length > 0;
   const hasMilestones = reckoningData.milestones && reckoningData.milestones.length > 0;
 
@@ -657,73 +677,62 @@ export function ReckoningScreen() {
           />
         )}
 
-        {/* Section 7: Prompted Entries */}
-        {hasPrompts && (
+        {/* Section 7: Reflections */}
+        {dailyReflections.length > 0 && (
           <div className="rhythm-section">
-            <h3 className="rhythm-section__title">Evening Reflection</h3>
-            <div className="prompted-entries">
-              {reckoningData.promptsDue.gratitude && (
-                <PromptedEntry
-                  type="gratitude"
-                  question="What are you grateful for today?"
-                  text={promptTexts.gratitude || ''}
-                  onTextChange={(t) => setPromptTexts((p) => ({ ...p, gratitude: t }))}
-                  onSave={() => handlePromptSave('gratitude')}
-                  saved={promptSaved.gratitude || false}
-                  saving={promptSaving.gratitude || false}
-                />
-              )}
-              {reckoningData.promptsDue.joy && (
-                <PromptedEntry
-                  type="joy"
-                  question="What brought you joy recently?"
-                  text={promptTexts.joy || ''}
-                  onTextChange={(t) => setPromptTexts((p) => ({ ...p, joy: t }))}
-                  onSave={() => handlePromptSave('joy')}
-                  saved={promptSaved.joy || false}
-                  saving={promptSaving.joy || false}
-                />
-              )}
-              {reckoningData.promptsDue.anticipation && (
-                <PromptedEntry
-                  type="anticipation"
-                  question="What are you looking forward to?"
-                  text={promptTexts.anticipation || ''}
-                  onTextChange={(t) => setPromptTexts((p) => ({ ...p, anticipation: t }))}
-                  onSave={() => handlePromptSave('anticipation')}
-                  saved={promptSaved.anticipation || false}
-                  saving={promptSaving.anticipation || false}
-                />
-              )}
+            <h3
+              className="rhythm-section__title rhythm-section__title--tappable"
+              onClick={() => navigate('/reflections')}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter') navigate('/reflections'); }}
+            >
+              Reflections
+            </h3>
+            <button
+              type="button"
+              className="rhythm-section__subtitle--link"
+              onClick={() => navigate('/reflections')}
+            >
+              See all questions
+            </button>
+            <div className="reckoning-reflections">
+              {dailyReflections.map((q) => {
+                const isAnswered = reflectionTodaysResponses.some((r) => r.question_id === q.id);
+                const isSaved = reflectionSaved[q.id] || isAnswered;
+                const isSaving = reflectionSaving[q.id] || false;
+
+                return (
+                  <div key={q.id} className={`reckoning-reflection ${isSaved ? 'reckoning-reflection--saved' : ''}`}>
+                    <p className="reckoning-reflection__question">{q.question_text}</p>
+                    {isSaved ? (
+                      <span className="reckoning-reflection__saved-msg">Reflected</span>
+                    ) : (
+                      <>
+                        <textarea
+                          className="reckoning-reflection__textarea"
+                          value={reflectionTexts[q.id] || ''}
+                          onChange={(e) => setReflectionTexts((p) => ({ ...p, [q.id]: e.target.value }))}
+                          placeholder="Write a thought..."
+                        />
+                        <div className="reckoning-reflection__actions">
+                          <button
+                            type="button"
+                            className="rhythm-actions__secondary"
+                            onClick={() => handleReflectionSave(q.id)}
+                            disabled={!reflectionTexts[q.id]?.trim() || isSaving}
+                          >
+                            {isSaving ? 'Saving...' : 'Save'}
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
-
-        {/* Section 7b: Daily Reflections Nudge */}
-        <div className="rhythm-section">
-          {reflectionsTodayCount > 0 ? (
-            <>
-              <h3 className="rhythm-section__title">Daily Reflections</h3>
-              <p className="rhythm-section__text">
-                You reflected on {reflectionsTodayCount} question{reflectionsTodayCount !== 1 ? 's' : ''} today.
-              </p>
-            </>
-          ) : reflectionsRandomQ ? (
-            <>
-              <h3 className="rhythm-section__title">Daily Reflections</h3>
-              <p className="rhythm-section__text rhythm-section__text--italic">
-                "{reflectionsRandomQ}"
-              </p>
-              <button
-                type="button"
-                className="rhythm-section__link"
-                onClick={() => navigate('/reflections')}
-              >
-                Reflect
-              </button>
-            </>
-          ) : null}
-        </div>
 
         {/* Section 8: Custom Tracker Prompts (Evening) */}
         {hasTrackers && (
@@ -762,52 +771,3 @@ export function ReckoningScreen() {
   );
 }
 
-// Inline sub-component for prompted entries
-function PromptedEntry({
-  type: _type,
-  question,
-  text,
-  onTextChange,
-  onSave,
-  saved,
-  saving,
-}: {
-  type: string;
-  question: string;
-  text: string;
-  onTextChange: (t: string) => void;
-  onSave: () => void;
-  saved: boolean;
-  saving: boolean;
-}) {
-  if (saved) {
-    return (
-      <div className="prompted-entry prompted-entry--saved">
-        <p className="prompted-entry__question">{question}</p>
-        <span className="prompted-entry__saved-msg">Saved to your Log</span>
-      </div>
-    );
-  }
-
-  return (
-    <div className="prompted-entry">
-      <p className="prompted-entry__question">{question}</p>
-      <textarea
-        className="prompted-entry__textarea"
-        value={text}
-        onChange={(e) => onTextChange(e.target.value)}
-        placeholder="Write a thought..."
-      />
-      <div className="prompted-entry__actions">
-        <button
-          type="button"
-          className="rhythm-actions__secondary"
-          onClick={onSave}
-          disabled={!text.trim() || saving}
-        >
-          {saving ? 'Saving...' : 'Save'}
-        </button>
-      </div>
-    </div>
-  );
-}

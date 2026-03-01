@@ -665,13 +665,7 @@ export function useRhythms() {
         }
       }
 
-      // Check prompt frequencies
-      const [gratitudeDue, joyDue, anticipationDue] = await Promise.all([
-        isPromptDue('gratitude', status, settings),
-        isPromptDue('joy', status, settings),
-        isPromptDue('anticipation', status, settings),
-      ]);
-
+      // Prompted entries replaced by unified Reflections section in Reckoning
       const aiSuggestion = buildAiSuggestion(incompleteTasks, tomorrowTasks);
 
       // Build milestones list
@@ -770,9 +764,9 @@ export function useRhythms() {
         completedMeetings,
         milestones,
         promptsDue: {
-          gratitude: gratitudeDue,
-          joy: joyDue,
-          anticipation: anticipationDue,
+          gratitude: false,
+          joy: false,
+          anticipation: false,
         },
         aiSuggestion,
       });
@@ -781,7 +775,7 @@ export function useRhythms() {
     } finally {
       setLoading(false);
     }
-  }, [user, timezone, getOrCreateRhythmStatus, selectMastThought, isPromptDue, buildAiSuggestion, fetchSettings]);
+  }, [user, timezone, getOrCreateRhythmStatus, selectMastThought, buildAiSuggestion, fetchSettings]);
 
   // Actions
   const dismissReveille = useCallback(async () => {

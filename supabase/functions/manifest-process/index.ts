@@ -213,8 +213,21 @@ serve(async (req: Request) => {
       );
     }
 
-    // 4. Chunk the text
-    const chunks = chunkText(fullText);
+    // 4. Chunk the text and filter out garbage
+    const rawChunks = chunkText(fullText);
+    const chunks = rawChunks.filter((c) => isQualityChunk(c.text));
+    console.log(`Chunking: ${rawChunks.length} raw → ${chunks.length} quality chunks (filtered ${rawChunks.length - chunks.length})`);
+
+    if (chunks.length === 0) {
+      await supabase
+        .from('manifest_items')
+        .update({ processing_status: 'failed' })
+        .eq('id', manifest_item_id);
+      return new Response(
+        JSON.stringify({ error: 'No usable text content found after quality filtering. The file may contain only images or non-text data.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
 
     // 5. Generate embeddings for each chunk
     const openaiKey = Deno.env.get('OPENAI_API_KEY');
@@ -330,6 +343,43 @@ serve(async (req: Request) => {
 });
 
 // --- Helper Functions ---
+
+/**
+ * Filter out garbage chunks — PDF metadata, ICC color profiles, binary artifacts.
+ * Quality text has mostly letters/spaces and forms coherent sentences.
+ */
+function isQualityChunk(text: string): boolean {
+  // Skip very short chunks
+  if (text.length < 50) return false;
+
+  // Calculate letter/space ratio — quality text is mostly letters and spaces
+  const letters = text.replace(/[^a-zA-Z\s]/g, '').length;
+  const ratio = letters / text.length;
+  if (ratio < 0.5) return false;
+
+  // Check for known PDF metadata / binary artifact patterns
+  const garbagePatterns = [
+    /ICCBased|ColorSpace|\/Filter/i,
+    /Hewlett-Packard|Copyright.*HP/i,
+    /IEC\s*61966/i,
+    /Reference Viewing Condition/i,
+    /\/Type\s*\/\w+/,
+    /obj\s*<<|endobj|xref|trailer/,
+    /stream\r?\nendstream/,
+    /\/Length\s+\d+\s*\/Filter/,
+    /\/FontDescriptor|\/BaseFont|\/Encoding/,
+    /sRGB\s*IEC/i,
+  ];
+  for (const pattern of garbagePatterns) {
+    if (pattern.test(text)) return false;
+  }
+
+  // Must have at least some real words (5+)
+  const words = text.split(/\s+/).filter((w) => w.length > 1);
+  if (words.length < 5) return false;
+
+  return true;
+}
 
 function chunkText(
   text: string,

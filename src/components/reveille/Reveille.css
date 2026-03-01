@@ -623,6 +623,89 @@
   font-style: italic;
 }
 
+/* Reckoning Reflections inline section */
+.rhythm-section__title--tappable {
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+}
+
+.rhythm-section__title--tappable:hover {
+  opacity: 0.7;
+}
+
+.rhythm-section__subtitle--link {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-link, var(--color-mid-teal));
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  margin-bottom: var(--spacing-md);
+  display: block;
+}
+
+.rhythm-section__subtitle--link:hover {
+  text-decoration: underline;
+}
+
+.reckoning-reflections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.reckoning-reflection {
+  background: var(--color-bg-card, #fff);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+}
+
+.reckoning-reflection--saved {
+  opacity: 0.6;
+}
+
+.reckoning-reflection__question {
+  font-family: var(--font-heading, Georgia, serif);
+  font-size: var(--font-size-base);
+  font-style: italic;
+  color: var(--color-deep-teal);
+  margin-bottom: var(--spacing-sm);
+}
+
+.reckoning-reflection__textarea {
+  width: 100%;
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-border, #ccc);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  background: var(--color-bg-card, #fff);
+  resize: vertical;
+  min-height: 60px;
+  margin-bottom: var(--spacing-sm);
+}
+
+.reckoning-reflection__textarea:focus {
+  outline: none;
+  border-color: var(--color-border-focus, var(--color-mid-teal));
+  box-shadow: 0 0 0 2px var(--color-focus-ring, rgba(59, 110, 103, 0.2));
+}
+
+.reckoning-reflection__saved-msg {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-mid-teal);
+  font-style: italic;
+}
+
+.reckoning-reflection__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+}
+
 /* Life area selector */
 .life-area-select {
   padding: var(--spacing-xs) var(--spacing-sm);

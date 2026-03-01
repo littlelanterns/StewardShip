@@ -17,6 +17,8 @@ const DEFAULT_QUESTIONS: string[] = [
   'What would my future self thank me for today?',
   'What made me laugh today?',
   'Where did I fall short today, and what would I do differently?',
+  'What brought you joy recently?',
+  'What are you looking forward to?',
 ];
 
 export function useReflections() {
