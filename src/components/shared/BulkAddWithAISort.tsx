@@ -70,7 +70,6 @@ export function BulkAddWithAISort({
   // File upload state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [extracting, setExtracting] = useState(false);
-  const [storageChoice, setStorageChoice] = useState<'extract_only' | 'store_in_manifest' | null>(null);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -88,7 +87,6 @@ export function BulkAddWithAISort({
 
     setError(null);
     setSelectedFile(file);
-    setStorageChoice(null);
     setUploadedFileName(null);
 
     // Images skip the storage choice — go straight to extraction (vision)
@@ -101,7 +99,6 @@ export function BulkAddWithAISort({
   const handleExtractFile = useCallback(async (file: File, choice: 'extract_only' | 'store_in_manifest') => {
     if (!file || !user) return;
 
-    setStorageChoice(choice);
     setExtracting(true);
     setError(null);
 
@@ -193,7 +190,6 @@ export function BulkAddWithAISort({
   const clearFile = useCallback(() => {
     setSelectedFile(null);
     setUploadedFileName(null);
-    setStorageChoice(null);
     setInputText('');
     setError(null);
     if (fileInputRef.current) {
