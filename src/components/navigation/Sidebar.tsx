@@ -99,56 +99,7 @@ export default function Sidebar() {
               <span>Helm</span>
             </button>
           </li>
-          <li>
-            <NavLink to="/journal" className="sidebar__link" title="Journal entries, gratitude, reflections, quick notes, and voice recordings">
-              <BookOpen size={18} strokeWidth={1.5} />
-              <span>Journal</span>
-            </NavLink>
-          </li>
-          <li>
-            <button
-              type="button"
-              className={`sidebar__link sidebar__link--button ${
-                hatchOpen ? 'sidebar__link--active' : ''
-              }`}
-              onClick={toggleHatch}
-              title="Universal capture notepad — jot anything down, then route to tasks, journal, or anywhere else"
-            >
-              <Inbox size={18} strokeWidth={1.5} />
-              <span>Hatch</span>
-            </button>
-          </li>
         </ul>
-
-        {/* Progress & Tracking */}
-        <button
-          type="button"
-          className="sidebar__section-toggle"
-          onClick={() => toggleSection('progress')}
-          aria-expanded={!collapsedSections.has('progress')}
-        >
-          <span>Progress</span>
-          <ChevronDown
-            size={14}
-            className={`sidebar__section-chevron ${collapsedSections.has('progress') ? 'sidebar__section-chevron--collapsed' : ''}`}
-          />
-        </button>
-        {!collapsedSections.has('progress') && (
-          <ul className="sidebar__group">
-            <li>
-              <NavLink to="/charts" className="sidebar__link" title="Track progress — task completion, streaks, goals, custom trackers, and victory summaries">
-                <BarChart3 size={18} strokeWidth={1.5} />
-                <span>Charts</span>
-              </NavLink>
-            </li>
-            <li>
-              <NavLink to="/victories" className="sidebar__link" title="All your accomplishments — completed tasks and recorded victories with AI-generated narratives">
-                <Trophy size={18} strokeWidth={1.5} />
-                <span>Victories</span>
-              </NavLink>
-            </li>
-          </ul>
-        )}
 
         {/* Identity & Growth */}
         <button
@@ -187,6 +138,38 @@ export default function Sidebar() {
               <NavLink to="/life-inventory" className="sidebar__link" title="Assess where you are across life areas — spiritual, marriage, family, health, career, and more">
                 <ClipboardList size={18} strokeWidth={1.5} />
                 <span>Life Inventory</span>
+              </NavLink>
+            </li>
+          </ul>
+        )}
+
+        {/* Relationships */}
+        <button
+          type="button"
+          className="sidebar__section-toggle"
+          onClick={() => toggleSection('relationships')}
+          aria-expanded={!collapsedSections.has('relationships')}
+        >
+          <span>Relationships</span>
+          <ChevronDown
+            size={14}
+            className={`sidebar__section-chevron ${collapsedSections.has('relationships') ? 'sidebar__section-chevron--collapsed' : ''}`}
+          />
+        </button>
+        {!collapsedSections.has('relationships') && (
+          <ul className="sidebar__group">
+            {showFirstMate && (
+              <li>
+                <NavLink to="/first-mate" className="sidebar__link" title="Your spouse/partner — store insights, use the Marriage Toolbox and Cyrano communication coach">
+                  <Heart size={18} strokeWidth={1.5} />
+                  <span>First Mate</span>
+                </NavLink>
+              </li>
+            )}
+            <li>
+              <NavLink to="/crew" className="sidebar__link" title="Your people directory — family, friends, mentors, colleagues with context for AI conversations">
+                <Users size={18} strokeWidth={1.5} />
+                <span>Crew</span>
               </NavLink>
             </li>
           </ul>
@@ -239,33 +222,31 @@ export default function Sidebar() {
           </ul>
         )}
 
-        {/* Relationships */}
+        {/* Progress & Tracking */}
         <button
           type="button"
           className="sidebar__section-toggle"
-          onClick={() => toggleSection('relationships')}
-          aria-expanded={!collapsedSections.has('relationships')}
+          onClick={() => toggleSection('progress')}
+          aria-expanded={!collapsedSections.has('progress')}
         >
-          <span>Relationships</span>
+          <span>Progress</span>
           <ChevronDown
             size={14}
-            className={`sidebar__section-chevron ${collapsedSections.has('relationships') ? 'sidebar__section-chevron--collapsed' : ''}`}
+            className={`sidebar__section-chevron ${collapsedSections.has('progress') ? 'sidebar__section-chevron--collapsed' : ''}`}
           />
         </button>
-        {!collapsedSections.has('relationships') && (
+        {!collapsedSections.has('progress') && (
           <ul className="sidebar__group">
-            {showFirstMate && (
-              <li>
-                <NavLink to="/first-mate" className="sidebar__link" title="Your spouse/partner — store insights, use the Marriage Toolbox and Cyrano communication coach">
-                  <Heart size={18} strokeWidth={1.5} />
-                  <span>First Mate</span>
-                </NavLink>
-              </li>
-            )}
             <li>
-              <NavLink to="/crew" className="sidebar__link" title="Your people directory — family, friends, mentors, colleagues with context for AI conversations">
-                <Users size={18} strokeWidth={1.5} />
-                <span>Crew</span>
+              <NavLink to="/charts" className="sidebar__link" title="Track progress — task completion, streaks, goals, custom trackers, and victory summaries">
+                <BarChart3 size={18} strokeWidth={1.5} />
+                <span>Charts</span>
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/victories" className="sidebar__link" title="All your accomplishments — completed tasks and recorded victories with AI-generated narratives">
+                <Trophy size={18} strokeWidth={1.5} />
+                <span>Victories</span>
               </NavLink>
             </li>
           </ul>
@@ -316,6 +297,25 @@ export default function Sidebar() {
         </button>
         {!collapsedSections.has('resources') && (
           <ul className="sidebar__group">
+            <li>
+              <NavLink to="/journal" className="sidebar__link" title="Journal entries, gratitude, reflections, quick notes, and voice recordings">
+                <BookOpen size={18} strokeWidth={1.5} />
+                <span>Journal</span>
+              </NavLink>
+            </li>
+            <li>
+              <button
+                type="button"
+                className={`sidebar__link sidebar__link--button ${
+                  hatchOpen ? 'sidebar__link--active' : ''
+                }`}
+                onClick={toggleHatch}
+                title="Universal capture notepad — jot anything down, then route to tasks, journal, or anywhere else"
+              >
+                <Inbox size={18} strokeWidth={1.5} />
+                <span>Hatch</span>
+              </button>
+            </li>
             <li>
               <NavLink to="/safe-harbor" className="sidebar__link" title="Stress relief and support — AI switches to validation-first mode when you're overwhelmed">
                 <ShieldCheck size={18} strokeWidth={1.5} />
