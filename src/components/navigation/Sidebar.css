@@ -47,6 +47,35 @@
   letter-spacing: 0.06em;
 }
 
+.sidebar__section-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--spacing-md) var(--spacing-md) var(--spacing-xs);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-slate-gray);
+}
+
+.sidebar__section-toggle:hover {
+  color: var(--color-cream);
+}
+
+.sidebar__section-chevron {
+  transition: transform 0.2s ease;
+}
+
+.sidebar__section-chevron--collapsed {
+  transform: rotate(-90deg);
+}
+
 .sidebar__group {
   list-style: none;
   margin: 0;

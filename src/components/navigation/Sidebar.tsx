@@ -1,3 +1,4 @@
+import { useState, useCallback } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -24,6 +25,8 @@ import {
   Moon,
   Settings,
   Clock,
+  ChevronDown,
+  Lightbulb,
 } from 'lucide-react';
 import { useHelm } from '../../contexts/HelmContext';
 import { useHatchContext } from '../../contexts/HatchContext';
@@ -36,6 +39,28 @@ export default function Sidebar() {
   const { profile } = useAuthContext();
   const showFirstMate = profile?.relationship_status && profile.relationship_status !== 'single';
 
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem('sidebar-collapsed-sections');
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+
+  const toggleSection = useCallback((section: string) => {
+    setCollapsedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(section)) {
+        next.delete(section);
+      } else {
+        next.add(section);
+      }
+      localStorage.setItem('sidebar-collapsed-sections', JSON.stringify([...next]));
+      return next;
+    });
+  }, []);
+
   const handleUnloadTheHold = () => {
     startGuidedConversation('unload_the_hold');
   };
@@ -47,7 +72,7 @@ export default function Sidebar() {
       </div>
 
       <nav className="sidebar__nav">
-        {/* Primary */}
+        {/* Primary — always visible */}
         <ul className="sidebar__group">
           <li>
             <NavLink to="/" end className="sidebar__link">
@@ -94,150 +119,234 @@ export default function Sidebar() {
         </ul>
 
         {/* Progress & Tracking */}
-        <div className="sidebar__section-label">Progress</div>
-        <ul className="sidebar__group">
-          <li>
-            <NavLink to="/charts" className="sidebar__link">
-              <BarChart3 size={18} strokeWidth={1.5} />
-              <span>Charts</span>
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/victories" className="sidebar__link">
-              <Trophy size={18} strokeWidth={1.5} />
-              <span>Victories</span>
-            </NavLink>
-          </li>
-        </ul>
-
-        {/* Identity & Growth */}
-        <div className="sidebar__section-label">Identity</div>
-        <ul className="sidebar__group">
-          <li>
-            <NavLink to="/mast" className="sidebar__link">
-              <Anchor size={18} strokeWidth={1.5} />
-              <span>Mast</span>
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/keel" className="sidebar__link">
-              <Brain size={18} strokeWidth={1.5} />
-              <span>Keel</span>
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/wheel" className="sidebar__link">
-              <RefreshCw size={18} strokeWidth={1.5} />
-              <span>Wheel</span>
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/life-inventory" className="sidebar__link">
-              <ClipboardList size={18} strokeWidth={1.5} />
-              <span>Life Inventory</span>
-            </NavLink>
-          </li>
-        </ul>
-
-        {/* Planning & Action */}
-        <div className="sidebar__section-label">Planning</div>
-        <ul className="sidebar__group">
-          <li>
-            <button
-              type="button"
-              className="sidebar__link sidebar__link--button"
-              onClick={handleUnloadTheHold}
-            >
-              <PackageOpen size={18} strokeWidth={1.5} />
-              <span>Unload the Hold</span>
-            </button>
-          </li>
-          <li>
-            <NavLink to="/rigging" className="sidebar__link">
-              <Map size={18} strokeWidth={1.5} />
-              <span>Rigging</span>
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/lists" className="sidebar__link">
-              <ListChecks size={18} strokeWidth={1.5} />
-              <span>Lists</span>
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/meetings" className="sidebar__link">
-              <Calendar size={18} strokeWidth={1.5} />
-              <span>Meetings</span>
-            </NavLink>
-          </li>
-        </ul>
-
-        {/* Relationships */}
-        <div className="sidebar__section-label">Relationships</div>
-        <ul className="sidebar__group">
-          {showFirstMate && (
+        <button
+          type="button"
+          className="sidebar__section-toggle"
+          onClick={() => toggleSection('progress')}
+          aria-expanded={!collapsedSections.has('progress')}
+        >
+          <span>Progress</span>
+          <ChevronDown
+            size={14}
+            className={`sidebar__section-chevron ${collapsedSections.has('progress') ? 'sidebar__section-chevron--collapsed' : ''}`}
+          />
+        </button>
+        {!collapsedSections.has('progress') && (
+          <ul className="sidebar__group">
             <li>
-              <NavLink to="/first-mate" className="sidebar__link">
-                <Heart size={18} strokeWidth={1.5} />
-                <span>First Mate</span>
+              <NavLink to="/charts" className="sidebar__link">
+                <BarChart3 size={18} strokeWidth={1.5} />
+                <span>Charts</span>
               </NavLink>
             </li>
-          )}
-          <li>
-            <NavLink to="/crew" className="sidebar__link">
-              <Users size={18} strokeWidth={1.5} />
-              <span>Crew</span>
-            </NavLink>
-          </li>
-        </ul>
+            <li>
+              <NavLink to="/victories" className="sidebar__link">
+                <Trophy size={18} strokeWidth={1.5} />
+                <span>Victories</span>
+              </NavLink>
+            </li>
+          </ul>
+        )}
+
+        {/* Identity & Growth */}
+        <button
+          type="button"
+          className="sidebar__section-toggle"
+          onClick={() => toggleSection('identity')}
+          aria-expanded={!collapsedSections.has('identity')}
+        >
+          <span>Identity</span>
+          <ChevronDown
+            size={14}
+            className={`sidebar__section-chevron ${collapsedSections.has('identity') ? 'sidebar__section-chevron--collapsed' : ''}`}
+          />
+        </button>
+        {!collapsedSections.has('identity') && (
+          <ul className="sidebar__group">
+            <li>
+              <NavLink to="/mast" className="sidebar__link">
+                <Anchor size={18} strokeWidth={1.5} />
+                <span>Mast</span>
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/keel" className="sidebar__link">
+                <Brain size={18} strokeWidth={1.5} />
+                <span>Keel</span>
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/wheel" className="sidebar__link">
+                <RefreshCw size={18} strokeWidth={1.5} />
+                <span>Wheel</span>
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/life-inventory" className="sidebar__link">
+                <ClipboardList size={18} strokeWidth={1.5} />
+                <span>Life Inventory</span>
+              </NavLink>
+            </li>
+          </ul>
+        )}
+
+        {/* Planning & Action */}
+        <button
+          type="button"
+          className="sidebar__section-toggle"
+          onClick={() => toggleSection('planning')}
+          aria-expanded={!collapsedSections.has('planning')}
+        >
+          <span>Planning</span>
+          <ChevronDown
+            size={14}
+            className={`sidebar__section-chevron ${collapsedSections.has('planning') ? 'sidebar__section-chevron--collapsed' : ''}`}
+          />
+        </button>
+        {!collapsedSections.has('planning') && (
+          <ul className="sidebar__group">
+            <li>
+              <button
+                type="button"
+                className="sidebar__link sidebar__link--button"
+                onClick={handleUnloadTheHold}
+              >
+                <PackageOpen size={18} strokeWidth={1.5} />
+                <span>Unload the Hold</span>
+              </button>
+            </li>
+            <li>
+              <NavLink to="/rigging" className="sidebar__link">
+                <Map size={18} strokeWidth={1.5} />
+                <span>Rigging</span>
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/lists" className="sidebar__link">
+                <ListChecks size={18} strokeWidth={1.5} />
+                <span>Lists</span>
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/meetings" className="sidebar__link">
+                <Calendar size={18} strokeWidth={1.5} />
+                <span>Meetings</span>
+              </NavLink>
+            </li>
+          </ul>
+        )}
+
+        {/* Relationships */}
+        <button
+          type="button"
+          className="sidebar__section-toggle"
+          onClick={() => toggleSection('relationships')}
+          aria-expanded={!collapsedSections.has('relationships')}
+        >
+          <span>Relationships</span>
+          <ChevronDown
+            size={14}
+            className={`sidebar__section-chevron ${collapsedSections.has('relationships') ? 'sidebar__section-chevron--collapsed' : ''}`}
+          />
+        </button>
+        {!collapsedSections.has('relationships') && (
+          <ul className="sidebar__group">
+            {showFirstMate && (
+              <li>
+                <NavLink to="/first-mate" className="sidebar__link">
+                  <Heart size={18} strokeWidth={1.5} />
+                  <span>First Mate</span>
+                </NavLink>
+              </li>
+            )}
+            <li>
+              <NavLink to="/crew" className="sidebar__link">
+                <Users size={18} strokeWidth={1.5} />
+                <span>Crew</span>
+              </NavLink>
+            </li>
+          </ul>
+        )}
 
         {/* Daily Rhythms */}
-        <div className="sidebar__section-label">Daily Rhythms</div>
-        <ul className="sidebar__group">
-          <li>
-            <NavLink to="/reveille" className="sidebar__link">
-              <Sun size={18} strokeWidth={1.5} />
-              <span>Reveille</span>
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/reckoning" className="sidebar__link">
-              <Moon size={18} strokeWidth={1.5} />
-              <span>Reckoning</span>
-            </NavLink>
-          </li>
-        </ul>
+        <button
+          type="button"
+          className="sidebar__section-toggle"
+          onClick={() => toggleSection('rhythms')}
+          aria-expanded={!collapsedSections.has('rhythms')}
+        >
+          <span>Daily Rhythms</span>
+          <ChevronDown
+            size={14}
+            className={`sidebar__section-chevron ${collapsedSections.has('rhythms') ? 'sidebar__section-chevron--collapsed' : ''}`}
+          />
+        </button>
+        {!collapsedSections.has('rhythms') && (
+          <ul className="sidebar__group">
+            <li>
+              <NavLink to="/reveille" className="sidebar__link">
+                <Sun size={18} strokeWidth={1.5} />
+                <span>Reveille</span>
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/reckoning" className="sidebar__link">
+                <Moon size={18} strokeWidth={1.5} />
+                <span>Reckoning</span>
+              </NavLink>
+            </li>
+          </ul>
+        )}
 
         {/* Resources */}
-        <div className="sidebar__section-label">Resources</div>
-        <ul className="sidebar__group">
-          <li>
-            <NavLink to="/safe-harbor" className="sidebar__link">
-              <ShieldCheck size={18} strokeWidth={1.5} />
-              <span>Safe Harbor</span>
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/manifest" className="sidebar__link">
-              <Archive size={18} strokeWidth={1.5} />
-              <span>Manifest</span>
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/reports" className="sidebar__link">
-              <FileText size={18} strokeWidth={1.5} />
-              <span>Reports</span>
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/log" className="sidebar__link">
-              <Clock size={18} strokeWidth={1.5} />
-              <span>Activity Log</span>
-            </NavLink>
-          </li>
-        </ul>
+        <button
+          type="button"
+          className="sidebar__section-toggle"
+          onClick={() => toggleSection('resources')}
+          aria-expanded={!collapsedSections.has('resources')}
+        >
+          <span>Resources</span>
+          <ChevronDown
+            size={14}
+            className={`sidebar__section-chevron ${collapsedSections.has('resources') ? 'sidebar__section-chevron--collapsed' : ''}`}
+          />
+        </button>
+        {!collapsedSections.has('resources') && (
+          <ul className="sidebar__group">
+            <li>
+              <NavLink to="/safe-harbor" className="sidebar__link">
+                <ShieldCheck size={18} strokeWidth={1.5} />
+                <span>Safe Harbor</span>
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/reflections" className="sidebar__link">
+                <Lightbulb size={18} strokeWidth={1.5} />
+                <span>Reflect</span>
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/manifest" className="sidebar__link">
+                <Archive size={18} strokeWidth={1.5} />
+                <span>Manifest</span>
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/reports" className="sidebar__link">
+                <FileText size={18} strokeWidth={1.5} />
+                <span>Reports</span>
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/log" className="sidebar__link">
+                <Clock size={18} strokeWidth={1.5} />
+                <span>Activity Log</span>
+              </NavLink>
+            </li>
+          </ul>
+        )}
 
-        {/* Settings */}
+        {/* Settings — always visible */}
         <ul className="sidebar__group sidebar__group--bottom">
           <li>
             <NavLink to="/settings" className="sidebar__link">

@@ -1,10 +1,14 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, Check, Star } from 'lucide-react';
 import { useRhythms } from '../../hooks/useRhythms';
 import { useReflections } from '../../hooks/useReflections';
 import { useReminders } from '../../hooks/useReminders';
 import { useAuthContext } from '../../contexts/AuthContext';
+import { useCelebrationArchive } from '../../hooks/useCelebrationArchive';
+import { celebrateCollection } from '../../lib/ai';
+import { supabase } from '../../lib/supabase';
+import { CelebrationModal } from '../victories/CelebrationModal';
 import { TrackerPrompts } from '../reveille/TrackerPrompts';
 import { ReminderBatchSection } from '../reminders/ReminderBatchSection';
 import { MAST_TYPE_LABELS, LIFE_AREA_LABELS, MEETING_TYPE_LABELS } from '../../lib/types';
@@ -71,7 +75,7 @@ const LIFE_AREAS = Object.entries(LIFE_AREA_LABELS);
 
 export function ReckoningScreen() {
   const navigate = useNavigate();
-  const { profile } = useAuthContext();
+  const { profile, user } = useAuthContext();
   const {
     reckoningData,
     loading,
@@ -91,7 +95,6 @@ export function ReckoningScreen() {
     snoozeReminder,
   } = useReminders();
 
-  const [showAllAccomplishments, setShowAllAccomplishments] = useState(false);
   const [reckoningReminders, setReckoningReminders] = useState<Reminder[]>([]);
   const [actionedTasks, setActionedTasks] = useState<Set<string>>(new Set());
   const [newTaskTitle, setNewTaskTitle] = useState('');
@@ -108,6 +111,13 @@ export function ReckoningScreen() {
   const [triageSaving, setTriageSaving] = useState(false);
   const [triageSaved, setTriageSaved] = useState(false);
   const [triageTaskCreated, setTriageTaskCreated] = useState(false);
+
+  // Celebration state
+  const [showCelebrationModal, setShowCelebrationModal] = useState(false);
+  const [celebrationLoading, setCelebrationLoading] = useState(false);
+  const [celebrationNarrative, setCelebrationNarrative] = useState<string | null>(null);
+  const celebrationSavedRef = useRef(false);
+  const { saveCelebration } = useCelebrationArchive();
 
   // Reflections inline section
   const {
@@ -153,6 +163,23 @@ export function ReckoningScreen() {
     () => getDailyReflectionQuestions(allReflectionQuestions, reflectionTodaysResponses, 3),
     [allReflectionQuestions, reflectionTodaysResponses],
   );
+
+  // Deduplication: tasks that already have a compass_task victory show only as victory
+  const victoryTaskIds = useMemo(() => {
+    if (!reckoningData) return new Set<string>();
+    return new Set(
+      reckoningData.victories
+        .filter((v) => v.source === 'compass_task' && v.source_reference_id)
+        .map((v) => v.source_reference_id!)
+    );
+  }, [reckoningData]);
+
+  const dedupedTasks = useMemo(() => {
+    if (!reckoningData) return [];
+    return reckoningData.completedTasks.filter((t) => !victoryTaskIds.has(t.id));
+  }, [reckoningData, victoryTaskIds]);
+
+  const hasAccomplishments = dedupedTasks.length > 0 || (reckoningData?.victories.length ?? 0) > 0;
 
   const timezone = profile?.timezone || 'America/Chicago';
   const greeting = getGreeting(timezone);
@@ -238,6 +265,81 @@ export function ReckoningScreen() {
     setReckoningReminders((prev) => prev.filter((r) => r.id !== id));
   }, [snoozeReminder]);
 
+  // Celebration handlers
+  const handleCelebrate = useCallback(async () => {
+    if (!user || !reckoningData) return;
+
+    setShowCelebrationModal(true);
+    setCelebrationLoading(true);
+    celebrationSavedRef.current = false;
+
+    try {
+      const taskLines = dedupedTasks
+        .map((t) => `Completed task: ${t.title}${t.completion_note ? ` (${t.completion_note})` : ''}`)
+        .join('\n');
+      const victoryLines = reckoningData.victories
+        .map((v) => `Victory: ${v.celebration_text || v.description}`)
+        .join('\n');
+      const text = [taskLines, victoryLines].filter(Boolean).join('\n');
+
+      const narrative = await celebrateCollection(text, 'Today', user.id);
+
+      if (narrative && narrative.trim()) {
+        setCelebrationNarrative(narrative);
+      } else {
+        setCelebrationNarrative('Your accomplishments speak for themselves. Well done.');
+      }
+    } catch (err) {
+      console.error('Celebration generation failed:', err);
+      setCelebrationNarrative('Your accomplishments speak for themselves. Well done.');
+    } finally {
+      setCelebrationLoading(false);
+    }
+  }, [user, reckoningData, dedupedTasks]);
+
+  const saveToArchive = useCallback(async () => {
+    if (celebrationSavedRef.current || !celebrationNarrative || !user || !reckoningData) return;
+    celebrationSavedRef.current = true;
+    const summary = [
+      ...dedupedTasks.map((t) => `- ${t.title}`),
+      ...reckoningData.victories.map((v) => `- ${v.description}`),
+    ].join('\n');
+    await saveCelebration(
+      celebrationNarrative,
+      'Today',
+      dedupedTasks.length + reckoningData.victories.length,
+      summary,
+    );
+  }, [celebrationNarrative, user, reckoningData, dedupedTasks, saveCelebration]);
+
+  const handleSaveNarrativeToLog = useCallback(async () => {
+    if (!user || !celebrationNarrative) return;
+    try {
+      await supabase.from('journal_entries').insert({
+        user_id: user.id,
+        text: celebrationNarrative,
+        entry_type: 'reflection',
+        source: 'manual_text',
+        life_area_tags: [],
+        routed_to: [],
+        routed_reference_ids: {},
+      });
+    } catch { /* ignore */ }
+    await saveToArchive();
+  }, [user, celebrationNarrative, saveToArchive]);
+
+  const handleCopyNarrative = useCallback(async () => {
+    if (celebrationNarrative) {
+      await navigator.clipboard.writeText(celebrationNarrative);
+    }
+  }, [celebrationNarrative]);
+
+  const handleCelebrationDismiss = useCallback(async () => {
+    await saveToArchive();
+    setShowCelebrationModal(false);
+    setCelebrationNarrative(null);
+  }, [saveToArchive]);
+
   if (loading && !reckoningData) {
     return (
       <div className="rhythm-overlay">
@@ -250,9 +352,6 @@ export function ReckoningScreen() {
 
   if (!reckoningData) return null;
 
-  const hasCompleted = reckoningData.completedTasks.length > 0;
-  const hasVictories = reckoningData.victories.length > 0;
-  const hasAccomplishments = hasCompleted || hasVictories;
   const hasIncomplete = reckoningData.incompleteTasks.length > 0;
   const hasTomorrow = localTomorrowTasks.length > 0;
   const hasMast = !!reckoningData.mastThought;
@@ -260,77 +359,57 @@ export function ReckoningScreen() {
   const hasMeetings = reckoningData.completedMeetings.length > 0;
   const hasMilestones = reckoningData.milestones && reckoningData.milestones.length > 0;
 
-  // Accomplishment display
-  const visibleAccomplishments = showAllAccomplishments
-    ? reckoningData.completedTasks
-    : reckoningData.completedTasks.slice(0, 5);
-  const hiddenCount = reckoningData.completedTasks.length - 5;
-
   // All incomplete tasks actioned?
   const allActioned = reckoningData.incompleteTasks.every((t) => actionedTasks.has(t.id));
 
   return (
     <div className="rhythm-overlay">
       <div className="rhythm-container">
-        <button
-          type="button"
-          className="rhythm-close-btn"
-          onClick={handleDismiss}
-          aria-label="Dismiss"
-        >
-          <X size={24} />
-        </button>
 
         {/* Section 1: Evening Greeting */}
         <h1 className="rhythm-greeting">{greeting}, {name}.</h1>
         <p className="rhythm-date">{formatDate()}</p>
 
-        {/* Section 2: Today's Accomplishments */}
-        {hasCompleted ? (
+        {/* Section 2: Accomplishments and Victories (merged, deduplicated) */}
+        {hasAccomplishments && (
           <div className="rhythm-section">
-            <h3 className="rhythm-section__title">Today's Accomplishments</h3>
-            <p className="accomplishment-count">
-              {reckoningData.completedTasks.length} task{reckoningData.completedTasks.length !== 1 ? 's' : ''} completed
-            </p>
-            <div className="rhythm-task-list">
-              {visibleAccomplishments.map((task) => (
-                <div key={task.id} className="rhythm-task rhythm-task--completed">
-                  <span className="rhythm-task__checkbox rhythm-task__checkbox--checked">
-                    <Check size={14} />
-                  </span>
-                  <span className="rhythm-task__title rhythm-task__title--completed">
-                    {task.title}
-                  </span>
-                  {task.life_area_tag && (
-                    <span className="rhythm-task__tag">{task.life_area_tag}</span>
-                  )}
-                </div>
-              ))}
-            </div>
-            {hiddenCount > 0 && (
+            <h3 className="rhythm-section__title">Accomplishments and Victories</h3>
+            <div className="victory-review">
+              <div className="victory-review__narrative">
+                {dedupedTasks.map((t) => (
+                  <div key={t.id} className="reckoning-victory-item">
+                    <span className="reckoning-victory-item__icon reckoning-victory-item__icon--task">
+                      <Check size={14} />
+                    </span>
+                    <span className="reckoning-victory-item__text">
+                      {t.title}{t.completion_note ? ` \u2014 ${t.completion_note}` : ''}
+                    </span>
+                  </div>
+                ))}
+                {reckoningData.victories.map((v) => (
+                  <div key={v.id} className="reckoning-victory-item">
+                    <span className="reckoning-victory-item__icon reckoning-victory-item__icon--victory">
+                      <Star size={14} />
+                    </span>
+                    <span className="reckoning-victory-item__text">
+                      {v.celebration_text || v.description}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
               <button
                 type="button"
-                className="accomplishment-more"
-                onClick={() => setShowAllAccomplishments(!showAllAccomplishments)}
+                className="reckoning-celebrate-btn"
+                onClick={handleCelebrate}
               >
-                {showAllAccomplishments ? (
-                  <>Show less <ChevronUp size={14} /></>
-                ) : (
-                  <>{hiddenCount} more completed <ChevronDown size={14} /></>
-                )}
+                Celebrate This!
               </button>
-            )}
-          </div>
-        ) : (
-          <div className="rhythm-section">
-            <h3 className="rhythm-section__title">Today's Accomplishments</h3>
-            <p className="accomplishment-empty">
-              No tasks were checked off today. Some days are like that.
-            </p>
+            </div>
           </div>
         )}
 
-        {/* Section 2b: Completed Meetings */}
+        {/* Completed Meetings */}
         {hasMeetings && (
           <div className="rhythm-section">
             <h3 className="rhythm-section__title">Meetings Completed</h3>
@@ -352,7 +431,7 @@ export function ReckoningScreen() {
           </div>
         )}
 
-        {/* Section 2c: Milestone Celebrations */}
+        {/* Milestone Celebrations */}
         {hasMilestones && (
           <div className="milestone-celebration-card">
             <h3 className="milestone-celebration-card__title">Milestones Reached</h3>
@@ -366,136 +445,7 @@ export function ReckoningScreen() {
           </div>
         )}
 
-        {/* Section 3: Accomplishment Review Triage — if completed tasks or victories exist */}
-        {hasAccomplishments && (
-          <div className="rhythm-section">
-            <h3 className="rhythm-section__title">Today's Accomplishments</h3>
-            <div className="victory-review">
-              <div className="victory-review__narrative">
-                {reckoningData.completedTasks.map((t) => (
-                  <div key={t.id} style={{ marginBottom: 'var(--spacing-sm)' }}>
-                    {t.title}{t.completion_note ? ` — ${t.completion_note}` : ''}
-                  </div>
-                ))}
-                {reckoningData.victories.map((v) => (
-                  <div key={v.id} style={{ marginBottom: 'var(--spacing-sm)' }}>
-                    {v.celebration_text || v.description}
-                  </div>
-                ))}
-              </div>
-
-              {!triageSaved && (
-                <>
-                  <p className="victory-review__triage-label">How does this feel?</p>
-                  <div className="victory-review__options">
-                    <button
-                      type="button"
-                      className={`victory-review__option ${triageSelection === 'course_correcting' ? 'victory-review__option--active' : ''}`}
-                      onClick={() => setTriageSelection('course_correcting')}
-                    >
-                      Course Correcting
-                    </button>
-                    <button
-                      type="button"
-                      className={`victory-review__option ${triageSelection === 'smooth_sailing' ? 'victory-review__option--active' : ''}`}
-                      onClick={() => setTriageSelection('smooth_sailing')}
-                    >
-                      Smooth Sailing
-                    </button>
-                    <button
-                      type="button"
-                      className={`victory-review__option ${triageSelection === 'rough_waters' ? 'victory-review__option--active' : ''}`}
-                      onClick={() => setTriageSelection('rough_waters')}
-                    >
-                      Rough Waters
-                    </button>
-                  </div>
-
-                  {triageSelection === 'smooth_sailing' && (
-                    <p className="victory-review__smooth">Steady as she goes.</p>
-                  )}
-
-                  {triageSelection === 'course_correcting' && (
-                    <div className="victory-review__expand">
-                      <textarea
-                        className="victory-review__textarea"
-                        placeholder="What area would you like to focus more on?"
-                        value={triageText}
-                        onChange={(e) => setTriageText(e.target.value)}
-                      />
-                      <select
-                        className="life-area-select"
-                        value={triageLifeArea}
-                        onChange={(e) => setTriageLifeArea(e.target.value)}
-                      >
-                        <option value="">Life area (optional)</option>
-                        {LIFE_AREAS.map(([key, label]) => (
-                          <option key={key} value={key}>{label}</option>
-                        ))}
-                      </select>
-                      <div className="victory-review__actions">
-                        <button
-                          type="button"
-                          className="rhythm-actions__secondary"
-                          onClick={handleTriageSave}
-                          disabled={!triageText.trim() || triageSaving}
-                        >
-                          {triageSaving ? 'Saving...' : 'Save Reflection'}
-                        </button>
-                        {!triageTaskCreated && triageText.trim() && (
-                          <button
-                            type="button"
-                            className="rhythm-actions__secondary"
-                            onClick={handleTriageCreateTask}
-                          >
-                            Create a task from this
-                          </button>
-                        )}
-                        {triageTaskCreated && (
-                          <span className="prompted-entry__saved-msg">Task created</span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {triageSelection === 'rough_waters' && (
-                    <div className="victory-review__expand">
-                      <textarea
-                        className="victory-review__textarea"
-                        placeholder="What's the obstacle?"
-                        value={triageText}
-                        onChange={(e) => setTriageText(e.target.value)}
-                      />
-                      <div className="victory-review__actions">
-                        <button
-                          type="button"
-                          className="rhythm-actions__secondary"
-                          onClick={handleTriageSave}
-                          disabled={!triageText.trim() || triageSaving}
-                        >
-                          {triageSaving ? 'Saving...' : 'Save Reflection'}
-                        </button>
-                        <button
-                          type="button"
-                          className="rhythm-actions__secondary"
-                          onClick={() => { dismissReckoning(); navigate('/helm'); }}
-                        >
-                          Go deeper at the Helm
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-
-              {triageSaved && (
-                <span className="prompted-entry__saved-msg">Reflection saved</span>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Section 4: Carry Forward */}
+        {/* Carry Forward */}
         {hasIncomplete && (
           <div className="rhythm-section">
             <h3 className="rhythm-section__title">Carry Forward</h3>
@@ -580,14 +530,14 @@ export function ReckoningScreen() {
           </div>
         )}
 
-        {/* If no incomplete tasks, show clean-slate message instead of carry forward */}
-        {!hasIncomplete && hasCompleted && (
+        {/* Clean-slate message when everything is done */}
+        {!hasIncomplete && (reckoningData.completedTasks.length > 0) && (
           <div className="rhythm-section">
             <p className="carry-all-done">Everything done. Clean slate.</p>
           </div>
         )}
 
-        {/* Section 5: Tomorrow's Priorities */}
+        {/* Tomorrow's Priorities */}
         <div className="rhythm-section">
           <h3 className="rhythm-section__title">Tomorrow's Priorities</h3>
 
@@ -640,7 +590,119 @@ export function ReckoningScreen() {
           </div>
         </div>
 
-        {/* Section 6: Closing Thought (Mast) */}
+        {/* How Was Today? — standalone triage section, always visible */}
+        <div className="rhythm-section">
+          <h3 className="rhythm-section__title">How Was Today?</h3>
+          {!triageSaved ? (
+            <>
+              <div className="victory-review__options">
+                <button
+                  type="button"
+                  className={`victory-review__option ${triageSelection === 'course_correcting' ? 'victory-review__option--active' : ''}`}
+                  onClick={() => setTriageSelection('course_correcting')}
+                  title="Identify an area you'd like to focus more on"
+                >
+                  Course Correcting
+                </button>
+                <button
+                  type="button"
+                  className={`victory-review__option ${triageSelection === 'smooth_sailing' ? 'victory-review__option--active' : ''}`}
+                  onClick={() => setTriageSelection('smooth_sailing')}
+                  title="Everything's tracking well — steady as she goes"
+                >
+                  Smooth Sailing
+                </button>
+                <button
+                  type="button"
+                  className={`victory-review__option ${triageSelection === 'rough_waters' ? 'victory-review__option--active' : ''}`}
+                  onClick={() => setTriageSelection('rough_waters')}
+                  title="Working through an obstacle — get support"
+                >
+                  Rough Waters
+                </button>
+              </div>
+
+              {triageSelection === 'smooth_sailing' && (
+                <p className="victory-review__smooth">Steady as she goes.</p>
+              )}
+
+              {triageSelection === 'course_correcting' && (
+                <div className="victory-review__expand">
+                  <textarea
+                    className="victory-review__textarea"
+                    placeholder="What area would you like to focus more on?"
+                    value={triageText}
+                    onChange={(e) => setTriageText(e.target.value)}
+                  />
+                  <select
+                    className="life-area-select"
+                    value={triageLifeArea}
+                    onChange={(e) => setTriageLifeArea(e.target.value)}
+                  >
+                    <option value="">Life area (optional)</option>
+                    {LIFE_AREAS.map(([key, label]) => (
+                      <option key={key} value={key}>{label}</option>
+                    ))}
+                  </select>
+                  <div className="victory-review__actions">
+                    <button
+                      type="button"
+                      className="rhythm-actions__secondary"
+                      onClick={handleTriageSave}
+                      disabled={!triageText.trim() || triageSaving}
+                    >
+                      {triageSaving ? 'Saving...' : 'Save Reflection'}
+                    </button>
+                    {!triageTaskCreated && triageText.trim() && (
+                      <button
+                        type="button"
+                        className="rhythm-actions__secondary"
+                        onClick={handleTriageCreateTask}
+                      >
+                        Create a task from this
+                      </button>
+                    )}
+                    {triageTaskCreated && (
+                      <span className="prompted-entry__saved-msg">Task created</span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {triageSelection === 'rough_waters' && (
+                <div className="victory-review__expand">
+                  <textarea
+                    className="victory-review__textarea"
+                    placeholder="What's the obstacle?"
+                    value={triageText}
+                    onChange={(e) => setTriageText(e.target.value)}
+                  />
+                  <div className="victory-review__actions">
+                    <button
+                      type="button"
+                      className="rhythm-actions__secondary"
+                      onClick={handleTriageSave}
+                      disabled={!triageText.trim() || triageSaving}
+                    >
+                      {triageSaving ? 'Saving...' : 'Save Reflection'}
+                    </button>
+                    <button
+                      type="button"
+                      className="rhythm-actions__secondary"
+                      onClick={() => { dismissReckoning(); navigate('/helm'); }}
+                    >
+                      Go deeper at the Helm
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <span className="prompted-entry__saved-msg">Reflection saved</span>
+          )}
+        </div>
+
+        {/* Closing Thought (Mast) */}
         {hasMast && reckoningData.mastThought && (
           <div
             className="mast-thought"
@@ -666,7 +728,7 @@ export function ReckoningScreen() {
           </div>
         )}
 
-        {/* Section 6b: Before You Close the Day — Reckoning reminders */}
+        {/* Before You Close the Day — Reckoning reminders */}
         {reckoningReminders.length > 0 && (
           <ReminderBatchSection
             title="Before You Close the Day"
@@ -677,7 +739,7 @@ export function ReckoningScreen() {
           />
         )}
 
-        {/* Section 7: Reflections */}
+        {/* Reflections */}
         {dailyReflections.length > 0 && (
           <div className="rhythm-section">
             <h3
@@ -734,7 +796,7 @@ export function ReckoningScreen() {
           </div>
         )}
 
-        {/* Section 8: Custom Tracker Prompts (Evening) */}
+        {/* Custom Tracker Prompts (Evening) */}
         {hasTrackers && (
           <TrackerPrompts
             trackers={reckoningData.trackers}
@@ -767,7 +829,17 @@ export function ReckoningScreen() {
           </button>
         </div>
       </div>
+
+      <CelebrationModal
+        open={showCelebrationModal}
+        loading={celebrationLoading}
+        narrative={celebrationNarrative}
+        period="Today"
+        accomplishmentCount={dedupedTasks.length + reckoningData.victories.length}
+        onSaveToLog={handleSaveNarrativeToLog}
+        onCopy={handleCopyNarrative}
+        onDismiss={handleCelebrationDismiss}
+      />
     </div>
   );
 }
-

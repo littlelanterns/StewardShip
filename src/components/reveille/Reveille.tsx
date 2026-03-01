@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Check } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { useRhythms } from '../../hooks/useRhythms';
 import { useReminders } from '../../hooks/useReminders';
 import { useRhythmCards } from '../../hooks/useRhythmCards';
@@ -180,14 +180,6 @@ export function ReveilleScreen() {
   return (
     <div className="rhythm-overlay">
       <div className="rhythm-container">
-        <button
-          type="button"
-          className="rhythm-close-btn"
-          onClick={handleDismiss}
-          aria-label="Dismiss"
-        >
-          <X size={24} />
-        </button>
 
         {/* Section 1: Morning Greeting */}
         <h1 className="rhythm-greeting">{greeting}, {name}.</h1>
