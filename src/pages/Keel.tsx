@@ -30,10 +30,12 @@ function SortableEntryCard({
   entry,
   onSave,
   onArchive,
+  onToggleIncluded,
 }: {
   entry: KeelEntry;
   onSave: (id: string, updates: Partial<KeelEntry>) => Promise<void>;
   onArchive: (id: string) => void;
+  onToggleIncluded: (id: string) => void;
 }) {
   const {
     attributes,
@@ -65,49 +67,62 @@ function SortableEntryCard({
   ];
 
   return (
-    <div ref={setNodeRef} style={style}>
-      <EntryCard
-        id={entry.id}
-        text={entry.text}
-        badges={badges}
-        editText={editText}
-        onEditTextChange={setEditText}
-        onSave={async (text) => {
-          await onSave(entry.id, {
-            text,
-            category: editCategory,
-            source: editSource.trim() || 'self-observed',
-          });
-        }}
-        onArchive={() => onArchive(entry.id)}
-        dragHandleProps={{ attributes, listeners }}
-        isDragging={isDragging}
-        editFields={
-          <>
-            <div className="entry-card__field-group">
-              <label className="entry-card__field-label">Category</label>
-              <select
-                className="entry-card__select"
-                value={editCategory}
-                onChange={(e) => setEditCategory(e.target.value as KeelCategory)}
-              >
-                {KEEL_CATEGORY_ORDER.map((c) => (
-                  <option key={c} value={c}>{KEEL_CATEGORY_LABELS[c]}</option>
-                ))}
-              </select>
-            </div>
-            <div className="entry-card__field-group">
-              <label className="entry-card__field-label">Source</label>
-              <input
-                className="entry-card__select"
-                value={editSource}
-                onChange={(e) => setEditSource(e.target.value)}
-                placeholder='e.g., "Enneagram Type 1", "therapist"'
-              />
-            </div>
-          </>
-        }
-      />
+    <div ref={setNodeRef} style={style} className={!entry.is_included ? 'seasonal-focus--excluded' : ''}>
+      <div className="keel-entry-row">
+        <input
+          type="checkbox"
+          className="seasonal-focus__checkbox"
+          checked={entry.is_included !== false}
+          onChange={() => onToggleIncluded(entry.id)}
+          title={entry.is_included !== false
+            ? 'Included in AI conversations. Uncheck to exclude.'
+            : 'Excluded from AI conversations. Check to include.'}
+        />
+        <div className="keel-entry-row__card">
+          <EntryCard
+            id={entry.id}
+            text={entry.text}
+            badges={badges}
+            editText={editText}
+            onEditTextChange={setEditText}
+            onSave={async (text) => {
+              await onSave(entry.id, {
+                text,
+                category: editCategory,
+                source: editSource.trim() || 'self-observed',
+              });
+            }}
+            onArchive={() => onArchive(entry.id)}
+            dragHandleProps={{ attributes, listeners }}
+            isDragging={isDragging}
+            editFields={
+              <>
+                <div className="entry-card__field-group">
+                  <label className="entry-card__field-label">Category</label>
+                  <select
+                    className="entry-card__select"
+                    value={editCategory}
+                    onChange={(e) => setEditCategory(e.target.value as KeelCategory)}
+                  >
+                    {KEEL_CATEGORY_ORDER.map((c) => (
+                      <option key={c} value={c}>{KEEL_CATEGORY_LABELS[c]}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="entry-card__field-group">
+                  <label className="entry-card__field-label">Source</label>
+                  <input
+                    className="entry-card__select"
+                    value={editSource}
+                    onChange={(e) => setEditSource(e.target.value)}
+                    placeholder='e.g., "Enneagram Type 1", "therapist"'
+                  />
+                </div>
+              </>
+            }
+          />
+        </div>
+      </div>
     </div>
   );
 }
@@ -116,6 +131,7 @@ export default function Keel() {
   usePageContext({ page: 'keel' });
 
   const {
+    entries: allEntries,
     entriesByCategory,
     archivedEntries,
     loading,
@@ -128,6 +144,8 @@ export default function Keel() {
     restoreEntry,
     permanentlyDelete,
     reorderEntries,
+    toggleIncluded,
+    batchToggleIncluded,
   } = useKeel();
 
   const [showAddModal, setShowAddModal] = useState(false);
@@ -221,7 +239,23 @@ export default function Keel() {
           action={<Button onClick={handleFabClick}>Add your first entry</Button>}
         />
       ) : (
-        KEEL_CATEGORY_ORDER.map((category) => {
+        <>
+        <div className="seasonal-focus__bar">
+          <span className="seasonal-focus__count">
+            {allEntries.filter((e) => e.is_included !== false).length} of {totalEntries} included in AI context
+          </span>
+          <button
+            type="button"
+            className="seasonal-focus__toggle-all"
+            onClick={() => {
+              const allIncluded = allEntries.every((e) => e.is_included !== false);
+              batchToggleIncluded(!allIncluded);
+            }}
+          >
+            {allEntries.every((e) => e.is_included !== false) ? 'Deselect All' : 'Select All'}
+          </button>
+        </div>
+        {KEEL_CATEGORY_ORDER.map((category) => {
           const items = entriesByCategory[category];
           return (
             <CollapsibleGroup
@@ -250,6 +284,7 @@ export default function Keel() {
                         entry={entry}
                         onSave={updateEntry}
                         onArchive={archiveEntry}
+                        onToggleIncluded={toggleIncluded}
                       />
                     ))}
                   </SortableContext>
@@ -263,7 +298,8 @@ export default function Keel() {
               </Button>
             </CollapsibleGroup>
           );
-        })
+        })}
+        </>
       )}
 
       <div className="keel-archived-link">

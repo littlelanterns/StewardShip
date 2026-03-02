@@ -139,6 +139,49 @@ export function useMast() {
     fetchEntries();
   }, [user, fetchEntries]);
 
+  const toggleIncluded = useCallback(async (id: string) => {
+    if (!user) return;
+    const entry = entries.find((e) => e.id === id);
+    if (!entry) return;
+    const newValue = !entry.is_included;
+
+    // Optimistic update
+    setEntries((prev) => prev.map((e) =>
+      e.id === id ? { ...e, is_included: newValue } : e
+    ));
+
+    const { error: err } = await supabase
+      .from('mast_entries')
+      .update({ is_included: newValue })
+      .eq('id', id)
+      .eq('user_id', user.id);
+
+    if (err) {
+      // Revert on failure
+      setEntries((prev) => prev.map((e) =>
+        e.id === id ? { ...e, is_included: !newValue } : e
+      ));
+    }
+  }, [user, entries]);
+
+  const batchToggleIncluded = useCallback(async (value: boolean) => {
+    if (!user) return;
+    const ids = entries.map((e) => e.id);
+
+    // Optimistic update
+    setEntries((prev) => prev.map((e) => ({ ...e, is_included: value })));
+
+    const { error: err } = await supabase
+      .from('mast_entries')
+      .update({ is_included: value })
+      .eq('user_id', user.id)
+      .is('archived_at', null);
+
+    if (err) {
+      fetchEntries();
+    }
+  }, [user, entries, fetchEntries]);
+
   const reorderEntries = useCallback(async (type: MastEntryType, orderedIds: string[]) => {
     // Optimistic update
     setEntries((prev) => {
@@ -196,6 +239,8 @@ export function useMast() {
     restoreEntry,
     permanentlyDelete,
     reorderEntries,
+    toggleIncluded,
+    batchToggleIncluded,
     entriesByType,
   };
 }

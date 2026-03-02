@@ -30,10 +30,12 @@ function SortableEntryCard({
   entry,
   onSave,
   onArchive,
+  onToggleIncluded,
 }: {
   entry: MastEntry;
   onSave: (id: string, updates: Partial<MastEntry>) => Promise<void>;
   onArchive: (id: string) => void;
+  onToggleIncluded: (id: string) => void;
 }) {
   const {
     attributes,
@@ -66,49 +68,62 @@ function SortableEntryCard({
   ];
 
   return (
-    <div ref={setNodeRef} style={style}>
-      <EntryCard
-        id={entry.id}
-        text={entry.text}
-        badges={badges}
-        editText={editText}
-        onEditTextChange={setEditText}
-        onSave={async (text) => {
-          await onSave(entry.id, {
-            text,
-            type: editType,
-            category: editCategory.trim() || null,
-          });
-        }}
-        onArchive={() => onArchive(entry.id)}
-        dragHandleProps={{ attributes, listeners }}
-        isDragging={isDragging}
-        editFields={
-          <>
-            <div className="entry-card__field-group">
-              <label className="entry-card__field-label">Type</label>
-              <select
-                className="entry-card__select"
-                value={editType}
-                onChange={(e) => setEditType(e.target.value as MastEntryType)}
-              >
-                {MAST_TYPE_ORDER.map((t) => (
-                  <option key={t} value={t}>{MAST_TYPE_LABELS[t]}</option>
-                ))}
-              </select>
-            </div>
-            <div className="entry-card__field-group">
-              <label className="entry-card__field-label">Category (optional)</label>
-              <input
-                className="entry-card__select"
-                value={editCategory}
-                onChange={(e) => setEditCategory(e.target.value)}
-                placeholder='e.g., "Marriage", "Work"'
-              />
-            </div>
-          </>
-        }
-      />
+    <div ref={setNodeRef} style={style} className={!entry.is_included ? 'seasonal-focus--excluded' : ''}>
+      <div className="mast-entry-row">
+        <input
+          type="checkbox"
+          className="seasonal-focus__checkbox"
+          checked={entry.is_included !== false}
+          onChange={() => onToggleIncluded(entry.id)}
+          title={entry.is_included !== false
+            ? 'Included in AI conversations. Uncheck to exclude.'
+            : 'Excluded from AI conversations. Check to include.'}
+        />
+        <div className="mast-entry-row__card">
+          <EntryCard
+            id={entry.id}
+            text={entry.text}
+            badges={badges}
+            editText={editText}
+            onEditTextChange={setEditText}
+            onSave={async (text) => {
+              await onSave(entry.id, {
+                text,
+                type: editType,
+                category: editCategory.trim() || null,
+              });
+            }}
+            onArchive={() => onArchive(entry.id)}
+            dragHandleProps={{ attributes, listeners }}
+            isDragging={isDragging}
+            editFields={
+              <>
+                <div className="entry-card__field-group">
+                  <label className="entry-card__field-label">Type</label>
+                  <select
+                    className="entry-card__select"
+                    value={editType}
+                    onChange={(e) => setEditType(e.target.value as MastEntryType)}
+                  >
+                    {MAST_TYPE_ORDER.map((t) => (
+                      <option key={t} value={t}>{MAST_TYPE_LABELS[t]}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="entry-card__field-group">
+                  <label className="entry-card__field-label">Category (optional)</label>
+                  <input
+                    className="entry-card__select"
+                    value={editCategory}
+                    onChange={(e) => setEditCategory(e.target.value)}
+                    placeholder='e.g., "Marriage", "Work"'
+                  />
+                </div>
+              </>
+            }
+          />
+        </div>
+      </div>
     </div>
   );
 }
@@ -117,6 +132,7 @@ export default function Mast() {
   usePageContext({ page: 'mast' });
 
   const {
+    entries: allEntries,
     entriesByType,
     archivedEntries,
     loading,
@@ -129,6 +145,8 @@ export default function Mast() {
     restoreEntry,
     permanentlyDelete,
     reorderEntries,
+    toggleIncluded,
+    batchToggleIncluded,
   } = useMast();
 
   const [showAddModal, setShowAddModal] = useState(false);
@@ -222,7 +240,23 @@ export default function Mast() {
           action={<Button onClick={handleFabClick}>Add your first principle</Button>}
         />
       ) : (
-        MAST_TYPE_ORDER.map((type) => {
+        <>
+        <div className="seasonal-focus__bar">
+          <span className="seasonal-focus__count">
+            {allEntries.filter((e) => e.is_included !== false).length} of {totalEntries} included in AI context
+          </span>
+          <button
+            type="button"
+            className="seasonal-focus__toggle-all"
+            onClick={() => {
+              const allIncluded = allEntries.every((e) => e.is_included !== false);
+              batchToggleIncluded(!allIncluded);
+            }}
+          >
+            {allEntries.every((e) => e.is_included !== false) ? 'Deselect All' : 'Select All'}
+          </button>
+        </div>
+        {MAST_TYPE_ORDER.map((type) => {
           const items = entriesByType[type];
           return (
             <CollapsibleGroup
@@ -251,6 +285,7 @@ export default function Mast() {
                         entry={entry}
                         onSave={updateEntry}
                         onArchive={archiveEntry}
+                        onToggleIncluded={toggleIncluded}
                       />
                     ))}
                   </SortableContext>
@@ -264,7 +299,8 @@ export default function Mast() {
               </Button>
             </CollapsibleGroup>
           );
-        })
+        })}
+        </>
       )}
 
       <div className="mast-archived-link">

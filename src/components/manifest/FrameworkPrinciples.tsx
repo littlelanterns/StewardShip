@@ -9,6 +9,7 @@ interface EditablePrinciple {
   text: string;
   sort_order: number;
   is_user_added: boolean;
+  is_included: boolean;
   id?: string;
 }
 
@@ -26,7 +27,7 @@ interface FrameworkPrinciplesProps {
   onSave: (
     manifestItemId: string,
     name: string,
-    principles: Array<{ text: string; sort_order: number; is_user_added?: boolean }>,
+    principles: Array<{ text: string; sort_order: number; is_user_added?: boolean; is_included?: boolean }>,
     isActive: boolean,
   ) => Promise<AIFramework | null>;
   onToggle: (frameworkId: string, isActive: boolean) => Promise<void>;
@@ -52,6 +53,7 @@ export default function FrameworkPrinciples({
       text: p.text,
       sort_order: p.sort_order,
       is_user_added: p.is_user_added,
+      is_included: p.is_included ?? true,
       id: p.id,
     })).sort((a, b) => a.sort_order - b.sort_order) || [],
   );
@@ -78,6 +80,7 @@ export default function FrameworkPrinciples({
         text: p.text,
         sort_order: userAdded.length + i,
         is_user_added: false,
+        is_included: true,
       }));
       setPrinciples([...userAdded, ...newPrinciples]);
     }
@@ -135,6 +138,7 @@ export default function FrameworkPrinciples({
           text: p.text,
           sort_order: allPrinciples.length + j,
           is_user_added: false,
+          is_included: true,
         }));
         allPrinciples.push(...newPrinciples);
 
@@ -184,6 +188,12 @@ export default function FrameworkPrinciples({
     });
   }, []);
 
+  const togglePrincipleIncluded = useCallback((index: number) => {
+    setPrinciples((prev) => prev.map((p, i) =>
+      i === index ? { ...p, is_included: !p.is_included } : p
+    ));
+  }, []);
+
   const addPrinciple = useCallback(() => {
     if (!newPrincipleText.trim()) return;
     setPrinciples((prev) => [
@@ -192,6 +202,7 @@ export default function FrameworkPrinciples({
         text: newPrincipleText.trim(),
         sort_order: prev.length,
         is_user_added: true,
+        is_included: true,
       },
     ]);
     setNewPrincipleText('');
@@ -427,8 +438,32 @@ export default function FrameworkPrinciples({
         <label className="framework-principles__label">
           Principles ({principles.length})
         </label>
+        <div className="seasonal-focus__bar">
+          <span className="seasonal-focus__count">
+            {principles.filter((p) => p.is_included).length} of {principles.length} included in AI context
+          </span>
+          <button
+            type="button"
+            className="seasonal-focus__toggle-all"
+            onClick={() => {
+              const allIncluded = principles.every((p) => p.is_included);
+              setPrinciples((prev) => prev.map((p) => ({ ...p, is_included: !allIncluded })));
+            }}
+          >
+            {principles.every((p) => p.is_included) ? 'Deselect All' : 'Select All'}
+          </button>
+        </div>
         {principles.map((principle, index) => (
-          <div key={index} className="framework-principles__item">
+          <div key={index} className={`framework-principles__item${!principle.is_included ? ' seasonal-focus--excluded' : ''}`}>
+            <input
+              type="checkbox"
+              className="seasonal-focus__checkbox"
+              checked={principle.is_included}
+              onChange={() => togglePrincipleIncluded(index)}
+              title={principle.is_included
+                ? 'Included in AI conversations. Uncheck to exclude.'
+                : 'Excluded from AI conversations. Check to include.'}
+            />
             <div className="framework-principles__drag-handles">
               <button
                 className="framework-principles__move-btn"

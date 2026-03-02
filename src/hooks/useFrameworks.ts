@@ -135,7 +135,7 @@ export function useFrameworks() {
   const saveFramework = useCallback(async (
     manifestItemId: string,
     name: string,
-    principles: Array<{ text: string; sort_order: number; is_user_added?: boolean }>,
+    principles: Array<{ text: string; sort_order: number; is_user_added?: boolean; is_included?: boolean }>,
     isActive: boolean,
   ): Promise<AIFramework | null> => {
     if (!user) return null;
@@ -185,6 +185,7 @@ export function useFrameworks() {
         text: p.text,
         sort_order: p.sort_order,
         is_user_added: p.is_user_added || false,
+        is_included: p.is_included ?? true,
       }));
 
       await supabase.from('ai_framework_principles').insert(principleRecords);

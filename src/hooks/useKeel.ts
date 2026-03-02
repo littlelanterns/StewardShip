@@ -138,6 +138,48 @@ export function useKeel() {
     fetchEntries();
   }, [user, fetchEntries]);
 
+  const toggleIncluded = useCallback(async (id: string) => {
+    if (!user) return;
+    const entry = entries.find((e) => e.id === id);
+    if (!entry) return;
+    const newValue = !entry.is_included;
+
+    // Optimistic update
+    setEntries((prev) => prev.map((e) =>
+      e.id === id ? { ...e, is_included: newValue } : e
+    ));
+
+    const { error: err } = await supabase
+      .from('keel_entries')
+      .update({ is_included: newValue })
+      .eq('id', id)
+      .eq('user_id', user.id);
+
+    if (err) {
+      // Revert on failure
+      setEntries((prev) => prev.map((e) =>
+        e.id === id ? { ...e, is_included: !newValue } : e
+      ));
+    }
+  }, [user, entries]);
+
+  const batchToggleIncluded = useCallback(async (value: boolean) => {
+    if (!user) return;
+
+    // Optimistic update
+    setEntries((prev) => prev.map((e) => ({ ...e, is_included: value })));
+
+    const { error: err } = await supabase
+      .from('keel_entries')
+      .update({ is_included: value })
+      .eq('user_id', user.id)
+      .is('archived_at', null);
+
+    if (err) {
+      fetchEntries();
+    }
+  }, [user, fetchEntries]);
+
   const reorderEntries = useCallback(async (category: KeelCategory, orderedIds: string[]) => {
     // Optimistic update
     setEntries((prev) => {
@@ -193,6 +235,8 @@ export function useKeel() {
     restoreEntry,
     permanentlyDelete,
     reorderEntries,
+    toggleIncluded,
+    batchToggleIncluded,
     entriesByCategory,
   };
 }

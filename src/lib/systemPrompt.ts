@@ -122,7 +122,7 @@ function formatMastEntries(entries: MastEntry[]): string {
 
   const grouped: Record<string, string[]> = {};
   for (const type of MAST_TYPE_ORDER) {
-    const items = entries.filter((e) => e.type === type && !e.archived_at);
+    const items = entries.filter((e) => e.type === type && !e.archived_at && e.is_included !== false);
     if (items.length > 0) {
       grouped[type] = items
         .sort((a, b) => a.sort_order - b.sort_order)
@@ -150,7 +150,7 @@ function formatKeelEntries(entries: KeelEntry[]): string {
 
   const grouped: Record<string, string[]> = {};
   for (const cat of KEEL_CATEGORY_ORDER) {
-    const items = entries.filter((e) => e.category === cat && !e.archived_at);
+    const items = entries.filter((e) => e.category === cat && !e.archived_at && e.is_included !== false);
     if (items.length > 0) {
       grouped[cat] = items
         .sort((a, b) => a.sort_order - b.sort_order)
@@ -1502,7 +1502,7 @@ export function formatManifestContext(
 }
 
 export function formatFrameworksContext(
-  frameworks: Array<{ name: string; principles?: Array<{ text: string; sort_order: number }> }>,
+  frameworks: Array<{ name: string; principles?: Array<{ text: string; sort_order: number; is_included?: boolean }> }>,
 ): string {
   if (frameworks.length === 0) return '';
 
@@ -1510,7 +1510,8 @@ export function formatFrameworksContext(
   for (const fw of frameworks) {
     result += `\n${fw.name}:\n`;
     if (fw.principles && fw.principles.length > 0) {
-      const sorted = [...fw.principles].sort((a, b) => a.sort_order - b.sort_order);
+      const included = fw.principles.filter((p) => p.is_included !== false);
+      const sorted = [...included].sort((a, b) => a.sort_order - b.sort_order);
       for (const p of sorted) {
         const truncated = p.text.length > 200 ? p.text.slice(0, 197) + '...' : p.text;
         result += `- ${truncated}\n`;

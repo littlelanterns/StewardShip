@@ -234,3 +234,43 @@ select {
   font-size: var(--font-size-sm);
   color: var(--color-text-primary);
 }
+
+/* Seasonal Focus — reusable is_included pattern */
+
+.seasonal-focus__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-xs) 0;
+  margin-bottom: var(--spacing-xs);
+}
+
+.seasonal-focus__count {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.seasonal-focus__toggle-all {
+  font-size: var(--font-size-sm);
+  color: var(--color-mid-teal);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: var(--spacing-xs);
+}
+
+.seasonal-focus__toggle-all:hover {
+  text-decoration: underline;
+}
+
+.seasonal-focus__checkbox {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--color-mid-teal);
+}
+
+.seasonal-focus--excluded {
+  opacity: 0.5;
+}

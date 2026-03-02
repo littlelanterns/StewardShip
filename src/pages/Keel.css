@@ -14,3 +14,18 @@
   text-align: center;
   padding: var(--spacing-md) 0;
 }
+
+.keel-entry-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-xs);
+}
+
+.keel-entry-row .seasonal-focus__checkbox {
+  margin-top: var(--spacing-md);
+}
+
+.keel-entry-row__card {
+  flex: 1;
+  min-width: 0;
+}

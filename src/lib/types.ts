@@ -185,6 +185,7 @@ export interface MastEntry {
   sort_order: number;
   source: EntrySource;
   source_reference_id: string | null;
+  is_included: boolean;
   archived_at: string | null;
   created_at: string;
   updated_at: string;
@@ -218,6 +219,7 @@ export interface KeelEntry {
   source_reference_id: string | null;
   file_storage_path: string | null;
   sort_order: number;
+  is_included: boolean;
   archived_at: string | null;
   created_at: string;
   updated_at: string;
@@ -1350,6 +1352,7 @@ export interface AIFrameworkPrinciple {
   text: string;
   sort_order: number;
   is_user_added: boolean;
+  is_included: boolean;
   archived_at: string | null;
   created_at: string;
   updated_at: string;
