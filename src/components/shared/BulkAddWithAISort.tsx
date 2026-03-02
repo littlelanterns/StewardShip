@@ -93,7 +93,16 @@ export function BulkAddWithAISort({
     if (ext && IMAGE_EXTENSIONS.has(ext)) {
       // Defer to next tick so selectedFile state is set
       setTimeout(() => handleExtractFile(file, 'extract_only'), 0);
+      return;
     }
+
+    // For non-images, scroll storage choice into view after render (mobile fix)
+    setTimeout(() => {
+      document.querySelector('.bulk-add-ai__file-selected')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    }, 100);
   }, []);
 
   const handleExtractFile = useCallback(async (file: File, choice: 'extract_only' | 'store_in_manifest') => {
@@ -409,6 +418,7 @@ export function BulkAddWithAISort({
             className="bulk-add-ai__file-input"
             accept={ACCEPTED_EXTENSIONS}
             onChange={handleFileSelect}
+            onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
           />
 
           <textarea
