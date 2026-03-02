@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { PenLine, MessageSquare, Upload, ListPlus } from 'lucide-react';
 import { AddEntryModal } from '../shared/AddEntryModal';
 import { Button } from '../shared/Button';
@@ -33,7 +33,16 @@ export function KeelAddModal({ onClose, onCreate, preselectedCategory }: KeelAdd
   const { user } = useAuthContext();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // === TEMPORARY DEBUG — remove after mobile file picker bug is fixed ===
+  const [debugLog, setDebugLog] = useState<string[]>([]);
+  const addDebug = useCallback((msg: string) => {
+    console.log(msg);
+    setDebugLog(prev => [...prev.slice(-15), `${new Date().toISOString().slice(11, 19)} ${msg}`]);
+  }, []);
+  // === END DEBUG ===
+
   const [mode, setMode] = useState<'select' | 'write' | 'uploading' | 'review' | 'bulk'>('select');
+  addDebug(`[Keel] render mode=${mode}`);
 
   const handleBulkSave = async (items: ParsedBulkItem[]) => {
     for (const item of items) {
@@ -80,9 +89,14 @@ export function KeelAddModal({ onClose, onCreate, preselectedCategory }: KeelAdd
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !user) return;
+    addDebug(`[Keel] handleFileSelect fired file=${file?.name || 'null'} size=${file?.size || 0} user=${!!user}`);
+    if (!file || !user) {
+      addDebug(`[Keel] handleFileSelect early return — file:${!!file} user:${!!user}`);
+      return;
+    }
 
     // Immediately switch to uploading mode so the user sees progress
+    addDebug(`[Keel] setMode→uploading for ${file.name}`);
     setMode('uploading');
     setError(null);
     setFileName(file.name);
@@ -91,12 +105,14 @@ export function KeelAddModal({ onClose, onCreate, preselectedCategory }: KeelAdd
       const ext = file.name.split('.').pop()?.toLowerCase() || '';
       const storagePath = `${user.id}/keel/${Date.now()}_${file.name}`;
 
+      addDebug(`[Keel] uploading to storage...`);
       const { error: uploadErr } = await supabase.storage
         .from('manifest-files')
         .upload(storagePath, file);
 
       if (uploadErr) throw new Error(`Upload failed: ${uploadErr.message}`);
       setFileStoragePath(storagePath);
+      addDebug(`[Keel] storage upload OK, calling extract-insights...`);
 
       const { data, error: extractErr } = await supabase.functions.invoke('extract-insights', {
         body: {
@@ -117,11 +133,13 @@ export function KeelAddModal({ onClose, onCreate, preselectedCategory }: KeelAdd
         }),
       );
 
+      addDebug(`[Keel] extraction OK, ${insights.length} insights, setMode→review`);
       setExtractedInsights(insights);
       setExtractedTextLength(data.extracted_text_length || 0);
       setMode('review');
     } catch (err) {
       const msg = (err as Error).message || '';
+      addDebug(`[Keel] handleFileSelect ERROR: ${msg}`);
       if (msg.includes('non-2xx') || msg.includes('500') || msg.includes('502')) {
         setError('File processing failed. This can happen with complex PDFs. Try uploading screenshots of the key pages, or use "Write It Myself" to add entries directly.');
       } else {
@@ -204,7 +222,7 @@ export function KeelAddModal({ onClose, onCreate, preselectedCategory }: KeelAdd
             </div>
           </button>
           {/* File input directly on the method card — opens picker immediately on tap */}
-          <label className="add-entry-method" style={{ cursor: 'pointer', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+          <label className="add-entry-method" style={{ cursor: 'pointer', position: 'relative' }} onClick={(e) => { addDebug('[Keel] label onClick'); e.stopPropagation(); }}>
             <Upload size={22} className="add-entry-method__icon" />
             <div className="add-entry-method__content">
               <div className="add-entry-method__label">Upload a file</div>
@@ -216,7 +234,9 @@ export function KeelAddModal({ onClose, onCreate, preselectedCategory }: KeelAdd
               accept=".pdf,.png,.jpg,.jpeg,.webp,.md,.txt,.docx"
               style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
               onChange={handleFileSelect}
-              onClick={(e) => { e.stopPropagation(); (e.target as HTMLInputElement).value = ''; }}
+              onClick={(e) => { addDebug('[Keel] file input onClick — clearing value'); e.stopPropagation(); (e.target as HTMLInputElement).value = ''; }}
+              onFocus={() => addDebug('[Keel] file input focused')}
+              onBlur={() => addDebug('[Keel] file input blurred')}
             />
           </label>
           <button className="add-entry-method" onClick={() => { startGuidedConversation('self_discovery'); onClose(); }}>
@@ -412,6 +432,26 @@ export function KeelAddModal({ onClose, onCreate, preselectedCategory }: KeelAdd
           <p className="add-entry-form__error">{error}</p>
         </div>
       )}
+
+      {/* === TEMPORARY DEBUG OVERLAY — remove after mobile file picker bug is fixed === */}
+      <div style={{
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        background: 'rgba(0,0,0,0.85)',
+        color: '#0f0',
+        fontSize: '10px',
+        fontFamily: 'monospace',
+        padding: '4px',
+        maxHeight: '150px',
+        overflowY: 'auto',
+        zIndex: 99999,
+        pointerEvents: 'none',
+      }}>
+        {debugLog.map((msg, i) => <div key={i}>{msg}</div>)}
+      </div>
+      {/* === END DEBUG OVERLAY === */}
     </AddEntryModal>
   );
 }
