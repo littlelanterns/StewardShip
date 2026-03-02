@@ -89,6 +89,49 @@ export const BUILT_IN_AGENDAS: Record<string, BuiltInAgendaSection[]> = {
     },
   ],
 
+  family_council: [
+    {
+      default_key: 'fc_prayer_open',
+      title: 'Opening Prayer / Centering',
+      ai_prompt_text: 'Open with a prayer or centering moment. Set a warm, safe tone where every family member feels welcome to share.',
+    },
+    {
+      default_key: 'fc_appreciations',
+      title: 'Family Appreciations',
+      ai_prompt_text: 'Go around the family. Each person shares something they appreciated about another family member this week. Build connection and gratitude.',
+    },
+    {
+      default_key: 'fc_review_previous',
+      title: 'Review Previous Commitments',
+      ai_prompt_text: 'Review action items from the last family council. Celebrate follow-through. Be curious, not disappointed, about what was missed.',
+    },
+    {
+      default_key: 'fc_family_business',
+      title: 'Family Business',
+      ai_prompt_text: 'Discuss logistics, upcoming events, calendar coordination, chores, responsibilities. Keep it practical and collaborative.',
+    },
+    {
+      default_key: 'fc_problem_solving',
+      title: 'Problem Solving',
+      ai_prompt_text: 'Address any family challenges or conflicts. Focus on solutions, not blame. Encourage everyone to contribute ideas. Practice self-government.',
+    },
+    {
+      default_key: 'fc_fun_planning',
+      title: 'Fun Planning',
+      ai_prompt_text: 'Plan something fun together — family activity, outing, game night, tradition. Let the kids have a strong voice here.',
+    },
+    {
+      default_key: 'fc_impressions',
+      title: 'Recording Impressions',
+      ai_prompt_text: 'Ask for any insights, feelings, or impressions the family wants to hold onto from this meeting.',
+    },
+    {
+      default_key: 'fc_prayer_close',
+      title: 'Closing Prayer / Reflection',
+      ai_prompt_text: 'Close with a prayer or moment of reflection. Affirm the family bond.',
+    },
+  ],
+
   mentor: [
     {
       default_key: 'mentor_checkin',

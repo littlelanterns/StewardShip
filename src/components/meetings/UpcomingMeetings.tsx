@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { Calendar, Users, BarChart3, Briefcase, Layout, GraduationCap } from 'lucide-react';
+import { Calendar, Users, BarChart3, Briefcase, Layout, GraduationCap, Home } from 'lucide-react';
 import type { MeetingType, MeetingEntryMode, MeetingAgendaItem } from '../../lib/types';
 import { MEETING_TYPE_LABELS } from '../../lib/types';
 import type { ScheduleWithPerson } from '../../hooks/useMeetings';
@@ -8,6 +8,7 @@ import { AgendaItemsList } from './AgendaItemsList';
 const TYPE_ICONS: Record<MeetingType, typeof Calendar> = {
   couple: Calendar,
   parent_child: Users,
+  family_council: Home,
   mentor: GraduationCap,
   weekly_review: BarChart3,
   monthly_review: BarChart3,

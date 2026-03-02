@@ -36,6 +36,7 @@ const PERSON_MEETING_TYPES: MeetingType[] = ['couple', 'parent_child', 'mentor']
 const AGENDA_MEETING_TYPES: { value: MeetingType; label: string }[] = [
   { value: 'couple', label: 'Couple Meeting' },
   { value: 'parent_child', label: 'Parent-Child Meeting' },
+  { value: 'family_council', label: 'Family Council' },
   { value: 'mentor', label: 'Mentor Meeting' },
   { value: 'weekly_review', label: 'Weekly Review' },
   { value: 'monthly_review', label: 'Monthly Review' },
@@ -101,6 +102,7 @@ export default function HatchInlinePickerOverlay({
         .select('id, name')
         .eq('user_id', user.id)
         .is('archived_at', null)
+        .neq('hidden_from_meetings', true)
         .order('name');
 
       // Filter by relationship type based on meeting type

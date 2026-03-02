@@ -50,6 +50,7 @@ export function PersonDetail({
   const [editPersonality, setEditPersonality] = useState(person.personality_summary || '');
   const [editLoveLanguage, setEditLoveLanguage] = useState(person.love_language || '');
   const [editNotes, setEditNotes] = useState(person.notes || '');
+  const [editHiddenFromMeetings, setEditHiddenFromMeetings] = useState(person.hidden_from_meetings || false);
   const [saving, setSaving] = useState(false);
   const [confirmArchive, setConfirmArchive] = useState(false);
   const [showAddNote, setShowAddNote] = useState(false);
@@ -70,10 +71,11 @@ export function PersonDetail({
       personality_summary: editPersonality.trim() || null,
       love_language: editLoveLanguage.trim() || null,
       notes: editNotes.trim() || null,
+      hidden_from_meetings: editHiddenFromMeetings,
     });
     setSaving(false);
     setEditing(false);
-  }, [person.id, person.name, editName, editAge, editPersonality, editLoveLanguage, editNotes, onUpdate]);
+  }, [person.id, person.name, editName, editAge, editPersonality, editLoveLanguage, editNotes, editHiddenFromMeetings, onUpdate]);
 
   const handleDiscuss = useCallback(() => {
     openDrawer();
@@ -125,6 +127,14 @@ export function PersonDetail({
             <textarea className="person-detail__textarea" value={editPersonality} onChange={(e) => setEditPersonality(e.target.value)} placeholder="How would you describe them?" rows={3} />
             <label className="person-detail__label">Love Language</label>
             <Input value={editLoveLanguage} onChange={(e) => setEditLoveLanguage(e.target.value)} placeholder="e.g., Quality Time" />
+            <label className="person-detail__checkbox-label">
+              <input
+                type="checkbox"
+                checked={editHiddenFromMeetings}
+                onChange={(e) => setEditHiddenFromMeetings(e.target.checked)}
+              />
+              Hide from meeting person lists
+            </label>
             {!person.has_rich_context && (
               <>
                 <label className="person-detail__label">Notes</label>

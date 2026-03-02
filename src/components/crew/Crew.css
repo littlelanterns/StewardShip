@@ -173,6 +173,15 @@
   color: var(--color-text-primary);
 }
 
+.person-detail__checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
 .person-detail__textarea {
   width: 100%;
   padding: var(--spacing-sm);

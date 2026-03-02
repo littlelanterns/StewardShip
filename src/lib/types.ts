@@ -1098,6 +1098,7 @@ export interface Person {
   desired_sphere: SphereLevel | null;
   current_sphere: SphereLevel | null;
   has_rich_context: boolean;
+  hidden_from_meetings: boolean;
   archived_at: string | null;
   created_at: string;
   updated_at: string;
@@ -1392,7 +1393,7 @@ export const MANIFEST_STATUS_LABELS: Record<ManifestProcessingStatus, string> = 
 
 // === PRD-17: Meeting Frameworks ===
 
-export type MeetingType = 'couple' | 'parent_child' | 'mentor' | 'weekly_review' | 'monthly_review' | 'quarterly_inventory' | 'business' | 'custom';
+export type MeetingType = 'couple' | 'parent_child' | 'family_council' | 'mentor' | 'weekly_review' | 'monthly_review' | 'quarterly_inventory' | 'business' | 'custom';
 
 export type MeetingStatus = 'in_progress' | 'completed' | 'skipped';
 
@@ -1501,6 +1502,7 @@ export interface MeetingTemplateSection {
 export const MEETING_TYPE_LABELS: Record<MeetingType, string> = {
   couple: 'Couple Meeting',
   parent_child: 'Parent-Child Mentor Meeting',
+  family_council: 'Family Council',
   mentor: 'Mentor Meeting',
   weekly_review: 'Weekly Review',
   monthly_review: 'Monthly Review',

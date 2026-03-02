@@ -80,7 +80,8 @@ export default function Meetings() {
       .then(({ data }) => {
         const allPeople = (data || []) as Person[];
         setPeople(allPeople);
-        setChildren(allPeople.filter(p => p.relationship_type === 'child'));
+        const visiblePeople = allPeople.filter(p => !p.hidden_from_meetings);
+        setChildren(visiblePeople.filter(p => p.relationship_type === 'child'));
       });
   }, [user, fetchSchedules, fetchTemplates, fetchUpcomingMeetings]);
 
@@ -176,7 +177,7 @@ export default function Meetings() {
         <MeetingScheduleEditor
           meetingType={scheduleType}
           personId={schedulePersonId}
-          people={people}
+          people={people.filter(p => !p.hidden_from_meetings)}
           onSave={handleSaveSchedule}
           onCancel={() => setViewMode('main')}
         />
@@ -261,6 +262,22 @@ export default function Meetings() {
       {children.length > 0 && (
         <MeetingTypeSection
           meetingType="parent_child"
+          schedules={schedules}
+          children={children}
+          onStartMeeting={handleStartMeeting}
+          onViewHistory={handleViewHistory}
+          onSetupSchedule={handleSetupSchedule}
+          agendaItems={agenda.items}
+          onFetchAgendaItems={agenda.fetchPendingItems}
+          onAddAgendaItem={agenda.addItem}
+          onUpdateAgendaItem={agenda.updateItem}
+          onDeleteAgendaItem={agenda.deleteItem}
+        />
+      )}
+
+      {children.length > 0 && (
+        <MeetingTypeSection
+          meetingType="family_council"
           schedules={schedules}
           children={children}
           onStartMeeting={handleStartMeeting}
