@@ -97,13 +97,13 @@
   color: var(--color-cognac);
 }
 
+/* Must stay in rendering tree for Android onChange reliability */
 .upload-flow__input {
   position: absolute;
-  width: 1px;
-  height: 1px;
+  width: 0;
+  height: 0;
   opacity: 0;
   overflow: hidden;
-  pointer-events: none;
 }
 
 .upload-flow__actions {

@@ -82,9 +82,13 @@
   margin-left: auto;
 }
 
-/* Hidden file input */
+/* Hidden file input — must stay in rendering tree for Android onChange reliability */
 .bulk-add-ai__file-input {
-  display: none;
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  overflow: hidden;
 }
 
 /* File selected state */

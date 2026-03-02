@@ -155,7 +155,7 @@ export default function MessageInput({ onSend, disabled }: MessageInputProps) {
           type="file"
           accept={ACCEPTED_TYPES}
           onChange={handleFileSelect}
-          style={{ display: 'none' }}
+          style={{ position: 'absolute', opacity: 0, width: 0, height: 0, overflow: 'hidden' }}
           onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
         />
         <button

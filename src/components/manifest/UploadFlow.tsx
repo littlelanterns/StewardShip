@@ -108,6 +108,7 @@ export function UploadFlow({ onUpload, onCheckDuplicate, onClose }: UploadFlowPr
         className="upload-flow__input"
         accept=".pdf,.epub,.docx,.txt,.md,.mp3,.m4a,.wav,.ogg,.webm,.png,.jpg,.jpeg,.webp"
         onChange={handleFileSelect}
+        onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
       />
 
       <div className="upload-flow__actions">

@@ -257,7 +257,7 @@ export function KeelAddModal({ onClose, onCreate, preselectedCategory }: KeelAdd
                 ref={fileInputRef}
                 type="file"
                 accept=".pdf,.png,.jpg,.jpeg,.webp,.md,.txt,.docx"
-                style={{ display: 'none' }}
+                style={{ position: 'absolute', opacity: 0, width: 0, height: 0, overflow: 'hidden' }}
                 onChange={handleFileSelect}
                 onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
               />
