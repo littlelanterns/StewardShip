@@ -41,8 +41,11 @@ export function KeelAddModal({ onClose, onCreate, preselectedCategory }: KeelAdd
   }, []);
   // === END DEBUG ===
 
-  const [mode, setMode] = useState<'select' | 'write' | 'uploading' | 'review' | 'bulk'>('select');
-  addDebug(`[Keel] render mode=${mode}`);
+  const [mode, setModeRaw] = useState<'select' | 'write' | 'uploading' | 'review' | 'bulk'>('select');
+  const setMode = useCallback((newMode: typeof mode) => {
+    addDebug(`[Keel] setMode → ${newMode}`);
+    setModeRaw(newMode);
+  }, [addDebug]);
 
   const handleBulkSave = async (items: ParsedBulkItem[]) => {
     for (const item of items) {
