@@ -122,7 +122,7 @@ export function MastAddModal({ onClose, onCreate, preselectedType }: MastAddModa
     }
   }, [user]);
 
-  const { openFilePicker, FileInput } = useMobileFileInput({
+  const { openFilePicker } = useMobileFileInput({
     accept: '.pdf,.png,.jpg,.jpeg,.webp,.md,.txt,.docx',
     onFileSelected: processFile,
   });
