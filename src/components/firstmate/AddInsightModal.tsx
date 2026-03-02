@@ -219,7 +219,7 @@ export function AddInsightModal({ onClose, onSave, preselectedCategory }: AddIns
             </div>
           </button>
           {/* File input directly on the method card — opens picker immediately on tap */}
-          <label className="add-entry-method" style={{ cursor: 'pointer', position: 'relative' }}>
+          <label className="add-entry-method" style={{ cursor: 'pointer', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
             <Upload size={22} className="add-entry-method__icon" />
             <div className="add-entry-method__content">
               <div className="add-entry-method__label">Upload a file</div>
@@ -231,6 +231,7 @@ export function AddInsightModal({ onClose, onSave, preselectedCategory }: AddIns
               accept=".pdf,.png,.jpg,.jpeg,.webp,.md,.txt,.docx"
               style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
               onChange={handleFileSelect}
+              onClick={(e) => { e.stopPropagation(); (e.target as HTMLInputElement).value = ''; }}
             />
           </label>
           <button className="add-entry-method" onClick={() => { startGuidedConversation('first_mate_action'); onClose(); }}>

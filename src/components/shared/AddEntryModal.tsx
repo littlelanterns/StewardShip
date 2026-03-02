@@ -10,7 +10,7 @@ interface AddEntryModalProps {
 
 export function AddEntryModal({ title, children, onClose }: AddEntryModalProps) {
   return (
-    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal-panel" role="dialog" aria-label={title}>
         <div className="modal-panel__header">
           <h2 className="modal-panel__title">{title}</h2>
