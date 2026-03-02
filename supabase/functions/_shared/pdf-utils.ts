@@ -2,16 +2,12 @@
  * Shared PDF text extraction utilities.
  * Used by: manifest-process, extract-text, extract-insights, chat
  *
- * Strategy: Decompress all streams, extract text from BT/ET blocks only.
- * The BT/ET extraction in extractTextFromPDFContent is the real filter —
- * non-text streams (images, fonts, ICC, metadata) don't contain BT/ET
- * text operators, so they produce nothing. We only pre-skip streams that
- * are unambiguously binary (images, ICC color profiles) to save CPU.
+ * Primary strategy: unpdf (PDF.js wrapper for edge runtimes).
+ * Handles CIDFont encoding, ToUnicode CMaps, composite fonts, and all
+ * standard PDF text formats including Adobe InDesign output.
  *
- * Previous approach of dictionary lookback filtering was unreliable:
- * looking back 500 chars could grab a DIFFERENT object's dictionary
- * (e.g., FontDescriptor from an adjacent object), causing page content
- * streams to be incorrectly skipped.
+ * Fallback: regex-based BT/ET extraction for edge cases where unpdf fails.
+ * Both paths run through sanitization and paragraph filtering.
  */
 
 // --- Main Entry Point ---
@@ -21,15 +17,88 @@
  * Returns clean prose text ready for storage or AI processing.
  */
 export async function extractCleanTextFromPDF(bytes: Uint8Array): Promise<string> {
-  let text = await extractTextFromPDF(bytes);
+  const startTime = Date.now();
+  let text = '';
+  let method = 'none';
+
+  // Primary: unpdf (PDF.js engine — handles CIDFont, ToUnicode, composite fonts)
+  try {
+    text = await extractTextWithUnPDF(bytes);
+    method = 'unpdf';
+  } catch (err) {
+    console.warn('[PDF] unpdf extraction failed, falling back to legacy:', err);
+  }
+
+  // Fallback: regex-based extraction if unpdf produced nothing useful
+  if (!text || text.length < 50) {
+    if (method === 'unpdf' && text.length > 0) {
+      console.log(`[PDF] unpdf produced only ${text.length} chars, trying legacy`);
+    }
+    try {
+      const legacyText = await extractTextFromPDFLegacy(bytes);
+      // Use whichever produced more text
+      if (legacyText.length > text.length) {
+        text = legacyText;
+        method = text.length > 0 ? 'legacy' : 'none';
+      }
+    } catch (err) {
+      console.warn('[PDF] Legacy extraction also failed:', err);
+    }
+  }
+
+  // Sanitize and filter
   text = sanitizeExtractedText(text);
   text = filterTextParagraphs(text);
+
+  const elapsed = Date.now() - startTime;
+  console.log(`[PDF] Extraction complete: ${text.length} chars via ${method} in ${elapsed}ms`);
+
   return text;
 }
 
-// --- Core PDF Extraction ---
+// --- unpdf Extraction (Primary) ---
 
-export async function extractTextFromPDF(bytes: Uint8Array): Promise<string> {
+async function extractTextWithUnPDF(bytes: Uint8Array): Promise<string> {
+  // Dynamic import — only loaded when a PDF is processed
+  const unpdfModule = await import('https://esm.sh/unpdf@1.4.0');
+  const { extractText, getDocumentProxy, configureUnPDF } = unpdfModule;
+
+  // Configure pdfjs module explicitly for esm.sh / Deno compatibility.
+  // Without this, the auto-resolution of pdfjs-serverless may fail in edge runtimes.
+  try {
+    const pdfjsModule = await import('https://esm.sh/unpdf@1.4.0/pdfjs');
+    await configureUnPDF({ pdfjs: () => Promise.resolve(pdfjsModule) });
+  } catch (configErr) {
+    // If configureUnPDF fails, extractText will try auto-resolving pdfjs
+    console.log('[PDF/unpdf] configureUnPDF skipped:', configErr);
+  }
+
+  const pdf = await getDocumentProxy(new Uint8Array(bytes));
+
+  try {
+    const result = await extractText(pdf, { mergePages: true });
+    const totalPages = result.totalPages ?? 0;
+    const resultText = typeof result.text === 'string'
+      ? result.text
+      : Array.isArray(result.text) ? result.text.join('\n\n') : '';
+
+    console.log(`[PDF/unpdf] Extracted ${resultText.length} chars from ${totalPages} pages`);
+
+    if (resultText.length > 0) {
+      console.log(`[PDF/unpdf] First 300 chars: ${resultText.substring(0, 300)}`);
+    }
+
+    return resultText;
+  } finally {
+    // Free PDF.js resources
+    try { pdf.cleanup?.(); } catch { /* ignore */ }
+    try { pdf.destroy?.(); } catch { /* ignore */ }
+  }
+}
+
+// --- Legacy Regex Extraction (Fallback) ---
+
+async function extractTextFromPDFLegacy(bytes: Uint8Array): Promise<string> {
   const { inflateSync } = await import('https://esm.sh/fflate@0.8.2');
   const decoder = new TextDecoder('latin1');
   const raw = decoder.decode(bytes);
@@ -51,15 +120,12 @@ export async function extractTextFromPDF(bytes: Uint8Array): Promise<string> {
 
     const streamLen = endIdx - streamStart;
 
-    // Skip very large streams (>500KB) — likely embedded images/fonts, not text
+    // Skip very large streams (>500KB) — likely embedded images/fonts
     if (streamLen > 512000) {
       skippedBinary++;
       continue;
     }
 
-    // Safe pre-filter: only skip streams whose OWN object dictionary is
-    // unambiguously non-text. Use a tight lookback to the nearest "obj" keyword
-    // to avoid grabbing a different object's dictionary.
     const objSearchStart = Math.max(0, streamMatch.index - 200);
     const preStreamText = raw.substring(objSearchStart, streamMatch.index);
     const objPos = preStreamText.lastIndexOf(' obj');
@@ -83,8 +149,6 @@ export async function extractTextFromPDF(bytes: Uint8Array): Promise<string> {
         const decompressed = inflateSync(streamBytes);
         const decompressedText = new TextDecoder('latin1').decode(decompressed);
 
-        // Extract text from BT/ET blocks — this is the real filter.
-        // Non-text streams (fonts, metadata, CMaps) don't have BT/ET operators.
         const partsBefore = textParts.length;
         extractTextFromPDFContent(decompressedText, textParts);
         if (textParts.length > partsBefore) {
@@ -94,7 +158,6 @@ export async function extractTextFromPDF(bytes: Uint8Array): Promise<string> {
         skippedDecompressErr++;
       }
     } else {
-      // Uncompressed stream — extract BT/ET text
       const partsBefore = textParts.length;
       extractTextFromPDFContent(streamData, textParts);
       if (textParts.length > partsBefore) {
@@ -103,18 +166,17 @@ export async function extractTextFromPDF(bytes: Uint8Array): Promise<string> {
     }
   }
 
-  console.log(`[PDF] Streams: ${streamCount} total, ${skippedBinary} skipped (binary), ${skippedDecompressErr} decompress errors, ${processedCount} yielded text, ${textParts.length} text parts`);
+  console.log(`[PDF/legacy] Streams: ${streamCount} total, ${skippedBinary} skipped (binary), ${skippedDecompressErr} decompress errors, ${processedCount} yielded text, ${textParts.length} text parts`);
 
   // If no BT/ET text found in any stream, try the raw file
-  // (handles rare uncompressed PDFs where streams aren't properly delimited)
   if (textParts.length === 0) {
-    console.log('[PDF] No BT/ET text from streams — trying raw content');
+    console.log('[PDF/legacy] No BT/ET text from streams — trying raw content');
     extractTextFromPDFContent(raw, textParts);
   }
 
-  // Restricted ASCII fallback — absolute last resort for truly unstructured PDFs
+  // Restricted ASCII fallback — absolute last resort
   if (textParts.length === 0) {
-    console.log('[PDF] No BT/ET text found anywhere — trying restricted ASCII fallback');
+    console.log('[PDF/legacy] No BT/ET text found — trying restricted ASCII fallback');
     const readableRegex = /[\x20-\x7E]{40,}/g;
     let readableMatch;
     while ((readableMatch = readableRegex.exec(raw)) !== null) {
@@ -126,15 +188,12 @@ export async function extractTextFromPDF(bytes: Uint8Array): Promise<string> {
   }
 
   const result = textParts.join(' ').replace(/\s+/g, ' ').trim();
-  console.log(`[PDF] Final: ${textParts.length} text parts, ${result.length} chars`);
-  if (result.length > 0) {
-    console.log(`[PDF] First 300 chars: ${result.substring(0, 300)}`);
-  }
+  console.log(`[PDF/legacy] Final: ${textParts.length} text parts, ${result.length} chars`);
 
   return result;
 }
 
-// --- Text Extraction from PDF Content Streams ---
+// --- Text Extraction from PDF Content Streams (used by legacy) ---
 
 export function extractTextFromPDFContent(content: string, textParts: string[]): void {
   const btRegex = /BT\s([\s\S]*?)ET/g;
@@ -182,7 +241,7 @@ export function extractTextFromPDFContent(content: string, textParts: string[]):
   }
 }
 
-// --- String Decoders ---
+// --- String Decoders (used by legacy) ---
 
 export function decodePDFString(str: string): string {
   return str
@@ -224,9 +283,6 @@ export function decodeHexPDFString(hex: string): string {
 
 // --- Post-Extraction Sanitization ---
 
-/**
- * Detect metadata/artifact lines in the ASCII fallback.
- */
 export function isMetadataLine(text: string): boolean {
   const metadataPatterns = [
     /xmlns:/i,
@@ -262,7 +318,6 @@ export function isMetadataLine(text: string): boolean {
     if (pattern.test(text)) return true;
   }
 
-  // High ratio of non-alpha characters suggests non-prose
   const alphaRatio = text.replace(/[^a-zA-Z\s]/g, '').length / text.length;
   if (alphaRatio < 0.6) return true;
 
@@ -270,8 +325,8 @@ export function isMetadataLine(text: string): boolean {
 }
 
 /**
- * Clean extracted text by removing common PDF artifacts that survived extraction.
- * Runs AFTER extractTextFromPDF, BEFORE storing in text_content.
+ * Clean extracted text by removing common PDF artifacts.
+ * Runs AFTER extraction, BEFORE storing in text_content.
  */
 export function sanitizeExtractedText(text: string): string {
   let cleaned = text;
@@ -320,15 +375,12 @@ export function filterTextParagraphs(text: string): string {
     const trimmed = para.trim();
     if (trimmed.length < 10) return false;
 
-    // Check letter/space ratio
     const letters = trimmed.replace(/[^a-zA-Z\s]/g, '').length;
     const ratio = letters / trimmed.length;
     if (ratio < 0.5) return false;
 
-    // Check for garbage patterns
     if (isMetadataLine(trimmed)) return false;
 
-    // Must have at least a few real words
     const words = trimmed.split(/\s+/).filter(w => w.length > 1 && /[a-zA-Z]/.test(w));
     if (words.length < 3) return false;
 
