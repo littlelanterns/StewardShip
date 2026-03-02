@@ -166,8 +166,6 @@ export function useMast() {
 
   const batchToggleIncluded = useCallback(async (value: boolean) => {
     if (!user) return;
-    const ids = entries.map((e) => e.id);
-
     // Optimistic update
     setEntries((prev) => prev.map((e) => ({ ...e, is_included: value })));
 
