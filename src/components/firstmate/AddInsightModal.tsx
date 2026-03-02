@@ -41,7 +41,7 @@ export function AddInsightModal({ onClose, onSave, preselectedCategory }: AddIns
   const { user } = useAuthContext();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [mode, setMode] = useState<'select' | 'write' | 'file' | 'review' | 'bulk'>('select');
+  const [mode, setMode] = useState<'select' | 'write' | 'uploading' | 'review' | 'bulk'>('select');
 
   const handleBulkSave = async (items: ParsedBulkItem[]) => {
     for (const item of items) {
@@ -59,7 +59,6 @@ export function AddInsightModal({ onClose, onSave, preselectedCategory }: AddIns
   const [error, setError] = useState<string | null>(null);
 
   // File upload state
-  const [uploading, setUploading] = useState(false);
   const [fileName, setFileName] = useState('');
   const [fileStoragePath, setFileStoragePath] = useState('');
   const [extractedInsights, setExtractedInsights] = useState<ExtractedInsight[]>([]);
@@ -88,7 +87,8 @@ export function AddInsightModal({ onClose, onSave, preselectedCategory }: AddIns
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
-    setUploading(true);
+    // Immediately switch to uploading mode so the user sees progress
+    setMode('uploading');
     setError(null);
     setFileName(file.name);
 
@@ -128,9 +128,13 @@ export function AddInsightModal({ onClose, onSave, preselectedCategory }: AddIns
       setExtractedTextLength(data.extracted_text_length || 0);
       setMode('review');
     } catch (err) {
-      setError((err as Error).message || 'Failed to process file.');
-    } finally {
-      setUploading(false);
+      const msg = (err as Error).message || '';
+      if (msg.includes('non-2xx') || msg.includes('500') || msg.includes('502')) {
+        setError('File processing failed. This can happen with complex PDFs. Try uploading screenshots of the key pages, or use "Write It Myself" to add entries directly.');
+      } else {
+        setError(msg || 'Failed to process file.');
+      }
+      setMode('select');
     }
   };
 
@@ -214,13 +218,21 @@ export function AddInsightModal({ onClose, onSave, preselectedCategory }: AddIns
               <div className="add-entry-method__desc">Add an insight about your partner directly</div>
             </div>
           </button>
-          <button className="add-entry-method" onClick={() => setMode('file')}>
+          {/* File input directly on the method card — opens picker immediately on tap */}
+          <label className="add-entry-method" style={{ cursor: 'pointer', position: 'relative' }}>
             <Upload size={22} className="add-entry-method__icon" />
             <div className="add-entry-method__content">
               <div className="add-entry-method__label">Upload a file</div>
               <div className="add-entry-method__desc">Upload an assessment, screenshot, or document</div>
             </div>
-          </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.png,.jpg,.jpeg,.webp,.md,.txt,.docx"
+              style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
+              onChange={handleFileSelect}
+            />
+          </label>
           <button className="add-entry-method" onClick={() => { startGuidedConversation('first_mate_action'); onClose(); }}>
             <MessageSquare size={22} className="add-entry-method__icon" />
             <div className="add-entry-method__content">
@@ -245,67 +257,16 @@ export function AddInsightModal({ onClose, onSave, preselectedCategory }: AddIns
           onSave={handleBulkSave}
           onClose={onClose}
         />
-      ) : mode === 'file' ? (
+      ) : mode === 'uploading' ? (
         <div className="add-entry-form">
-          <button className="add-entry-form__back" onClick={() => setMode('select')}>
-            Back to options
-          </button>
-
-          {uploading ? (
-            <div className="add-entry-file-processing">
-              <LoadingSpinner />
-              <p>Analyzing {fileName}...</p>
-            </div>
-          ) : (
-            <>
-              <p className="add-entry-form__desc">
-                Upload a personality assessment, screenshot, or document about your partner.
-              </p>
-              <label
-                className="btn btn--secondary"
-                style={{ cursor: 'pointer', display: 'inline-block', position: 'relative', overflow: 'hidden' }}
-              >
-                Choose File
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".pdf,.png,.jpg,.jpeg,.webp,.md,.txt,.docx"
-                  style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
-                  onChange={handleFileSelect}
-                  onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
-                />
-              </label>
-            </>
-          )}
-
-          {error && (
-            <div className="add-entry-form__error-block">
-              <p className="add-entry-form__error">{error}</p>
-              <div className="add-entry-form__actions">
-                <label
-                  className="btn btn--secondary"
-                  style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden' }}
-                  onClick={() => setError(null)}
-                >
-                  Try Again
-                  <input
-                    type="file"
-                    accept=".pdf,.png,.jpg,.jpeg,.webp,.md,.txt,.docx"
-                    style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
-                    onChange={handleFileSelect}
-                    onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
-                  />
-                </label>
-                <Button variant="secondary" onClick={() => { setError(null); setMode('write'); }}>
-                  Write It Myself Instead
-                </Button>
-              </div>
-            </div>
-          )}
+          <div className="add-entry-file-processing">
+            <LoadingSpinner />
+            <p>Analyzing {fileName}...</p>
+          </div>
         </div>
       ) : mode === 'review' ? (
         <div className="add-entry-form">
-          <button className="add-entry-form__back" onClick={() => setMode('file')}>
+          <button className="add-entry-form__back" onClick={() => setMode('select')}>
             Back
           </button>
           <p className="add-entry-form__desc" style={{ marginBottom: 'var(--spacing-sm)' }}>
@@ -432,6 +393,13 @@ export function AddInsightModal({ onClose, onSave, preselectedCategory }: AddIns
             <Button variant="primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : 'Save'}</Button>
             <Button variant="secondary" onClick={onClose} disabled={saving}>Cancel</Button>
           </div>
+        </div>
+      )}
+
+      {/* Error from file upload shown as banner at bottom of any mode */}
+      {error && mode === 'select' && (
+        <div style={{ padding: 'var(--spacing-sm)', marginTop: 'var(--spacing-sm)' }}>
+          <p className="add-entry-form__error">{error}</p>
         </div>
       )}
     </AddEntryModal>
