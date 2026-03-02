@@ -56,6 +56,10 @@
   border: 1px dashed var(--color-slate-gray);
   border-radius: var(--radius-sm);
   cursor: pointer;
+  background: none;
+  font-family: inherit;
+  width: 100%;
+  text-align: left;
   transition: border-color 0.15s ease, background 0.15s ease;
 }
 
@@ -80,16 +84,6 @@
   font-size: var(--font-size-xs);
   color: var(--color-slate-gray);
   margin-left: auto;
-}
-
-/* File input overlays the label — user's tap hits the input directly for mobile reliability */
-.bulk-add-ai__file-input {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  width: 100%;
-  height: 100%;
-  cursor: pointer;
 }
 
 /* File selected state */

@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { Send, Paperclip, X } from 'lucide-react';
 import { VoiceRecordButton } from '../shared/VoiceRecordButton';
+import { useMobileFileInput } from '../../hooks/useMobileFileInput';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../contexts/AuthContext';
 import './MessageInput.css';
@@ -24,7 +25,6 @@ export default function MessageInput({ onSend, disabled }: MessageInputProps) {
   const [attachment, setAttachment] = useState<AttachedFile | null>(null);
   const [uploading, setUploading] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSend = useCallback(async () => {
     const trimmed = text.trim();
@@ -104,10 +104,7 @@ export default function MessageInput({ onSend, disabled }: MessageInputProps) {
     }
   }, []);
 
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const processFile = useCallback((file: File) => {
     if (file.size > MAX_FILE_SIZE) {
       alert('File too large. Maximum size is 10MB.');
       return;
@@ -116,10 +113,12 @@ export default function MessageInput({ onSend, disabled }: MessageInputProps) {
     const isImage = file.type.startsWith('image/');
     const previewUrl = isImage ? URL.createObjectURL(file) : undefined;
     setAttachment({ file, previewUrl });
-
-    // Reset the input so the same file can be re-selected
-    e.target.value = '';
   }, []);
+
+  const { openFilePicker, FileInput: FileInputHidden } = useMobileFileInput({
+    accept: ACCEPTED_TYPES,
+    onFileSelected: processFile,
+  });
 
   const clearAttachment = useCallback(() => {
     if (attachment?.previewUrl) {
@@ -150,18 +149,11 @@ export default function MessageInput({ onSend, disabled }: MessageInputProps) {
         </div>
       )}
       <div className="message-input">
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept={ACCEPTED_TYPES}
-          onChange={handleFileSelect}
-          style={{ position: 'absolute', opacity: 0, width: 0, height: 0, overflow: 'hidden' }}
-          onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
-        />
+        <FileInputHidden />
         <button
           type="button"
           className="message-input__icon-btn"
-          onClick={() => fileInputRef.current?.click()}
+          onClick={openFilePicker}
           disabled={disabled || uploading}
           title="Attach file"
           aria-label="Attach file"

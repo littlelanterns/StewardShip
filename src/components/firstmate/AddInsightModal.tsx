@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import { PenLine, MessageSquare, Upload, ListPlus } from 'lucide-react';
 import { AddEntryModal } from '../shared/AddEntryModal';
 import { Button } from '../shared/Button';
@@ -6,6 +6,7 @@ import { LoadingSpinner } from '../shared/LoadingSpinner';
 import { BulkAddWithAISort, type ParsedBulkItem } from '../shared/BulkAddWithAISort';
 import { useHelmContext } from '../../contexts/HelmContext';
 import { useAuthContext } from '../../contexts/AuthContext';
+import { useMobileFileInput } from '../../hooks/useMobileFileInput';
 import { supabase } from '../../lib/supabase';
 import type { SpouseInsightCategory, SpouseInsightSourceType } from '../../lib/types';
 import { SPOUSE_INSIGHT_CATEGORY_LABELS, SPOUSE_INSIGHT_CATEGORY_ORDER } from '../../lib/types';
@@ -39,7 +40,6 @@ interface AddInsightModalProps {
 export function AddInsightModal({ onClose, onSave, preselectedCategory }: AddInsightModalProps) {
   const { startGuidedConversation } = useHelmContext();
   const { user } = useAuthContext();
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [mode, setMode] = useState<'select' | 'write' | 'uploading' | 'review' | 'bulk'>('select');
 
@@ -83,17 +83,14 @@ export function AddInsightModal({ onClose, onSave, preselectedCategory }: AddIns
     }
   };
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !user) return;
+  const processFile = useCallback(async (file: File) => {
+    if (!user) return;
 
-    // Immediately switch to uploading mode so the user sees progress
     setMode('uploading');
     setError(null);
     setFileName(file.name);
 
     try {
-      // Upload to storage
       const ext = file.name.split('.').pop()?.toLowerCase() || '';
       const storagePath = `${user.id}/firstmate/${Date.now()}_${file.name}`;
 
@@ -104,7 +101,6 @@ export function AddInsightModal({ onClose, onSave, preselectedCategory }: AddIns
       if (uploadErr) throw new Error(`Upload failed: ${uploadErr.message}`);
       setFileStoragePath(storagePath);
 
-      // Call extract-insights Edge Function
       const { data, error: extractErr } = await supabase.functions.invoke('extract-insights', {
         body: {
           user_id: user.id,
@@ -136,7 +132,12 @@ export function AddInsightModal({ onClose, onSave, preselectedCategory }: AddIns
       }
       setMode('select');
     }
-  };
+  }, [user]);
+
+  const { openFilePicker, FileInput } = useMobileFileInput({
+    accept: '.pdf,.png,.jpg,.jpeg,.webp,.md,.txt,.docx',
+    onFileSelected: processFile,
+  });
 
   const handleSaveExtracted = async () => {
     const selected = extractedInsights.filter((i) => i.included);
@@ -209,6 +210,7 @@ export function AddInsightModal({ onClose, onSave, preselectedCategory }: AddIns
 
   return (
     <AddEntryModal title="Add Insight" onClose={onClose}>
+      <FileInput />
       {mode === 'select' ? (
         <div className="add-entry-methods">
           <button className="add-entry-method" onClick={() => setMode('write')}>
@@ -218,22 +220,13 @@ export function AddInsightModal({ onClose, onSave, preselectedCategory }: AddIns
               <div className="add-entry-method__desc">Add an insight about your partner directly</div>
             </div>
           </button>
-          {/* File input directly on the method card — opens picker immediately on tap */}
-          <label className="add-entry-method" style={{ cursor: 'pointer', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+          <button className="add-entry-method" onClick={openFilePicker}>
             <Upload size={22} className="add-entry-method__icon" />
             <div className="add-entry-method__content">
               <div className="add-entry-method__label">Upload a file</div>
               <div className="add-entry-method__desc">Upload an assessment, screenshot, or document</div>
             </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".pdf,.png,.jpg,.jpeg,.webp,.md,.txt,.docx"
-              style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
-              onChange={handleFileSelect}
-              onClick={(e) => { e.stopPropagation(); (e.target as HTMLInputElement).value = ''; }}
-            />
-          </label>
+          </button>
           <button className="add-entry-method" onClick={() => { startGuidedConversation('first_mate_action'); onClose(); }}>
             <MessageSquare size={22} className="add-entry-method__icon" />
             <div className="add-entry-method__content">

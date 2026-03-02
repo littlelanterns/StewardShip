@@ -44,16 +44,8 @@ export function AddEntryModal({ title, children, onClose }: AddEntryModalProps) 
   }, []);
 
   const handleOverlayDismiss = useCallback((e: React.MouseEvent) => {
-    const suppressed = Date.now() < dismissSuppressedUntil.current;
-    console.log('[AddEntryModal] overlay dismiss fired', {
-      target: (e.target as HTMLElement).className,
-      currentTarget: (e.currentTarget as HTMLElement).className,
-      suppressed,
-      timestamp: Date.now(),
-    });
     if (e.target !== e.currentTarget) return;
-    if (suppressed) return;
-    console.log('[AddEntryModal] overlay dismiss — calling onClose');
+    if (Date.now() < dismissSuppressedUntil.current) return;
     onClose();
   }, [onClose]);
 
@@ -62,7 +54,7 @@ export function AddEntryModal({ title, children, onClose }: AddEntryModalProps) 
       <div className="modal-panel" role="dialog" aria-label={title}>
         <div className="modal-panel__header">
           <h2 className="modal-panel__title">{title}</h2>
-          <button className="modal-panel__close" onClick={() => { console.log('[AddEntryModal] X button close fired'); onClose(); }} aria-label="Close">
+          <button className="modal-panel__close" onClick={onClose} aria-label="Close">
             <X size={20} />
           </button>
         </div>

@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { PenLine, MessageSquare, Upload, ListPlus } from 'lucide-react';
 import { AddEntryModal } from '../shared/AddEntryModal';
 import { Button } from '../shared/Button';
@@ -6,6 +6,7 @@ import { LoadingSpinner } from '../shared/LoadingSpinner';
 import { BulkAddWithAISort, type ParsedBulkItem } from '../shared/BulkAddWithAISort';
 import { useHelmContext } from '../../contexts/HelmContext';
 import { useAuthContext } from '../../contexts/AuthContext';
+import { useMobileFileInput } from '../../hooks/useMobileFileInput';
 import { supabase } from '../../lib/supabase';
 import type { KeelCategory, KeelSourceType } from '../../lib/types';
 import { KEEL_CATEGORY_LABELS, KEEL_CATEGORY_ORDER } from '../../lib/types';
@@ -31,21 +32,8 @@ interface KeelAddModalProps {
 export function KeelAddModal({ onClose, onCreate, preselectedCategory }: KeelAddModalProps) {
   const { startGuidedConversation } = useHelmContext();
   const { user } = useAuthContext();
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // === TEMPORARY DEBUG — remove after mobile file picker bug is fixed ===
-  const [debugLog, setDebugLog] = useState<string[]>([]);
-  const addDebug = useCallback((msg: string) => {
-    console.log(msg);
-    setDebugLog(prev => [...prev.slice(-15), `${new Date().toISOString().slice(11, 19)} ${msg}`]);
-  }, []);
-  // === END DEBUG ===
-
-  const [mode, setModeRaw] = useState<'select' | 'write' | 'uploading' | 'review' | 'bulk'>('select');
-  const setMode = useCallback((newMode: typeof mode) => {
-    addDebug(`[Keel] setMode → ${newMode}`);
-    setModeRaw(newMode);
-  }, [addDebug]);
+  const [mode, setMode] = useState<'select' | 'write' | 'uploading' | 'review' | 'bulk'>('select');
 
   const handleBulkSave = async (items: ParsedBulkItem[]) => {
     for (const item of items) {
@@ -69,37 +57,9 @@ export function KeelAddModal({ onClose, onCreate, preselectedCategory }: KeelAdd
   const [extractedTextLength, setExtractedTextLength] = useState(0);
   const [showLowConfidence, setShowLowConfidence] = useState(false);
 
-  async function handleSave() {
-    if (!text.trim()) {
-      setError('Content cannot be empty.');
-      return;
-    }
-    setSaving(true);
-    setError(null);
-    try {
-      await onCreate({
-        category,
-        text: text.trim(),
-        source: source.trim() || undefined,
-      });
-      onClose();
-    } catch {
-      setError('Failed to save. Please try again.');
-    } finally {
-      setSaving(false);
-    }
-  }
+  const processFile = useCallback(async (file: File) => {
+    if (!user) return;
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    addDebug(`[Keel] handleFileSelect fired file=${file?.name || 'null'} size=${file?.size || 0} user=${!!user}`);
-    if (!file || !user) {
-      addDebug(`[Keel] handleFileSelect early return — file:${!!file} user:${!!user}`);
-      return;
-    }
-
-    // Immediately switch to uploading mode so the user sees progress
-    addDebug(`[Keel] setMode→uploading for ${file.name}`);
     setMode('uploading');
     setError(null);
     setFileName(file.name);
@@ -108,14 +68,12 @@ export function KeelAddModal({ onClose, onCreate, preselectedCategory }: KeelAdd
       const ext = file.name.split('.').pop()?.toLowerCase() || '';
       const storagePath = `${user.id}/keel/${Date.now()}_${file.name}`;
 
-      addDebug(`[Keel] uploading to storage...`);
       const { error: uploadErr } = await supabase.storage
         .from('manifest-files')
         .upload(storagePath, file);
 
       if (uploadErr) throw new Error(`Upload failed: ${uploadErr.message}`);
       setFileStoragePath(storagePath);
-      addDebug(`[Keel] storage upload OK, calling extract-insights...`);
 
       const { data, error: extractErr } = await supabase.functions.invoke('extract-insights', {
         body: {
@@ -136,13 +94,11 @@ export function KeelAddModal({ onClose, onCreate, preselectedCategory }: KeelAdd
         }),
       );
 
-      addDebug(`[Keel] extraction OK, ${insights.length} insights, setMode→review`);
       setExtractedInsights(insights);
       setExtractedTextLength(data.extracted_text_length || 0);
       setMode('review');
     } catch (err) {
       const msg = (err as Error).message || '';
-      addDebug(`[Keel] handleFileSelect ERROR: ${msg}`);
       if (msg.includes('non-2xx') || msg.includes('500') || msg.includes('502')) {
         setError('File processing failed. This can happen with complex PDFs. Try uploading screenshots of the key pages, or use "Write It Myself" to add entries directly.');
       } else {
@@ -150,7 +106,33 @@ export function KeelAddModal({ onClose, onCreate, preselectedCategory }: KeelAdd
       }
       setMode('select');
     }
-  };
+  }, [user]);
+
+  const { openFilePicker, FileInput } = useMobileFileInput({
+    accept: '.pdf,.png,.jpg,.jpeg,.webp,.md,.txt,.docx',
+    onFileSelected: processFile,
+  });
+
+  async function handleSave() {
+    if (!text.trim()) {
+      setError('Content cannot be empty.');
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      await onCreate({
+        category,
+        text: text.trim(),
+        source: source.trim() || undefined,
+      });
+      onClose();
+    } catch {
+      setError('Failed to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  }
 
   const handleSaveExtracted = async () => {
     const selected = extractedInsights.filter((i) => i.included);
@@ -215,6 +197,7 @@ export function KeelAddModal({ onClose, onCreate, preselectedCategory }: KeelAdd
 
   return (
     <AddEntryModal title="Add to Keel" onClose={onClose}>
+      <FileInput />
       {mode === 'select' ? (
         <div className="add-entry-methods">
           <button className="add-entry-method" onClick={() => setMode('write')}>
@@ -224,24 +207,13 @@ export function KeelAddModal({ onClose, onCreate, preselectedCategory }: KeelAdd
               <div className="add-entry-method__desc">Add self-knowledge directly</div>
             </div>
           </button>
-          {/* File input directly on the method card — opens picker immediately on tap */}
-          <label className="add-entry-method" style={{ cursor: 'pointer', position: 'relative' }} onClick={(e) => { addDebug('[Keel] label onClick'); e.stopPropagation(); }}>
+          <button className="add-entry-method" onClick={openFilePicker}>
             <Upload size={22} className="add-entry-method__icon" />
             <div className="add-entry-method__content">
               <div className="add-entry-method__label">Upload a file</div>
               <div className="add-entry-method__desc">Upload a personality assessment or document</div>
             </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".pdf,.png,.jpg,.jpeg,.webp,.md,.txt,.docx"
-              style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
-              onChange={handleFileSelect}
-              onClick={(e) => { addDebug('[Keel] file input onClick — clearing value'); e.stopPropagation(); (e.target as HTMLInputElement).value = ''; }}
-              onFocus={() => addDebug('[Keel] file input focused')}
-              onBlur={() => addDebug('[Keel] file input blurred')}
-            />
-          </label>
+          </button>
           <button className="add-entry-method" onClick={() => { startGuidedConversation('self_discovery'); onClose(); }}>
             <MessageSquare size={22} className="add-entry-method__icon" />
             <div className="add-entry-method__content">
@@ -435,26 +407,6 @@ export function KeelAddModal({ onClose, onCreate, preselectedCategory }: KeelAdd
           <p className="add-entry-form__error">{error}</p>
         </div>
       )}
-
-      {/* === TEMPORARY DEBUG OVERLAY — remove after mobile file picker bug is fixed === */}
-      <div style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        background: 'rgba(0,0,0,0.85)',
-        color: '#0f0',
-        fontSize: '10px',
-        fontFamily: 'monospace',
-        padding: '4px',
-        maxHeight: '150px',
-        overflowY: 'auto',
-        zIndex: 99999,
-        pointerEvents: 'none',
-      }}>
-        {debugLog.map((msg, i) => <div key={i}>{msg}</div>)}
-      </div>
-      {/* === END DEBUG OVERLAY === */}
     </AddEntryModal>
   );
 }

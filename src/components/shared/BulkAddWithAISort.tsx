@@ -1,8 +1,9 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import { X, Trash2, Check, Upload, FileText, FileCode, Image, XCircle, Loader } from 'lucide-react';
 import { Button } from './Button';
 import { sendChatMessage } from '../../lib/ai';
 import { extractTextFromFile } from '../../lib/extractText';
+import { useMobileFileInput } from '../../hooks/useMobileFileInput';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../contexts/AuthContext';
 import './BulkAddWithAISort.css';
@@ -71,14 +72,10 @@ export function BulkAddWithAISort({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [extracting, setExtracting] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const defaultCategory = categories?.[0]?.value;
 
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const processFile = useCallback((file: File) => {
     const ext = file.name.split('.').pop()?.toLowerCase();
     if (!ext || !SUPPORTED_EXTENSIONS.has(ext)) {
       setError('Unsupported file type. Please upload .md, .txt, .pdf, .docx, or image files (.png, .jpg, .webp).');
@@ -91,7 +88,6 @@ export function BulkAddWithAISort({
 
     // Images skip the storage choice — go straight to extraction (vision)
     if (ext && IMAGE_EXTENSIONS.has(ext)) {
-      // Defer to next tick so selectedFile state is set
       setTimeout(() => handleExtractFile(file, 'extract_only'), 0);
       return;
     }
@@ -104,6 +100,11 @@ export function BulkAddWithAISort({
       });
     }, 100);
   }, []);
+
+  const { openFilePicker, FileInput: FileInputHidden } = useMobileFileInput({
+    accept: ACCEPTED_EXTENSIONS,
+    onFileSelected: processFile,
+  });
 
   const handleExtractFile = useCallback(async (file: File, choice: 'extract_only' | 'store_in_manifest') => {
     if (!file || !user) return;
@@ -201,9 +202,6 @@ export function BulkAddWithAISort({
     setUploadedFileName(null);
     setInputText('');
     setError(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
   }, []);
 
   const handleParse = useCallback(async () => {
@@ -336,22 +334,15 @@ export function BulkAddWithAISort({
           </p>
 
           {/* File upload section */}
+          <FileInputHidden />
           {enableFileUpload && !uploadedFileName && !selectedFile && (
-            <label className="bulk-add-ai__file-zone" style={{ position: 'relative' }}>
+            <button className="bulk-add-ai__file-zone" type="button" onClick={openFilePicker}>
               <Upload size={20} className="bulk-add-ai__file-zone-icon" />
               <span className="bulk-add-ai__file-zone-text">
                 {fileUploadLabel || 'Or upload a file'}
               </span>
               <span className="bulk-add-ai__file-zone-hint">.md, .txt, .pdf, .docx, images</span>
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="bulk-add-ai__file-input"
-                accept={ACCEPTED_EXTENSIONS}
-                onChange={handleFileSelect}
-                onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
-              />
-            </label>
+            </button>
           )}
 
           {/* File selected — show storage choice (not for images, which auto-extract via vision) */}

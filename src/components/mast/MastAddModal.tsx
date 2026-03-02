@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import { PenLine, MessageSquare, Upload, ListPlus } from 'lucide-react';
 import { AddEntryModal } from '../shared/AddEntryModal';
 import { Button } from '../shared/Button';
@@ -6,6 +6,7 @@ import { LoadingSpinner } from '../shared/LoadingSpinner';
 import { BulkAddWithAISort, type ParsedBulkItem } from '../shared/BulkAddWithAISort';
 import { useHelmContext } from '../../contexts/HelmContext';
 import { useAuthContext } from '../../contexts/AuthContext';
+import { useMobileFileInput } from '../../hooks/useMobileFileInput';
 import { supabase } from '../../lib/supabase';
 import type { MastEntryType } from '../../lib/types';
 import { MAST_TYPE_LABELS, MAST_TYPE_ORDER } from '../../lib/types';
@@ -31,7 +32,6 @@ interface MastAddModalProps {
 export function MastAddModal({ onClose, onCreate, preselectedType }: MastAddModalProps) {
   const { startGuidedConversation } = useHelmContext();
   const { user } = useAuthContext();
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [mode, setMode] = useState<'select' | 'write' | 'uploading' | 'review' | 'bulk'>(preselectedType ? 'write' : 'select');
   const [type, setType] = useState<MastEntryType>(preselectedType || 'value');
@@ -71,11 +71,9 @@ export function MastAddModal({ onClose, onCreate, preselectedType }: MastAddModa
     }
   }
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !user) return;
+  const processFile = useCallback(async (file: File) => {
+    if (!user) return;
 
-    // Immediately switch to uploading mode so the user sees progress
     setMode('uploading');
     setError(null);
     setFileName(file.name);
@@ -120,7 +118,12 @@ export function MastAddModal({ onClose, onCreate, preselectedType }: MastAddModa
       }
       setMode('select');
     }
-  };
+  }, [user]);
+
+  const { openFilePicker, FileInput } = useMobileFileInput({
+    accept: '.pdf,.png,.jpg,.jpeg,.webp,.md,.txt,.docx',
+    onFileSelected: processFile,
+  });
 
   const handleSaveExtracted = async () => {
     const selected = extractedPrinciples.filter((i) => i.included);
@@ -156,6 +159,7 @@ export function MastAddModal({ onClose, onCreate, preselectedType }: MastAddModa
 
   return (
     <AddEntryModal title="Add Principle" onClose={onClose}>
+      <FileInput />
       {mode === 'select' ? (
         <div className="add-entry-methods">
           <button className="add-entry-method" onClick={() => setMode('write')}>
@@ -165,22 +169,13 @@ export function MastAddModal({ onClose, onCreate, preselectedType }: MastAddModa
               <div className="add-entry-method__desc">Type your principle directly</div>
             </div>
           </button>
-          {/* File input directly on the method card — opens picker immediately on tap */}
-          <label className="add-entry-method" style={{ cursor: 'pointer', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+          <button className="add-entry-method" onClick={openFilePicker}>
             <Upload size={22} className="add-entry-method__icon" />
             <div className="add-entry-method__content">
               <div className="add-entry-method__label">Upload a file</div>
               <div className="add-entry-method__desc">Extract principles from a document</div>
             </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".pdf,.png,.jpg,.jpeg,.webp,.md,.txt,.docx"
-              style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
-              onChange={handleFileSelect}
-              onClick={(e) => { e.stopPropagation(); (e.target as HTMLInputElement).value = ''; }}
-            />
-          </label>
+          </button>
           <button className="add-entry-method" onClick={() => { startGuidedConversation('declaration'); onClose(); }}>
             <MessageSquare size={22} className="add-entry-method__icon" />
             <div className="add-entry-method__content">
