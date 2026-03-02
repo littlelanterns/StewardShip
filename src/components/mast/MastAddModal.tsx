@@ -209,21 +209,19 @@ export function MastAddModal({ onClose, onCreate, preselectedType }: MastAddModa
                 Upload a document containing principles, values, scriptures, or vision statements.
               </p>
               <label
-                htmlFor="mast-file-upload"
                 className="btn btn--secondary"
-                style={{ cursor: 'pointer', display: 'inline-block' }}
+                style={{ cursor: 'pointer', display: 'inline-block', position: 'relative', overflow: 'hidden' }}
               >
                 Choose File
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,.png,.jpg,.jpeg,.webp,.md,.txt,.docx"
+                  style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
+                  onChange={handleFileSelect}
+                  onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
+                />
               </label>
-              <input
-                id="mast-file-upload"
-                ref={fileInputRef}
-                type="file"
-                accept=".pdf,.png,.jpg,.jpeg,.webp,.md,.txt,.docx"
-                style={{ position: 'absolute', opacity: 0, width: 0, height: 0, overflow: 'hidden', pointerEvents: 'none' }}
-                onChange={handleFileSelect}
-                onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
-              />
             </>
           )}
 
@@ -232,12 +230,18 @@ export function MastAddModal({ onClose, onCreate, preselectedType }: MastAddModa
               <p className="add-entry-form__error">{error}</p>
               <div className="add-entry-form__actions">
                 <label
-                  htmlFor="mast-file-upload"
                   className="btn btn--secondary"
-                  style={{ cursor: 'pointer' }}
+                  style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden' }}
                   onClick={() => setError(null)}
                 >
                   Try Again
+                  <input
+                    type="file"
+                    accept=".pdf,.png,.jpg,.jpeg,.webp,.md,.txt,.docx"
+                    style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
+                    onChange={handleFileSelect}
+                    onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
+                  />
                 </label>
                 <Button variant="secondary" onClick={() => { setError(null); setMode('write'); }}>
                   Write It Myself Instead

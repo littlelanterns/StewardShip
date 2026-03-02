@@ -337,12 +337,20 @@ export function BulkAddWithAISort({
 
           {/* File upload section */}
           {enableFileUpload && !uploadedFileName && !selectedFile && (
-            <label htmlFor="bulk-add-file-upload" className="bulk-add-ai__file-zone">
+            <label className="bulk-add-ai__file-zone" style={{ position: 'relative' }}>
               <Upload size={20} className="bulk-add-ai__file-zone-icon" />
               <span className="bulk-add-ai__file-zone-text">
                 {fileUploadLabel || 'Or upload a file'}
               </span>
               <span className="bulk-add-ai__file-zone-hint">.md, .txt, .pdf, .docx, images</span>
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="bulk-add-ai__file-input"
+                accept={ACCEPTED_EXTENSIONS}
+                onChange={handleFileSelect}
+                onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
+              />
             </label>
           )}
 
@@ -411,16 +419,6 @@ export function BulkAddWithAISort({
               </button>
             </div>
           )}
-
-          <input
-            id="bulk-add-file-upload"
-            ref={fileInputRef}
-            type="file"
-            className="bulk-add-ai__file-input"
-            accept={ACCEPTED_EXTENSIONS}
-            onChange={handleFileSelect}
-            onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
-          />
 
           <textarea
             className="bulk-add-ai__textarea"

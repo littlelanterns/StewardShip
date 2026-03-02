@@ -247,21 +247,19 @@ export function KeelAddModal({ onClose, onCreate, preselectedCategory }: KeelAdd
                 Upload a personality assessment, test results, or other document about yourself.
               </p>
               <label
-                htmlFor="keel-file-upload"
                 className="btn btn--secondary"
-                style={{ cursor: 'pointer', display: 'inline-block' }}
+                style={{ cursor: 'pointer', display: 'inline-block', position: 'relative', overflow: 'hidden' }}
               >
                 Choose File
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,.png,.jpg,.jpeg,.webp,.md,.txt,.docx"
+                  style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
+                  onChange={handleFileSelect}
+                  onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
+                />
               </label>
-              <input
-                id="keel-file-upload"
-                ref={fileInputRef}
-                type="file"
-                accept=".pdf,.png,.jpg,.jpeg,.webp,.md,.txt,.docx"
-                style={{ position: 'absolute', opacity: 0, width: 0, height: 0, overflow: 'hidden', pointerEvents: 'none' }}
-                onChange={handleFileSelect}
-                onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
-              />
             </>
           )}
 
@@ -270,12 +268,18 @@ export function KeelAddModal({ onClose, onCreate, preselectedCategory }: KeelAdd
               <p className="add-entry-form__error">{error}</p>
               <div className="add-entry-form__actions">
                 <label
-                  htmlFor="keel-file-upload"
                   className="btn btn--secondary"
-                  style={{ cursor: 'pointer' }}
+                  style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden' }}
                   onClick={() => setError(null)}
                 >
                   Try Again
+                  <input
+                    type="file"
+                    accept=".pdf,.png,.jpg,.jpeg,.webp,.md,.txt,.docx"
+                    style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' }}
+                    onChange={handleFileSelect}
+                    onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
+                  />
                 </label>
                 <Button variant="secondary" onClick={() => { setError(null); setMode('write'); }}>
                   Write It Myself Instead
