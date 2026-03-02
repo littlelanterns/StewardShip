@@ -186,6 +186,8 @@
   background: transparent;
   resize: vertical;
   line-height: 1.5;
+  min-height: 2em;
+  overflow: hidden;
 }
 
 .framework-principles__text:focus {

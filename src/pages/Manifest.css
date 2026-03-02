@@ -136,3 +136,100 @@
   border-color: var(--color-mid-teal);
   color: var(--color-mid-teal);
 }
+
+/* Active action button toggle */
+.manifest-page__action-btn--active {
+  background: var(--color-mid-teal);
+  border-color: var(--color-mid-teal);
+  color: var(--color-white);
+}
+
+.manifest-page__action-btn--active:hover {
+  background: var(--color-dark-teal);
+  border-color: var(--color-dark-teal);
+  color: var(--color-white);
+}
+
+/* Frameworks browse section */
+.manifest-page__frameworks {
+  margin-bottom: var(--spacing-md);
+}
+
+.manifest-page__section-title {
+  margin: 0 0 var(--spacing-sm);
+  font-family: var(--font-heading);
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+}
+
+.manifest-page__framework-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.manifest-page__framework-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-md);
+  border: 1px solid var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+  background: var(--color-surface, var(--color-white));
+  cursor: pointer;
+  text-align: left;
+  transition: border-color var(--transition-fast);
+  width: 100%;
+}
+
+.manifest-page__framework-card:hover {
+  border-color: var(--color-mid-teal);
+}
+
+.manifest-page__framework-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.manifest-page__framework-card-header h3 {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.manifest-page__framework-status {
+  flex-shrink: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-slate-gray);
+  padding: 2px 8px;
+  border-radius: var(--radius-full, 999px);
+  background: var(--color-bg-secondary);
+}
+
+.manifest-page__framework-status--active {
+  color: var(--color-white);
+  background: var(--color-mid-teal);
+}
+
+.manifest-page__framework-source {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.manifest-page__framework-count {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+@media (min-width: 768px) {
+  .manifest-page__framework-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-sm);
+  }
+}

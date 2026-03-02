@@ -222,6 +222,24 @@
   color: var(--color-white);
 }
 
+.manifest-detail__extraction-btn--has-result {
+  border-color: var(--color-mid-teal);
+}
+
+.manifest-detail__extraction-badge {
+  font-size: var(--font-size-xs);
+  color: var(--color-white);
+  background: var(--color-mid-teal);
+  padding: 1px 6px;
+  border-radius: var(--radius-full, 999px);
+  margin-left: var(--spacing-xs);
+  line-height: 1.4;
+}
+
+.manifest-detail__extraction-badge--inactive {
+  background: var(--color-slate-gray);
+}
+
 .manifest-detail__extraction-btn + .manifest-detail__extraction-btn {
   margin-left: var(--spacing-xs);
 }

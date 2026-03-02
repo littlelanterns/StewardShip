@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Upload, StickyNote, MessageSquare, Loader } from 'lucide-react';
+import { Upload, StickyNote, MessageSquare, Loader, BookOpen } from 'lucide-react';
 import { usePageContext } from '../hooks/usePageContext';
 import { useManifest } from '../hooks/useManifest';
 import { useFrameworks } from '../hooks/useFrameworks';
@@ -47,6 +47,7 @@ export default function Manifest() {
   } = useManifest();
 
   const {
+    frameworks,
     extracting,
     extractFramework,
     extractMast,
@@ -77,6 +78,7 @@ export default function Manifest() {
   const [typeFilter, setTypeFilter] = useState<ManifestFileType | 'all'>('all');
   const [usageFilter, setUsageFilter] = useState<ManifestUsageDesignation | 'all'>('all');
   const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const [showFrameworks, setShowFrameworks] = useState(false);
 
   useEffect(() => {
     fetchItems();
@@ -169,6 +171,17 @@ export default function Manifest() {
     setFabExpanded(false);
     startGuidedConversation('manifest_discuss');
   }, [startGuidedConversation]);
+
+  // Navigate to a framework view for a specific item (from frameworks browse)
+  const handleViewFramework = useCallback(async (itemId: string) => {
+    const detail = await fetchItemDetail(itemId);
+    const item = detail || items.find((i) => i.id === itemId);
+    if (item) {
+      setSelectedItem(item);
+      setShowFrameworks(false);
+      setViewMode('framework');
+    }
+  }, [fetchItemDetail, items]);
 
   // Extraction handlers
   const handleExtractFramework = useCallback(() => {
@@ -346,6 +359,8 @@ export default function Manifest() {
           onExtractFramework={handleExtractFramework}
           onExtractMast={handleExtractMast}
           onExtractKeel={handleExtractKeel}
+          hasFramework={!!getFrameworkForItem(currentSelectedItem.id)}
+          frameworkIsActive={getFrameworkForItem(currentSelectedItem.id)?.is_active ?? false}
         />
       </div>
     );
@@ -389,6 +404,16 @@ export default function Manifest() {
             Ask Your Library
           </button>
         )}
+        {frameworks.length > 0 && (
+          <button
+            type="button"
+            className={`manifest-page__action-btn${showFrameworks ? ' manifest-page__action-btn--active' : ''}`}
+            onClick={() => setShowFrameworks(!showFrameworks)}
+          >
+            <BookOpen size={16} />
+            Frameworks ({frameworks.length})
+          </button>
+        )}
       </div>
 
       {/* Processing indicator */}
@@ -412,40 +437,75 @@ export default function Manifest() {
         />
       )}
 
-      {/* Content */}
-      {loading && items.length === 0 ? (
-        <LoadingSpinner />
-      ) : items.length === 0 ? (
-        <EmptyState
-          heading="Your library is empty"
-          message="Upload books, articles, notes, and transcripts. The AI draws from your library to give you advice grounded in the wisdom you trust."
-        />
-      ) : filteredItems.length === 0 ? (
-        <EmptyState
-          heading="No matching items"
-          message="Try adjusting your filters to see more items."
-        />
-      ) : folderGroups.length === 1 ? (
-        <div className="manifest-page__item-list">
-          {folderGroups[0][1].map((item) => (
-            <ManifestItemCard key={item.id} item={item} onClick={handleSelectItem} />
-          ))}
+      {/* Frameworks browse view */}
+      {showFrameworks && (
+        <div className="manifest-page__frameworks">
+          <h2 className="manifest-page__section-title">Extracted Frameworks</h2>
+          <div className="manifest-page__framework-list">
+            {frameworks.map((fw) => {
+              const sourceItem = items.find((i) => i.id === fw.manifest_item_id);
+              return (
+                <button
+                  key={fw.id}
+                  type="button"
+                  className="manifest-page__framework-card"
+                  onClick={() => handleViewFramework(fw.manifest_item_id)}
+                >
+                  <div className="manifest-page__framework-card-header">
+                    <h3>{fw.name}</h3>
+                    <span className={`manifest-page__framework-status${fw.is_active ? ' manifest-page__framework-status--active' : ''}`}>
+                      {fw.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                  <p className="manifest-page__framework-source">
+                    Source: {sourceItem?.title || 'Unknown'}
+                  </p>
+                  <p className="manifest-page__framework-count">
+                    {fw.principles?.length || 0} principles
+                  </p>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      ) : (
-        folderGroups.map(([folder, folderItems]) => (
-          <CollapsibleGroup
-            key={folder}
-            label={folder}
-            count={folderItems.length}
-            defaultExpanded
-          >
-            <div className="manifest-page__item-list">
-              {folderItems.map((item) => (
-                <ManifestItemCard key={item.id} item={item} onClick={handleSelectItem} />
-              ))}
-            </div>
-          </CollapsibleGroup>
-        ))
+      )}
+
+      {/* Content — hidden when frameworks browse is active */}
+      {!showFrameworks && (
+        loading && items.length === 0 ? (
+          <LoadingSpinner />
+        ) : items.length === 0 ? (
+          <EmptyState
+            heading="Your library is empty"
+            message="Upload books, articles, notes, and transcripts. The AI draws from your library to give you advice grounded in the wisdom you trust."
+          />
+        ) : filteredItems.length === 0 ? (
+          <EmptyState
+            heading="No matching items"
+            message="Try adjusting your filters to see more items."
+          />
+        ) : folderGroups.length === 1 ? (
+          <div className="manifest-page__item-list">
+            {folderGroups[0][1].map((item) => (
+              <ManifestItemCard key={item.id} item={item} onClick={handleSelectItem} framework={getFrameworkForItem(item.id)} />
+            ))}
+          </div>
+        ) : (
+          folderGroups.map(([folder, folderItems]) => (
+            <CollapsibleGroup
+              key={folder}
+              label={folder}
+              count={folderItems.length}
+              defaultExpanded
+            >
+              <div className="manifest-page__item-list">
+                {folderItems.map((item) => (
+                  <ManifestItemCard key={item.id} item={item} onClick={handleSelectItem} framework={getFrameworkForItem(item.id)} />
+                ))}
+              </div>
+            </CollapsibleGroup>
+          ))
+        )
       )}
 
       {/* FAB */}

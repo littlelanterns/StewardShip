@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { GripVertical, Plus, Trash2, RefreshCw } from 'lucide-react';
 import { Button, LoadingSpinner } from '../shared';
 import type { AIFramework } from '../../lib/types';
@@ -196,6 +196,22 @@ export default function FrameworkPrinciples({
     ]);
     setNewPrincipleText('');
   }, [newPrincipleText]);
+
+  // Auto-resize textarea to fit content
+  const autoResizeTextarea = useCallback((el: HTMLTextAreaElement | null) => {
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = el.scrollHeight + 'px';
+  }, []);
+
+  // Auto-resize all textareas when principles change
+  useEffect(() => {
+    const textareas = document.querySelectorAll<HTMLTextAreaElement>('.framework-principles__text');
+    textareas.forEach((ta) => {
+      ta.style.height = 'auto';
+      ta.style.height = ta.scrollHeight + 'px';
+    });
+  }, [principles]);
 
   // Auto-deselect non-content sections (AI-tagged [NON-CONTENT] + regex fallback)
   const getDefaultSelectedSections = useCallback((sectionList: SectionInfo[]): number[] => {
@@ -424,10 +440,14 @@ export default function FrameworkPrinciples({
               </button>
             </div>
             <textarea
+              ref={autoResizeTextarea}
               className="framework-principles__text"
               value={principle.text}
-              onChange={(e) => updatePrinciple(index, e.target.value)}
-              rows={2}
+              onChange={(e) => {
+                updatePrinciple(index, e.target.value);
+                autoResizeTextarea(e.target as HTMLTextAreaElement);
+              }}
+              rows={1}
             />
             <div className="framework-principles__item-actions">
               {principle.is_user_added && (

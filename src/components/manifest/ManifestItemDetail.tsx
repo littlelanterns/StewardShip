@@ -16,6 +16,8 @@ interface ManifestItemDetailProps {
   onExtractFramework?: () => void;
   onExtractMast?: () => void;
   onExtractKeel?: () => void;
+  hasFramework?: boolean;
+  frameworkIsActive?: boolean;
 }
 
 const FILE_TYPE_ICONS = {
@@ -55,6 +57,8 @@ export function ManifestItemDetail({
   onExtractFramework,
   onExtractMast,
   onExtractKeel,
+  hasFramework,
+  frameworkIsActive,
 }: ManifestItemDetailProps) {
   const { startGuidedConversation } = useHelmContext();
 
@@ -239,12 +243,20 @@ export function ManifestItemDetail({
         {isProcessed && item.usage_designations.includes('framework_source') && onExtractFramework && (
           <button
             type="button"
-            className="manifest-detail__extraction-btn"
+            className={`manifest-detail__extraction-btn${hasFramework ? ' manifest-detail__extraction-btn--has-result' : ''}`}
             onClick={onExtractFramework}
-            title="Analyze this content and extract key principles, strategies, and frameworks that the AI will use to guide its advice in every conversation."
+            title={hasFramework
+              ? 'View and edit the extracted framework principles. You can also re-extract or add more.'
+              : 'Analyze this content and extract key principles, strategies, and frameworks that the AI will use to guide its advice in every conversation.'}
           >
             <BookOpen size={14} />
-            Extract Framework Principles
+            {hasFramework ? 'View Framework Principles' : 'Extract Framework Principles'}
+            {hasFramework && frameworkIsActive && (
+              <span className="manifest-detail__extraction-badge">Active</span>
+            )}
+            {hasFramework && !frameworkIsActive && (
+              <span className="manifest-detail__extraction-badge manifest-detail__extraction-badge--inactive">Inactive</span>
+            )}
           </button>
         )}
         {isProcessed && item.usage_designations.includes('mast_extraction') && onExtractMast && (

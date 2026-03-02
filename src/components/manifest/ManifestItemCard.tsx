@@ -1,5 +1,5 @@
 import { FileText, BookOpen, FileCode, Mic, Image, StickyNote, Loader } from 'lucide-react';
-import type { ManifestItem } from '../../lib/types';
+import type { ManifestItem, AIFramework } from '../../lib/types';
 import { MANIFEST_USAGE_LABELS } from '../../lib/types';
 import { Card } from '../shared/Card';
 import './ManifestItemCard.css';
@@ -7,6 +7,7 @@ import './ManifestItemCard.css';
 interface ManifestItemCardProps {
   item: ManifestItem;
   onClick: (item: ManifestItem) => void;
+  framework?: AIFramework;
 }
 
 const FILE_TYPE_ICONS = {
@@ -33,12 +34,11 @@ function getRelativeDate(dateStr: string): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-export function ManifestItemCard({ item, onClick }: ManifestItemCardProps) {
+export function ManifestItemCard({ item, onClick, framework }: ManifestItemCardProps) {
   const Icon = FILE_TYPE_ICONS[item.file_type] || FileText;
   const isPending = item.processing_status === 'pending';
   const isProcessing = item.processing_status === 'processing';
   const isFailed = item.processing_status === 'failed';
-  const hasFramework = item.usage_designations.includes('framework_source');
 
   return (
     <Card className="manifest-card" onClick={() => onClick(item)}>
@@ -73,10 +73,20 @@ export function ManifestItemCard({ item, onClick }: ManifestItemCardProps) {
         )}
 
         <div className="manifest-card__meta">
-          {hasFramework && (
-            <span className="manifest-card__badge manifest-card__badge--framework">Framework</span>
-          )}
-          {item.usage_designations.filter((u) => u !== 'general_reference').slice(0, 1).map((u) => (
+          {framework ? (
+            <span
+              className={`manifest-card__badge manifest-card__badge--framework${framework.is_active ? '' : ' manifest-card__badge--framework-inactive'}`}
+              title={framework.is_active
+                ? `Framework active: ${framework.name} (${framework.principles?.length || 0} principles)`
+                : `Framework inactive: ${framework.name}`}
+            >
+              <BookOpen size={12} />
+              {framework.is_active ? 'Framework Active' : 'Framework'}
+            </span>
+          ) : item.usage_designations.includes('framework_source') ? (
+            <span className="manifest-card__badge manifest-card__badge--framework-pending">Framework Source</span>
+          ) : null}
+          {item.usage_designations.filter((u) => u !== 'general_reference' && u !== 'framework_source').slice(0, 1).map((u) => (
             <span key={u} className="manifest-card__badge">
               {MANIFEST_USAGE_LABELS[u]}
             </span>
