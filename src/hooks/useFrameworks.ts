@@ -45,7 +45,13 @@ export function useFrameworks() {
         .order('name');
 
       if (fetchErr) throw fetchErr;
-      setFrameworks((data as AIFramework[]) || []);
+
+      // Map Supabase join name to our type property name
+      const mapped = (data || []).map((fw: any) => ({
+        ...fw,
+        principles: fw.ai_framework_principles || [],
+      }));
+      setFrameworks(mapped as AIFramework[]);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -191,7 +197,11 @@ export function useFrameworks() {
         .single();
 
       if (result) {
-        const framework = result as AIFramework;
+        // Map Supabase join name to our type property name
+        const framework = {
+          ...result,
+          principles: (result as any).ai_framework_principles || [],
+        } as AIFramework;
         setFrameworks((prev) => {
           const idx = prev.findIndex((f) => f.id === frameworkId);
           if (idx >= 0) {
@@ -228,6 +238,34 @@ export function useFrameworks() {
 
     setFrameworks((prev) =>
       prev.map((f) => (f.id === frameworkId ? { ...f, is_active: isActive } : f)),
+    );
+  }, [user]);
+
+  // Batch toggle multiple frameworks active/inactive
+  const batchToggleFrameworks = useCallback(async (
+    changes: Array<{ frameworkId: string; isActive: boolean }>,
+  ) => {
+    if (!user || changes.length === 0) return;
+    setError(null);
+
+    for (const { frameworkId, isActive } of changes) {
+      const { error: updateErr } = await supabase
+        .from('ai_frameworks')
+        .update({ is_active: isActive })
+        .eq('id', frameworkId)
+        .eq('user_id', user.id);
+
+      if (updateErr) {
+        setError(updateErr.message);
+        return;
+      }
+    }
+
+    setFrameworks((prev) =>
+      prev.map((fw) => {
+        const change = changes.find((c) => c.frameworkId === fw.id);
+        return change ? { ...fw, is_active: change.isActive } : fw;
+      }),
     );
   }, [user]);
 
@@ -329,6 +367,7 @@ export function useFrameworks() {
     extractKeel,
     saveFramework,
     toggleFramework,
+    batchToggleFrameworks,
     archiveFramework,
     getFrameworkForItem,
     checkDocumentLength,

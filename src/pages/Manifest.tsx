@@ -14,6 +14,7 @@ import { UploadFlow } from '../components/manifest/UploadFlow';
 import { IntakeFlow } from '../components/manifest/IntakeFlow';
 import { TextNoteModal } from '../components/manifest/TextNoteModal';
 import FrameworkPrinciples from '../components/manifest/FrameworkPrinciples';
+import FrameworkManager from '../components/manifest/FrameworkManager';
 import MastExtractionReview from '../components/manifest/MastExtractionReview';
 import KeelExtractionReview from '../components/manifest/KeelExtractionReview';
 import { CollapsibleGroup } from '../components/shared/CollapsibleGroup';
@@ -22,7 +23,7 @@ import { EmptyState, LoadingSpinner, FeatureGuide } from '../components/shared';
 import { FEATURE_GUIDES } from '../lib/featureGuides';
 import './Manifest.css';
 
-type ViewMode = 'list' | 'detail' | 'upload' | 'intake' | 'framework' | 'mast_extract' | 'keel_extract';
+type ViewMode = 'list' | 'detail' | 'upload' | 'intake' | 'framework' | 'frameworks' | 'mast_extract' | 'keel_extract';
 
 export default function Manifest() {
   usePageContext({ page: 'manifest' });
@@ -54,6 +55,7 @@ export default function Manifest() {
     extractKeel,
     saveFramework,
     toggleFramework,
+    batchToggleFrameworks,
     getFrameworkForItem,
     fetchFrameworks,
     checkDocumentLength,
@@ -78,7 +80,6 @@ export default function Manifest() {
   const [typeFilter, setTypeFilter] = useState<ManifestFileType | 'all'>('all');
   const [usageFilter, setUsageFilter] = useState<ManifestUsageDesignation | 'all'>('all');
   const [tagFilter, setTagFilter] = useState<string | null>(null);
-  const [showFrameworks, setShowFrameworks] = useState(false);
 
   useEffect(() => {
     fetchItems();
@@ -172,16 +173,20 @@ export default function Manifest() {
     startGuidedConversation('manifest_discuss');
   }, [startGuidedConversation]);
 
-  // Navigate to a framework view for a specific item (from frameworks browse)
+  // Navigate to a framework view for a specific item (from frameworks manager)
   const handleViewFramework = useCallback(async (itemId: string) => {
     const detail = await fetchItemDetail(itemId);
     const item = detail || items.find((i) => i.id === itemId);
     if (item) {
       setSelectedItem(item);
-      setShowFrameworks(false);
       setViewMode('framework');
     }
   }, [fetchItemDetail, items]);
+
+  // Navigate from FrameworkManager card click to principles editor
+  const handleSelectFrameworkForEdit = useCallback(async (fw: { manifest_item_id: string }) => {
+    await handleViewFramework(fw.manifest_item_id);
+  }, [handleViewFramework]);
 
   // Extraction handlers
   const handleExtractFramework = useCallback(() => {
@@ -315,6 +320,21 @@ export default function Manifest() {
     );
   }
 
+  // Frameworks manager view
+  if (viewMode === 'frameworks') {
+    return (
+      <div className="page manifest-page">
+        <FrameworkManager
+          frameworks={frameworks}
+          items={items}
+          onToggleFrameworks={batchToggleFrameworks}
+          onSelectFramework={handleSelectFrameworkForEdit}
+          onBack={handleBack}
+        />
+      </div>
+    );
+  }
+
   // Mast extraction review
   if (viewMode === 'mast_extract' && currentSelectedItem) {
     return (
@@ -407,8 +427,8 @@ export default function Manifest() {
         {frameworks.length > 0 && (
           <button
             type="button"
-            className={`manifest-page__action-btn${showFrameworks ? ' manifest-page__action-btn--active' : ''}`}
-            onClick={() => setShowFrameworks(!showFrameworks)}
+            className="manifest-page__action-btn"
+            onClick={() => setViewMode('frameworks')}
           >
             <BookOpen size={16} />
             Frameworks ({frameworks.length})
@@ -437,41 +457,8 @@ export default function Manifest() {
         />
       )}
 
-      {/* Frameworks browse view */}
-      {showFrameworks && (
-        <div className="manifest-page__frameworks">
-          <h2 className="manifest-page__section-title">Extracted Frameworks</h2>
-          <div className="manifest-page__framework-list">
-            {frameworks.map((fw) => {
-              const sourceItem = items.find((i) => i.id === fw.manifest_item_id);
-              return (
-                <button
-                  key={fw.id}
-                  type="button"
-                  className="manifest-page__framework-card"
-                  onClick={() => handleViewFramework(fw.manifest_item_id)}
-                >
-                  <div className="manifest-page__framework-card-header">
-                    <h3>{fw.name}</h3>
-                    <span className={`manifest-page__framework-status${fw.is_active ? ' manifest-page__framework-status--active' : ''}`}>
-                      {fw.is_active ? 'Active' : 'Inactive'}
-                    </span>
-                  </div>
-                  <p className="manifest-page__framework-source">
-                    Source: {sourceItem?.title || 'Unknown'}
-                  </p>
-                  <p className="manifest-page__framework-count">
-                    {fw.principles?.length || 0} principles
-                  </p>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Content — hidden when frameworks browse is active */}
-      {!showFrameworks && (
+      {/* Content */}
+      {(
         loading && items.length === 0 ? (
           <LoadingSpinner />
         ) : items.length === 0 ? (

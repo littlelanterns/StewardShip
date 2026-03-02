@@ -497,6 +497,7 @@ export default function FrameworkPrinciples({
           onClick={() => handleSave(false)}
           variant="secondary"
           disabled={saving || principles.length === 0}
+          title="Store these principles without loading them into AI conversations. You can activate them later from the Frameworks manager."
         >
           {saving ? 'Saving...' : 'Save'}
         </Button>
@@ -504,6 +505,7 @@ export default function FrameworkPrinciples({
           onClick={() => handleSave(true)}
           variant="primary"
           disabled={saving || principles.length === 0}
+          title="Store these principles AND include them in every AI conversation going forward. The AI will reference these principles when giving advice."
         >
           {saving ? 'Saving...' : 'Save and Activate'}
         </Button>
