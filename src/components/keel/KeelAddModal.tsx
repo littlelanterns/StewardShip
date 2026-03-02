@@ -34,6 +34,7 @@ export function KeelAddModal({ onClose, onCreate, preselectedCategory }: KeelAdd
   const { user } = useAuthContext();
 
   const [mode, setMode] = useState<'select' | 'write' | 'uploading' | 'review' | 'bulk'>('select');
+  const [filePickerActive, setFilePickerActive] = useState(false);
 
   const handleBulkSave = async (items: ParsedBulkItem[]) => {
     for (const item of items) {
@@ -60,6 +61,7 @@ export function KeelAddModal({ onClose, onCreate, preselectedCategory }: KeelAdd
   const processFile = useCallback(async (file: File) => {
     if (!user) return;
 
+    setFilePickerActive(false);
     setMode('uploading');
     setError(null);
     setFileName(file.name);
@@ -196,8 +198,7 @@ export function KeelAddModal({ onClose, onCreate, preselectedCategory }: KeelAdd
   const selectedCount = extractedInsights.filter((i) => i.included).length;
 
   return (
-    <AddEntryModal title="Add to Keel" onClose={onClose}>
-      <FileInput />
+    <AddEntryModal title="Add to Keel" onClose={onClose} suppressDismiss={filePickerActive || mode === 'uploading'}>
       {mode === 'select' ? (
         <div className="add-entry-methods">
           <button className="add-entry-method" onClick={() => setMode('write')}>
@@ -207,7 +208,7 @@ export function KeelAddModal({ onClose, onCreate, preselectedCategory }: KeelAdd
               <div className="add-entry-method__desc">Add self-knowledge directly</div>
             </div>
           </button>
-          <button className="add-entry-method" onClick={openFilePicker}>
+          <button className="add-entry-method" onClick={() => { setFilePickerActive(true); openFilePicker(); }}>
             <Upload size={22} className="add-entry-method__icon" />
             <div className="add-entry-method__content">
               <div className="add-entry-method__label">Upload a file</div>
