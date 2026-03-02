@@ -199,119 +199,111 @@ export default function Keel() {
     0
   );
 
-  if (loading) {
-    return (
-      <div className="page">
-        <h1>The Keel</h1>
+  return (
+    <div className="page">
+      <h1>The Keel</h1>
+
+      {loading ? (
         <div className="keel-loading">
           <LoadingSpinner />
         </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="page">
-        <h1>The Keel</h1>
+      ) : error ? (
         <EmptyState
           heading="Something went wrong"
           message={error}
           action={<Button onClick={fetchEntries}>Try again</Button>}
         />
-      </div>
-    );
-  }
-
-  return (
-    <div className="page">
-      <h1>The Keel</h1>
-      <p className="keel-subtitle">
-        What you're made of.
-      </p>
-
-      <FeatureGuide {...FEATURE_GUIDES.keel} />
-
-      {totalEntries === 0 ? (
-        <EmptyState
-          heading="Your Keel is empty"
-          message="Add your personality traits, strengths, growth areas, and self-knowledge so the AI can give you more personalized advice."
-          action={<Button onClick={handleFabClick}>Add your first entry</Button>}
-        />
       ) : (
         <>
-        <div className="seasonal-focus__bar">
-          <span className="seasonal-focus__count">
-            {allEntries.filter((e) => e.is_included !== false).length} of {totalEntries} included in AI context
-          </span>
-          <button
-            type="button"
-            className="seasonal-focus__toggle-all"
-            onClick={() => {
-              const allIncluded = allEntries.every((e) => e.is_included !== false);
-              batchToggleIncluded(!allIncluded);
-            }}
-          >
-            {allEntries.every((e) => e.is_included !== false) ? 'Deselect All' : 'Select All'}
-          </button>
-        </div>
-        {KEEL_CATEGORY_ORDER.map((category) => {
-          const items = entriesByCategory[category];
-          return (
-            <CollapsibleGroup
-              key={category}
-              label={KEEL_CATEGORY_LABELS[category]}
-              count={items.length}
-            >
-              {items.length === 0 ? (
-                <EmptyState
-                  heading={`No ${KEEL_CATEGORY_LABELS[category].toLowerCase()} yet`}
-                  message="Add one below or discover insights at The Helm."
-                />
-              ) : (
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={handleDragEnd(category)}
-                >
-                  <SortableContext
-                    items={items.map((e) => e.id)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    {items.map((entry) => (
-                      <SortableEntryCard
-                        key={entry.id}
-                        entry={entry}
-                        onSave={updateEntry}
-                        onArchive={archiveEntry}
-                        onToggleIncluded={toggleIncluded}
-                      />
-                    ))}
-                  </SortableContext>
-                </DndContext>
-              )}
-              <Button
-                variant="text"
-                onClick={() => handleAddForCategory(category)}
+          <p className="keel-subtitle">
+            What you're made of.
+          </p>
+
+          <FeatureGuide {...FEATURE_GUIDES.keel} />
+
+          {totalEntries === 0 ? (
+            <EmptyState
+              heading="Your Keel is empty"
+              message="Add your personality traits, strengths, growth areas, and self-knowledge so the AI can give you more personalized advice."
+              action={<Button onClick={handleFabClick}>Add your first entry</Button>}
+            />
+          ) : (
+            <>
+            <div className="seasonal-focus__bar">
+              <span className="seasonal-focus__count">
+                {allEntries.filter((e) => e.is_included !== false).length} of {totalEntries} included in AI context
+              </span>
+              <button
+                type="button"
+                className="seasonal-focus__toggle-all"
+                onClick={() => {
+                  const allIncluded = allEntries.every((e) => e.is_included !== false);
+                  batchToggleIncluded(!allIncluded);
+                }}
               >
-                + Add {KEEL_CATEGORY_LABELS[category].replace(/s$/, '')}
-              </Button>
-            </CollapsibleGroup>
-          );
-        })}
+                {allEntries.every((e) => e.is_included !== false) ? 'Deselect All' : 'Select All'}
+              </button>
+            </div>
+            {KEEL_CATEGORY_ORDER.map((category) => {
+              const items = entriesByCategory[category];
+              return (
+                <CollapsibleGroup
+                  key={category}
+                  label={KEEL_CATEGORY_LABELS[category]}
+                  count={items.length}
+                >
+                  {items.length === 0 ? (
+                    <EmptyState
+                      heading={`No ${KEEL_CATEGORY_LABELS[category].toLowerCase()} yet`}
+                      message="Add one below or discover insights at The Helm."
+                    />
+                  ) : (
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={handleDragEnd(category)}
+                    >
+                      <SortableContext
+                        items={items.map((e) => e.id)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        {items.map((entry) => (
+                          <SortableEntryCard
+                            key={entry.id}
+                            entry={entry}
+                            onSave={updateEntry}
+                            onArchive={archiveEntry}
+                            onToggleIncluded={toggleIncluded}
+                          />
+                        ))}
+                      </SortableContext>
+                    </DndContext>
+                  )}
+                  <Button
+                    variant="text"
+                    onClick={() => handleAddForCategory(category)}
+                  >
+                    + Add {KEEL_CATEGORY_LABELS[category].replace(/s$/, '')}
+                  </Button>
+                </CollapsibleGroup>
+              );
+            })}
+            </>
+          )}
+
+          <div className="keel-archived-link">
+            <Button variant="text" onClick={handleShowArchived}>
+              View Archived
+            </Button>
+          </div>
+
+          <FloatingActionButton onClick={handleFabClick} aria-label="Add to Keel">
+            <Plus size={24} />
+          </FloatingActionButton>
         </>
       )}
 
-      <div className="keel-archived-link">
-        <Button variant="text" onClick={handleShowArchived}>
-          View Archived
-        </Button>
-      </div>
-
-      <FloatingActionButton onClick={handleFabClick} aria-label="Add to Keel">
-        <Plus size={24} />
-      </FloatingActionButton>
-
+      {/* Modals render outside loading/error paths so they survive background refetches */}
       {showAddModal && (
         <KeelAddModal
           onClose={() => setShowAddModal(false)}
