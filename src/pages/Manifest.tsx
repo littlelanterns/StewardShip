@@ -55,6 +55,9 @@ export default function Manifest() {
     toggleFramework,
     getFrameworkForItem,
     fetchFrameworks,
+    checkDocumentLength,
+    discoverSections,
+    extractFromSection,
   } = useFrameworks();
 
   const mast = useMast();
@@ -288,6 +291,9 @@ export default function Manifest() {
           framework={getFrameworkForItem(currentSelectedItem.id)}
           extracting={extracting}
           onExtract={extractFramework}
+          onCheckDocumentLength={checkDocumentLength}
+          onDiscoverSections={discoverSections}
+          onExtractSection={extractFromSection}
           onSave={saveFramework}
           onToggle={toggleFramework}
           onBack={handleBackToDetail}

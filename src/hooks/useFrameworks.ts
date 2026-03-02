@@ -18,6 +18,13 @@ export interface KeelExtractionResult {
   text: string;
 }
 
+export interface SectionInfo {
+  title: string;
+  start_char: number;
+  end_char: number;
+  description: string;
+}
+
 export function useFrameworks() {
   const { user } = useAuthContext();
   const [frameworks, setFrameworks] = useState<AIFramework[]>([]);
@@ -242,6 +249,70 @@ export function useFrameworks() {
     setFrameworks((prev) => prev.filter((f) => f.id !== frameworkId));
   }, [user]);
 
+  // Check if document needs section-based extraction (>25K chars)
+  const checkDocumentLength = useCallback(async (manifestItemId: string): Promise<boolean> => {
+    const { data } = await supabase
+      .from('manifest_items')
+      .select('text_content')
+      .eq('id', manifestItemId)
+      .single();
+
+    return (data?.text_content?.length || 0) > 25000;
+  }, []);
+
+  // Discover sections in a long document
+  const discoverSections = useCallback(async (
+    manifestItemId: string,
+  ): Promise<{ sections: SectionInfo[]; total_chars: number } | null> => {
+    if (!user) return null;
+    setError(null);
+    try {
+      const { data, error: invokeErr } = await supabase.functions.invoke('manifest-extract', {
+        body: { manifest_item_id: manifestItemId, extraction_type: 'discover_sections' },
+      });
+      if (invokeErr || data?.error) {
+        console.error('Section discovery failed:', invokeErr || data?.error);
+        setError(invokeErr?.message || data?.error || 'Section discovery failed');
+        return null;
+      }
+      return { sections: data.sections, total_chars: data.total_chars };
+    } catch (err) {
+      console.error('Section discovery failed:', err);
+      setError((err as Error).message);
+      return null;
+    }
+  }, [user]);
+
+  // Extract from a specific section
+  const extractFromSection = useCallback(async (
+    manifestItemId: string,
+    sectionStart: number,
+    sectionEnd: number,
+    sectionTitle: string,
+  ): Promise<FrameworkExtractionResult | null> => {
+    if (!user) return null;
+    setError(null);
+    try {
+      const { data, error: invokeErr } = await supabase.functions.invoke('manifest-extract', {
+        body: {
+          manifest_item_id: manifestItemId,
+          extraction_type: 'framework_section',
+          section_start: sectionStart,
+          section_end: sectionEnd,
+          section_title: sectionTitle,
+        },
+      });
+      if (invokeErr || data?.error) {
+        console.error('Section extraction failed:', invokeErr || data?.error);
+        return null;
+      }
+      return data?.result as FrameworkExtractionResult;
+    } catch (err) {
+      console.error('Section extraction failed:', err);
+      return null;
+    }
+  }, [user]);
+
   // Get framework by manifest item ID
   const getFrameworkForItem = useCallback((manifestItemId: string): AIFramework | undefined => {
     return frameworks.find((f) => f.manifest_item_id === manifestItemId);
@@ -260,5 +331,8 @@ export function useFrameworks() {
     toggleFramework,
     archiveFramework,
     getFrameworkForItem,
+    checkDocumentLength,
+    discoverSections,
+    extractFromSection,
   };
 }

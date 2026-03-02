@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { GripVertical, Plus, Trash2, RefreshCw } from 'lucide-react';
 import { Button, LoadingSpinner } from '../shared';
 import type { AIFramework } from '../../lib/types';
+import type { SectionInfo, FrameworkExtractionResult } from '../../hooks/useFrameworks';
 import './FrameworkPrinciples.css';
 
 interface EditablePrinciple {
@@ -11,12 +12,17 @@ interface EditablePrinciple {
   id?: string;
 }
 
+type Phase = 'idle' | 'discovering' | 'selecting' | 'extracting' | 'done';
+
 interface FrameworkPrinciplesProps {
   manifestItemId: string;
   manifestItemTitle: string;
   framework: AIFramework | undefined;
   extracting: boolean;
-  onExtract: (itemId: string) => Promise<{ framework_name: string; principles: Array<{ text: string; sort_order: number }> } | null>;
+  onExtract: (itemId: string) => Promise<FrameworkExtractionResult | null>;
+  onCheckDocumentLength: (itemId: string) => Promise<boolean>;
+  onDiscoverSections: (itemId: string) => Promise<{ sections: SectionInfo[]; total_chars: number } | null>;
+  onExtractSection: (itemId: string, start: number, end: number, title: string) => Promise<FrameworkExtractionResult | null>;
   onSave: (
     manifestItemId: string,
     name: string,
@@ -33,6 +39,9 @@ export default function FrameworkPrinciples({
   framework,
   extracting,
   onExtract,
+  onCheckDocumentLength,
+  onDiscoverSections,
+  onExtractSection,
   onSave,
   onToggle,
   onBack,
@@ -50,13 +59,20 @@ export default function FrameworkPrinciples({
   const [saving, setSaving] = useState(false);
   const [newPrincipleText, setNewPrincipleText] = useState('');
 
+  // Section-based extraction state
+  const [phase, setPhase] = useState<Phase>('idle');
+  const [sections, setSections] = useState<SectionInfo[] | null>(null);
+  const [selectedSections, setSelectedSections] = useState<number[]>([]);
+  const [currentSectionIndex, setCurrentSectionIndex] = useState<number | null>(null);
+  const [totalSectionsToExtract, setTotalSectionsToExtract] = useState(0);
+
+  // Single-pass extraction (short documents or fallback)
   const handleExtract = useCallback(async () => {
     const result = await onExtract(manifestItemId);
     if (result) {
       if (!name || name === manifestItemTitle) {
         setName(result.framework_name);
       }
-      // Merge: keep existing user-added principles, add new AI-extracted
       const userAdded = principles.filter((p) => p.is_user_added);
       const newPrinciples = result.principles.map((p, i) => ({
         text: p.text,
@@ -66,6 +82,70 @@ export default function FrameworkPrinciples({
       setPrinciples([...userAdded, ...newPrinciples]);
     }
   }, [manifestItemId, manifestItemTitle, name, principles, onExtract]);
+
+  // Entry point: check document length and decide flow
+  const handleStartExtraction = useCallback(async () => {
+    const needsSections = await onCheckDocumentLength(manifestItemId);
+
+    if (needsSections) {
+      setPhase('discovering');
+      const result = await onDiscoverSections(manifestItemId);
+
+      if (result?.sections && result.sections.length > 0) {
+        setSections(result.sections);
+        setSelectedSections(getDefaultSelectedSections(result.sections));
+        setPhase('selecting');
+      } else {
+        // Fallback: single-pass extraction if section discovery fails
+        setPhase('idle');
+        handleExtract();
+      }
+    } else {
+      handleExtract();
+    }
+  }, [manifestItemId, onCheckDocumentLength, onDiscoverSections, handleExtract]);
+
+  // Extract from selected sections sequentially
+  const handleExtractSelected = useCallback(async () => {
+    if (!sections || selectedSections.length === 0) return;
+
+    setPhase('extracting');
+    setTotalSectionsToExtract(selectedSections.length);
+    const allPrinciples: EditablePrinciple[] = [];
+    let frameworkName = name || manifestItemTitle;
+
+    for (let i = 0; i < selectedSections.length; i++) {
+      setCurrentSectionIndex(i);
+      const section = sections[selectedSections[i]];
+
+      const result = await onExtractSection(
+        manifestItemId,
+        section.start_char,
+        section.end_char,
+        section.title,
+      );
+
+      if (result?.principles) {
+        if (i === 0 && result.framework_name && frameworkName === manifestItemTitle) {
+          frameworkName = result.framework_name;
+          setName(frameworkName);
+        }
+
+        const newPrinciples = result.principles.map((p, j) => ({
+          text: p.text,
+          sort_order: allPrinciples.length + j,
+          is_user_added: false,
+        }));
+        allPrinciples.push(...newPrinciples);
+
+        // Update UI progressively — user sees principles accumulate
+        setPrinciples([...allPrinciples]);
+      }
+    }
+
+    setPhase('done');
+    setCurrentSectionIndex(null);
+  }, [sections, selectedSections, manifestItemId, name, manifestItemTitle, onExtractSection]);
 
   const handleSave = useCallback(async (activate: boolean) => {
     setSaving(true);
@@ -117,8 +197,135 @@ export default function FrameworkPrinciples({
     setNewPrincipleText('');
   }, [newPrincipleText]);
 
-  // Initial extraction needed
-  if (principles.length === 0 && !extracting) {
+  // Auto-deselect non-content sections (table of contents, bibliography, etc.)
+  const getDefaultSelectedSections = useCallback((sectionList: SectionInfo[]): number[] => {
+    const skipPatterns = /^(table of contents|contents|bibliography|references|appendix|appendices|index|about the author|author bio|acknowledgments|acknowledgements|copyright|title page|also by|other books|endnotes|footnotes|glossary|foreword|preface)$/i;
+    return sectionList
+      .map((s, i) => ({ index: i, title: s.title }))
+      .filter(({ title }) => !skipPatterns.test(title.trim()))
+      .map(({ index }) => index);
+  }, []);
+
+  const toggleSectionSelection = useCallback((index: number) => {
+    setSelectedSections((prev) =>
+      prev.includes(index) ? prev.filter((s) => s !== index) : [...prev, index].sort((a, b) => a - b),
+    );
+  }, []);
+
+  const toggleAllSections = useCallback(() => {
+    if (!sections) return;
+    if (selectedSections.length === sections.length) {
+      setSelectedSections([]);
+    } else {
+      setSelectedSections(sections.map((_, i) => i));
+    }
+  }, [sections, selectedSections.length]);
+
+  // --- Section Discovery Phase ---
+  if (phase === 'discovering') {
+    return (
+      <div className="framework-principles">
+        <div className="framework-principles__header">
+          <button className="framework-principles__back" onClick={onBack}>Back</button>
+          <h3 className="framework-principles__title">Analyzing Document</h3>
+        </div>
+        <div className="framework-principles__loading">
+          <LoadingSpinner />
+          <p>Analyzing document structure...</p>
+          <p className="framework-principles__loading-note">Identifying chapters and sections for targeted extraction.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // --- Section Selection Phase ---
+  if (phase === 'selecting' && sections) {
+    return (
+      <div className="framework-principles">
+        <div className="framework-principles__header">
+          <button className="framework-principles__back" onClick={onBack}>Back</button>
+          <h3 className="framework-principles__title">Extract Framework</h3>
+        </div>
+
+        <div className="framework-principles__sections">
+          <h4 className="framework-principles__subtitle">Select Sections to Extract From</h4>
+          <p className="framework-principles__section-intro">
+            This document has {sections.length} sections.
+            {selectedSections.length < sections.length
+              ? ` Non-content sections (table of contents, bibliography, etc.) have been auto-skipped. You can re-select them if needed.`
+              : ` All are selected — deselect any you want to skip.`
+            }
+          </p>
+
+          {sections.map((section, i) => (
+            <label key={i} className="framework-principles__section-item">
+              <input
+                type="checkbox"
+                checked={selectedSections.includes(i)}
+                onChange={() => toggleSectionSelection(i)}
+              />
+              <div className="framework-principles__section-content">
+                <strong>{section.title}</strong>
+                <p className="framework-principles__section-desc">{section.description}</p>
+                <span className="framework-principles__section-size">
+                  ~{Math.round((section.end_char - section.start_char) / 5 / 100) / 10}K words
+                </span>
+              </div>
+            </label>
+          ))}
+
+          <div className="framework-principles__section-actions">
+            <button
+              type="button"
+              className="framework-principles__select-toggle"
+              onClick={toggleAllSections}
+            >
+              {selectedSections.length === sections.length ? 'Deselect All' : 'Select All'}
+            </button>
+          </div>
+
+          <div className="framework-principles__actions">
+            <Button variant="secondary" onClick={onBack}>Cancel</Button>
+            <Button
+              onClick={handleExtractSelected}
+              disabled={selectedSections.length === 0}
+            >
+              Extract from {selectedSections.length} Section{selectedSections.length !== 1 ? 's' : ''}
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // --- Extraction Progress Phase ---
+  if (phase === 'extracting' && currentSectionIndex !== null && sections) {
+    return (
+      <div className="framework-principles">
+        <div className="framework-principles__header">
+          <button className="framework-principles__back" onClick={onBack}>Back</button>
+          <h3 className="framework-principles__title">Extracting Principles</h3>
+        </div>
+        <div className="framework-principles__progress">
+          <LoadingSpinner />
+          <p>
+            Extracting principles — section {currentSectionIndex + 1} of {totalSectionsToExtract}
+          </p>
+          <p className="framework-principles__progress-section">
+            &ldquo;{sections[selectedSections[currentSectionIndex]]?.title}&rdquo;
+          </p>
+          {principles.length > 0 && (
+            <p className="framework-principles__progress-count">
+              {principles.length} principle{principles.length !== 1 ? 's' : ''} found so far
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // --- Initial extraction needed (no principles yet, idle phase) ---
+  if (principles.length === 0 && !extracting && phase === 'idle') {
     return (
       <div className="framework-principles">
         <div className="framework-principles__header">
@@ -128,7 +335,7 @@ export default function FrameworkPrinciples({
         <div className="framework-principles__empty">
           <p>Extract actionable principles from this content to use as an AI framework.</p>
           <p className="framework-principles__source">Source: {manifestItemTitle}</p>
-          <Button onClick={handleExtract} variant="primary">
+          <Button onClick={handleStartExtraction} variant="primary">
             Extract Principles
           </Button>
         </div>
@@ -136,7 +343,8 @@ export default function FrameworkPrinciples({
     );
   }
 
-  if (extracting) {
+  // --- Legacy extracting state (single-pass, no section flow) ---
+  if (extracting && phase === 'idle') {
     return (
       <div className="framework-principles">
         <div className="framework-principles__header">
@@ -152,6 +360,7 @@ export default function FrameworkPrinciples({
     );
   }
 
+  // --- Review/Edit Phase (principles available — either from section extraction or single-pass) ---
   return (
     <div className="framework-principles">
       <div className="framework-principles__header">
@@ -246,7 +455,7 @@ export default function FrameworkPrinciples({
 
       <button
         className="framework-principles__extract-more"
-        onClick={handleExtract}
+        onClick={handleStartExtraction}
         disabled={extracting}
       >
         <RefreshCw size={14} />

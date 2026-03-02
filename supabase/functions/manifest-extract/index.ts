@@ -6,23 +6,25 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const FRAMEWORK_EXTRACTION_PROMPT = `You are an expert at distilling books and content into concise, actionable principles. Given the text of a book or document, extract the key principles, mental models, and actionable frameworks.
+const FRAMEWORK_EXTRACTION_PROMPT = `You are an expert at distilling books and content into concise, actionable principles. Given the text of a book section or document, extract the key principles, mental models, and actionable frameworks.
 
 Rules:
-- Extract 8-15 principles (more for longer/richer content, fewer for shorter)
-- Each principle should be a concise statement (1-3 sentences max)
+- Extract 5-15 principles (more for richer content, fewer for shorter sections)
+- Default principle length: 1-3 complete sentences. Never cut off mid-thought.
+- EXCEPTION — Processes, systems, and step-by-step methods: When content describes a multi-step process, a system, or a sequential method, extract it as a structured principle with numbered steps. These may be 3-8 sentences to capture the full process.
 - Focus on ACTIONABLE insights — things that can guide decisions and behavior
-- Include the book's unique language/metaphors when they capture concepts well
+- Include the source's unique language/metaphors when they capture concepts well
 - Don't just summarize — extract the tools and models
 - Avoid generic self-help platitudes. Extract what makes THIS source distinctive
 - Include contrasts the author draws (e.g., "X vs Y" distinctions that help frame thinking)
+- Every principle must be a COMPLETE thought. If you cannot fit it in 3 sentences, use more. A complete principle is always better than a truncated one.
 
 Return ONLY a JSON object:
 {
-  "framework_name": "Suggested name for this framework (usually the book title)",
+  "framework_name": "Suggested name for this framework",
   "principles": [
-    { "text": "Principle statement here", "sort_order": 0 },
-    { "text": "Another principle", "sort_order": 1 }
+    { "text": "Principle statement here — complete thought, 1-3 sentences.", "sort_order": 0 },
+    { "text": "Process-type principle: (1) First step. (2) Second step. (3) Third step. This captures the full method.", "sort_order": 1 }
   ]
 }
 
@@ -62,6 +64,30 @@ Return ONLY a JSON array:
 Valid categories: "personality_assessment", "trait_tendency", "strength", "growth_area", "you_inc", "general"
 No markdown backticks, no preamble.`;
 
+const SECTION_DISCOVERY_PROMPT = `You are analyzing a document to identify its natural sections or chapters for principle extraction.
+
+Given the text below, identify the major sections, chapters, or topic boundaries.
+
+CRITICAL RULES:
+- Sections must cover the ENTIRE document with NO GAPS. Every character must belong to a section.
+- Section boundaries must be contiguous: section 1 ends where section 2 begins, section 2 ends where section 3 begins, etc.
+- The first section must start at character 0. The last section must end at the final character of the document.
+- Identify 3-15 sections depending on document length and structure
+- Use chapter headings if they exist in the text
+- If no clear chapter structure, identify major topic shifts
+- Each section should be substantial enough to contain extractable principles (at least 2000 characters)
+- Section titles should be descriptive of the CONTENT, not just "Chapter 1"
+- Include ALL content — introductions, conclusions, and all chapters. The user will choose which to skip.
+
+Return ONLY a JSON array:
+[
+  { "title": "Descriptive title of this section", "start_char": 0, "end_char": 8200, "description": "Brief 1-sentence summary of what this section covers" },
+  { "title": "Next section", "start_char": 8200, "end_char": 15400, "description": "Brief summary" }
+]
+
+The end_char of one section must exactly equal the start_char of the next section.
+No markdown backticks, no preamble.`;
+
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -90,7 +116,8 @@ serve(async (req: Request) => {
     }
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 
-    const { manifest_item_id, extraction_type } = await req.json();
+    const requestBody = await req.json();
+    const { manifest_item_id, extraction_type } = requestBody;
 
     if (!manifest_item_id || !extraction_type) {
       return new Response(
@@ -136,7 +163,123 @@ serve(async (req: Request) => {
       );
     }
 
-    // Select prompt based on extraction type
+    const openRouterHeaders = {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': Deno.env.get('SITE_URL') || 'https://stewardship.app',
+      'X-Title': 'StewardShip',
+    };
+
+    // --- Section Discovery (Haiku — cheap structural classification) ---
+    if (extraction_type === 'discover_sections') {
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: openRouterHeaders,
+        body: JSON.stringify({
+          model: 'anthropic/claude-haiku-4.5',
+          max_tokens: 2048,
+          messages: [
+            { role: 'system', content: SECTION_DISCOVERY_PROMPT },
+            { role: 'user', content: `Document (${item.text_content.length} characters):\n\n${item.text_content}` },
+          ],
+        }),
+      });
+
+      if (!response.ok) {
+        const errBody = await response.text();
+        return new Response(
+          JSON.stringify({ error: `AI error: ${errBody}` }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content || '';
+
+      const jsonMatch = content.match(/\[[\s\S]*\]/);
+      if (!jsonMatch) {
+        return new Response(
+          JSON.stringify({ error: 'Failed to parse section discovery result', raw: content }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+
+      const sections = JSON.parse(jsonMatch[0]);
+      const docLength = item.text_content.length;
+
+      // Validate: force full coverage with no gaps
+      if (sections.length > 0) {
+        sections[0].start_char = 0;
+        sections[sections.length - 1].end_char = docLength;
+        for (let i = 1; i < sections.length; i++) {
+          sections[i].start_char = sections[i - 1].end_char;
+        }
+      }
+
+      return new Response(
+        JSON.stringify({ extraction_type: 'discover_sections', sections, total_chars: docLength }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    // --- Per-Section Framework Extraction (Sonnet) ---
+    if (extraction_type === 'framework_section') {
+      const { section_start, section_end, section_title } = requestBody;
+
+      if (section_start == null || section_end == null) {
+        return new Response(
+          JSON.stringify({ error: 'section_start and section_end required for framework_section' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+
+      const sectionText = item.text_content.substring(section_start, section_end);
+
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: openRouterHeaders,
+        body: JSON.stringify({
+          model: 'anthropic/claude-sonnet-4',
+          max_tokens: 4096,
+          messages: [
+            { role: 'system', content: FRAMEWORK_EXTRACTION_PROMPT },
+            {
+              role: 'user',
+              content: `Document title: "${item.title}"\nSection: "${section_title || 'Untitled'}"\n\nContent:\n${sectionText}`,
+            },
+          ],
+        }),
+      });
+
+      if (!response.ok) {
+        const errBody = await response.text();
+        return new Response(
+          JSON.stringify({ error: `AI error: ${errBody}` }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content || '';
+
+      const jsonMatch = content.match(/[\[{][\s\S]*[\]}]/);
+      if (!jsonMatch) {
+        return new Response(
+          JSON.stringify({ error: 'Failed to parse extraction result', raw: content }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+
+      const result = JSON.parse(jsonMatch[0]);
+
+      return new Response(
+        JSON.stringify({ extraction_type: 'framework_section', result }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    // --- Standard extraction types (framework, mast, keel) ---
+
     let systemPrompt: string;
     switch (extraction_type) {
       case 'framework':
@@ -150,32 +293,21 @@ serve(async (req: Request) => {
         break;
       default:
         return new Response(
-          JSON.stringify({ error: 'Invalid extraction_type. Must be: framework, mast, keel' }),
+          JSON.stringify({ error: 'Invalid extraction_type. Must be: framework, mast, keel, discover_sections, framework_section' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         );
     }
 
-    // For very long content, send strategic portions:
-    // First ~30K chars (beginning) + last ~10K chars (conclusion/summary)
-    let contentToSend = item.text_content;
-    if (contentToSend.length > 40000) {
-      const beginning = contentToSend.substring(0, 30000);
-      const ending = contentToSend.substring(contentToSend.length - 10000);
-      contentToSend = `${beginning}\n\n[...middle content omitted for length...]\n\n${ending}`;
-    }
+    // Send full content for single-pass extraction (no truncation)
+    const contentToSend = item.text_content;
 
     // Use Sonnet for extraction — deep reasoning work
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': Deno.env.get('SITE_URL') || 'https://stewardship.app',
-        'X-Title': 'StewardShip',
-      },
+      headers: openRouterHeaders,
       body: JSON.stringify({
         model: 'anthropic/claude-sonnet-4',
-        max_tokens: 2048,
+        max_tokens: 4096,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: `Document title: "${item.title}"\n\nContent:\n${contentToSend}` },
