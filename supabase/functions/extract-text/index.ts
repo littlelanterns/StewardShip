@@ -1,4 +1,5 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+import { extractCleanTextFromPDF } from '../_shared/pdf-utils.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -68,7 +69,7 @@ serve(async (req: Request) => {
     else if (isPdf) {
       const arrayBuffer = await file.arrayBuffer();
       const bytes = new Uint8Array(arrayBuffer);
-      text = await extractTextFromPDF(bytes);
+      text = await extractCleanTextFromPDF(bytes);
 
       // Check quality: if extraction yielded very little usable text, try vision
       if (!text || text.trim().length < 50) {
@@ -172,147 +173,6 @@ async function extractViaVision(file: File): Promise<string | null> {
     console.error('Vision extraction failed:', err);
     return null;
   }
-}
-
-// --- PDF Extraction ---
-
-async function extractTextFromPDF(bytes: Uint8Array): Promise<string> {
-  const { inflateSync } = await import('https://esm.sh/fflate@0.8.2');
-  const decoder = new TextDecoder('latin1');
-  const raw = decoder.decode(bytes);
-
-  const streamContents: string[] = [];
-  const allStreamRegex = /stream\r?\n/g;
-  let streamMatch;
-
-  while ((streamMatch = allStreamRegex.exec(raw)) !== null) {
-    const streamStart = streamMatch.index + streamMatch[0].length;
-    const endIdx = raw.indexOf('endstream', streamStart);
-    if (endIdx === -1) continue;
-
-    const dictStart = Math.max(0, streamMatch.index - 500);
-    const dictText = raw.substring(dictStart, streamMatch.index);
-    const isCompressed = dictText.includes('/FlateDecode');
-    const streamData = raw.substring(streamStart, endIdx);
-
-    if (isCompressed) {
-      try {
-        const streamBytes = new Uint8Array(streamData.length);
-        for (let i = 0; i < streamData.length; i++) {
-          streamBytes[i] = streamData.charCodeAt(i);
-        }
-        const decompressed = inflateSync(streamBytes);
-        const decompressedText = new TextDecoder('latin1').decode(decompressed);
-        streamContents.push(decompressedText);
-      } catch {
-        // Not all streams decompress — skip
-      }
-    } else {
-      streamContents.push(streamData);
-    }
-  }
-
-  const textParts: string[] = [];
-
-  for (const content of streamContents) {
-    extractTextFromPDFContent(content, textParts);
-  }
-
-  if (textParts.length === 0) {
-    extractTextFromPDFContent(raw, textParts);
-  }
-
-  if (textParts.length === 0) {
-    const readableRegex = /[\x20-\x7E]{20,}/g;
-    let readableMatch;
-    while ((readableMatch = readableRegex.exec(raw)) !== null) {
-      const text = readableMatch[0].trim();
-      if (text.length > 30 && /[a-zA-Z]/.test(text)) {
-        textParts.push(text);
-      }
-    }
-  }
-
-  return textParts.join(' ').replace(/\s+/g, ' ').trim();
-}
-
-function extractTextFromPDFContent(content: string, textParts: string[]): void {
-  const btRegex = /BT\s([\s\S]*?)ET/g;
-  let match;
-
-  while ((match = btRegex.exec(content)) !== null) {
-    const block = match[1];
-
-    const tjRegex = /\(([^)]*)\)\s*Tj/g;
-    let tjMatch;
-    while ((tjMatch = tjRegex.exec(block)) !== null) {
-      const decoded = decodePDFString(tjMatch[1]);
-      if (decoded.trim()) textParts.push(decoded);
-    }
-
-    const tjHexRegex = /<([0-9A-Fa-f]+)>\s*Tj/g;
-    let tjHexMatch;
-    while ((tjHexMatch = tjHexRegex.exec(block)) !== null) {
-      const decoded = decodeHexPDFString(tjHexMatch[1]);
-      if (decoded.trim()) textParts.push(decoded);
-    }
-
-    const tjArrayRegex = /\[([\s\S]*?)\]\s*TJ/g;
-    let tjArrMatch;
-    while ((tjArrMatch = tjArrayRegex.exec(block)) !== null) {
-      const arrContent = tjArrMatch[1];
-
-      const strRegex = /\(([^)]*)\)/g;
-      let strMatch;
-      while ((strMatch = strRegex.exec(arrContent)) !== null) {
-        const decoded = decodePDFString(strMatch[1]);
-        if (decoded.trim()) textParts.push(decoded);
-      }
-
-      const hexRegex = /<([0-9A-Fa-f]+)>/g;
-      let hexMatch;
-      while ((hexMatch = hexRegex.exec(arrContent)) !== null) {
-        const decoded = decodeHexPDFString(hexMatch[1]);
-        if (decoded.trim()) textParts.push(decoded);
-      }
-    }
-  }
-}
-
-function decodePDFString(str: string): string {
-  return str
-    .replace(/\\n/g, '\n')
-    .replace(/\\r/g, '\r')
-    .replace(/\\t/g, '\t')
-    .replace(/\\\(/g, '(')
-    .replace(/\\\)/g, ')')
-    .replace(/\\\\/g, '\\');
-}
-
-function decodeHexPDFString(hex: string): string {
-  if (hex.length % 2 !== 0) hex += '0';
-
-  if (hex.length % 4 === 0) {
-    let utf16 = '';
-    let isReadable = true;
-    for (let i = 0; i < hex.length; i += 4) {
-      const code = parseInt(hex.substring(i, i + 4), 16);
-      if (code === 0) { isReadable = false; break; }
-      utf16 += String.fromCharCode(code);
-    }
-    if (isReadable && utf16.length > 0 && /[a-zA-Z]/.test(utf16)) {
-      return utf16;
-    }
-  }
-
-  let result = '';
-  for (let i = 0; i < hex.length; i += 2) {
-    const code = parseInt(hex.substring(i, i + 2), 16);
-    if (code >= 32 && code < 127) {
-      result += String.fromCharCode(code);
-    }
-  }
-  return result;
 }
 
 // --- DOCX Extraction ---

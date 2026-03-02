@@ -79,10 +79,15 @@ CRITICAL RULES:
 - Section titles should be descriptive of the CONTENT, not just "Chapter 1"
 - Include ALL content — introductions, conclusions, and all chapters. The user will choose which to skip.
 
+NON-CONTENT TAGGING:
+- Prefix section titles with [NON-CONTENT] for sections that are NOT substantive content: table of contents, bibliography, references, appendices, indexes, author bios, acknowledgments, copyright pages, endnotes, footnotes, glossaries, "also by" pages, epigraphs, dedications.
+- Do NOT tag introductions, forewords, prefaces, or conclusions as non-content — they often contain key ideas.
+- Examples: "[NON-CONTENT] Table of Contents", "[NON-CONTENT] Bibliography and References", "[NON-CONTENT] About the Author"
+
 Return ONLY a JSON array:
 [
   { "title": "Descriptive title of this section", "start_char": 0, "end_char": 8200, "description": "Brief 1-sentence summary of what this section covers" },
-  { "title": "Next section", "start_char": 8200, "end_char": 15400, "description": "Brief summary" }
+  { "title": "[NON-CONTENT] Table of Contents", "start_char": 8200, "end_char": 9400, "description": "List of chapter headings" }
 ]
 
 The end_char of one section must exactly equal the start_char of the next section.

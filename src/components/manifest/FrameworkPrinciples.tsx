@@ -197,12 +197,18 @@ export default function FrameworkPrinciples({
     setNewPrincipleText('');
   }, [newPrincipleText]);
 
-  // Auto-deselect non-content sections (table of contents, bibliography, etc.)
+  // Auto-deselect non-content sections (AI-tagged [NON-CONTENT] + regex fallback)
   const getDefaultSelectedSections = useCallback((sectionList: SectionInfo[]): number[] => {
-    const skipPatterns = /^(table of contents|contents|bibliography|references|appendix|appendices|index|about the author|author bio|acknowledgments|acknowledgements|copyright|title page|also by|other books|endnotes|footnotes|glossary|foreword|preface)$/i;
+    const skipPatterns = /^(table of contents|contents|bibliography|references|appendix|appendices|index|about the author|author bio|acknowledgments|acknowledgements|copyright|title page|also by|other books|endnotes|footnotes|glossary)$/i;
     return sectionList
       .map((s, i) => ({ index: i, title: s.title }))
-      .filter(({ title }) => !skipPatterns.test(title.trim()))
+      .filter(({ title }) => {
+        // AI-tagged non-content sections
+        if (title.startsWith('[NON-CONTENT]')) return false;
+        // Regex fallback for sections the AI didn't tag
+        const cleanTitle = title.replace(/^\[NON-CONTENT\]\s*/i, '').trim();
+        return !skipPatterns.test(cleanTitle);
+      })
       .map(({ index }) => index);
   }, []);
 
@@ -257,7 +263,9 @@ export default function FrameworkPrinciples({
             }
           </p>
 
-          {sections.map((section, i) => (
+          {sections.map((section, i) => {
+            const displayTitle = section.title.replace(/^\[NON-CONTENT\]\s*/i, '');
+            return (
             <label key={i} className="framework-principles__section-item">
               <input
                 type="checkbox"
@@ -265,14 +273,15 @@ export default function FrameworkPrinciples({
                 onChange={() => toggleSectionSelection(i)}
               />
               <div className="framework-principles__section-content">
-                <strong>{section.title}</strong>
+                <strong>{displayTitle}</strong>
                 <p className="framework-principles__section-desc">{section.description}</p>
                 <span className="framework-principles__section-size">
                   ~{Math.round((section.end_char - section.start_char) / 5 / 100) / 10}K words
                 </span>
               </div>
             </label>
-          ))}
+            );
+          })}
 
           <div className="framework-principles__section-actions">
             <button

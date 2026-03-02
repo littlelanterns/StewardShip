@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { extractCleanTextFromPDF } from '../_shared/pdf-utils.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -82,7 +83,7 @@ serve(async (req: Request) => {
         }
 
         const arrayBuffer = await fileData.arrayBuffer();
-        fullText = await extractTextFromPDF(new Uint8Array(arrayBuffer));
+        fullText = await extractCleanTextFromPDF(new Uint8Array(arrayBuffer));
 
         // Vision fallback for scanned/image-only PDFs
         if (!fullText || fullText.trim().length < 50) {
@@ -453,189 +454,6 @@ function chunkText(
   }
 
   return chunks;
-}
-
-/**
- * PDF text extraction for Deno.
- * Handles both uncompressed and FlateDecode-compressed content streams.
- * Extracts text from PDF text operators (BT...ET blocks with Tj/TJ).
- * Also handles hex-encoded strings (<...>) used by CIDFont PDFs.
- * Scanned/image-only PDFs still need OCR (post-MVP).
- */
-async function extractTextFromPDF(bytes: Uint8Array): Promise<string> {
-  const { inflateSync } = await import('https://esm.sh/fflate@0.8.2');
-  const decoder = new TextDecoder('latin1');
-  const raw = decoder.decode(bytes);
-
-  // Step 1: Find ALL stream/endstream blocks and try to decompress them
-  const streamContents: string[] = [];
-  let decompressedCount = 0;
-  let streamCount = 0;
-
-  // Find all stream blocks — match "stream\r\n" or "stream\n" followed by data until "endstream"
-  const allStreamRegex = /stream\r?\n/g;
-  let streamMatch;
-
-  while ((streamMatch = allStreamRegex.exec(raw)) !== null) {
-    streamCount++;
-    const streamStart = streamMatch.index + streamMatch[0].length;
-
-    // Find the matching endstream
-    const endIdx = raw.indexOf('endstream', streamStart);
-    if (endIdx === -1) continue;
-
-    // Check if preceding dictionary contains /FlateDecode (look back up to 500 chars)
-    const dictStart = Math.max(0, streamMatch.index - 500);
-    const dictText = raw.substring(dictStart, streamMatch.index);
-    const isCompressed = dictText.includes('/FlateDecode');
-
-    const streamData = raw.substring(streamStart, endIdx);
-
-    if (isCompressed) {
-      try {
-        // Convert latin1 string back to bytes for decompression
-        const streamBytes = new Uint8Array(streamData.length);
-        for (let i = 0; i < streamData.length; i++) {
-          streamBytes[i] = streamData.charCodeAt(i);
-        }
-        const decompressed = inflateSync(streamBytes);
-        const decompressedText = new TextDecoder('latin1').decode(decompressed);
-        streamContents.push(decompressedText);
-        decompressedCount++;
-      } catch {
-        // Not all streams decompress successfully — skip
-      }
-    } else {
-      // Uncompressed stream — use directly
-      streamContents.push(streamData);
-    }
-  }
-
-  console.log(`PDF streams: ${streamCount} total, ${decompressedCount} decompressed, ${streamContents.length} usable`);
-
-  const textParts: string[] = [];
-
-  for (const content of streamContents) {
-    extractTextFromPDFContent(content, textParts);
-  }
-
-  // If no text from streams, try the raw content (uncompressed PDF)
-  if (textParts.length === 0) {
-    extractTextFromPDFContent(raw, textParts);
-  }
-
-  // Fallback: look for readable text patterns in raw content
-  if (textParts.length === 0) {
-    const readableRegex = /[\x20-\x7E]{20,}/g;
-    let readableMatch;
-    while ((readableMatch = readableRegex.exec(raw)) !== null) {
-      const text = readableMatch[0].trim();
-      if (text.length > 30 && /[a-zA-Z]/.test(text)) {
-        textParts.push(text);
-      }
-    }
-  }
-
-  console.log(`PDF extraction result: ${textParts.length} text parts, ${textParts.join(' ').length} chars`);
-
-  return textParts.join(' ').replace(/\s+/g, ' ').trim();
-}
-
-/**
- * Extract text from a single PDF content stream.
- * Handles both parenthesized strings (...) and hex strings <...> in Tj/TJ operators.
- */
-function extractTextFromPDFContent(content: string, textParts: string[]): void {
-  // Find text between BT...ET blocks (PDF text objects)
-  const btRegex = /BT\s([\s\S]*?)ET/g;
-  let match;
-
-  while ((match = btRegex.exec(content)) !== null) {
-    const block = match[1];
-
-    // Extract text from Tj operator with parenthesized strings: (text) Tj
-    const tjRegex = /\(([^)]*)\)\s*Tj/g;
-    let tjMatch;
-    while ((tjMatch = tjRegex.exec(block)) !== null) {
-      const decoded = decodePDFString(tjMatch[1]);
-      if (decoded.trim()) textParts.push(decoded);
-    }
-
-    // Extract text from Tj operator with hex strings: <hex> Tj
-    const tjHexRegex = /<([0-9A-Fa-f]+)>\s*Tj/g;
-    let tjHexMatch;
-    while ((tjHexMatch = tjHexRegex.exec(block)) !== null) {
-      const decoded = decodeHexPDFString(tjHexMatch[1]);
-      if (decoded.trim()) textParts.push(decoded);
-    }
-
-    // TJ arrays: [(text) kerning (text) ...] TJ or [<hex> kerning <hex> ...] TJ
-    const tjArrayRegex = /\[([\s\S]*?)\]\s*TJ/g;
-    let tjArrMatch;
-    while ((tjArrMatch = tjArrayRegex.exec(block)) !== null) {
-      const arrContent = tjArrMatch[1];
-
-      // Parenthesized strings in array
-      const strRegex = /\(([^)]*)\)/g;
-      let strMatch;
-      while ((strMatch = strRegex.exec(arrContent)) !== null) {
-        const decoded = decodePDFString(strMatch[1]);
-        if (decoded.trim()) textParts.push(decoded);
-      }
-
-      // Hex strings in array
-      const hexRegex = /<([0-9A-Fa-f]+)>/g;
-      let hexMatch;
-      while ((hexMatch = hexRegex.exec(arrContent)) !== null) {
-        const decoded = decodeHexPDFString(hexMatch[1]);
-        if (decoded.trim()) textParts.push(decoded);
-      }
-    }
-  }
-}
-
-function decodePDFString(str: string): string {
-  return str
-    .replace(/\\n/g, '\n')
-    .replace(/\\r/g, '\r')
-    .replace(/\\t/g, '\t')
-    .replace(/\\\(/g, '(')
-    .replace(/\\\)/g, ')')
-    .replace(/\\\\/g, '\\');
-}
-
-/**
- * Decode a hex-encoded PDF string.
- * Tries UTF-16BE first (2-byte pairs), falls back to single-byte.
- */
-function decodeHexPDFString(hex: string): string {
-  // Pad to even length
-  if (hex.length % 2 !== 0) hex += '0';
-
-  // Try UTF-16BE first (common for CIDFont PDFs — 4 hex chars per character)
-  if (hex.length % 4 === 0) {
-    let utf16 = '';
-    let isReadable = true;
-    for (let i = 0; i < hex.length; i += 4) {
-      const code = parseInt(hex.substring(i, i + 4), 16);
-      if (code === 0) { isReadable = false; break; }
-      utf16 += String.fromCharCode(code);
-    }
-    // If UTF-16BE produced readable text (has at least one letter), use it
-    if (isReadable && utf16.length > 0 && /[a-zA-Z]/.test(utf16)) {
-      return utf16;
-    }
-  }
-
-  // Fallback: single-byte interpretation
-  let result = '';
-  for (let i = 0; i < hex.length; i += 2) {
-    const code = parseInt(hex.substring(i, i + 2), 16);
-    if (code >= 32 && code < 127) {
-      result += String.fromCharCode(code);
-    }
-  }
-  return result;
 }
 
 /**
