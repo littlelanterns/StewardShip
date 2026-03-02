@@ -1,4 +1,4 @@
-import { type ReactNode, useRef, useCallback, useEffect } from 'react';
+import { type ReactNode, useRef, useEffect } from 'react';
 import { X } from 'lucide-react';
 import './AddEntryModal.css';
 
@@ -32,15 +32,13 @@ export function AddEntryModal({ title, children, onClose, suppressDismiss }: Add
     };
   }, []);
 
-  const handleOverlayDismiss = useCallback((e: React.MouseEvent) => {
-    if (e.target !== e.currentTarget) return;
-    if (suppressDismiss) return;
-    if (Date.now() < dismissSuppressedUntil.current) return;
-    onClose();
-  }, [onClose, suppressDismiss]);
+  // Overlay dismiss temporarily disabled for mobile file picker debugging.
+  // Only the X button closes the modal.
+  void suppressDismiss; // keep prop used
+  void dismissSuppressedUntil; // keep ref used
 
   return (
-    <div className="modal-overlay" onMouseDown={handleOverlayDismiss}>
+    <div className="modal-overlay">
       <div className="modal-panel" role="dialog" aria-label={title}>
         <div className="modal-panel__header">
           <h2 className="modal-panel__title">{title}</h2>
