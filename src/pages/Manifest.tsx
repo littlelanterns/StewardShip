@@ -267,9 +267,10 @@ export default function Manifest() {
   );
 
   const hasCompletedItems = items.some((i) => i.processing_status === 'completed');
-  const hasProcessingItems = items.some(
+  const processingItems = items.filter(
     (i) => i.processing_status === 'pending' || i.processing_status === 'processing',
   );
+  const hasProcessingItems = processingItems.length > 0;
 
   // Upload view
   if (viewMode === 'upload') {
@@ -440,7 +441,7 @@ export default function Manifest() {
       {hasProcessingItems && (
         <div className="manifest-page__processing">
           <Loader size={14} className="manifest-page__processing-spin" />
-          <span>Processing items...</span>
+          <span>Processing {processingItems.length} item{processingItems.length !== 1 ? 's' : ''}...</span>
         </div>
       )}
 

@@ -44,6 +44,14 @@
   color: var(--color-text-secondary);
 }
 
+.extraction-review__empty-hint {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-slate-gray);
+  line-height: 1.5;
+  max-width: 360px;
+}
+
 .extraction-review__list {
   display: flex;
   flex-direction: column;

@@ -92,6 +92,10 @@ export default function MastExtractionReview({
       <div className="extraction-review">
         <div className="extraction-review__empty">
           <p>No potential Mast entries found in this content.</p>
+          <p className="extraction-review__empty-hint">
+            This can happen if the document doesn't contain values, principles, or vision statements.
+            Try a different document, or use the Mast page's "Write It Myself" option to add entries directly.
+          </p>
           <Button onClick={onCancel} variant="secondary">Close</Button>
         </div>
       </div>

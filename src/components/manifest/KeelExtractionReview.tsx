@@ -95,6 +95,10 @@ export default function KeelExtractionReview({
       <div className="extraction-review">
         <div className="extraction-review__empty">
           <p>No personality or self-knowledge data found in this content.</p>
+          <p className="extraction-review__empty-hint">
+            This can happen if the document is heavily formatted, chart-based, or uses non-standard layouts.
+            Try uploading screenshots of the key pages, or use the Keel page's "Write It Myself" option to add entries directly.
+          </p>
           <Button onClick={onCancel} variant="secondary">Close</Button>
         </div>
       </div>

@@ -7,13 +7,31 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const ASSESSMENT_KEYWORDS = [
+  'enneagram', 'mbti', 'disc', 'strengthsfinder', 'cliftonstrengths',
+  'big five', 'ocean', 'kolbe', 'personality type', 'assessment results',
+  'love language', 'attachment style', 'myers-briggs', 'gallup',
+  'type indicator', 'working genius', 'profile report',
+];
+
+function getContentPreviewLimit(text: string): number {
+  const lower = text.substring(0, 2000).toLowerCase();
+  const isAssessment = ASSESSMENT_KEYWORDS.some((kw) => lower.includes(kw));
+  return isAssessment ? 48000 : 16000;
+}
+
 const SPOUSE_PROMPT = `You are analyzing a document about someone's spouse or partner. Extract individual insights about the spouse and categorize each one. Return ONLY valid JSON — no markdown, no explanation.
 
 Return a JSON array: [{ "text": "...", "category": "...", "confidence": 0.0-1.0 }]
 
 Valid categories: personality, love_appreciation, communication, dreams_goals, challenges_needs, their_world, observation, gratitude, general
 
-Extract specific, actionable insights. Each insight should be a single fact or observation, not a paragraph. If the document contains personality assessment results, break them into individual traits rather than one large summary.`;
+Extraction guidelines:
+- Extract specific, actionable insights. Each insight should be a single fact or observation, not a paragraph.
+- If the document is a personality assessment (Enneagram, MBTI, DISC, Love Languages, etc.), break results into individual traits.
+- For assessment results, include the assessment name in the text (e.g., "Enneagram Type 2: Naturally empathetic and attuned to others' needs").
+- Extract at minimum 8-15 insights from assessment documents. Look for traits, tendencies, communication preferences, growth patterns, and relational dynamics.
+- Confidence: 0.9+ for directly stated facts, 0.7-0.9 for reasonable inferences, 0.5-0.7 for weaker signals.`;
 
 const KEEL_PROMPT = `You are analyzing a document about the user's personality, self-knowledge, or personal assessment results. Extract individual insights and categorize each one. Return ONLY valid JSON — no markdown, no explanation.
 
@@ -21,7 +39,14 @@ Return a JSON array: [{ "text": "...", "category": "...", "confidence": 0.0-1.0,
 
 Valid categories: personality_assessment, trait_tendency, strength, growth_area, you_inc, general
 
-The source_label should identify the assessment or source (e.g., "Enneagram Type 3", "MBTI ENFP", "StrengthsFinder"). Extract specific individual traits/insights, not one large summary.`;
+Extraction guidelines:
+- The source_label should identify the assessment or source (e.g., "Enneagram Type 3", "MBTI ENFP", "StrengthsFinder").
+- Extract specific individual traits/insights, not one large summary.
+- For personality assessments, extract EVERY distinct trait, tendency, strength, and growth area mentioned. Aim for 10-25 insights from a typical assessment.
+- Break complex descriptions into atomic insights (one trait/tendency per item).
+- Include behavioral patterns ("Tends to take charge in group settings"), cognitive patterns ("Processes information by talking it through"), and emotional patterns ("Feels energized by social interaction").
+- For professional assessments, categorize career-relevant insights as "you_inc".
+- Confidence: 0.9+ for directly stated results, 0.7-0.9 for derived insights, 0.5-0.7 for weaker signals.`;
 
 const MAST_PROMPT = `You are analyzing a document to extract guiding principles, values, declarations, scriptures, quotes, and vision statements. Extract individual principles and categorize each one. Return ONLY valid JSON — no markdown, no explanation.
 
@@ -133,7 +158,8 @@ serve(async (req: Request) => {
       if (fullText && fullText.trim().length > 100) {
         // Successful text extraction
         extractedTextLength = fullText.length;
-        const contentPreview = fullText.substring(0, 16000);
+        const previewLimit = getContentPreviewLimit(fullText);
+        const contentPreview = fullText.substring(0, previewLimit);
         messages = [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: `Extract insights from this document:\n\n${contentPreview}` },
@@ -163,7 +189,8 @@ serve(async (req: Request) => {
       }
 
       extractedTextLength = fullText.length;
-      const contentPreview = fullText.substring(0, 16000);
+      const previewLimit = getContentPreviewLimit(fullText);
+      const contentPreview = fullText.substring(0, previewLimit);
 
       messages = [
         { role: 'system', content: systemPrompt },
@@ -213,7 +240,19 @@ serve(async (req: Request) => {
       );
     }
 
-    const rawInsights = JSON.parse(jsonMatch[0]);
+    let rawInsights: unknown[];
+    try {
+      rawInsights = JSON.parse(jsonMatch[0]);
+    } catch {
+      return new Response(
+        JSON.stringify({
+          insights: [],
+          extracted_text_length: extractedTextLength,
+          error: 'AI returned malformed JSON. Try uploading the file again.',
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
 
     // Validate and clean insights
     const insights = (rawInsights as Array<Record<string, unknown>>)

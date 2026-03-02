@@ -209,7 +209,15 @@ serve(async (req: Request) => {
         );
       }
 
-      const sections = JSON.parse(jsonMatch[0]);
+      let sections: Array<Record<string, unknown>>;
+      try {
+        sections = JSON.parse(jsonMatch[0]);
+      } catch {
+        return new Response(
+          JSON.stringify({ error: 'AI returned malformed JSON for section discovery. Try again.' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
       const docLength = item.text_content.length;
 
       // Validate: force full coverage with no gaps
@@ -275,7 +283,15 @@ serve(async (req: Request) => {
         );
       }
 
-      const result = JSON.parse(jsonMatch[0]);
+      let result: unknown;
+      try {
+        result = JSON.parse(jsonMatch[0]);
+      } catch {
+        return new Response(
+          JSON.stringify({ error: 'AI returned malformed JSON for section extraction. Try again.' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
 
       return new Response(
         JSON.stringify({ extraction_type: 'framework_section', result }),
@@ -340,7 +356,15 @@ serve(async (req: Request) => {
       );
     }
 
-    const result = JSON.parse(jsonMatch[0]);
+    let result: unknown;
+    try {
+      result = JSON.parse(jsonMatch[0]);
+    } catch {
+      return new Response(
+        JSON.stringify({ error: 'AI returned malformed JSON for extraction. Try again.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
 
     return new Response(
       JSON.stringify({ extraction_type, result }),
