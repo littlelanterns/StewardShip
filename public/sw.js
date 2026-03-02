@@ -2,7 +2,7 @@
 
 // StewardShip Service Worker — Push Notifications + Offline Fallback
 
-const CACHE_NAME = 'stewardship-v2';
+const CACHE_NAME = 'stewardship-v3';
 const APP_SHELL = ['/', '/index.html'];
 
 // Cache app shell on install for basic offline support
