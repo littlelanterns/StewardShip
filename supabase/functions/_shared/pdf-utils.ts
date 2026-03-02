@@ -2,12 +2,16 @@
  * Shared PDF text extraction utilities.
  * Used by: manifest-process, extract-text, extract-insights, chat
  *
- * Key improvements over the original inline versions:
- * - Stream type filtering: skips image, metadata, ICC, font, CMap streams
- * - BT/ET operator check: only keeps streams that contain text operators
- * - Restricted ASCII fallback: requires 40+ chars, filters metadata patterns
- * - Post-extraction sanitization: removes XMP, ICC, PDF structural artifacts
- * - Paragraph-level quality filtering: removes junk paragraphs before storage
+ * Strategy: Decompress all streams, extract text from BT/ET blocks only.
+ * The BT/ET extraction in extractTextFromPDFContent is the real filter —
+ * non-text streams (images, fonts, ICC, metadata) don't contain BT/ET
+ * text operators, so they produce nothing. We only pre-skip streams that
+ * are unambiguously binary (images, ICC color profiles) to save CPU.
+ *
+ * Previous approach of dictionary lookback filtering was unreliable:
+ * looking back 500 chars could grab a DIFFERENT object's dictionary
+ * (e.g., FontDescriptor from an adjacent object), causing page content
+ * streams to be incorrectly skipped.
  */
 
 // --- Main Entry Point ---
@@ -30,9 +34,11 @@ export async function extractTextFromPDF(bytes: Uint8Array): Promise<string> {
   const decoder = new TextDecoder('latin1');
   const raw = decoder.decode(bytes);
 
-  const streamContents: string[] = [];
+  const textParts: string[] = [];
   let streamCount = 0;
-  let skippedCount = 0;
+  let skippedBinary = 0;
+  let skippedDecompressErr = 0;
+  let processedCount = 0;
 
   const allStreamRegex = /stream\r?\n/g;
   let streamMatch;
@@ -43,19 +49,29 @@ export async function extractTextFromPDF(bytes: Uint8Array): Promise<string> {
     const endIdx = raw.indexOf('endstream', streamStart);
     if (endIdx === -1) continue;
 
-    // Look back at the dictionary preceding this stream
-    const dictStart = Math.max(0, streamMatch.index - 500);
-    const dictText = raw.substring(dictStart, streamMatch.index);
+    const streamLen = endIdx - streamStart;
 
-    // SKIP non-text streams based on their dictionary
-    if (/\/Subtype\s*\/Image/i.test(dictText)) { skippedCount++; continue; }
-    if (/\/Subtype\s*\/XML/i.test(dictText) || /\/Type\s*\/Metadata/i.test(dictText)) { skippedCount++; continue; }
-    if (/\/N\s+\d+\s*\/Alternate/i.test(dictText) || /ICCBased/i.test(dictText)) { skippedCount++; continue; }
-    if (/\/Subtype\s*\/(Type1C|CIDFontType0C|OpenType)/i.test(dictText)) { skippedCount++; continue; }
-    if (/\/Type\s*\/FontDescriptor/i.test(dictText)) { skippedCount++; continue; }
-    if (/\/Type\s*\/CMap/i.test(dictText) || /begincmap/i.test(dictText)) { skippedCount++; continue; }
+    // Skip very large streams (>500KB) — likely embedded images/fonts, not text
+    if (streamLen > 512000) {
+      skippedBinary++;
+      continue;
+    }
 
-    const isCompressed = dictText.includes('/FlateDecode');
+    // Safe pre-filter: only skip streams whose OWN object dictionary is
+    // unambiguously non-text. Use a tight lookback to the nearest "obj" keyword
+    // to avoid grabbing a different object's dictionary.
+    const objSearchStart = Math.max(0, streamMatch.index - 200);
+    const preStreamText = raw.substring(objSearchStart, streamMatch.index);
+    const objPos = preStreamText.lastIndexOf(' obj');
+    const dictText = objPos >= 0
+      ? preStreamText.substring(objPos)
+      : preStreamText.substring(Math.max(0, preStreamText.length - 100));
+
+    // Only skip unambiguous binary stream types
+    if (/\/Subtype\s*\/Image/i.test(dictText)) { skippedBinary++; continue; }
+    if (/\/N\s+\d+\s*\/Alternate/i.test(dictText) && /ICCBased/i.test(dictText)) { skippedBinary++; continue; }
+
+    const isCompressed = preStreamText.includes('/FlateDecode');
     const streamData = raw.substring(streamStart, endIdx);
 
     if (isCompressed) {
@@ -67,39 +83,38 @@ export async function extractTextFromPDF(bytes: Uint8Array): Promise<string> {
         const decompressed = inflateSync(streamBytes);
         const decompressedText = new TextDecoder('latin1').decode(decompressed);
 
-        // Only keep streams that contain text operators (BT...ET blocks)
-        if (/BT\s[\s\S]*?ET/.test(decompressedText)) {
-          streamContents.push(decompressedText);
-        } else {
-          skippedCount++;
+        // Extract text from BT/ET blocks — this is the real filter.
+        // Non-text streams (fonts, metadata, CMaps) don't have BT/ET operators.
+        const partsBefore = textParts.length;
+        extractTextFromPDFContent(decompressedText, textParts);
+        if (textParts.length > partsBefore) {
+          processedCount++;
         }
       } catch {
-        // Decompression failed — skip
+        skippedDecompressErr++;
       }
     } else {
-      // Uncompressed — still check for text operators
-      if (/BT\s[\s\S]*?ET/.test(streamData)) {
-        streamContents.push(streamData);
+      // Uncompressed stream — extract BT/ET text
+      const partsBefore = textParts.length;
+      extractTextFromPDFContent(streamData, textParts);
+      if (textParts.length > partsBefore) {
+        processedCount++;
       }
     }
   }
 
-  console.log(`PDF streams: ${streamCount} total, ${skippedCount} skipped (non-text), ${streamContents.length} text streams`);
+  console.log(`[PDF] Streams: ${streamCount} total, ${skippedBinary} skipped (binary), ${skippedDecompressErr} decompress errors, ${processedCount} yielded text, ${textParts.length} text parts`);
 
-  const textParts: string[] = [];
-
-  for (const content of streamContents) {
-    extractTextFromPDFContent(content, textParts);
-  }
-
-  // If no text from filtered streams, try unfiltered BT/ET from raw content
+  // If no BT/ET text found in any stream, try the raw file
+  // (handles rare uncompressed PDFs where streams aren't properly delimited)
   if (textParts.length === 0) {
+    console.log('[PDF] No BT/ET text from streams — trying raw content');
     extractTextFromPDFContent(raw, textParts);
   }
 
-  // Restricted ASCII fallback — last resort for truly unstructured PDFs
+  // Restricted ASCII fallback — absolute last resort for truly unstructured PDFs
   if (textParts.length === 0) {
-    console.log('No BT/ET text found — trying restricted ASCII fallback');
+    console.log('[PDF] No BT/ET text found anywhere — trying restricted ASCII fallback');
     const readableRegex = /[\x20-\x7E]{40,}/g;
     let readableMatch;
     while ((readableMatch = readableRegex.exec(raw)) !== null) {
@@ -110,9 +125,13 @@ export async function extractTextFromPDF(bytes: Uint8Array): Promise<string> {
     }
   }
 
-  console.log(`PDF extraction result: ${textParts.length} text parts, ${textParts.join(' ').length} chars`);
+  const result = textParts.join(' ').replace(/\s+/g, ' ').trim();
+  console.log(`[PDF] Final: ${textParts.length} text parts, ${result.length} chars`);
+  if (result.length > 0) {
+    console.log(`[PDF] First 300 chars: ${result.substring(0, 300)}`);
+  }
 
-  return textParts.join(' ').replace(/\s+/g, ' ').trim();
+  return result;
 }
 
 // --- Text Extraction from PDF Content Streams ---
