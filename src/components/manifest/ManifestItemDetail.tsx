@@ -29,13 +29,13 @@ const FILE_TYPE_ICONS = {
   text_note: StickyNote,
 } as const;
 
-const USAGE_OPTIONS: { value: ManifestUsageDesignation; label: string; description: string }[] = [
-  { value: 'general_reference', label: 'General Reference', description: 'Available for AI to draw from when relevant' },
-  { value: 'framework_source', label: 'AI Framework', description: 'Extract principles for always-available guidance' },
-  { value: 'mast_extraction', label: 'Mast Extraction', description: 'Extract values and principles for The Mast' },
-  { value: 'keel_info', label: 'Keel Info', description: 'Contains personality or self-knowledge data' },
-  { value: 'goal_specific', label: 'Goal Specific', description: 'Tied to a specific goal or Wheel' },
-  { value: 'store_only', label: 'Store Only', description: 'Stored but not used in AI context' },
+const USAGE_OPTIONS: { value: ManifestUsageDesignation; label: string; description: string; tooltip: string }[] = [
+  { value: 'general_reference', label: 'General Reference', description: 'Available for AI to draw from when relevant', tooltip: 'This content becomes searchable by the AI. When your conversations touch on related topics, the AI can draw from this material to give more informed, personalized responses.' },
+  { value: 'framework_source', label: 'AI Framework', description: 'Extract principles for always-available guidance', tooltip: 'The AI will extract actionable principles from this content and keep them loaded in every conversation — similar to your Mast principles. Best for books on leadership, habits, character development, etc.' },
+  { value: 'mast_extraction', label: 'Mast Extraction', description: 'Extract values and principles for The Mast', tooltip: 'The AI will identify values, declarations, and guiding principles from this content and let you review them before adding to your Mast — the core of who you\'re choosing to become.' },
+  { value: 'keel_info', label: 'Keel Info', description: 'Contains personality or self-knowledge data', tooltip: 'The AI will extract personality insights, traits, and self-knowledge from this content for your Keel — your profile of who you are right now. Great for assessment results, personality tests, etc.' },
+  { value: 'goal_specific', label: 'Goal Specific', description: 'Tied to a specific goal or Wheel', tooltip: 'This content relates to a specific goal or Wheel change you\'re working on. The AI will reference it when those topics come up in conversation.' },
+  { value: 'store_only', label: 'Store Only', description: 'Stored but not used in AI context', tooltip: 'The file will be stored safely in your Manifest but won\'t be used by the AI in conversations. You can always change this later.' },
 ];
 
 function formatFileSize(bytes: number | null): string {
@@ -228,6 +228,7 @@ export function ManifestItemDetail({
               type="button"
               className={`manifest-detail__usage-chip${item.usage_designations.includes(opt.value) ? ' manifest-detail__usage-chip--active' : ''}`}
               onClick={() => handleToggleUsage(opt.value)}
+              title={opt.tooltip}
             >
               {opt.label}
             </button>
@@ -240,6 +241,7 @@ export function ManifestItemDetail({
             type="button"
             className="manifest-detail__extraction-btn"
             onClick={onExtractFramework}
+            title="Analyze this content and extract key principles, strategies, and frameworks that the AI will use to guide its advice in every conversation."
           >
             <BookOpen size={14} />
             Extract Framework Principles
@@ -250,6 +252,7 @@ export function ManifestItemDetail({
             type="button"
             className="manifest-detail__extraction-btn"
             onClick={onExtractMast}
+            title="Scan this content for values, declarations, and guiding principles. You'll review and choose which ones to add to your Mast."
           >
             <Anchor size={14} />
             Extract Mast Entries
@@ -260,6 +263,7 @@ export function ManifestItemDetail({
             type="button"
             className="manifest-detail__extraction-btn"
             onClick={onExtractKeel}
+            title="Extract personality traits, assessment results, and self-knowledge from this content. You'll review before adding to your Keel."
           >
             <Compass size={14} />
             Extract Keel Entries

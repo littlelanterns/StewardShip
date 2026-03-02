@@ -240,7 +240,7 @@ export default function HatchSendToGrid({ tabId, onClose }: HatchSendToGridProps
   const handlePickerRoute = useCallback(
     async (
       destination: HatchRoutingDestination,
-      options: { mastType?: MastEntryType; keelCategory?: KeelCategory; journalEntryType?: JournalEntryType; meetingId?: string; trackerId?: string },
+      options: { mastType?: MastEntryType; keelCategory?: KeelCategory; journalEntryType?: JournalEntryType; meetingId?: string; meetingType?: string; relatedPersonId?: string; trackerId?: string },
     ) => {
       setRouting(true);
       const tab = tabs.find((t) => t.id === tabId);

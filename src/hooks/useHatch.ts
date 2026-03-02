@@ -299,6 +299,8 @@ export function useHatch() {
         keelCategory?: KeelCategory;
         journalEntryType?: JournalEntryType;
         meetingId?: string;
+        meetingType?: string;
+        relatedPersonId?: string;
         listId?: string;
         trackerId?: string;
       },
@@ -545,16 +547,16 @@ export function useHatch() {
           }
 
           case 'agenda': {
-            if (!options?.meetingId) {
-              throw new Error('Meeting ID required for agenda routing');
+            if (!options?.meetingType) {
+              throw new Error('Meeting type required for agenda routing');
             }
             const { data, error: err } = await supabase
               .from('meeting_agenda_items')
               .insert({
                 user_id: user.id,
-                discussed_in_meeting_id: options.meetingId,
+                meeting_type: options.meetingType,
+                related_person_id: options.relatedPersonId || null,
                 text: content,
-                source_hatch_tab_id: tabId,
                 sort_order: 0,
               })
               .select('id')
@@ -820,7 +822,7 @@ export function useHatch() {
     async (
       itemId: string,
       destination: HatchRoutingDestination,
-      options?: { meetingId?: string; mastType?: MastEntryType; keelCategory?: KeelCategory; journalEntryType?: JournalEntryType; listId?: string; trackerId?: string },
+      options?: { meetingId?: string; meetingType?: string; relatedPersonId?: string; mastType?: MastEntryType; keelCategory?: KeelCategory; journalEntryType?: JournalEntryType; listId?: string; trackerId?: string },
     ) => {
       if (!user) return;
 
@@ -948,14 +950,14 @@ export function useHatch() {
           break;
         }
         case 'agenda': {
-          if (!options?.meetingId) break;
+          if (!options?.meetingType) break;
           const { data, error: err } = await supabase
             .from('meeting_agenda_items')
             .insert({
               user_id: user.id,
-              meeting_id: options.meetingId,
+              meeting_type: options.meetingType,
+              related_person_id: options.relatedPersonId || null,
               text: content,
-              source_hatch_tab_id: item.hatch_tab_id,
             })
             .select('id')
             .single();

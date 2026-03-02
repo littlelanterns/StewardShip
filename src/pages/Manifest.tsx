@@ -239,6 +239,12 @@ export default function Manifest() {
   const uniqueTags = useMemo(() => getUniqueTags(), [getUniqueTags]);
   const uniqueFolders = useMemo(() => getUniqueFolders(), [getUniqueFolders]);
 
+  // Keep selectedItem in sync with items array (so updates via updateItem are reflected)
+  const currentSelectedItem = useMemo(
+    () => (selectedItem ? items.find((i) => i.id === selectedItem.id) || selectedItem : null),
+    [items, selectedItem],
+  );
+
   const hasCompletedItems = items.some((i) => i.processing_status === 'completed');
   const hasProcessingItems = items.some(
     (i) => i.processing_status === 'pending' || i.processing_status === 'processing',
@@ -258,11 +264,11 @@ export default function Manifest() {
   }
 
   // Intake view
-  if (viewMode === 'intake' && selectedItem) {
+  if (viewMode === 'intake' && currentSelectedItem) {
     return (
       <div className="page manifest-page">
         <IntakeFlow
-          item={selectedItem}
+          item={currentSelectedItem}
           onRunIntake={runIntake}
           onApplyIntake={handleIntakeApply}
           onSkip={handleIntakeSkip}
@@ -273,13 +279,13 @@ export default function Manifest() {
   }
 
   // Framework extraction view
-  if (viewMode === 'framework' && selectedItem) {
+  if (viewMode === 'framework' && currentSelectedItem) {
     return (
       <div className="page manifest-page">
         <FrameworkPrinciples
-          manifestItemId={selectedItem.id}
-          manifestItemTitle={selectedItem.title}
-          framework={getFrameworkForItem(selectedItem.id)}
+          manifestItemId={currentSelectedItem.id}
+          manifestItemTitle={currentSelectedItem.title}
+          framework={getFrameworkForItem(currentSelectedItem.id)}
           extracting={extracting}
           onExtract={extractFramework}
           onSave={saveFramework}
@@ -291,11 +297,11 @@ export default function Manifest() {
   }
 
   // Mast extraction review
-  if (viewMode === 'mast_extract' && selectedItem) {
+  if (viewMode === 'mast_extract' && currentSelectedItem) {
     return (
       <div className="page manifest-page">
         <MastExtractionReview
-          sourceTitle={selectedItem.title}
+          sourceTitle={currentSelectedItem.title}
           entries={mastExtractionResults}
           extracting={extracting}
           onSave={handleSaveMastEntries}
@@ -306,11 +312,11 @@ export default function Manifest() {
   }
 
   // Keel extraction review
-  if (viewMode === 'keel_extract' && selectedItem) {
+  if (viewMode === 'keel_extract' && currentSelectedItem) {
     return (
       <div className="page manifest-page">
         <KeelExtractionReview
-          sourceTitle={selectedItem.title}
+          sourceTitle={currentSelectedItem.title}
           entries={keelExtractionResults}
           extracting={extracting}
           onSave={handleSaveKeelEntries}
@@ -321,11 +327,11 @@ export default function Manifest() {
   }
 
   // Detail view
-  if (viewMode === 'detail' && selectedItem) {
+  if (viewMode === 'detail' && currentSelectedItem) {
     return (
       <div className="page manifest-page">
         <ManifestItemDetail
-          item={selectedItem}
+          item={currentSelectedItem}
           onBack={handleBack}
           onUpdateItem={updateItem}
           onReprocess={reprocessItem}

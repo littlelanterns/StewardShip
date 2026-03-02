@@ -99,6 +99,15 @@
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
+/* Hint text */
+.hatch-picker__hint {
+  padding: 0 var(--spacing-md) var(--spacing-xs);
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
 /* Loading */
 .hatch-picker__loading {
   display: flex;

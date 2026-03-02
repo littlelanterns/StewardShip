@@ -3,8 +3,8 @@ import { ArrowLeft } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { LoadingSpinner } from '../shared';
-import type { HatchRoutingDestination, MastEntryType, KeelCategory, JournalEntryType } from '../../lib/types';
-import { MAST_TYPE_LABELS, KEEL_CATEGORY_LABELS } from '../../lib/types';
+import type { HatchRoutingDestination, MastEntryType, KeelCategory, JournalEntryType, MeetingType } from '../../lib/types';
+import { MAST_TYPE_LABELS, KEEL_CATEGORY_LABELS, MEETING_TYPE_LABELS } from '../../lib/types';
 import './HatchInlinePickerOverlay.css';
 
 interface HatchInlinePickerOverlayProps {
@@ -16,6 +16,8 @@ interface HatchInlinePickerOverlayProps {
       keelCategory?: KeelCategory;
       journalEntryType?: JournalEntryType;
       meetingId?: string;
+      meetingType?: string;
+      relatedPersonId?: string;
       trackerId?: string;
     },
   ) => Promise<void>;
@@ -26,6 +28,20 @@ interface PickerItem {
   id: string;
   label: string;
 }
+
+// Meeting types that need a person picker
+const PERSON_MEETING_TYPES: MeetingType[] = ['couple', 'parent_child', 'mentor'];
+
+// Agenda meeting type options (exclude quarterly_inventory — not a standalone meeting)
+const AGENDA_MEETING_TYPES: { value: MeetingType; label: string }[] = [
+  { value: 'couple', label: 'Couple Meeting' },
+  { value: 'parent_child', label: 'Parent-Child Meeting' },
+  { value: 'mentor', label: 'Mentor Meeting' },
+  { value: 'weekly_review', label: 'Weekly Review' },
+  { value: 'monthly_review', label: 'Monthly Review' },
+  { value: 'business', label: 'Business Review' },
+  { value: 'custom', label: 'Custom Meeting' },
+];
 
 export default function HatchInlinePickerOverlay({
   destination,
@@ -40,37 +56,19 @@ export default function HatchInlinePickerOverlay({
   const [selectedJournalType, setSelectedJournalType] = useState<JournalEntryType>('journal_entry');
   const [showCommonplaceTooltip, setShowCommonplaceTooltip] = useState(false);
 
-  // Load data for agenda and charts pickers
+  // Agenda: meeting type + person picker state
+  const [selectedMeetingType, setSelectedMeetingType] = useState<MeetingType | null>(null);
+  const [agendaPeople, setAgendaPeople] = useState<PickerItem[]>([]);
+  const [loadingPeople, setLoadingPeople] = useState(false);
+
+  // Load data for charts picker
   useEffect(() => {
     if (!user) return;
-    if (destination === 'agenda') {
-      loadMeetings();
-    } else if (destination === 'charts') {
+    if (destination === 'charts') {
       loadTrackers();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, destination]);
-
-  const loadMeetings = async () => {
-    if (!user) return;
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('meetings')
-        .select('id, title')
-        .eq('user_id', user.id)
-        .is('archived_at', null)
-        .order('created_at', { ascending: false })
-        .limit(20);
-
-      if (error) throw error;
-      setItems((data || []).map((m: { id: string; title: string }) => ({ id: m.id, label: m.title })));
-    } catch {
-      setItems([]);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const loadTrackers = async () => {
     if (!user) return;
@@ -93,6 +91,37 @@ export default function HatchInlinePickerOverlay({
     }
   };
 
+  // Load people for meeting types that need them
+  const loadPeopleForType = useCallback(async (meetingType: MeetingType) => {
+    if (!user) return;
+    setLoadingPeople(true);
+    try {
+      let query = supabase
+        .from('people')
+        .select('id, name')
+        .eq('user_id', user.id)
+        .is('archived_at', null)
+        .order('name');
+
+      // Filter by relationship type based on meeting type
+      if (meetingType === 'couple') {
+        query = query.eq('is_first_mate', true);
+      } else if (meetingType === 'parent_child') {
+        query = query.in('relationship_type', ['child', 'stepchild']);
+      } else if (meetingType === 'mentor') {
+        query = query.in('relationship_type', ['mentor', 'teacher', 'coach', 'spiritual_leader']);
+      }
+
+      const { data, error } = await query.limit(30);
+      if (error) throw error;
+      setAgendaPeople((data || []).map((p: { id: string; name: string }) => ({ id: p.id, label: p.name })));
+    } catch {
+      setAgendaPeople([]);
+    } finally {
+      setLoadingPeople(false);
+    }
+  }, [user]);
+
   const handleMastConfirm = useCallback(() => {
     onRoute('mast', { mastType: selectedMastType });
   }, [onRoute, selectedMastType]);
@@ -105,12 +134,28 @@ export default function HatchInlinePickerOverlay({
     onRoute('journal', { journalEntryType: selectedJournalType });
   }, [onRoute, selectedJournalType]);
 
-  const handleMeetingSelect = useCallback(
-    (meetingId: string) => {
-      onRoute('agenda', { meetingId });
-    },
-    [onRoute],
-  );
+  // Agenda: select meeting type
+  const handleAgendaTypeSelect = useCallback((meetingType: MeetingType) => {
+    if (PERSON_MEETING_TYPES.includes(meetingType)) {
+      setSelectedMeetingType(meetingType);
+      loadPeopleForType(meetingType);
+    } else {
+      // No person needed — route directly
+      onRoute('agenda', { meetingType });
+    }
+  }, [onRoute, loadPeopleForType]);
+
+  // Agenda: select person for the chosen meeting type
+  const handleAgendaPersonSelect = useCallback((personId: string) => {
+    if (!selectedMeetingType) return;
+    onRoute('agenda', { meetingType: selectedMeetingType, relatedPersonId: personId });
+  }, [onRoute, selectedMeetingType]);
+
+  // Agenda: route without person (for types that need one but user wants general)
+  const handleAgendaNoPersonRoute = useCallback(() => {
+    if (!selectedMeetingType) return;
+    onRoute('agenda', { meetingType: selectedMeetingType });
+  }, [onRoute, selectedMeetingType]);
 
   const handleTrackerSelect = useCallback(
     (trackerId: string) => {
@@ -136,12 +181,17 @@ export default function HatchInlinePickerOverlay({
         <button
           type="button"
           className="hatch-picker__back"
-          onClick={onBack}
-          aria-label="Back to destinations"
+          onClick={selectedMeetingType ? () => { setSelectedMeetingType(null); setAgendaPeople([]); } : onBack}
+          aria-label={selectedMeetingType ? 'Back to meeting types' : 'Back to destinations'}
         >
           <ArrowLeft size={18} strokeWidth={1.5} />
         </button>
-        <h4 className="hatch-picker__title">{getTitle()}</h4>
+        <h4 className="hatch-picker__title">
+          {selectedMeetingType
+            ? `${MEETING_TYPE_LABELS[selectedMeetingType]} — Who with?`
+            : getTitle()
+          }
+        </h4>
       </div>
 
       {/* Mast type picker */}
@@ -232,24 +282,53 @@ export default function HatchInlinePickerOverlay({
         </div>
       )}
 
-      {/* Meeting picker for agenda */}
-      {destination === 'agenda' && (
-        loading ? (
+      {/* Meeting type picker for agenda — Step 1: Select meeting type */}
+      {destination === 'agenda' && !selectedMeetingType && (
+        <div className="hatch-picker__options">
+          <p className="hatch-picker__hint">What kind of meeting is this for?</p>
+          {AGENDA_MEETING_TYPES.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              className="hatch-picker__option"
+              onClick={() => handleAgendaTypeSelect(opt.value)}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Meeting type picker for agenda — Step 2: Select person (for types that need one) */}
+      {destination === 'agenda' && selectedMeetingType && (
+        loadingPeople ? (
           <div className="hatch-picker__loading"><LoadingSpinner /></div>
-        ) : items.length === 0 ? (
-          <p className="hatch-picker__empty">No meetings found. Create one from the Meetings page.</p>
         ) : (
           <div className="hatch-picker__options">
-            {items.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className="hatch-picker__option"
-                onClick={() => handleMeetingSelect(item.id)}
-              >
-                {item.label}
-              </button>
-            ))}
+            {agendaPeople.length > 0 ? (
+              agendaPeople.map((person) => (
+                <button
+                  key={person.id}
+                  type="button"
+                  className="hatch-picker__option"
+                  onClick={() => handleAgendaPersonSelect(person.id)}
+                >
+                  {person.label}
+                </button>
+              ))
+            ) : (
+              <p className="hatch-picker__hint">
+                No matching people found in your Crew.
+              </p>
+            )}
+            <button
+              type="button"
+              className="hatch-picker__option"
+              style={{ marginTop: 'var(--spacing-sm)', color: 'var(--color-text-secondary)', fontStyle: 'italic' }}
+              onClick={handleAgendaNoPersonRoute}
+            >
+              Save without a person
+            </button>
           </div>
         )
       )}

@@ -261,16 +261,21 @@ export function AddInsightModal({ onClose, onSave, preselectedCategory }: AddIns
               <p className="add-entry-form__desc">
                 Upload a personality assessment, screenshot, or document about your partner.
               </p>
-              <label className="btn btn--secondary" style={{ cursor: 'pointer' }}>
+              <button
+                type="button"
+                className="btn btn--secondary"
+                onClick={() => fileInputRef.current?.click()}
+              >
                 Choose File
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".pdf,.png,.jpg,.jpeg,.webp,.md,.txt,.docx"
-                  style={{ position: 'absolute', width: '1px', height: '1px', opacity: 0, overflow: 'hidden', pointerEvents: 'none' }}
-                  onChange={handleFileSelect}
-                />
-              </label>
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.png,.jpg,.jpeg,.webp,.md,.txt,.docx"
+                style={{ display: 'none' }}
+                onChange={handleFileSelect}
+                onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
+              />
             </>
           )}
 
@@ -278,15 +283,9 @@ export function AddInsightModal({ onClose, onSave, preselectedCategory }: AddIns
             <div className="add-entry-form__error-block">
               <p className="add-entry-form__error">{error}</p>
               <div className="add-entry-form__actions">
-                <label className="btn btn--secondary" style={{ cursor: 'pointer' }} onClick={() => setError(null)}>
+                <Button variant="secondary" onClick={() => { setError(null); fileInputRef.current?.click(); }}>
                   Try Again
-                  <input
-                    type="file"
-                    accept=".pdf,.png,.jpg,.jpeg,.webp,.md,.txt,.docx"
-                    style={{ position: 'absolute', width: '1px', height: '1px', opacity: 0, overflow: 'hidden', pointerEvents: 'none' }}
-                    onChange={handleFileSelect}
-                  />
-                </label>
+                </Button>
                 <Button variant="secondary" onClick={() => { setError(null); setMode('write'); }}>
                   Write It Myself Instead
                 </Button>
