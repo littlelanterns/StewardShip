@@ -23,6 +23,14 @@ Valid categories: personality_assessment, trait_tendency, strength, growth_area,
 
 The source_label should identify the assessment or source (e.g., "Enneagram Type 3", "MBTI ENFP", "StrengthsFinder"). Extract specific individual traits/insights, not one large summary.`;
 
+const MAST_PROMPT = `You are analyzing a document to extract guiding principles, values, declarations, scriptures, quotes, and vision statements. Extract individual principles and categorize each one. Return ONLY valid JSON — no markdown, no explanation.
+
+Return a JSON array: [{ "text": "...", "category": "...", "confidence": 0.0-1.0 }]
+
+Valid categories: value (core values and beliefs), declaration (commitment statements about who the user is choosing to become — use honest commitment language like "I choose to..." or "I am committed to..."), faith_foundation (faith or spiritual beliefs and foundations), scripture_quote (scriptures, quotes, or meaningful sayings), vision (vision statements about the future or who they want to become)
+
+Extract each principle as a standalone statement. Keep the original wording where possible. If the document contains lists, extract each list item individually.`;
+
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -95,7 +103,11 @@ serve(async (req: Request) => {
       );
     }
 
-    const systemPrompt = extraction_target === 'spouse' ? SPOUSE_PROMPT : KEEL_PROMPT;
+    const systemPrompt = extraction_target === 'spouse'
+      ? SPOUSE_PROMPT
+      : extraction_target === 'mast'
+        ? MAST_PROMPT
+        : KEEL_PROMPT;
     const isImage = ['png', 'jpg', 'jpeg', 'webp'].includes((file_type || '').toLowerCase());
     const lowerType = (file_type || '').toLowerCase();
     let extractedTextLength = 0;

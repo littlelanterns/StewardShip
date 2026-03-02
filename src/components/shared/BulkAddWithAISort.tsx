@@ -337,13 +337,13 @@ export function BulkAddWithAISort({
 
           {/* File upload section */}
           {enableFileUpload && !uploadedFileName && !selectedFile && (
-            <div className="bulk-add-ai__file-zone" onClick={() => fileInputRef.current?.click()}>
+            <label htmlFor="bulk-add-file-upload" className="bulk-add-ai__file-zone">
               <Upload size={20} className="bulk-add-ai__file-zone-icon" />
               <span className="bulk-add-ai__file-zone-text">
                 {fileUploadLabel || 'Or upload a file'}
               </span>
               <span className="bulk-add-ai__file-zone-hint">.md, .txt, .pdf, .docx, images</span>
-            </div>
+            </label>
           )}
 
           {/* File selected — show storage choice (not for images, which auto-extract via vision) */}
@@ -413,6 +413,7 @@ export function BulkAddWithAISort({
           )}
 
           <input
+            id="bulk-add-file-upload"
             ref={fileInputRef}
             type="file"
             className="bulk-add-ai__file-input"
