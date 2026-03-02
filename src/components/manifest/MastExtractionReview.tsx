@@ -91,11 +91,15 @@ export default function MastExtractionReview({
     return (
       <div className="extraction-review">
         <div className="extraction-review__empty">
-          <p>No potential Mast entries found in this content.</p>
+          <p>No potential Mast entries could be extracted from this content.</p>
           <p className="extraction-review__empty-hint">
-            This can happen if the document doesn't contain values, principles, or vision statements.
-            Try a different document, or use the Mast page's "Write It Myself" option to add entries directly.
+            Some documents use complex formatting that makes extraction difficult. You can try:
           </p>
+          <ul className="extraction-review__empty-tips">
+            <li>Re-processing the file (the Re-process button on the item detail page)</li>
+            <li>Using "Discuss This" at The Helm to talk through the content and identify principles</li>
+            <li>Using "Craft it at The Helm" from The Mast to write principles based on what you read</li>
+          </ul>
           <Button onClick={onCancel} variant="secondary">Close</Button>
         </div>
       </div>

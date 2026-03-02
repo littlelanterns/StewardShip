@@ -20,17 +20,24 @@ function getContentPreviewLimit(text: string): number {
   return isAssessment ? 48000 : 16000;
 }
 
-const SPOUSE_PROMPT = `You are analyzing a document about someone's spouse or partner. Extract individual insights about the spouse and categorize each one. Return ONLY valid JSON — no markdown, no explanation.
+const SPOUSE_PROMPT = `You are analyzing a document about someone's spouse or partner. Extract individual insights about the spouse and categorize each one. Return ONLY valid JSON - no markdown, no explanation.
 
-Return a JSON array: [{ "text": "...", "category": "...", "confidence": 0.0-1.0 }]
+Return a JSON array: [{ "text": "...", "category": "...", "confidence": 0.0-1.0, "source_label": "..." }]
 
 Valid categories: personality, love_appreciation, communication, dreams_goals, challenges_needs, their_world, observation, gratitude, general
 
-Extraction guidelines:
+The source_label should identify the source or assessment (e.g., "StrengthsFinder", "Enneagram Type 5", "Love Languages").
+
+IMPORTANT EXTRACTION RULES:
 - Extract specific, actionable insights. Each insight should be a single fact or observation, not a paragraph.
-- If the document is a personality assessment (Enneagram, MBTI, DISC, Love Languages, etc.), break results into individual traits.
-- For assessment results, include the assessment name in the text (e.g., "Enneagram Type 2: Naturally empathetic and attuned to others' needs").
-- Extract at minimum 8-15 insights from assessment documents. Look for traits, tendencies, communication preferences, growth patterns, and relational dynamics.
+- If the document contains personality assessment results (CliftonStrengths/StrengthsFinder, Enneagram, MBTI, DISC, Love Languages, etc.), break them into individual traits rather than one large summary.
+- For CliftonStrengths/StrengthsFinder results: Extract EACH theme as a separate insight with rank number, theme name, and domain. Top 10 themes are especially important. Use category "personality" for assessment results.
+- For Enneagram results: Extract the type, wing, and key behavioral patterns as separate insights.
+- For MBTI results: Extract the overall type and each preference dimension.
+- For Love Languages results: Extract the primary and secondary languages with scores if available.
+- Look for personalized narrative sections and extract spouse-specific observations.
+- Blind spots and potential friction areas should be categorized as "challenges_needs".
+- Communication style insights should be categorized as "communication".
 - Confidence: 0.9+ for directly stated facts, 0.7-0.9 for reasonable inferences, 0.5-0.7 for weaker signals.`;
 
 const KEEL_PROMPT = `You are analyzing a document about the user's personality, self-knowledge, or personal assessment results. Extract individual insights and categorize each one. Return ONLY valid JSON — no markdown, no explanation.
@@ -209,7 +216,7 @@ serve(async (req: Request) => {
       },
       body: JSON.stringify({
         model: 'anthropic/claude-sonnet-4',
-        max_tokens: 2048,
+        max_tokens: 4096,
         messages,
       }),
     });
@@ -227,7 +234,25 @@ serve(async (req: Request) => {
 
     // Parse JSON from response — strip markdown fencing if present
     const cleaned = content.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
-    const jsonMatch = cleaned.match(/\[[\s\S]*\]/);
+
+    // Try to extract JSON array from response - multiple strategies
+    let jsonMatch = cleaned.match(/\[[\s\S]*\]/);
+
+    if (!jsonMatch) {
+      // Fallback: AI may have returned { "insights": [...] } or similar object wrapping
+      const objectMatch = cleaned.match(/\{[\s\S]*\}/);
+      if (objectMatch) {
+        try {
+          const parsed = JSON.parse(objectMatch[0]);
+          const arrayValue = Object.values(parsed).find(v => Array.isArray(v));
+          if (arrayValue) {
+            jsonMatch = [JSON.stringify(arrayValue)];
+          }
+        } catch {
+          // Object parse failed too — fall through to the no-match handler
+        }
+      }
+    }
 
     if (!jsonMatch) {
       return new Response(
@@ -240,15 +265,17 @@ serve(async (req: Request) => {
       );
     }
 
+    // Safely parse the matched JSON
     let rawInsights: unknown[];
     try {
       rawInsights = JSON.parse(jsonMatch[0]);
-    } catch {
+    } catch (parseErr) {
+      console.error('JSON parse failed:', parseErr, 'Raw content:', jsonMatch[0].substring(0, 500));
       return new Response(
         JSON.stringify({
           insights: [],
           extracted_text_length: extractedTextLength,
-          error: 'AI returned malformed JSON. Try uploading the file again.',
+          error: 'The AI response could not be parsed. This can happen with very large assessments. Try uploading screenshots of key pages instead.',
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );

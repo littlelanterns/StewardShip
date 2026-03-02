@@ -52,6 +52,20 @@
   max-width: 360px;
 }
 
+.extraction-review__empty-tips {
+  font-size: var(--font-size-xs);
+  color: var(--color-slate-gray);
+  padding-left: var(--spacing-lg);
+  margin: var(--spacing-xs) 0 var(--spacing-md);
+  text-align: left;
+  max-width: 360px;
+  line-height: 1.5;
+}
+
+.extraction-review__empty-tips li {
+  margin-bottom: var(--spacing-xs);
+}
+
 .extraction-review__list {
   display: flex;
   flex-direction: column;
