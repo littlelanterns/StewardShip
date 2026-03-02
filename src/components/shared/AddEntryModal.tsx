@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react';
+import { type ReactNode, useRef, useCallback, useEffect } from 'react';
 import { X } from 'lucide-react';
 import './AddEntryModal.css';
 
@@ -9,8 +9,48 @@ interface AddEntryModalProps {
 }
 
 export function AddEntryModal({ title, children, onClose }: AddEntryModalProps) {
+  // Guard against phantom events from mobile file pickers.
+  // When a native file dialog opens/closes on mobile, browsers can fire
+  // synthetic mouse/touch events that hit the overlay and close the modal.
+  // We suppress overlay dismiss for a short window after any file input interaction.
+  const dismissSuppressedUntil = useRef(0);
+
+  useEffect(() => {
+    // Listen for file input clicks anywhere inside this modal.
+    // When detected, suppress overlay dismiss for 2 seconds to survive
+    // the file picker open/close cycle on mobile.
+    function handleFileInputClick(e: Event) {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'file') {
+        dismissSuppressedUntil.current = Date.now() + 2000;
+      }
+    }
+    // Also suppress on focus return (file picker closing)
+    function handleVisibilityChange() {
+      if (!document.hidden) {
+        // Page became visible again (file picker closed) — extend suppression
+        dismissSuppressedUntil.current = Math.max(
+          dismissSuppressedUntil.current,
+          Date.now() + 500,
+        );
+      }
+    }
+    document.addEventListener('click', handleFileInputClick, true);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('click', handleFileInputClick, true);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
+  const handleOverlayDismiss = useCallback((e: React.MouseEvent) => {
+    if (e.target !== e.currentTarget) return;
+    if (Date.now() < dismissSuppressedUntil.current) return;
+    onClose();
+  }, [onClose]);
+
   return (
-    <div className="modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="modal-overlay" onMouseDown={handleOverlayDismiss}>
       <div className="modal-panel" role="dialog" aria-label={title}>
         <div className="modal-panel__header">
           <h2 className="modal-panel__title">{title}</h2>
