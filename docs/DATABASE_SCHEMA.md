@@ -281,7 +281,8 @@
 | id | UUID | gen_random_uuid() | NOT NULL | PK |
 | user_id | UUID | | NOT NULL | FK → auth.users |
 | title | TEXT | | NOT NULL | List title |
-| list_type | TEXT | 'custom' | NOT NULL | Enum: 'shopping', 'wishlist', 'expenses', 'todo', 'custom', 'routine' |
+| list_type | TEXT | 'custom' | NOT NULL | Enum: 'shopping', 'wishlist', 'expenses', 'todo', 'someday', 'custom', 'routine' |
+| victory_on_complete | BOOLEAN | false | NOT NULL | When true, checking off items triggers victory celebration flow. Added migration 034. |
 | ai_action | TEXT | 'store_only' | NOT NULL | Enum: 'store_only', 'remind', 'schedule', 'prioritize' |
 | share_token | TEXT | null | NULL | Unique token for sharing. Null = not shared. |
 | archived_at | TIMESTAMPTZ | null | NULL | Soft delete |
@@ -1597,6 +1598,7 @@ All tables across PRDs 01-20 have been defined (43 total). Settings (PRD-19) int
 | 024_meeting_template_sections.sql | `meeting_template_sections` table for per-user customizable agenda sections with auto-seeded defaults, archive/restore, partial unique index on default_key, RLS, auto-update trigger |
 | 025_hatch.sql | `hatch_tabs` table, `hatch_routing_stats` table, `hatch_drawer_open` column on `user_settings`, RLS policies, indexes, auto-update triggers |
 | 026_hatch_phase_b.sql | `hatch_extracted_items` table (Review & Route), `source_hatch_tab_id` column on `meeting_agenda_items`, RLS policies, indexes, auto-update trigger |
+| 034_someday_list_type.sql | Add `victory_on_complete` BOOLEAN column to `lists` table for victory celebration flow on item completion |
 
 ---
 

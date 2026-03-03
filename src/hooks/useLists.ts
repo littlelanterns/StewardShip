@@ -39,6 +39,7 @@ export function useLists() {
     ai_action: ListAiAction;
     reset_schedule?: string | null;
     reset_custom_days?: number[] | null;
+    victory_on_complete?: boolean;
   }): Promise<List | null> => {
     if (!user) return null;
     setError(null);
@@ -50,6 +51,7 @@ export function useLists() {
         ai_action: data.ai_action,
         reset_schedule: data.reset_schedule || null,
         reset_custom_days: data.reset_custom_days || null,
+        victory_on_complete: data.victory_on_complete ?? false,
       };
 
       const { data: created, error: err } = await supabase

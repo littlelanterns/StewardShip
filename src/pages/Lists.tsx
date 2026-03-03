@@ -6,6 +6,9 @@ import { useRoutineReset } from '../hooks/useRoutineReset';
 import { useRoutineAssignment } from '../hooks/useRoutineAssignment';
 import { useCompass } from '../hooks/useCompass';
 import { useVictories } from '../hooks/useVictories';
+import { useAuthContext } from '../contexts/AuthContext';
+import { autoTagTask } from '../lib/ai';
+import { supabase } from '../lib/supabase';
 import { FloatingActionButton, FeatureGuide } from '../components/shared';
 import { FEATURE_GUIDES } from '../lib/featureGuides';
 import ListsMain from '../components/compass/lists/ListsMain';
@@ -21,6 +24,8 @@ type ListsPageView = 'main' | 'detail' | 'create' | 'bulk_add' | 'assign_routine
 
 export default function Lists() {
   usePageContext({ page: 'lists' });
+
+  const { user } = useAuthContext();
 
   const {
     lists,
@@ -55,11 +60,35 @@ export default function Lists() {
 
   const [pageView, setPageView] = useState<ListsPageView>('main');
   const [selectedList, setSelectedList] = useState<List | null>(null);
+  // Track item IDs that have been sent to Compass (query-based approach)
+  const [promotedItemIds, setPromotedItemIds] = useState<Set<string>>(new Set());
 
   // Fetch assignments so getAssignmentForList works
   useEffect(() => {
     fetchAssignments();
   }, [fetchAssignments]);
+
+  // Fetch promoted item IDs when viewing a list detail
+  useEffect(() => {
+    if (!user || !selectedList || pageView !== 'detail') return;
+    const itemIds = items.map((i) => i.id);
+    if (itemIds.length === 0) {
+      setPromotedItemIds(new Set());
+      return;
+    }
+    // Query compass_tasks for items promoted from this list's items
+    supabase
+      .from('compass_tasks')
+      .select('source_reference_id')
+      .eq('user_id', user.id)
+      .eq('source', 'list_converted')
+      .in('source_reference_id', itemIds)
+      .then(({ data }) => {
+        if (data) {
+          setPromotedItemIds(new Set(data.map((t) => t.source_reference_id).filter(Boolean) as string[]));
+        }
+      });
+  }, [user, selectedList, pageView, items]);
 
   const handleListClick = useCallback((list: List) => {
     setSelectedList(list);
@@ -69,6 +98,7 @@ export default function Lists() {
   const handleBack = useCallback(() => {
     setPageView('main');
     setSelectedList(null);
+    setPromotedItemIds(new Set());
     fetchLists();
   }, [fetchLists]);
 
@@ -161,6 +191,43 @@ export default function Lists() {
     return created;
   }, [createTask]);
 
+  // Victory creation for individual list items
+  const handleCreateVictory = useCallback(async (itemText: string, listTitle: string, _itemId: string) => {
+    await createVictory({
+      description: itemText,
+      celebration_text: null,
+      source: 'list_item_completed',
+      source_reference_id: selectedList?.id || null,
+    });
+  }, [createVictory, selectedList]);
+
+  // Send individual item to Compass
+  const handleSendToCompass = useCallback(async (item: ListItem, listTitle: string) => {
+    if (!user) return;
+    const today = new Date().toISOString().split('T')[0];
+    const task = await createTask({
+      title: item.text,
+      description: item.notes || undefined,
+      source: 'list_converted',
+      source_reference_id: item.id,
+      due_date: today,
+    });
+    if (task) {
+      // Track promoted state locally
+      setPromotedItemIds((prev) => new Set(prev).add(item.id));
+      // Auto-tag in background
+      autoTagTask(item.text, item.notes, user.id).then((tag) => {
+        if (tag) {
+          supabase
+            .from('compass_tasks')
+            .update({ life_area_tag: tag })
+            .eq('id', task.id)
+            .eq('user_id', user.id);
+        }
+      });
+    }
+  }, [user, createTask]);
+
   if (pageView === 'create') {
     return (
       <div className="page lists-page">
@@ -249,6 +316,9 @@ export default function Lists() {
           onPauseAssignment={pauseAssignment}
           onResumeAssignment={resumeAssignment}
           onRemoveAssignment={removeAssignment}
+          onCreateVictory={handleCreateVictory}
+          onSendToCompass={handleSendToCompass}
+          promotedItemIds={promotedItemIds}
         />
       </div>
     );

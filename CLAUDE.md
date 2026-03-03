@@ -762,18 +762,22 @@ One consistent rule across the entire app — applies to Compass task/subtask AN
 - **Inheritance:** Subtasks inherit parent's `due_date`, `life_area_tag`, and goal/Wheel links unless user overrides.
 
 #### Lists Conventions (Phase 4C + Phase 9.5)
-- **Lists are NOT tasks.** They're lightweight collections (shopping, wishlists, expenses, to-do, custom, routines). Not tracked in Charts or goals.
+- **Lists are NOT tasks.** They're lightweight collections (shopping, wishlists, expenses, to-do, someday, custom, routines). Not tracked in Charts or goals.
 - **Standalone page:** Lists live at `/lists` as a full standalone page. Compass page links to `/lists` instead of rendering lists inline.
-- **List types:** shopping, wishlist, expenses, todo, custom, routine. Displayed as badge on list card.
+- **List types:** shopping, wishlist, expenses, todo, someday, custom, routine. Displayed as badge on list card. Each type has a hover/long-press description tooltip in CreateListModal (see `LIST_TYPE_DESCRIPTIONS` in types.ts).
+- **Someday lists:** A mental parking lot for things the user wants to eventually get to. No due dates, no daily pressure, never appears in Reveille. Default `victory_on_complete = true`. AI action hidden (defaults to store_only).
+- **Victory on completion (`victory_on_complete`):** Boolean flag on `lists` table. When true, checking off an item triggers sparkle animation + "Record as victory?" prompt (auto-dismisses after 8s). Victory created with `source = 'list_item_completed'`. Available for someday (default on), todo, wishlist, custom (default off). Hidden for shopping, expenses, routine.
+- **Per-item Send to Compass:** Individual unchecked items on someday, todo, wishlist, custom, and expenses lists can be sent to Compass via a Compass icon button. Confirmation offers "Keep in list" (item stays, gains Compass badge) or "Mark as done" (checks off item, triggers victory if enabled). Task created with `source = 'list_converted'`, `source_reference_id = item.id`. Auto-tag fires in background. Promoted items tracked via query on `compass_tasks` (no migration needed).
 - **Routine lists (Phase 9.5):** A new list type with `reset_schedule` (daily, weekdays, weekly, on_completion, custom), `reset_custom_days`, and `last_reset_at`. Auto-reset triggers on list view when schedule is due. Reset creates a `routine_completion_history` snapshot, then unchecks all items. Item notes supported via `notes` field on `list_items`.
 - **Convert to tasks:** Any list's unchecked items can be converted to Compass tasks (`source = 'list_converted'`). For routines, items can also be converted to recurring tasks mapping `reset_schedule` to `recurrence_rule`.
-- **AI action on list creation:** "What should I do with this?" — store_only (default), remind, schedule, prioritize. Remind/schedule/prioritize open Helm with list context. Hidden for routine type.
+- **AI action on list creation:** "What should I do with this?" — store_only (default), remind, schedule, prioritize. Remind/schedule/prioritize open Helm with list context. Hidden for routine and someday types.
 - **Share token:** Generated on demand, stored on `lists.share_token`. For future multi-user support. MVP: generate token, show "link copied" — actual shared access is post-MVP.
 - **List items:** Checkable rows with drag reorder. Quick-add input at bottom. Optional notes per item. Supports sub-items via `parent_item_id` (one level deep). Sub-items expand/collapse under parent. Check cascading: check parent → check all children; uncheck child → uncheck parent; check all children → auto-check parent.
 - **Bulk add:** AI-powered bulk item parsing via `bulkParse.ts` (calls `chat` Edge Function for structured parsing, fallback to line splitting). Textarea input → preview → edit → add all.
 - **Routine-to-Compass assignment:** Routine lists can be assigned to Compass via `routine_assignments` table. Assignment has recurrence rule (daily/weekdays/weekly/custom), optional end date, status lifecycle (active/paused/expired/removed). RoutineCard renders in ALL Compass framework views showing progress fraction and streak badge. List item toggles in Compass write to same DB records as Lists page.
 - **Auto victory on routine reset:** When a routine is reset with completed items, a Victory is auto-created (`source = 'routine_completion'`). Description lists completed item names. No celebration_text (factual only).
 - **Schedule-aware streak tracking:** `getCompletionStats` in `useRoutineReset` calculates streaks based on reset schedule (daily = consecutive days, weekdays = skip weekends, weekly = consecutive weeks). Milestones at 7/30/90/365. Streak displayed on ListDetail header and RoutineCard in Compass.
+- **Reckoning integration:** Victories from list item completions (`source = 'list_item_completed'`) appear in Reckoning automatically since Reckoning queries all today's victories with no source filter.
 
 ### Reflections Conventions (Phase 9.5)
 - **Daily reflection practice** with rotating questions. NOT in sidebar nav — accessed from Life Inventory, Reckoning, Crow's Nest, and direct URL only.

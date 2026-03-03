@@ -656,3 +656,166 @@
   color: var(--color-mid-teal);
   font-weight: 600;
 }
+
+/* Victory celebration prompt */
+.list-detail__victory-prompt {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  background: color-mix(in srgb, var(--color-gold) 12%, var(--color-cream));
+  border: 1px solid var(--color-gold);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  animation: list-victory-slide-in 0.3s ease-out;
+}
+
+@keyframes list-victory-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.list-detail__victory-prompt-text {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-deep-brown);
+  font-weight: 600;
+  flex: 1;
+}
+
+.list-detail__victory-prompt-btn {
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  cursor: pointer;
+  min-height: 32px;
+  white-space: nowrap;
+}
+
+.list-detail__victory-prompt-btn--record {
+  color: var(--color-white);
+  background: var(--color-cognac);
+}
+
+.list-detail__victory-prompt-btn--skip {
+  color: var(--color-slate-gray);
+  background: var(--color-warm-sand);
+}
+
+.list-detail__victory-prompt-dismiss {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: none;
+  border: none;
+  color: var(--color-slate-gray);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* Compass badge on promoted items */
+.list-detail__compass-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: var(--spacing-xs);
+  color: var(--color-mid-teal);
+  opacity: 0.7;
+  vertical-align: middle;
+}
+
+/* Per-item Compass action button */
+.list-detail__item-compass {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  min-height: 44px;
+  background: none;
+  border: none;
+  color: var(--color-mid-teal);
+  cursor: pointer;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.list-detail__item-row:hover .list-detail__item-compass,
+.list-detail__item-row:focus-within .list-detail__item-compass {
+  opacity: 0.7;
+}
+
+.list-detail__item-compass:hover {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .list-detail__item-compass {
+    opacity: 0.6;
+  }
+}
+
+/* Send to Compass confirmation banner */
+.list-detail__compass-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  background: color-mix(in srgb, var(--color-mid-teal) 10%, var(--color-cream));
+  border: 1px solid var(--color-mid-teal);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  animation: list-victory-slide-in 0.2s ease-out;
+}
+
+.list-detail__compass-confirm-text {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-dark-teal);
+  font-weight: 600;
+}
+
+.list-detail__compass-confirm-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.list-detail__compass-confirm-btn {
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  color: var(--color-mid-teal);
+  background: var(--color-white);
+  border: 1px solid var(--color-mid-teal);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  cursor: pointer;
+  min-height: 32px;
+  white-space: nowrap;
+  transition: background var(--transition-fast);
+}
+
+.list-detail__compass-confirm-btn:hover {
+  background: color-mix(in srgb, var(--color-mid-teal) 8%, var(--color-white));
+}
+
+.list-detail__compass-confirm-dismiss {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: none;
+  border: none;
+  color: var(--color-slate-gray);
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-left: auto;
+}

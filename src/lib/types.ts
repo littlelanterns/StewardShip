@@ -496,7 +496,7 @@ export interface ActivityLogEvent {
 
 // === PRD-06 Part 3: Lists ===
 
-export type ListType = 'shopping' | 'wishlist' | 'expenses' | 'todo' | 'custom' | 'routine';
+export type ListType = 'shopping' | 'wishlist' | 'expenses' | 'todo' | 'someday' | 'custom' | 'routine';
 export type ListAiAction = 'store_only' | 'remind' | 'schedule' | 'prioritize';
 export type ResetSchedule = 'daily' | 'weekdays' | 'weekly' | 'on_completion' | 'custom';
 
@@ -510,6 +510,7 @@ export interface List {
   reset_schedule: ResetSchedule | null;
   reset_custom_days: number[] | null;
   last_reset_at: string | null;
+  victory_on_complete: boolean;
   archived_at: string | null;
   created_at: string;
   updated_at: string;
@@ -549,8 +550,19 @@ export const LIST_TYPE_LABELS: Record<ListType, string> = {
   wishlist: 'Wishlist',
   expenses: 'Expenses',
   todo: 'To-Do',
+  someday: 'Someday',
   custom: 'Custom',
   routine: 'Routine',
+};
+
+export const LIST_TYPE_DESCRIPTIONS: Record<ListType, string> = {
+  shopping: "Things you need to buy — groceries, supplies, household items. Great for shared lists you can check off at the store.",
+  wishlist: "Things you'd love to have someday — gift ideas, wants, dream purchases. A place to collect ideas without committing.",
+  expenses: "Planned or upcoming costs to track — bills, repairs, purchases to budget for. Keeps financial surprises from sneaking up on you.",
+  todo: "A simple checklist for anything that needs doing. Not tied to your daily Compass — just a straightforward list to work through.",
+  someday: "Things you'd like to get to eventually — no pressure, no due dates, no daily reminders. A parking lot for your brain so these stop looping in your head. Check them off when you finally get around to it.",
+  routine: "A repeating checklist that resets on a schedule — daily, weekly, or custom. Perfect for morning routines, workout plans, weekly reviews, or any repeatable set of steps.",
+  custom: "A blank slate — use it however you want. No preset behavior, just a flexible list you can organize your way.",
 };
 
 export const RESET_SCHEDULE_LABELS: Record<ResetSchedule, string> = {
@@ -636,7 +648,7 @@ export interface HoldDump {
 
 // === PRD-08: Victory Recorder ===
 
-export type VictorySource = 'manual' | 'compass_task' | 'log_entry' | 'helm_conversation' | 'chart_milestone' | 'unload_the_hold' | 'routine_completion';
+export type VictorySource = 'manual' | 'compass_task' | 'log_entry' | 'helm_conversation' | 'chart_milestone' | 'unload_the_hold' | 'routine_completion' | 'list_item_completed';
 
 export interface Victory {
   id: string;
@@ -661,6 +673,7 @@ export const VICTORY_SOURCE_LABELS: Record<VictorySource, string> = {
   chart_milestone: 'Chart Milestone',
   unload_the_hold: 'Unload the Hold',
   routine_completion: 'Routine Completion',
+  list_item_completed: 'List Item',
 };
 
 export interface VictoryCelebration {

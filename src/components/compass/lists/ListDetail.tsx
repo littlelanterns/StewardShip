@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { ArrowLeft, MoreVertical, Trash2, GripVertical, ChevronDown, ChevronUp, ChevronRight, History, RotateCcw, Plus, Compass, ListPlus } from 'lucide-react';
+import { ArrowLeft, MoreVertical, Trash2, GripVertical, ChevronDown, ChevronUp, ChevronRight, History, RotateCcw, Plus, Compass, ListPlus, X } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -19,10 +19,14 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { Button } from '../../shared/Button';
 import { Card } from '../../shared/Card';
+import { SparkleOverlay } from '../../shared/SparkleOverlay';
 import type { List, ListItem, RoutineCompletionHistory, RoutineAssignment } from '../../../lib/types';
 import { LIST_TYPE_LABELS, RESET_SCHEDULE_LABELS } from '../../../lib/types';
 import type { ResetSchedule } from '../../../lib/types';
 import './ListDetail.css';
+
+// Types that support per-item "Send to Compass"
+const COMPASS_ELIGIBLE_TYPES = new Set(['someday', 'todo', 'wishlist', 'custom', 'expenses']);
 
 interface ListDetailProps {
   list: List;
@@ -51,6 +55,9 @@ interface ListDetailProps {
   onPauseAssignment?: (id: string) => void;
   onResumeAssignment?: (id: string) => void;
   onRemoveAssignment?: (id: string) => void;
+  onCreateVictory?: (itemText: string, listTitle: string, itemId: string) => Promise<void>;
+  onSendToCompass?: (item: ListItem, listTitle: string) => Promise<void>;
+  promotedItemIds?: Set<string>;
 }
 
 function SortableListItemRow({
@@ -58,11 +65,17 @@ function SortableListItemRow({
   onToggle,
   onDelete,
   onUpdateNotes,
+  showCompassAction,
+  onCompassAction,
+  isPromoted,
 }: {
   item: ListItem;
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
   onUpdateNotes?: (id: string, notes: string | null) => void;
+  showCompassAction?: boolean;
+  onCompassAction?: (item: ListItem) => void;
+  isPromoted?: boolean;
 }) {
   const [showNotes, setShowNotes] = useState(false);
   const [notesText, setNotesText] = useState(item.notes || '');
@@ -114,7 +127,24 @@ function SortableListItemRow({
 
         <span className={`list-detail__item-text ${item.checked ? 'list-detail__item-text--checked' : ''}`}>
           {item.text}
+          {isPromoted && (
+            <span className="list-detail__compass-badge" title="Sent to Compass">
+              <Compass size={12} />
+            </span>
+          )}
         </span>
+
+        {showCompassAction && !item.checked && onCompassAction && (
+          <button
+            type="button"
+            className="list-detail__item-compass"
+            onClick={() => onCompassAction(item)}
+            aria-label="Send to Compass"
+            title="Send to Compass"
+          >
+            <Compass size={14} />
+          </button>
+        )}
 
         {onUpdateNotes && (
           <button
@@ -180,6 +210,9 @@ export default function ListDetail({
   onPauseAssignment,
   onResumeAssignment,
   onRemoveAssignment,
+  onCreateVictory,
+  onSendToCompass,
+  promotedItemIds,
 }: ListDetailProps) {
   const [title, setTitle] = useState(list.title);
   const [editingTitle, setEditingTitle] = useState(false);
@@ -192,11 +225,19 @@ export default function ListDetail({
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [addingSubItemFor, setAddingSubItemFor] = useState<string | null>(null);
   const [subItemText, setSubItemText] = useState('');
+  // Victory celebration state
+  const [showSparkle, setShowSparkle] = useState(false);
+  const [victoryPrompt, setVictoryPrompt] = useState<{ itemId: string; itemText: string } | null>(null);
+  const victoryTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  // Send to Compass confirmation state
+  const [compassConfirm, setCompassConfirm] = useState<ListItem | null>(null);
+
   const inputRef = useRef<HTMLInputElement>(null);
   const subItemRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const isRoutine = list.list_type === 'routine';
+  const showCompassActions = COMPASS_ELIGIBLE_TYPES.has(list.list_type) && !!onSendToCompass;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -232,6 +273,81 @@ export default function ListDetail({
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [showMenu]);
+
+  // Cleanup victory timer
+  useEffect(() => {
+    return () => {
+      if (victoryTimerRef.current) clearTimeout(victoryTimerRef.current);
+    };
+  }, []);
+
+  const handleToggleWithVictory = useCallback((itemId: string) => {
+    const item = items.find((i) => i.id === itemId);
+    if (!item) {
+      onToggleItem(itemId);
+      return;
+    }
+
+    // Only trigger victory flow when CHECKING (not unchecking)
+    const willBeChecked = !item.checked;
+
+    onToggleItem(itemId);
+
+    if (willBeChecked && list.victory_on_complete && onCreateVictory) {
+      setShowSparkle(true);
+      setVictoryPrompt({ itemId: item.id, itemText: item.text });
+      // Auto-dismiss after 8 seconds
+      if (victoryTimerRef.current) clearTimeout(victoryTimerRef.current);
+      victoryTimerRef.current = setTimeout(() => {
+        setVictoryPrompt(null);
+      }, 8000);
+    }
+  }, [items, onToggleItem, list.victory_on_complete, onCreateVictory]);
+
+  const handleRecordVictory = useCallback(async () => {
+    if (!victoryPrompt || !onCreateVictory) return;
+    if (victoryTimerRef.current) clearTimeout(victoryTimerRef.current);
+    await onCreateVictory(victoryPrompt.itemText, list.title, victoryPrompt.itemId);
+    setVictoryPrompt(null);
+    setShareMessage('Victory recorded');
+    setTimeout(() => setShareMessage(null), 3000);
+  }, [victoryPrompt, onCreateVictory, list.title]);
+
+  const handleDismissVictory = useCallback(() => {
+    if (victoryTimerRef.current) clearTimeout(victoryTimerRef.current);
+    setVictoryPrompt(null);
+  }, []);
+
+  const handleCompassAction = useCallback((item: ListItem) => {
+    setCompassConfirm(item);
+  }, []);
+
+  const handleCompassKeep = useCallback(async () => {
+    if (!compassConfirm || !onSendToCompass) return;
+    await onSendToCompass(compassConfirm, list.title);
+    setCompassConfirm(null);
+    setShareMessage('Task added to Compass');
+    setTimeout(() => setShareMessage(null), 3000);
+  }, [compassConfirm, onSendToCompass, list.title]);
+
+  const handleCompassMarkDone = useCallback(async () => {
+    if (!compassConfirm || !onSendToCompass) return;
+    await onSendToCompass(compassConfirm, list.title);
+    // Also check off the item
+    onToggleItem(compassConfirm.id);
+    // Trigger victory if applicable
+    if (list.victory_on_complete && onCreateVictory) {
+      setShowSparkle(true);
+      setVictoryPrompt({ itemId: compassConfirm.id, itemText: compassConfirm.text });
+      if (victoryTimerRef.current) clearTimeout(victoryTimerRef.current);
+      victoryTimerRef.current = setTimeout(() => {
+        setVictoryPrompt(null);
+      }, 8000);
+    }
+    setCompassConfirm(null);
+    setShareMessage('Task added to Compass');
+    setTimeout(() => setShareMessage(null), 3000);
+  }, [compassConfirm, onSendToCompass, list.title, onToggleItem, list.victory_on_complete, onCreateVictory]);
 
   const handleTitleSave = async () => {
     if (title.trim() && title !== list.title) {
@@ -390,6 +506,9 @@ export default function ListDetail({
 
   return (
     <div className="list-detail">
+      {/* Sparkle overlay for victory celebrations */}
+      <SparkleOverlay show={showSparkle} size="quick" onComplete={() => setShowSparkle(false)} />
+
       <div className="list-detail__top-bar">
         <button type="button" className="list-detail__back" onClick={onBack} aria-label="Back">
           <ArrowLeft size={20} strokeWidth={1.5} />
@@ -551,6 +670,70 @@ export default function ListDetail({
         </div>
       )}
 
+      {/* Victory celebration prompt */}
+      {victoryPrompt && (
+        <div className="list-detail__victory-prompt">
+          <span className="list-detail__victory-prompt-text">
+            Record as victory?
+          </span>
+          <button
+            type="button"
+            className="list-detail__victory-prompt-btn list-detail__victory-prompt-btn--record"
+            onClick={handleRecordVictory}
+          >
+            Record Victory
+          </button>
+          <button
+            type="button"
+            className="list-detail__victory-prompt-btn list-detail__victory-prompt-btn--skip"
+            onClick={handleDismissVictory}
+          >
+            Skip
+          </button>
+          <button
+            type="button"
+            className="list-detail__victory-prompt-dismiss"
+            onClick={handleDismissVictory}
+            aria-label="Dismiss"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
+      {/* Send to Compass confirmation */}
+      {compassConfirm && (
+        <div className="list-detail__compass-confirm">
+          <span className="list-detail__compass-confirm-text">
+            Send "{compassConfirm.text}" to Compass
+          </span>
+          <div className="list-detail__compass-confirm-actions">
+            <button
+              type="button"
+              className="list-detail__compass-confirm-btn"
+              onClick={handleCompassKeep}
+            >
+              Keep in list
+            </button>
+            <button
+              type="button"
+              className="list-detail__compass-confirm-btn"
+              onClick={handleCompassMarkDone}
+            >
+              Mark as done
+            </button>
+            <button
+              type="button"
+              className="list-detail__compass-confirm-dismiss"
+              onClick={() => setCompassConfirm(null)}
+              aria-label="Cancel"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        </div>
+      )}
+
       {shareMessage && (
         <div className="list-detail__toast">{shareMessage}</div>
       )}
@@ -624,9 +807,12 @@ export default function ListDetail({
                           <div className={`list-detail__item-flex ${!hasChildren ? 'list-detail__item-flex--no-expand' : ''}`}>
                             <SortableListItemRow
                               item={item}
-                              onToggle={onToggleItem}
+                              onToggle={handleToggleWithVictory}
                               onDelete={onDeleteItem}
                               onUpdateNotes={onUpdateItem ? handleUpdateNotes : undefined}
+                              showCompassAction={showCompassActions}
+                              onCompassAction={handleCompassAction}
+                              isPromoted={promotedItemIds?.has(item.id)}
                             />
                           </div>
                           <button
@@ -651,13 +837,29 @@ export default function ListDetail({
                                       type="checkbox"
                                       className="list-detail__item-checkbox"
                                       checked={child.checked}
-                                      onChange={() => onToggleItem(child.id)}
+                                      onChange={() => handleToggleWithVictory(child.id)}
                                     />
                                     <span className="list-detail__item-checkmark" />
                                   </label>
                                   <span className={`list-detail__item-text ${child.checked ? 'list-detail__item-text--checked' : ''}`}>
                                     {child.text}
+                                    {promotedItemIds?.has(child.id) && (
+                                      <span className="list-detail__compass-badge" title="Sent to Compass">
+                                        <Compass size={12} />
+                                      </span>
+                                    )}
                                   </span>
+                                  {showCompassActions && !child.checked && (
+                                    <button
+                                      type="button"
+                                      className="list-detail__item-compass"
+                                      onClick={() => handleCompassAction(child)}
+                                      aria-label="Send to Compass"
+                                      title="Send to Compass"
+                                    >
+                                      <Compass size={14} />
+                                    </button>
+                                  )}
                                   <button
                                     type="button"
                                     className="list-detail__item-delete"
@@ -710,12 +912,17 @@ export default function ListDetail({
                           type="checkbox"
                           className="list-detail__item-checkbox"
                           checked={item.checked}
-                          onChange={() => onToggleItem(item.id)}
+                          onChange={() => handleToggleWithVictory(item.id)}
                         />
                         <span className="list-detail__item-checkmark" />
                       </label>
                       <span className="list-detail__item-text list-detail__item-text--checked">
                         {item.text}
+                        {promotedItemIds?.has(item.id) && (
+                          <span className="list-detail__compass-badge" title="Sent to Compass">
+                            <Compass size={12} />
+                          </span>
+                        )}
                       </span>
                       <button
                         type="button"
