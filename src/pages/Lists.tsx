@@ -192,7 +192,7 @@ export default function Lists() {
   }, [createTask]);
 
   // Victory creation for individual list items
-  const handleCreateVictory = useCallback(async (itemText: string, listTitle: string, _itemId: string) => {
+  const handleCreateVictory = useCallback(async (itemText: string, _listTitle: string, _itemId: string) => {
     await createVictory({
       description: itemText,
       celebration_text: null,
@@ -202,7 +202,7 @@ export default function Lists() {
   }, [createVictory, selectedList]);
 
   // Send individual item to Compass
-  const handleSendToCompass = useCallback(async (item: ListItem, listTitle: string) => {
+  const handleSendToCompass = useCallback(async (item: ListItem, _listTitle: string) => {
     if (!user) return;
     const today = new Date().toISOString().split('T')[0];
     const task = await createTask({
