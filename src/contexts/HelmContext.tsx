@@ -76,7 +76,7 @@ function windowConversationHistory(
   return [...opening, summaryMessage, ...recent];
 }
 
-function getGuidedModeOpeningMessage(mode: GuidedMode): string | null {
+function getGuidedModeOpeningMessage(mode: GuidedMode, subtype?: GuidedSubtype): string | null {
   switch (mode) {
     case 'unload_the_hold':
       return "Let's get it all out. Tell me everything that's on your mind — tasks, worries, ideas, things you need to remember. Don't worry about organizing it. I'll sort through it when you're ready.";
@@ -94,6 +94,23 @@ function getGuidedModeOpeningMessage(mode: GuidedMode): string | null {
       return null; // Opening message varies — set by caller based on specific item vs library
     case 'crew_action':
       return null; // AI greets based on mode (say/navigate) and person context
+    case 'first_mate_action':
+      switch (subtype) {
+        case 'quality_time':
+          return "Let's plan some meaningful time together. What are you thinking — a date night, a weekend adventure, or just carving out some space to reconnect? Tell me what sounds good and I'll help make it happen.";
+        case 'gifts':
+          return "Let's brainstorm a gift that really fits who they are. Is there an occasion coming up, or are you thinking about a just-because surprise?";
+        case 'observe_serve':
+          return "Let's think about where they could use some support right now. What's been on their plate lately — anything they've mentioned being frustrated about, a request that keeps getting put off, or something you've noticed they need?";
+        case 'words_of_affirmation':
+          return "Let's focus on what makes them incredible. Would you like to start with something specific that's been on your heart, or would you like to try the 21 Compliments Practice — where we work together to craft 21 thoughtful, specific compliments you can share throughout the week?";
+        case 'gratitude':
+          return "Let's go deeper on gratitude. What's something they've done recently — big or small — that you're thankful for? Even the everyday things count.";
+        case 'cyrano':
+          return "What would you like to communicate? Give me the raw version — doesn't have to be perfect. Whether it's something loving or something hard to say, I'll help you find the right words.";
+        default:
+          return "I'm here to help with your relationship. What's on your mind?";
+      }
     default:
       return null;
   }
@@ -374,7 +391,7 @@ export function HelmProvider({ children }: { children: ReactNode }) {
     if (!conversation) return null;
 
     // Send the AI's opening message for guided modes
-    const openingMessage = getGuidedModeOpeningMessage(mode);
+    const openingMessage = getGuidedModeOpeningMessage(mode, subtype);
     if (openingMessage) {
       await helmData.addMessage(conversation.id, 'assistant', openingMessage);
     }
