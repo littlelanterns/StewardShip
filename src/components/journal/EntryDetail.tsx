@@ -11,19 +11,21 @@ interface EntryDetailProps {
   entry: JournalEntry;
   onUpdate: (id: string, updates: { text?: string; entry_type?: JournalEntryType; life_area_tags?: string[] }) => Promise<JournalEntry | null>;
   onArchive: (id: string) => void;
+  onDelete: (id: string) => void;
   onRouted: (entryId: string, target: string, referenceId: string) => void;
   onBack: () => void;
 }
 
 const QUICK_TYPES: JournalEntryType[] = ['journal_entry', 'gratitude', 'reflection', 'quick_note', 'commonplace', 'kid_quips', 'custom'];
 
-export default function EntryDetail({ entry, onUpdate, onArchive, onRouted, onBack }: EntryDetailProps) {
+export default function EntryDetail({ entry, onUpdate, onArchive, onDelete, onRouted, onBack }: EntryDetailProps) {
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(entry.text);
   const [editType, setEditType] = useState<JournalEntryType>(entry.entry_type);
   const [tags, setTags] = useState<string[]>(entry.life_area_tags);
   const [showRouting, setShowRouting] = useState(false);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const handleSave = useCallback(async () => {
@@ -56,6 +58,11 @@ export default function EntryDetail({ entry, onUpdate, onArchive, onRouted, onBa
     onArchive(entry.id);
     onBack();
   }, [entry.id, onArchive, onBack]);
+
+  const handleDelete = useCallback(() => {
+    onDelete(entry.id);
+    onBack();
+  }, [entry.id, onDelete, onBack]);
 
   const date = new Date(entry.created_at);
   const formattedDate = date.toLocaleDateString(undefined, {
@@ -181,7 +188,16 @@ export default function EntryDetail({ entry, onUpdate, onArchive, onRouted, onBa
                 <Button variant="text" onClick={handleArchive}>Archive</Button>
               </div>
             ) : (
-              <Button variant="text" onClick={() => setShowArchiveConfirm(true)}>Archive</Button>
+              <Button variant="text" onClick={() => { setShowArchiveConfirm(true); setShowDeleteConfirm(false); }}>Archive</Button>
+            )}
+            {showDeleteConfirm ? (
+              <div className="entry-detail__archive-confirm">
+                <span className="entry-detail__archive-text entry-detail__delete-text">Delete permanently?</span>
+                <Button variant="text" onClick={() => setShowDeleteConfirm(false)}>Cancel</Button>
+                <Button variant="text" onClick={handleDelete}>Delete</Button>
+              </div>
+            ) : (
+              <Button variant="text" onClick={() => { setShowDeleteConfirm(true); setShowArchiveConfirm(false); }}>Delete</Button>
             )}
           </>
         )}

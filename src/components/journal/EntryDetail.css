@@ -188,3 +188,7 @@
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
 }
+
+.entry-detail__delete-text {
+  color: #c0392b;
+}

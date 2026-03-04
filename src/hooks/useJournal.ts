@@ -232,6 +232,7 @@ export function useJournal() {
         .eq('user_id', user.id);
 
       if (err) throw err;
+      setEntries((prev) => prev.filter((e) => e.id !== entryId));
       setArchivedEntries((prev) => prev.filter((e) => e.id !== entryId));
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Failed to delete entry';

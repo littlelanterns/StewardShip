@@ -117,6 +117,7 @@ export default function Journal() {
           entry={selectedEntry}
           onUpdate={updateEntry}
           onArchive={archiveEntry}
+          onDelete={permanentlyDelete}
           onRouted={handleRouted}
           onBack={handleBackToList}
         />
