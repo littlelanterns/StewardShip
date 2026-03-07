@@ -2,10 +2,13 @@ import { useState, useCallback, useEffect } from 'react';
 import { ChevronLeft, FileText, FileCode, Mic, Image, StickyNote, RefreshCw, BookOpen, Wand2, MessageSquare, Target, HelpCircle, CheckSquare } from 'lucide-react';
 import type { ManifestItem, ManifestSummary, ManifestDeclaration, AIFrameworkPrinciple, BookGenre } from '../../lib/types';
 import { MANIFEST_FILE_TYPE_LABELS, MANIFEST_STATUS_LABELS } from '../../lib/types';
-import { Button } from '../shared';
+import type { SectionInfo } from '../../hooks/useManifestExtraction';
+import { Button, LoadingSpinner } from '../shared';
 import { GenrePicker } from './GenrePicker';
 import { ExtractionTabs } from './ExtractionTabs';
 import './ManifestItemDetail.css';
+
+type ExtractionPhase = 'idle' | 'discovering' | 'selecting' | 'extracting';
 
 interface ManifestItemDetailProps {
   item: ManifestItem;
@@ -23,15 +26,23 @@ interface ManifestItemDetailProps {
   extractingTab: string | null;
   hasFramework: boolean;
   onExtractAll: (genres: BookGenre[]) => Promise<boolean>;
+  onExtractAllSections: (genres: BookGenre[], sectionIndices: number[]) => Promise<boolean>;
   onUpdateGenres: (itemId: string, genres: BookGenre[]) => Promise<boolean>;
   onFetchSummaries: (itemId: string) => void;
   onFetchDeclarations: (itemId: string) => void;
+  // Section discovery
+  onDiscoverSections: (itemId: string) => Promise<SectionInfo[] | null>;
+  sections: SectionInfo[];
+  selectedSectionIndices: number[];
+  onSetSelectedSectionIndices: (indices: number[]) => void;
+  discoveringSections: boolean;
+  extractionProgress: { current: number; total: number; currentType: 'summary' | 'framework' | 'mast_content' } | null;
   // Summary actions
   onToggleSummaryHeart: (id: string) => void;
   onDeleteSummary: (id: string) => void;
   onUpdateSummaryText: (id: string, text: string) => void;
   onSummaryGoDeeper: (sectionTitle: string | undefined, existingItems: string[], sectionIndex?: number) => void;
-  onSummaryReRun: () => void;
+  onSummaryReRun: (sectionTitle?: string) => void;
   // Framework actions
   onTogglePrincipleHeart: (id: string) => void;
   onDeletePrinciple: (id: string) => void;
@@ -42,7 +53,7 @@ interface ManifestItemDetailProps {
   onUpdateDeclaration: (id: string, updates: Partial<Pick<ManifestDeclaration, 'declaration_text' | 'value_name' | 'declaration_style'>>) => void;
   onSendDeclarationToMast: (id: string) => void;
   onDeclarationGoDeeper: (sectionTitle: string | undefined, existingItems: string[], sectionIndex?: number) => void;
-  onDeclarationReRun: () => void;
+  onDeclarationReRun: (sectionTitle?: string) => void;
 }
 
 const FILE_TYPE_ICONS = {
@@ -78,9 +89,16 @@ export function ManifestItemDetail({
   extractingTab,
   hasFramework,
   onExtractAll,
+  onExtractAllSections,
   onUpdateGenres,
   onFetchSummaries,
   onFetchDeclarations,
+  onDiscoverSections,
+  sections,
+  selectedSectionIndices,
+  onSetSelectedSectionIndices,
+  discoveringSections,
+  extractionProgress,
   onToggleSummaryHeart,
   onDeleteSummary,
   onUpdateSummaryText,
@@ -109,6 +127,9 @@ export function ManifestItemDetail({
   // Genre state — local copy synced to item
   const [selectedGenres, setSelectedGenres] = useState<BookGenre[]>(item.genres || []);
   const [showGenrePicker, setShowGenrePicker] = useState(false);
+
+  // Extraction phase state
+  const [extractionPhase, setExtractionPhase] = useState<ExtractionPhase>('idle');
 
   const Icon = FILE_TYPE_ICONS[item.file_type] || FileText;
   const isProcessed = item.processing_status === 'completed';
@@ -185,8 +206,40 @@ export function ManifestItemDetail({
       setShowGenrePicker(true);
       return;
     }
-    await onExtractAll(selectedGenres);
-  }, [selectedGenres, onExtractAll]);
+    // Phase 1: Discover sections
+    setExtractionPhase('discovering');
+    const discovered = await onDiscoverSections(item.id);
+    if (discovered && discovered.length > 0) {
+      setExtractionPhase('selecting');
+    } else {
+      // Fallback: whole-document extraction
+      setExtractionPhase('extracting');
+      await onExtractAll(selectedGenres);
+      setExtractionPhase('idle');
+    }
+  }, [selectedGenres, item.id, onDiscoverSections, onExtractAll]);
+
+  const handleExtractSelected = useCallback(async () => {
+    setExtractionPhase('extracting');
+    await onExtractAllSections(selectedGenres, selectedSectionIndices);
+    setExtractionPhase('idle');
+  }, [selectedGenres, selectedSectionIndices, onExtractAllSections]);
+
+  const handleToggleSection = useCallback((index: number) => {
+    onSetSelectedSectionIndices(
+      selectedSectionIndices.includes(index)
+        ? selectedSectionIndices.filter((i) => i !== index)
+        : [...selectedSectionIndices, index].sort((a, b) => a - b),
+    );
+  }, [selectedSectionIndices, onSetSelectedSectionIndices]);
+
+  const handleToggleAllSections = useCallback(() => {
+    if (selectedSectionIndices.length === sections.length) {
+      onSetSelectedSectionIndices([]);
+    } else {
+      onSetSelectedSectionIndices(sections.map((_, i) => i));
+    }
+  }, [selectedSectionIndices.length, sections, onSetSelectedSectionIndices]);
 
   return (
     <div className="manifest-detail">
@@ -368,7 +421,7 @@ export function ManifestItemDetail({
         </section>
       )}
 
-      {/* Extract Section — genre picker + extract button */}
+      {/* Extract Section — genre picker + section discovery + extract */}
       {isProcessed && (
         <section className="manifest-detail__section">
           <div className="manifest-detail__section-header">
@@ -376,54 +429,103 @@ export function ManifestItemDetail({
           </div>
 
           {/* Genre chips — always show if genres are set, or on demand */}
-          {(selectedGenres.length > 0 || showGenrePicker) && (
+          {(selectedGenres.length > 0 || showGenrePicker) && extractionPhase !== 'selecting' && (
             <GenrePicker
               selected={selectedGenres}
               onChange={handleGenreChange}
-              disabled={extracting}
+              disabled={extracting || extractionPhase === 'discovering'}
             />
           )}
 
-          {/* Extract button */}
-          {!hasExtraction && !extracting && (
-            <Button
-              onClick={handleExtract}
-              disabled={extracting}
-            >
+          {/* Extract button — idle phase */}
+          {extractionPhase === 'idle' && !hasExtraction && !extracting && (
+            <Button onClick={handleExtract} disabled={extracting}>
               <Wand2 size={14} />
               {selectedGenres.length === 0 ? 'Select Genres & Extract' : 'Extract'}
             </Button>
           )}
 
-          {extracting && !hasExtraction && (
-            <div className="manifest-detail__extracting-status">
-              <RefreshCw size={14} className="manifest-detail__spin" />
-              Extracting content...
-            </div>
-          )}
-
           {/* Re-extract button for items that already have extractions */}
-          {hasExtraction && !extracting && selectedGenres.length > 0 && (
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={handleExtract}
-              disabled={extracting}
-            >
+          {extractionPhase === 'idle' && hasExtraction && !extracting && selectedGenres.length > 0 && (
+            <Button size="sm" variant="secondary" onClick={handleExtract} disabled={extracting}>
               <Wand2 size={14} />
               Re-extract All
             </Button>
           )}
 
           {/* Show genre picker toggle if genres not yet set */}
-          {selectedGenres.length === 0 && !showGenrePicker && hasExtraction && (
-            <button
-              type="button"
-              className="manifest-detail__enrich-btn"
-              onClick={() => setShowGenrePicker(true)}
-            >
+          {extractionPhase === 'idle' && selectedGenres.length === 0 && !showGenrePicker && hasExtraction && (
+            <button type="button" className="manifest-detail__enrich-btn" onClick={() => setShowGenrePicker(true)}>
               Set genres for better extraction
             </button>
+          )}
+
+          {/* Discovering sections phase */}
+          {(extractionPhase === 'discovering' || discoveringSections) && (
+            <div className="manifest-detail__discovering">
+              <LoadingSpinner />
+              <p>Analyzing document structure...</p>
+            </div>
+          )}
+
+          {/* Section checklist phase */}
+          {extractionPhase === 'selecting' && sections.length > 0 && (
+            <div className="manifest-detail__section-checklist">
+              <div className="manifest-detail__section-checklist-header">
+                <span className="manifest-detail__section-count">
+                  {selectedSectionIndices.length} of {sections.length} sections selected
+                </span>
+                <button
+                  type="button"
+                  className="manifest-detail__section-toggle"
+                  onClick={handleToggleAllSections}
+                >
+                  {selectedSectionIndices.length === sections.length ? 'Deselect All' : 'Select All'}
+                </button>
+              </div>
+
+              <div className="manifest-detail__section-list">
+                {sections.map((section, i) => {
+                  const isNonContent = section.title.startsWith('[NON-CONTENT]');
+                  const displayTitle = section.title.replace(/^\[NON-CONTENT\]\s*/i, '');
+                  const wordEstimate = Math.round((section.end_char - section.start_char) / 5);
+                  return (
+                    <label
+                      key={i}
+                      className={`manifest-detail__section-item${isNonContent ? ' manifest-detail__section-item--non-content' : ''}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedSectionIndices.includes(i)}
+                        onChange={() => handleToggleSection(i)}
+                      />
+                      <div className="manifest-detail__section-item-info">
+                        <span className="manifest-detail__section-item-title">{displayTitle}</span>
+                        <span className="manifest-detail__section-item-desc">{section.description}</span>
+                        <span className="manifest-detail__section-item-size">~{wordEstimate.toLocaleString()} words</span>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+
+              <div className="manifest-detail__section-actions">
+                <Button variant="secondary" onClick={() => setExtractionPhase('idle')}>Cancel</Button>
+                <Button onClick={handleExtractSelected} disabled={selectedSectionIndices.length === 0}>
+                  Extract from {selectedSectionIndices.length} Section{selectedSectionIndices.length !== 1 ? 's' : ''}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Extracting phase with progress */}
+          {(extractionPhase === 'extracting' || extracting) && (
+            <div className="manifest-detail__extracting-status">
+              <RefreshCw size={14} className="manifest-detail__spin" />
+              {extractionProgress
+                ? `Extracting section ${extractionProgress.current + 1} of ${extractionProgress.total}...`
+                : 'Extracting content...'}
+            </div>
           )}
         </section>
       )}
@@ -453,6 +555,7 @@ export function ManifestItemDetail({
             onSendDeclarationToMast={onSendDeclarationToMast}
             onDeclarationGoDeeper={onDeclarationGoDeeper}
             onDeclarationReRun={onDeclarationReRun}
+            extractionProgress={extractionProgress}
           />
         </section>
       )}

@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuthContext } from '../contexts/AuthContext';
+import type { SectionInfo } from './useFrameworks';
 import type {
   ManifestSummary,
   ManifestDeclaration,
@@ -9,6 +10,8 @@ import type {
   ManifestExtractionStatus,
   DeclarationStyle,
 } from '../lib/types';
+
+export type { SectionInfo } from './useFrameworks';
 
 // --- Extraction result shapes from the Edge Function ---
 
@@ -39,6 +42,16 @@ export function useManifestExtraction() {
   const [extracting, setExtracting] = useState(false);
   const [extractingTab, setExtractingTab] = useState<'summary' | 'framework' | 'mast_content' | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Section discovery state
+  const [sections, setSections] = useState<SectionInfo[]>([]);
+  const [selectedSectionIndices, setSelectedSectionIndices] = useState<number[]>([]);
+  const [discoveringSections, setDiscoveringSections] = useState(false);
+  const [extractionProgress, setExtractionProgress] = useState<{
+    current: number;
+    total: number;
+    currentType: 'summary' | 'framework' | 'mast_content';
+  } | null>(null);
 
   // --- Fetch existing extracted items for an item ---
 
@@ -146,6 +159,48 @@ export function useManifestExtraction() {
     }
     return data?.result ?? data?.items ?? data;
   }, []);
+
+  // --- Section discovery ---
+
+  const discoverSections = useCallback(async (
+    manifestItemId: string,
+  ): Promise<SectionInfo[] | null> => {
+    setDiscoveringSections(true);
+    setError(null);
+    try {
+      const { data, error: invokeErr } = await supabase.functions.invoke('manifest-extract', {
+        body: { manifest_item_id: manifestItemId, extraction_type: 'discover_sections' },
+      });
+      if (invokeErr || data?.error) {
+        setError(invokeErr?.message || data?.error || 'Section discovery failed');
+        return null;
+      }
+      const discovered: SectionInfo[] = data.sections || [];
+      setSections(discovered);
+      // Auto-select content sections, skip [NON-CONTENT]
+      const defaultSelected = discovered
+        .map((s, i) => ({ index: i, title: s.title }))
+        .filter(({ title }) => !title.startsWith('[NON-CONTENT]'))
+        .map(({ index }) => index);
+      setSelectedSectionIndices(defaultSelected);
+      return discovered;
+    } catch (err) {
+      setError((err as Error).message);
+      return null;
+    } finally {
+      setDiscoveringSections(false);
+    }
+  }, []);
+
+  const getSectionOffsets = useCallback((sectionTitle: string): { start: number; end: number; index: number } | null => {
+    const match = sections.find((s) => {
+      const clean = s.title.replace(/^\[NON-CONTENT\]\s*/i, '');
+      return clean === sectionTitle;
+    });
+    if (!match) return null;
+    const index = sections.indexOf(match);
+    return { start: match.start_char, end: match.end_char, index };
+  }, [sections]);
 
   // --- Save summary extraction results to DB ---
 
@@ -345,6 +400,76 @@ export function useManifestExtraction() {
     }
   }, [user, extractSummary, extractDeclarations, callExtract, updateExtractionStatus]);
 
+  // --- Extract All Sections: sequential per-section extraction ---
+
+  const extractAllSections = useCallback(async (
+    manifestItemId: string,
+    genres: BookGenre[],
+    sectionIndices: number[],
+    onFrameworkResult?: (result: FrameworkExtractionResult, sectionTitle: string, sectionIndex: number) => Promise<void>,
+  ): Promise<boolean> => {
+    if (!user || sections.length === 0 || sectionIndices.length === 0) return false;
+    setExtracting(true);
+    setError(null);
+
+    try {
+      await updateExtractionStatus(manifestItemId, 'extracting');
+      let allOk = true;
+
+      for (let i = 0; i < sectionIndices.length; i++) {
+        const secIdx = sectionIndices[i];
+        const section = sections[secIdx];
+        const cleanTitle = section.title.replace(/^\[NON-CONTENT\]\s*/i, '');
+
+        // 1. Summary for this section
+        setExtractionProgress({ current: i, total: sectionIndices.length, currentType: 'summary' });
+        const summaryOk = await extractSummary(manifestItemId, genres, {
+          sectionTitle: cleanTitle,
+          sectionStart: section.start_char,
+          sectionEnd: section.end_char,
+          sectionIndex: secIdx,
+        });
+        if (!summaryOk) allOk = false;
+
+        // 2. Framework for this section
+        setExtractionProgress({ current: i, total: sectionIndices.length, currentType: 'framework' });
+        try {
+          const fwResult = await callExtract(manifestItemId, 'framework_section', genres, {
+            sectionTitle: cleanTitle,
+            sectionStart: section.start_char,
+            sectionEnd: section.end_char,
+          });
+          if (fwResult && onFrameworkResult) {
+            await onFrameworkResult(fwResult as FrameworkExtractionResult, cleanTitle, secIdx);
+          }
+        } catch (err) {
+          console.error(`Framework extraction failed for section "${cleanTitle}":`, err);
+        }
+
+        // 3. Declarations for this section
+        setExtractionProgress({ current: i, total: sectionIndices.length, currentType: 'mast_content' });
+        const declOk = await extractDeclarations(manifestItemId, genres, {
+          sectionTitle: cleanTitle,
+          sectionStart: section.start_char,
+          sectionEnd: section.end_char,
+          sectionIndex: secIdx,
+        });
+        if (!declOk) allOk = false;
+      }
+
+      await updateExtractionStatus(manifestItemId, allOk ? 'completed' : 'failed');
+      setExtractionProgress(null);
+      return allOk;
+    } catch (err) {
+      setError((err as Error).message);
+      await updateExtractionStatus(manifestItemId, 'failed');
+      setExtractionProgress(null);
+      return false;
+    } finally {
+      setExtracting(false);
+    }
+  }, [user, sections, extractSummary, extractDeclarations, callExtract, updateExtractionStatus]);
+
   // --- Go Deeper: extract additional content for a specific tab/section ---
 
   const goDeeper = useCallback(async (
@@ -402,29 +527,35 @@ export function useManifestExtraction() {
     manifestItemId: string,
     tabType: 'summary' | 'mast_content',
     genres: BookGenre[],
+    sectionTitle?: string,
+    sectionStart?: number,
+    sectionEnd?: number,
+    sectionIndex?: number,
   ): Promise<boolean> => {
     if (!user) return false;
     setError(null);
 
     try {
-      if (tabType === 'summary') {
-        // Soft-delete existing summaries
-        await supabase
-          .from('manifest_summaries')
-          .update({ is_deleted: true })
-          .eq('manifest_item_id', manifestItemId)
-          .eq('user_id', user.id);
-        return extractSummary(manifestItemId, genres);
-      } else if (tabType === 'mast_content') {
-        // Soft-delete existing declarations
-        await supabase
-          .from('manifest_declarations')
-          .update({ is_deleted: true })
-          .eq('manifest_item_id', manifestItemId)
-          .eq('user_id', user.id);
-        return extractDeclarations(manifestItemId, genres);
+      const table = tabType === 'summary' ? 'manifest_summaries' : 'manifest_declarations';
+
+      // Soft-delete: scoped to section if provided, otherwise all
+      let query = supabase
+        .from(table)
+        .update({ is_deleted: true })
+        .eq('manifest_item_id', manifestItemId)
+        .eq('user_id', user.id);
+      if (sectionTitle) {
+        query = query.eq('section_title', sectionTitle);
       }
-      return false;
+      await query;
+
+      const options = sectionTitle ? { sectionTitle, sectionStart, sectionEnd, sectionIndex } : undefined;
+
+      if (tabType === 'summary') {
+        return extractSummary(manifestItemId, genres, options);
+      } else {
+        return extractDeclarations(manifestItemId, genres, options);
+      }
     } catch (err) {
       setError((err as Error).message);
       return false;
@@ -644,16 +775,25 @@ export function useManifestExtraction() {
     extracting,
     extractingTab,
     error,
+    // Section discovery
+    sections,
+    selectedSectionIndices,
+    setSelectedSectionIndices,
+    discoveringSections,
+    extractionProgress,
     // Fetch
     fetchSummaries,
     fetchDeclarations,
     fetchHeartedItems,
     // Extraction
     extractAll,
+    extractAllSections,
+    discoverSections,
     extractSummary,
     extractDeclarations,
     goDeeper,
     reRunTab,
+    getSectionOffsets,
     // Genres & Status
     updateGenres,
     updateExtractionStatus,

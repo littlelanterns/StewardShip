@@ -15,6 +15,12 @@ type FilterMode = 'all' | 'hearted';
 
 // --- Summary Tab ---
 
+interface ExtractionProgressInfo {
+  current: number;
+  total: number;
+  currentType: 'summary' | 'framework' | 'mast_content';
+}
+
 interface SummaryTabProps {
   summaries: ManifestSummary[];
   extractingTab: string | null;
@@ -24,8 +30,9 @@ interface SummaryTabProps {
   onDelete: (id: string) => void;
   onUpdateText: (id: string, text: string) => void;
   onGoDeeper: (sectionTitle: string | undefined, existingItems: string[], sectionIndex?: number) => void;
-  onReRun: () => void;
+  onReRun: (sectionTitle?: string) => void;
   filterMode: FilterMode;
+  extractionProgress?: ExtractionProgressInfo | null;
 }
 
 function SummaryTab({
@@ -37,6 +44,7 @@ function SummaryTab({
   onGoDeeper,
   onReRun,
   filterMode,
+  extractionProgress,
 }: SummaryTabProps) {
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -105,7 +113,11 @@ function SummaryTab({
       {extractingTab === 'summary' && (
         <div className="extraction-tab__progress">
           <div className="extraction-tab__progress-bar" />
-          <span>Extracting...</span>
+          <span>
+            {extractionProgress
+              ? `Extracting section ${extractionProgress.current + 1} of ${extractionProgress.total} (Summary)...`
+              : 'Extracting...'}
+          </span>
         </div>
       )}
 
@@ -356,8 +368,9 @@ interface MastContentTabProps {
   onUpdate: (id: string, updates: Partial<Pick<ManifestDeclaration, 'declaration_text' | 'value_name' | 'declaration_style'>>) => void;
   onSendToMast: (id: string) => void;
   onGoDeeper: (sectionTitle: string | undefined, existingItems: string[], sectionIndex?: number) => void;
-  onReRun: () => void;
+  onReRun: (sectionTitle?: string) => void;
   filterMode: FilterMode;
+  extractionProgress?: ExtractionProgressInfo | null;
 }
 
 function MastContentTab({
@@ -370,6 +383,7 @@ function MastContentTab({
   onGoDeeper,
   onReRun,
   filterMode,
+  extractionProgress,
 }: MastContentTabProps) {
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -449,7 +463,11 @@ function MastContentTab({
       {extractingTab === 'mast_content' && (
         <div className="extraction-tab__progress">
           <div className="extraction-tab__progress-bar" />
-          <span>Extracting...</span>
+          <span>
+            {extractionProgress
+              ? `Extracting section ${extractionProgress.current + 1} of ${extractionProgress.total} (Mast Content)...`
+              : 'Extracting...'}
+          </span>
         </div>
       )}
 
@@ -580,12 +598,13 @@ interface ExtractionTabsProps {
   principles: AIFrameworkPrinciple[];
   extractingTab: string | null;
   hasFramework: boolean;
+  extractionProgress?: ExtractionProgressInfo | null;
   // Summary actions
   onToggleSummaryHeart: (id: string) => void;
   onDeleteSummary: (id: string) => void;
   onUpdateSummaryText: (id: string, text: string) => void;
   onSummaryGoDeeper: (sectionTitle: string | undefined, existingItems: string[], sectionIndex?: number) => void;
-  onSummaryReRun: () => void;
+  onSummaryReRun: (sectionTitle?: string) => void;
   // Framework actions
   onTogglePrincipleHeart: (id: string) => void;
   onDeletePrinciple: (id: string) => void;
@@ -596,7 +615,7 @@ interface ExtractionTabsProps {
   onUpdateDeclaration: (id: string, updates: Partial<Pick<ManifestDeclaration, 'declaration_text' | 'value_name' | 'declaration_style'>>) => void;
   onSendDeclarationToMast: (id: string) => void;
   onDeclarationGoDeeper: (sectionTitle: string | undefined, existingItems: string[], sectionIndex?: number) => void;
-  onDeclarationReRun: () => void;
+  onDeclarationReRun: (sectionTitle?: string) => void;
 }
 
 export function ExtractionTabs({
@@ -607,6 +626,7 @@ export function ExtractionTabs({
   principles,
   extractingTab,
   hasFramework,
+  extractionProgress,
   onToggleSummaryHeart,
   onDeleteSummary,
   onUpdateSummaryText,
@@ -682,6 +702,7 @@ export function ExtractionTabs({
             onGoDeeper={onSummaryGoDeeper}
             onReRun={onSummaryReRun}
             filterMode={filterMode}
+            extractionProgress={extractionProgress}
           />
         )}
         {activeTab === 'frameworks' && (
@@ -708,6 +729,7 @@ export function ExtractionTabs({
             onGoDeeper={onDeclarationGoDeeper}
             onReRun={onDeclarationReRun}
             filterMode={filterMode}
+            extractionProgress={extractionProgress}
           />
         )}
       </div>

@@ -165,24 +165,68 @@ export default function Manifest() {
     });
   }, [selectedItem, extraction, saveFramework, fetchFrameworks]);
 
-  const handleSummaryGoDeeper = useCallback((sectionTitle: string | undefined, existingItems: string[], sectionIndex?: number) => {
-    if (!selectedItem) return;
-    extraction.goDeeper(selectedItem.id, 'summary', selectedItem.genres || [], sectionTitle, existingItems, { sectionIndex });
+  const handleDiscoverSections = useCallback(async () => {
+    if (!selectedItem) return [];
+    return extraction.discoverSections(selectedItem.id);
   }, [selectedItem, extraction]);
 
-  const handleSummaryReRun = useCallback(() => {
+  const handleExtractAllSections = useCallback(async (genres: BookGenre[], sectionIndices: number[]): Promise<boolean> => {
+    if (!selectedItem) return false;
+    // Accumulate framework results across all sections, save once at end
+    const allPrinciples: { text: string; sort_order: number }[] = [];
+    let frameworkName = '';
+
+    const success = await extraction.extractAllSections(selectedItem.id, genres, sectionIndices, async (result, _sectionTitle, _sectionIndex) => {
+      if (result && result.framework_name && result.principles?.length > 0) {
+        if (!frameworkName) frameworkName = result.framework_name;
+        allPrinciples.push(
+          ...result.principles.map((p: { text: string; sort_order: number }, idx: number) => ({
+            text: p.text,
+            sort_order: allPrinciples.length + idx,
+          })),
+        );
+      }
+    });
+
+    // Save accumulated framework principles once
+    if (allPrinciples.length > 0 && frameworkName) {
+      await saveFramework(selectedItem.id, frameworkName, allPrinciples, true);
+      fetchFrameworks();
+    }
+
+    return success;
+  }, [selectedItem, extraction, saveFramework, fetchFrameworks]);
+
+  const handleSummaryGoDeeper = useCallback((sectionTitle: string | undefined, existingItems: string[], sectionIndex?: number) => {
     if (!selectedItem) return;
-    extraction.reRunTab(selectedItem.id, 'summary', selectedItem.genres || []);
+    const offsets = sectionTitle ? extraction.getSectionOffsets(sectionTitle) : null;
+    extraction.goDeeper(selectedItem.id, 'summary', selectedItem.genres || [], sectionTitle, existingItems, {
+      sectionIndex: sectionIndex ?? offsets?.index,
+      sectionStart: offsets?.start,
+      sectionEnd: offsets?.end,
+    });
+  }, [selectedItem, extraction]);
+
+  const handleSummaryReRun = useCallback((sectionTitle?: string) => {
+    if (!selectedItem) return;
+    const offsets = sectionTitle ? extraction.getSectionOffsets(sectionTitle) : null;
+    extraction.reRunTab(selectedItem.id, 'summary', selectedItem.genres || [], sectionTitle, offsets?.start, offsets?.end, offsets?.index);
   }, [selectedItem, extraction]);
 
   const handleDeclarationGoDeeper = useCallback((sectionTitle: string | undefined, existingItems: string[], sectionIndex?: number) => {
     if (!selectedItem) return;
-    extraction.goDeeper(selectedItem.id, 'mast_content', selectedItem.genres || [], sectionTitle, existingItems, { sectionIndex });
+    const offsets = sectionTitle ? extraction.getSectionOffsets(sectionTitle) : null;
+    extraction.goDeeper(selectedItem.id, 'mast_content', selectedItem.genres || [], sectionTitle, existingItems, {
+      sectionIndex: sectionIndex ?? offsets?.index,
+      sectionStart: offsets?.start,
+      sectionEnd: offsets?.end,
+    });
   }, [selectedItem, extraction]);
 
-  const handleDeclarationReRun = useCallback(() => {
+  const handleDeclarationReRun = useCallback((sectionTitle?: string) => {
     if (!selectedItem) return;
-    extraction.reRunTab(selectedItem.id, 'mast_content', selectedItem.genres || []);
+    const offsets = sectionTitle ? extraction.getSectionOffsets(sectionTitle) : null;
+    extraction.reRunTab(selectedItem.id, 'mast_content', selectedItem.genres || [], sectionTitle, offsets?.start, offsets?.end, offsets?.index);
   }, [selectedItem, extraction]);
 
   const handleViewFrameworkFromDetail = useCallback(() => {
@@ -348,6 +392,14 @@ export default function Manifest() {
           onSendDeclarationToMast={extraction.sendDeclarationToMast}
           onDeclarationGoDeeper={handleDeclarationGoDeeper}
           onDeclarationReRun={handleDeclarationReRun}
+          // Section discovery props
+          onDiscoverSections={handleDiscoverSections}
+          onExtractAllSections={handleExtractAllSections}
+          sections={extraction.sections}
+          selectedSectionIndices={extraction.selectedSectionIndices}
+          onSetSelectedSectionIndices={extraction.setSelectedSectionIndices}
+          discoveringSections={extraction.discoveringSections}
+          extractionProgress={extraction.extractionProgress}
         />
       </div>
     );
