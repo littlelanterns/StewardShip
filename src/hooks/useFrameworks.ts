@@ -131,6 +131,35 @@ export function useFrameworks() {
     }
   }, [user]);
 
+  // Generate topic tags for a framework via AI
+  const tagFramework = useCallback(async (
+    frameworkId: string,
+    frameworkName: string,
+    principles: string[],
+  ): Promise<void> => {
+    if (!user) return;
+    try {
+      const { data, error: invokeErr } = await supabase.functions.invoke('manifest-tag-framework', {
+        body: {
+          framework_id: frameworkId,
+          framework_name: frameworkName,
+          principles: principles.slice(0, 20),
+          user_id: user.id,
+        },
+      });
+      if (invokeErr) throw invokeErr;
+      if (data?.tags) {
+        setFrameworks((prev) =>
+          prev.map((fw) =>
+            fw.id === frameworkId ? { ...fw, tags: data.tags } : fw
+          )
+        );
+      }
+    } catch (err) {
+      console.error('tagFramework failed (non-fatal):', err);
+    }
+  }, [user]);
+
   // Save framework + principles to database
   const saveFramework = useCallback(async (
     manifestItemId: string,
@@ -364,35 +393,6 @@ export function useFrameworks() {
   const getFrameworkForItem = useCallback((manifestItemId: string): AIFramework | undefined => {
     return frameworks.find((f) => f.manifest_item_id === manifestItemId);
   }, [frameworks]);
-
-  // Generate topic tags for a framework via AI
-  const tagFramework = useCallback(async (
-    frameworkId: string,
-    frameworkName: string,
-    principles: string[],
-  ): Promise<void> => {
-    if (!user) return;
-    try {
-      const { data, error: invokeErr } = await supabase.functions.invoke('manifest-tag-framework', {
-        body: {
-          framework_id: frameworkId,
-          framework_name: frameworkName,
-          principles: principles.slice(0, 20),
-          user_id: user.id,
-        },
-      });
-      if (invokeErr) throw invokeErr;
-      if (data?.tags) {
-        setFrameworks((prev) =>
-          prev.map((fw) =>
-            fw.id === frameworkId ? { ...fw, tags: data.tags } : fw
-          )
-        );
-      }
-    } catch (err) {
-      console.error('tagFramework failed (non-fatal):', err);
-    }
-  }, [user]);
 
   // Update tags directly (user editing)
   const updateFrameworkTags = useCallback(async (
