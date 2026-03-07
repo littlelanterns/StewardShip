@@ -245,6 +245,17 @@ export default function Manifest() {
   );
   const hasProcessingItems = processingItems.length > 0;
 
+  // Sort items: processing first, then by date newest first
+  const sortedItems = useMemo(() => {
+    return [...filteredItems].sort((a, b) => {
+      const aProcessing = a.processing_status === 'pending' || a.processing_status === 'processing';
+      const bProcessing = b.processing_status === 'pending' || b.processing_status === 'processing';
+      if (aProcessing && !bProcessing) return -1;
+      if (!aProcessing && bProcessing) return 1;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+  }, [filteredItems]);
+
   // Upload view
   if (viewMode === 'upload') {
     return (
@@ -363,17 +374,6 @@ export default function Manifest() {
       </div>
     );
   }
-
-  // Sort items: processing first, then by date newest first
-  const sortedItems = useMemo(() => {
-    return [...filteredItems].sort((a, b) => {
-      const aProcessing = a.processing_status === 'pending' || a.processing_status === 'processing';
-      const bProcessing = b.processing_status === 'pending' || b.processing_status === 'processing';
-      if (aProcessing && !bProcessing) return -1;
-      if (!aProcessing && bProcessing) return 1;
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-    });
-  }, [filteredItems]);
 
   // List view
   return (
