@@ -444,16 +444,18 @@ export function useManifestExtraction() {
         // 2. Framework for this section
         setExtractionProgress({ current: i, total: sectionIndices.length, currentType: 'framework' });
         try {
+          console.log(`[extractAllSections] Extracting framework for section ${i + 1}/${sectionIndices.length}: "${cleanTitle}"`);
           const fwResult = await callExtract(manifestItemId, 'framework_section', genres, {
             sectionTitle: cleanTitle,
             sectionStart: section.start_char,
             sectionEnd: section.end_char,
           });
+          console.log(`[extractAllSections] Framework result for "${cleanTitle}":`, fwResult ? 'got data' : 'null');
           if (fwResult && onFrameworkResult) {
             await onFrameworkResult(fwResult as FrameworkExtractionResult, cleanTitle, secIdx);
           }
         } catch (err) {
-          console.error(`Framework extraction failed for section "${cleanTitle}":`, err);
+          console.error(`[extractAllSections] Framework extraction failed for section "${cleanTitle}":`, err);
           allOk = false;
         }
 
@@ -784,6 +786,39 @@ export function useManifestExtraction() {
     };
   }, [user]);
 
+  // --- Clear all extractions for an item ---
+
+  const clearExtractions = useCallback(async (manifestItemId: string) => {
+    if (!user) return;
+    // Delete framework + principles for this item
+    const { data: fw } = await supabase
+      .from('ai_frameworks')
+      .select('id')
+      .eq('manifest_item_id', manifestItemId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (fw) {
+      await supabase.from('ai_framework_principles').delete().eq('framework_id', fw.id).eq('user_id', user.id);
+      await supabase.from('ai_frameworks').delete().eq('id', fw.id).eq('user_id', user.id);
+    }
+    // Delete summaries and declarations
+    await Promise.all([
+      supabase.from('manifest_summaries').delete().eq('manifest_item_id', manifestItemId).eq('user_id', user.id),
+      supabase.from('manifest_declarations').delete().eq('manifest_item_id', manifestItemId).eq('user_id', user.id),
+    ]);
+    // Reset extraction status and genres
+    await supabase.from('manifest_items').update({
+      extraction_status: 'none',
+    }).eq('id', manifestItemId).eq('user_id', user.id);
+    // Clear local state
+    setSummaries([]);
+    setDeclarations([]);
+    setSections([]);
+    setSelectedSectionIndices([]);
+    setExtractionProgress(null);
+    setError(null);
+  }, [user]);
+
   return {
     // State
     summaries,
@@ -825,5 +860,7 @@ export function useManifestExtraction() {
     // Framework principle heart/delete
     togglePrincipleHeart,
     deletePrinciple,
+    // Clear all
+    clearExtractions,
   };
 }

@@ -37,6 +37,7 @@ interface ManifestItemDetailProps {
   onSetSelectedSectionIndices: (indices: number[]) => void;
   discoveringSections: boolean;
   extractionProgress: { current: number; total: number; currentType: 'summary' | 'framework' | 'mast_content' } | null;
+  onClearExtractions: (itemId: string) => Promise<void>;
   // Summary actions
   onToggleSummaryHeart: (id: string) => void;
   onDeleteSummary: (id: string) => void;
@@ -99,6 +100,7 @@ export function ManifestItemDetail({
   onSetSelectedSectionIndices,
   discoveringSections,
   extractionProgress,
+  onClearExtractions,
   onToggleSummaryHeart,
   onDeleteSummary,
   onUpdateSummaryText,
@@ -130,6 +132,8 @@ export function ManifestItemDetail({
 
   // Extraction phase state
   const [extractionPhase, setExtractionPhase] = useState<ExtractionPhase>('idle');
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [clearing, setClearing] = useState(false);
 
   const Icon = FILE_TYPE_ICONS[item.file_type] || FileText;
   const isProcessed = item.processing_status === 'completed';
@@ -242,6 +246,15 @@ export function ManifestItemDetail({
       onSetSelectedSectionIndices(sections.map((_, i) => i));
     }
   }, [selectedSectionIndices.length, sections, onSetSelectedSectionIndices]);
+
+  const handleClearExtractions = useCallback(async () => {
+    setClearing(true);
+    await onClearExtractions(item.id);
+    setClearing(false);
+    setConfirmClear(false);
+    setExtractionPhase('idle');
+    setDiscoveryError(null);
+  }, [item.id, onClearExtractions]);
 
   return (
     <div className="manifest-detail">
@@ -535,6 +548,25 @@ export function ManifestItemDetail({
               {extractionProgress
                 ? `Extracting section ${extractionProgress.current + 1} of ${extractionProgress.total}...`
                 : 'Extracting content...'}
+            </div>
+          )}
+
+          {/* Clear Extractions */}
+          {hasExtraction && !extracting && extractionPhase === 'idle' && (
+            <div className="manifest-detail__clear-section">
+              {!confirmClear ? (
+                <button type="button" className="manifest-detail__enrich-btn" onClick={() => setConfirmClear(true)}>
+                  Clear Extractions
+                </button>
+              ) : (
+                <div className="manifest-detail__delete-confirm">
+                  <span>Clear all extracted content? This cannot be undone.</span>
+                  <Button size="sm" variant="secondary" onClick={() => setConfirmClear(false)} disabled={clearing}>Cancel</Button>
+                  <Button size="sm" onClick={handleClearExtractions} disabled={clearing}>
+                    {clearing ? 'Clearing...' : 'Confirm Clear'}
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </section>

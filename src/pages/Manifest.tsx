@@ -172,28 +172,23 @@ export default function Manifest() {
 
   const handleExtractAllSections = useCallback(async (genres: BookGenre[], sectionIndices: number[]): Promise<boolean> => {
     if (!selectedItem) return false;
-    // Accumulate framework results across all sections, save once at end
-    const allPrinciples: { text: string; sort_order: number }[] = [];
-    let frameworkName = '';
+    let principleOffset = 0;
 
-    const success = await extraction.extractAllSections(selectedItem.id, genres, sectionIndices, async (result, _sectionTitle, _sectionIndex) => {
+    const success = await extraction.extractAllSections(selectedItem.id, genres, sectionIndices, async (result, sectionTitle, _sectionIndex) => {
+      // Save framework results progressively per-section so they appear in the UI immediately
       if (result && result.framework_name && result.principles?.length > 0) {
-        if (!frameworkName) frameworkName = result.framework_name;
-        allPrinciples.push(
-          ...result.principles.map((p: { text: string; sort_order: number }, idx: number) => ({
-            text: p.text,
-            sort_order: allPrinciples.length + idx,
-          })),
-        );
+        console.log(`[handleExtractAllSections] Saving ${result.principles.length} principles from section "${sectionTitle}"`);
+        const principles = result.principles.map((p: { text: string; sort_order: number }, idx: number) => ({
+          text: p.text,
+          sort_order: principleOffset + idx,
+        }));
+        principleOffset += principles.length;
+        // append = true so each section's principles add to the existing framework
+        await saveFramework(selectedItem.id, result.framework_name, principles, true);
       }
     });
 
-    // Save accumulated framework principles once
-    if (allPrinciples.length > 0 && frameworkName) {
-      await saveFramework(selectedItem.id, frameworkName, allPrinciples, true);
-      fetchFrameworks();
-    }
-
+    fetchFrameworks();
     return success;
   }, [selectedItem, extraction, saveFramework, fetchFrameworks]);
 
@@ -400,6 +395,10 @@ export default function Manifest() {
           onSetSelectedSectionIndices={extraction.setSelectedSectionIndices}
           discoveringSections={extraction.discoveringSections}
           extractionProgress={extraction.extractionProgress}
+          onClearExtractions={async (itemId: string) => {
+            await extraction.clearExtractions(itemId);
+            fetchFrameworks();
+          }}
         />
       </div>
     );
