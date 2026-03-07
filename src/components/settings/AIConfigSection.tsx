@@ -38,6 +38,13 @@ const CONTEXT_DEPTH_OPTIONS = [
   { value: 'long', label: 'Deep' },
 ];
 
+const BOOK_KNOWLEDGE_OPTIONS = [
+  { value: 'hearted_only', label: 'Hearted items only' },
+  { value: 'all_extracted', label: 'All extracted items' },
+  { value: 'frameworks_only', label: 'Framework principles only' },
+  { value: 'none', label: 'None' },
+];
+
 interface AIConfigSectionProps {
   settings: UserSettings | null;
   onUpdateSetting: (key: string, value: unknown) => Promise<void>;
@@ -209,6 +216,23 @@ export function AIConfigSection({
         </select>
         <span className="settings-field__hint">
           More context = richer responses but higher cost
+        </span>
+      </div>
+
+      {/* Book Knowledge */}
+      <div className="settings-field">
+        <label className="settings-field__label">Book Knowledge in Conversations</label>
+        <select
+          className="settings-field__select"
+          value={settings?.book_knowledge_access || 'hearted_only'}
+          onChange={e => onUpdateSetting('book_knowledge_access', e.target.value)}
+        >
+          {BOOK_KNOWLEDGE_OPTIONS.map(opt => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+        <span className="settings-field__hint">
+          Controls which extracted book insights the AI draws from during conversations
         </span>
       </div>
 

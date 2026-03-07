@@ -1,9 +1,10 @@
-import { useState, useCallback } from 'react';
-import { ChevronLeft, FileText, FileCode, Mic, Image, StickyNote, MessageSquare, RefreshCw, BookOpen, Anchor } from 'lucide-react';
-import type { ManifestItem, ManifestUsageDesignation } from '../../lib/types';
+import { useState, useCallback, useEffect } from 'react';
+import { ChevronLeft, FileText, FileCode, Mic, Image, StickyNote, RefreshCw, BookOpen, Wand2, MessageSquare, Target, HelpCircle, CheckSquare } from 'lucide-react';
+import type { ManifestItem, ManifestSummary, ManifestDeclaration, AIFrameworkPrinciple, BookGenre } from '../../lib/types';
 import { MANIFEST_FILE_TYPE_LABELS, MANIFEST_STATUS_LABELS } from '../../lib/types';
-import { useHelmContext } from '../../contexts/HelmContext';
 import { Button } from '../shared';
+import { GenrePicker } from './GenrePicker';
+import { ExtractionTabs } from './ExtractionTabs';
 import './ManifestItemDetail.css';
 
 interface ManifestItemDetailProps {
@@ -13,11 +14,35 @@ interface ManifestItemDetailProps {
   onReprocess: (id: string) => Promise<boolean>;
   onArchive: (id: string) => Promise<boolean>;
   onDelete: (id: string) => Promise<boolean>;
-  onExtractFramework?: () => void;
-  onExtractMast?: () => void;
   onEnrichItem?: (itemId: string, regenerateTags?: boolean) => Promise<{ summary: string; tags?: string[] } | null>;
-  hasFramework?: boolean;
-  frameworkIsActive?: boolean;
+  // Extraction
+  summaries: ManifestSummary[];
+  declarations: ManifestDeclaration[];
+  principles: AIFrameworkPrinciple[];
+  extracting: boolean;
+  extractingTab: string | null;
+  hasFramework: boolean;
+  onExtractAll: (genres: BookGenre[]) => Promise<boolean>;
+  onUpdateGenres: (itemId: string, genres: BookGenre[]) => Promise<boolean>;
+  onFetchSummaries: (itemId: string) => void;
+  onFetchDeclarations: (itemId: string) => void;
+  // Summary actions
+  onToggleSummaryHeart: (id: string) => void;
+  onDeleteSummary: (id: string) => void;
+  onUpdateSummaryText: (id: string, text: string) => void;
+  onSummaryGoDeeper: (sectionTitle: string | undefined, existingItems: string[], sectionIndex?: number) => void;
+  onSummaryReRun: () => void;
+  // Framework actions
+  onTogglePrincipleHeart: (id: string) => void;
+  onDeletePrinciple: (id: string) => void;
+  onViewFramework: () => void;
+  // Declaration actions
+  onToggleDeclarationHeart: (id: string) => void;
+  onDeleteDeclaration: (id: string) => void;
+  onUpdateDeclaration: (id: string, updates: Partial<Pick<ManifestDeclaration, 'declaration_text' | 'value_name' | 'declaration_style'>>) => void;
+  onSendDeclarationToMast: (id: string) => void;
+  onDeclarationGoDeeper: (sectionTitle: string | undefined, existingItems: string[], sectionIndex?: number) => void;
+  onDeclarationReRun: () => void;
 }
 
 const FILE_TYPE_ICONS = {
@@ -30,15 +55,6 @@ const FILE_TYPE_ICONS = {
   image: Image,
   text_note: StickyNote,
 } as const;
-
-const USAGE_OPTIONS: { value: ManifestUsageDesignation; label: string; description: string; tooltip: string }[] = [
-  { value: 'general_reference', label: 'General Reference', description: 'Available for AI to draw from when relevant', tooltip: 'This content becomes searchable by the AI. When your conversations touch on related topics, the AI can draw from this material to give more informed, personalized responses.' },
-  { value: 'framework_source', label: 'AI Framework', description: 'Extract principles for always-available guidance', tooltip: 'The AI will extract actionable principles from this content and keep them loaded in every conversation — similar to your Mast principles. Best for books on leadership, habits, character development, etc.' },
-  { value: 'mast_extraction', label: 'Mast Extraction', description: 'Extract values and principles for The Mast', tooltip: 'The AI will identify values, declarations, and guiding principles from this content and let you review them before adding to your Mast — the core of who you\'re choosing to become.' },
-  { value: 'keel_info', label: 'Keel Info', description: 'Contains personality or self-knowledge data', tooltip: 'The AI will extract personality insights, traits, and self-knowledge from this content for your Keel — your profile of who you are right now. Great for assessment results, personality tests, etc.' },
-  { value: 'goal_specific', label: 'Goal Specific', description: 'Tied to a specific goal or Wheel', tooltip: 'This content relates to a specific goal or Wheel change you\'re working on. The AI will reference it when those topics come up in conversation.' },
-  { value: 'store_only', label: 'Store Only', description: 'Stored but not used in AI context', tooltip: 'The file will be stored safely in your Manifest but won\'t be used by the AI in conversations. You can always change this later.' },
-];
 
 function formatFileSize(bytes: number | null): string {
   if (!bytes) return '';
@@ -54,14 +70,32 @@ export function ManifestItemDetail({
   onReprocess,
   onArchive,
   onDelete,
-  onExtractFramework,
-  onExtractMast,
   onEnrichItem,
+  summaries,
+  declarations,
+  principles,
+  extracting,
+  extractingTab,
   hasFramework,
-  frameworkIsActive,
+  onExtractAll,
+  onUpdateGenres,
+  onFetchSummaries,
+  onFetchDeclarations,
+  onToggleSummaryHeart,
+  onDeleteSummary,
+  onUpdateSummaryText,
+  onSummaryGoDeeper,
+  onSummaryReRun,
+  onTogglePrincipleHeart,
+  onDeletePrinciple,
+  onViewFramework,
+  onToggleDeclarationHeart,
+  onDeleteDeclaration,
+  onUpdateDeclaration,
+  onSendDeclarationToMast,
+  onDeclarationGoDeeper,
+  onDeclarationReRun,
 }: ManifestItemDetailProps) {
-  const { startGuidedConversation } = useHelmContext();
-
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(item.title);
   const [editingContent, setEditingContent] = useState(false);
@@ -72,7 +106,21 @@ export function ManifestItemDetail({
   const [reprocessing, setReprocessing] = useState(false);
   const [enriching, setEnriching] = useState(false);
 
+  // Genre state — local copy synced to item
+  const [selectedGenres, setSelectedGenres] = useState<BookGenre[]>(item.genres || []);
+  const [showGenrePicker, setShowGenrePicker] = useState(false);
+
   const Icon = FILE_TYPE_ICONS[item.file_type] || FileText;
+  const isProcessed = item.processing_status === 'completed';
+  const hasExtraction = item.extraction_status !== 'none' || summaries.length > 0 || declarations.length > 0 || principles.length > 0;
+
+  // Fetch existing extractions on mount
+  useEffect(() => {
+    if (isProcessed) {
+      onFetchSummaries(item.id);
+      onFetchDeclarations(item.id);
+    }
+  }, [item.id, isProcessed, onFetchSummaries, onFetchDeclarations]);
 
   const saveTitle = useCallback(() => {
     if (titleDraft.trim() && titleDraft.trim() !== item.title) {
@@ -101,16 +149,6 @@ export function ManifestItemDetail({
     setAddingTag(false);
   }, [tagInput, item.id, item.tags, onUpdateItem]);
 
-  const handleToggleUsage = useCallback((usage: ManifestUsageDesignation) => {
-    const current = item.usage_designations;
-    const updated = current.includes(usage)
-      ? current.filter((u) => u !== usage)
-      : [...current, usage];
-    if (updated.length > 0) {
-      onUpdateItem(item.id, { usage_designations: updated });
-    }
-  }, [item.id, item.usage_designations, onUpdateItem]);
-
   const handleReprocess = useCallback(async () => {
     setReprocessing(true);
     await onReprocess(item.id);
@@ -137,11 +175,18 @@ export function ManifestItemDetail({
     }
   }, [onEnrichItem, item.id, enriching]);
 
-  const handleDiscuss = useCallback(() => {
-    startGuidedConversation('manifest_discuss', undefined, item.id);
-  }, [startGuidedConversation, item.id]);
+  const handleGenreChange = useCallback((genres: BookGenre[]) => {
+    setSelectedGenres(genres);
+    onUpdateGenres(item.id, genres);
+  }, [item.id, onUpdateGenres]);
 
-  const isProcessed = item.processing_status === 'completed';
+  const handleExtract = useCallback(async () => {
+    if (selectedGenres.length === 0) {
+      setShowGenrePicker(true);
+      return;
+    }
+    await onExtractAll(selectedGenres);
+  }, [selectedGenres, onExtractAll]);
 
   return (
     <div className="manifest-detail">
@@ -233,56 +278,6 @@ export function ManifestItemDetail({
         </div>
       </section>
 
-      {/* Usage Designation */}
-      <section className="manifest-detail__section">
-        <h3 className="manifest-detail__section-title">Usage</h3>
-        <div className="manifest-detail__usage-list">
-          {USAGE_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              className={`manifest-detail__usage-chip${item.usage_designations.includes(opt.value) ? ' manifest-detail__usage-chip--active' : ''}`}
-              onClick={() => handleToggleUsage(opt.value)}
-              title={opt.tooltip}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Extraction action buttons — shown when designation is active and content is processed */}
-        {isProcessed && item.usage_designations.includes('framework_source') && onExtractFramework && (
-          <button
-            type="button"
-            className={`manifest-detail__extraction-btn${hasFramework ? ' manifest-detail__extraction-btn--has-result' : ''}`}
-            onClick={onExtractFramework}
-            title={hasFramework
-              ? 'View and edit the extracted framework principles. You can also re-extract or add more.'
-              : 'Analyze this content and extract key principles, strategies, and frameworks that the AI will use to guide its advice in every conversation.'}
-          >
-            <BookOpen size={14} />
-            {hasFramework ? 'View Framework Principles' : 'Extract Framework Principles'}
-            {hasFramework && frameworkIsActive && (
-              <span className="manifest-detail__extraction-badge">Active</span>
-            )}
-            {hasFramework && !frameworkIsActive && (
-              <span className="manifest-detail__extraction-badge manifest-detail__extraction-badge--inactive">Inactive</span>
-            )}
-          </button>
-        )}
-        {isProcessed && item.usage_designations.includes('mast_extraction') && onExtractMast && (
-          <button
-            type="button"
-            className="manifest-detail__extraction-btn"
-            onClick={onExtractMast}
-            title="Scan this content for values, declarations, and guiding principles. You'll review and choose which ones to add to your Mast."
-          >
-            <Anchor size={14} />
-            Extract Mast Entries
-          </button>
-        )}
-      </section>
-
       {/* Content — editable for text-based file types */}
       {(item.file_type === 'text_note' || item.file_type === 'txt' || item.file_type === 'md') && (
         <section className="manifest-detail__section">
@@ -354,8 +349,8 @@ export function ManifestItemDetail({
               <h4 className="manifest-detail__toc-title">Contents</h4>
               <ol className="manifest-detail__toc-list">
                 {item.toc
-                  .filter((entry) => entry.level <= 2)
-                  .map((entry, i) => (
+                  .filter((entry: { level: number; title: string }) => entry.level <= 2)
+                  .map((entry: { level: number; title: string }, i: number) => (
                     <li
                       key={i}
                       className={`manifest-detail__toc-entry manifest-detail__toc-entry--level-${entry.level}`}
@@ -373,16 +368,125 @@ export function ManifestItemDetail({
         </section>
       )}
 
-      {/* Actions */}
-      <section className="manifest-detail__section">
-        <div className="manifest-detail__actions">
-          {isProcessed && (
-            <Button size="sm" onClick={handleDiscuss}>
-              <MessageSquare size={14} />
-              Discuss This
+      {/* Extract Section — genre picker + extract button */}
+      {isProcessed && (
+        <section className="manifest-detail__section">
+          <div className="manifest-detail__section-header">
+            <h3 className="manifest-detail__section-title">Extract</h3>
+          </div>
+
+          {/* Genre chips — always show if genres are set, or on demand */}
+          {(selectedGenres.length > 0 || showGenrePicker) && (
+            <GenrePicker
+              selected={selectedGenres}
+              onChange={handleGenreChange}
+              disabled={extracting}
+            />
+          )}
+
+          {/* Extract button */}
+          {!hasExtraction && !extracting && (
+            <Button
+              onClick={handleExtract}
+              disabled={extracting}
+            >
+              <Wand2 size={14} />
+              {selectedGenres.length === 0 ? 'Select Genres & Extract' : 'Extract'}
             </Button>
           )}
 
+          {extracting && !hasExtraction && (
+            <div className="manifest-detail__extracting-status">
+              <RefreshCw size={14} className="manifest-detail__spin" />
+              Extracting content...
+            </div>
+          )}
+
+          {/* Re-extract button for items that already have extractions */}
+          {hasExtraction && !extracting && selectedGenres.length > 0 && (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={handleExtract}
+              disabled={extracting}
+            >
+              <Wand2 size={14} />
+              Re-extract All
+            </Button>
+          )}
+
+          {/* Show genre picker toggle if genres not yet set */}
+          {selectedGenres.length === 0 && !showGenrePicker && hasExtraction && (
+            <button
+              type="button"
+              className="manifest-detail__enrich-btn"
+              onClick={() => setShowGenrePicker(true)}
+            >
+              Set genres for better extraction
+            </button>
+          )}
+        </section>
+      )}
+
+      {/* Extraction Tabs — shown when extractions exist or extracting */}
+      {isProcessed && (hasExtraction || extracting) && (
+        <section className="manifest-detail__section">
+          <ExtractionTabs
+            manifestItemId={item.id}
+            genres={selectedGenres}
+            summaries={summaries}
+            declarations={declarations}
+            principles={principles}
+            extractingTab={extractingTab}
+            hasFramework={hasFramework}
+            onToggleSummaryHeart={onToggleSummaryHeart}
+            onDeleteSummary={onDeleteSummary}
+            onUpdateSummaryText={onUpdateSummaryText}
+            onSummaryGoDeeper={onSummaryGoDeeper}
+            onSummaryReRun={onSummaryReRun}
+            onTogglePrincipleHeart={onTogglePrincipleHeart}
+            onDeletePrinciple={onDeletePrinciple}
+            onViewFramework={onViewFramework}
+            onToggleDeclarationHeart={onToggleDeclarationHeart}
+            onDeleteDeclaration={onDeleteDeclaration}
+            onUpdateDeclaration={onUpdateDeclaration}
+            onSendDeclarationToMast={onSendDeclarationToMast}
+            onDeclarationGoDeeper={onDeclarationGoDeeper}
+            onDeclarationReRun={onDeclarationReRun}
+          />
+        </section>
+      )}
+
+      {/* Apply Section — shown when extractions exist */}
+      {isProcessed && hasExtraction && !extracting && (
+        <section className="manifest-detail__section">
+          <div className="apply-section">
+            <h3 className="apply-section__title">Apply This</h3>
+            <div className="apply-section__buttons">
+              <button type="button" className="apply-section__btn" disabled title="Coming in Phase D">
+                <MessageSquare size={14} />
+                Discuss Book
+              </button>
+              <button type="button" className="apply-section__btn" disabled title="Coming in Phase D">
+                <Target size={14} />
+                Generate Goals
+              </button>
+              <button type="button" className="apply-section__btn" disabled title="Coming in Phase D">
+                <HelpCircle size={14} />
+                Generate Questions
+              </button>
+              <button type="button" className="apply-section__btn" disabled title="Coming in Phase D">
+                <CheckSquare size={14} />
+                Generate Tasks
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Actions */}
+      <section className="manifest-detail__section">
+        <div className="manifest-detail__actions">
           {(item.processing_status === 'completed' || item.processing_status === 'failed') && (
             <Button
               size="sm"

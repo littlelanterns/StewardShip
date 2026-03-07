@@ -3,9 +3,8 @@ import { Upload, StickyNote, MessageSquare, Loader, BookOpen, List, LayoutGrid }
 import { usePageContext } from '../hooks/usePageContext';
 import { useManifest } from '../hooks/useManifest';
 import { useFrameworks } from '../hooks/useFrameworks';
-import { useMast } from '../hooks/useMast';
-import { useHelmContext } from '../contexts/HelmContext';
-import type { ManifestItem, ManifestFileType, ManifestUsageDesignation, MastEntryType } from '../lib/types';
+import { useManifestExtraction } from '../hooks/useManifestExtraction';
+import type { ManifestItem, ManifestFileType, ManifestUsageDesignation, BookGenre } from '../lib/types';
 import { ManifestItemCard } from '../components/manifest/ManifestItemCard';
 import { ManifestItemDetail } from '../components/manifest/ManifestItemDetail';
 import { ManifestFilterBar } from '../components/manifest/ManifestFilterBar';
@@ -14,19 +13,17 @@ import { TextNoteModal } from '../components/manifest/TextNoteModal';
 import FrameworkPrinciples from '../components/manifest/FrameworkPrinciples';
 import FrameworkManager from '../components/manifest/FrameworkManager';
 import BrowseFrameworks from '../components/manifest/BrowseFrameworks';
-import MastExtractionReview from '../components/manifest/MastExtractionReview';
 import { CollapsibleGroup } from '../components/shared/CollapsibleGroup';
 import { FloatingActionButton } from '../components/shared/FloatingActionButton';
 import { EmptyState, LoadingSpinner, FeatureGuide } from '../components/shared';
 import { FEATURE_GUIDES } from '../lib/featureGuides';
 import './Manifest.css';
 
-type ViewMode = 'list' | 'detail' | 'upload' | 'framework' | 'frameworks' | 'browse' | 'mast_extract';
+type ViewMode = 'list' | 'detail' | 'upload' | 'framework' | 'frameworks' | 'browse';
 type LibraryLayout = 'compact' | 'grid';
 
 export default function Manifest() {
   usePageContext({ page: 'manifest' });
-  const { startGuidedConversation } = useHelmContext();
   const {
     items,
     loading,
@@ -47,9 +44,8 @@ export default function Manifest() {
 
   const {
     frameworks,
-    extracting,
+    extracting: frameworkExtracting,
     extractFramework,
-    extractMast,
     saveFramework,
     toggleFramework,
     batchToggleFrameworks,
@@ -62,16 +58,13 @@ export default function Manifest() {
     updateFrameworkTags,
   } = useFrameworks();
 
-  const mast = useMast();
+  const extraction = useManifestExtraction();
 
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [libraryLayout, setLibraryLayout] = useState<LibraryLayout>('compact');
   const [selectedItem, setSelectedItem] = useState<ManifestItem | null>(null);
   const [showTextNoteModal, setShowTextNoteModal] = useState(false);
   const [fabExpanded, setFabExpanded] = useState(false);
-
-  // Extraction state
-  const [mastExtractionResults, setMastExtractionResults] = useState<Array<{ text: string; entry_type: string }> | null>(null);
 
   // Filters
   const [typeFilter, setTypeFilter] = useState<ManifestFileType | 'all'>('all');
@@ -101,13 +94,11 @@ export default function Manifest() {
 
   const handleBack = useCallback(() => {
     setSelectedItem(null);
-    setMastExtractionResults(null);
     setViewMode('list');
     fetchItems();
   }, [fetchItems]);
 
   const handleBackToDetail = useCallback(() => {
-    setMastExtractionResults(null);
     setViewMode('detail');
   }, []);
 
@@ -123,7 +114,6 @@ export default function Manifest() {
     const item = await createTextNote(title, content);
     if (item) {
       pollProcessingStatus(item.id);
-      // Auto-intake in background (fire-and-forget)
       autoIntakeItem(item.id).catch((err) =>
         console.error('Text note auto-intake failed:', err),
       );
@@ -133,14 +123,14 @@ export default function Manifest() {
 
   const handleAskLibrary = useCallback(() => {
     setFabExpanded(false);
-    startGuidedConversation('manifest_discuss');
-  }, [startGuidedConversation]);
+    // TODO: Phase D will replace this with BookDiscussionModal
+    // For now, keep the old manifest_discuss guided mode as a fallback
+  }, []);
 
   const handleBrowseFrameworks = useCallback(() => {
     setViewMode('browse');
   }, []);
 
-  // Navigate to a framework view for a specific item (from frameworks manager)
   const handleViewFramework = useCallback(async (itemId: string) => {
     const detail = await fetchItemDetail(itemId);
     const item = detail || items.find((i) => i.id === itemId);
@@ -150,37 +140,56 @@ export default function Manifest() {
     }
   }, [fetchItemDetail, items]);
 
-  // Navigate from FrameworkManager card click to principles editor
   const handleSelectFrameworkForEdit = useCallback(async (fw: { manifest_item_id: string }) => {
     await handleViewFramework(fw.manifest_item_id);
   }, [handleViewFramework]);
 
-  // Extraction handlers
-  const handleExtractFramework = useCallback(() => {
+  // --- Extraction handlers (wired to useManifestExtraction) ---
+
+  const handleExtractAll = useCallback(async (genres: BookGenre[]): Promise<boolean> => {
+    if (!selectedItem) return false;
+    return extraction.extractAll(selectedItem.id, genres, async (result) => {
+      // Save framework result through useFrameworks
+      if (result && result.framework_name && result.principles?.length > 0) {
+        await saveFramework(
+          selectedItem.id,
+          result.framework_name,
+          result.principles.map((p: { text: string; sort_order: number }) => ({
+            text: p.text,
+            sort_order: p.sort_order,
+          })),
+          true,
+        );
+        fetchFrameworks();
+      }
+    });
+  }, [selectedItem, extraction, saveFramework, fetchFrameworks]);
+
+  const handleSummaryGoDeeper = useCallback((sectionTitle: string | undefined, existingItems: string[], sectionIndex?: number) => {
+    if (!selectedItem) return;
+    extraction.goDeeper(selectedItem.id, 'summary', selectedItem.genres || [], sectionTitle, existingItems, { sectionIndex });
+  }, [selectedItem, extraction]);
+
+  const handleSummaryReRun = useCallback(() => {
+    if (!selectedItem) return;
+    extraction.reRunTab(selectedItem.id, 'summary', selectedItem.genres || []);
+  }, [selectedItem, extraction]);
+
+  const handleDeclarationGoDeeper = useCallback((sectionTitle: string | undefined, existingItems: string[], sectionIndex?: number) => {
+    if (!selectedItem) return;
+    extraction.goDeeper(selectedItem.id, 'mast_content', selectedItem.genres || [], sectionTitle, existingItems, { sectionIndex });
+  }, [selectedItem, extraction]);
+
+  const handleDeclarationReRun = useCallback(() => {
+    if (!selectedItem) return;
+    extraction.reRunTab(selectedItem.id, 'mast_content', selectedItem.genres || []);
+  }, [selectedItem, extraction]);
+
+  const handleViewFrameworkFromDetail = useCallback(() => {
     if (selectedItem) {
       setViewMode('framework');
     }
   }, [selectedItem]);
-
-  const handleExtractMast = useCallback(async () => {
-    if (!selectedItem) return;
-    setViewMode('mast_extract');
-    const results = await extractMast(selectedItem.id);
-    setMastExtractionResults(results);
-  }, [selectedItem, extractMast]);
-
-  const handleSaveMastEntries = useCallback(async (
-    entries: Array<{ type: MastEntryType; text: string; source: 'manifest_extraction' }>,
-  ) => {
-    for (const entry of entries) {
-      await mast.createEntry({
-        type: entry.type,
-        text: entry.text,
-        source: 'manifest_extraction',
-      });
-    }
-    handleBackToDetail();
-  }, [mast, handleBackToDetail]);
 
   // Filtering
   const filteredItems = useMemo(() => {
@@ -205,7 +214,7 @@ export default function Manifest() {
 
   const uniqueTags = useMemo(() => getUniqueTags(), [getUniqueTags]);
 
-  // Keep selectedItem in sync with items array (so updates via updateItem are reflected)
+  // Keep selectedItem in sync with items array
   const currentSelectedItem = useMemo(
     () => (selectedItem ? items.find((i) => i.id === selectedItem.id) || selectedItem : null),
     [items, selectedItem],
@@ -227,6 +236,10 @@ export default function Manifest() {
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
   }, [filteredItems]);
+
+  // Get framework principles for current item
+  const currentFramework = currentSelectedItem ? getFrameworkForItem(currentSelectedItem.id) : undefined;
+  const currentPrinciples: import('../lib/types').AIFrameworkPrinciple[] = currentFramework?.principles || [];
 
   // Upload view
   if (viewMode === 'upload') {
@@ -250,7 +263,7 @@ export default function Manifest() {
           manifestItemId={currentSelectedItem.id}
           manifestItemTitle={currentSelectedItem.title}
           framework={getFrameworkForItem(currentSelectedItem.id)}
-          extracting={extracting}
+          extracting={frameworkExtracting}
           onExtract={extractFramework}
           onCheckDocumentLength={checkDocumentLength}
           onDiscoverSections={discoverSections}
@@ -295,21 +308,6 @@ export default function Manifest() {
     );
   }
 
-  // Mast extraction review
-  if (viewMode === 'mast_extract' && currentSelectedItem) {
-    return (
-      <div className="page manifest-page">
-        <MastExtractionReview
-          sourceTitle={currentSelectedItem.title}
-          entries={mastExtractionResults}
-          extracting={extracting}
-          onSave={handleSaveMastEntries}
-          onCancel={handleBackToDetail}
-        />
-      </div>
-    );
-  }
-
   // Detail view
   if (viewMode === 'detail' && currentSelectedItem) {
     return (
@@ -321,11 +319,35 @@ export default function Manifest() {
           onReprocess={reprocessItem}
           onArchive={archiveItem}
           onDelete={deleteItem}
-          onExtractFramework={handleExtractFramework}
-          onExtractMast={handleExtractMast}
           onEnrichItem={enrichItem}
-          hasFramework={!!getFrameworkForItem(currentSelectedItem.id)}
-          frameworkIsActive={getFrameworkForItem(currentSelectedItem.id)?.is_active ?? false}
+          // Extraction props
+          summaries={extraction.summaries}
+          declarations={extraction.declarations}
+          principles={currentPrinciples}
+          extracting={extraction.extracting}
+          extractingTab={extraction.extractingTab}
+          hasFramework={!!currentFramework}
+          onExtractAll={handleExtractAll}
+          onUpdateGenres={extraction.updateGenres}
+          onFetchSummaries={extraction.fetchSummaries}
+          onFetchDeclarations={extraction.fetchDeclarations}
+          // Summary actions
+          onToggleSummaryHeart={extraction.toggleSummaryHeart}
+          onDeleteSummary={extraction.deleteSummary}
+          onUpdateSummaryText={extraction.updateSummaryText}
+          onSummaryGoDeeper={handleSummaryGoDeeper}
+          onSummaryReRun={handleSummaryReRun}
+          // Framework actions
+          onTogglePrincipleHeart={extraction.togglePrincipleHeart}
+          onDeletePrinciple={extraction.deletePrinciple}
+          onViewFramework={handleViewFrameworkFromDetail}
+          // Declaration actions
+          onToggleDeclarationHeart={extraction.toggleDeclarationHeart}
+          onDeleteDeclaration={extraction.deleteDeclaration}
+          onUpdateDeclaration={extraction.updateDeclaration}
+          onSendDeclarationToMast={extraction.sendDeclarationToMast}
+          onDeclarationGoDeeper={handleDeclarationGoDeeper}
+          onDeclarationReRun={handleDeclarationReRun}
         />
       </div>
     );
@@ -391,9 +413,11 @@ export default function Manifest() {
             type="button"
             className="manifest-page__action-btn"
             onClick={handleAskLibrary}
+            disabled
+            title="Coming soon — Book Discussions will replace this"
           >
             <MessageSquare size={16} />
-            Ask Your Library
+            Discuss Books
           </button>
         )}
         {frameworks.length > 0 && (
@@ -444,7 +468,6 @@ export default function Manifest() {
             message="Try adjusting your filters to see more items."
           />
         ) : libraryLayout === 'compact' ? (
-          /* Compact list view — flat, dense rows */
           <div className="manifest-page__compact-list">
             {sortedItems.map((item) => (
               <ManifestItemCard key={item.id} item={item} onClick={handleSelectItem} framework={getFrameworkForItem(item.id)} compact />

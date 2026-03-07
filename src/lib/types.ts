@@ -63,6 +63,7 @@ export interface UserSettings {
   dismissed_guides: string[];
   google_calendar_token: string | null;
   hatch_drawer_open: boolean;
+  book_knowledge_access: 'hearted_only' | 'all_extracted' | 'frameworks_only' | 'none';
   created_at: string;
   updated_at: string;
 }
