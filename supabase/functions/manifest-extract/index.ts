@@ -169,6 +169,39 @@ Return ONLY a JSON array:
 The end_char of one section must exactly equal the start_char of the next section.
 No markdown backticks, no preamble.`;
 
+// Safely extract JSON from AI response — handles markdown fences and malformed output
+function safeParseJSON(raw: string): { parsed: unknown; error?: string } {
+  if (!raw || !raw.trim()) return { parsed: null, error: 'Empty AI response' };
+
+  // Strip markdown code fences if present
+  let cleaned = raw.trim();
+  cleaned = cleaned.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '');
+  cleaned = cleaned.trim();
+
+  // Try 1: Direct parse of cleaned content
+  try {
+    return { parsed: JSON.parse(cleaned) };
+  } catch { /* fall through */ }
+
+  // Try 2: Extract JSON object { ... }
+  const objMatch = cleaned.match(/\{[\s\S]*\}/);
+  if (objMatch) {
+    try {
+      return { parsed: JSON.parse(objMatch[0]) };
+    } catch { /* fall through */ }
+  }
+
+  // Try 3: Extract JSON array [ ... ]
+  const arrMatch = cleaned.match(/\[[\s\S]*\]/);
+  if (arrMatch) {
+    try {
+      return { parsed: JSON.parse(arrMatch[0]) };
+    } catch { /* fall through */ }
+  }
+
+  return { parsed: null, error: 'Could not parse JSON from AI response' };
+}
+
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -287,24 +320,17 @@ serve(async (req: Request) => {
 
       const data = await response.json();
       const content = data.choices?.[0]?.message?.content || '';
+      console.log('[manifest-extract] discover_sections raw response length:', content.length);
 
-      const jsonMatch = content.match(/\[[\s\S]*\]/);
-      if (!jsonMatch) {
+      const { parsed, error: parseErr } = safeParseJSON(content);
+      if (!parsed || !Array.isArray(parsed)) {
+        console.error('[manifest-extract] discover_sections parse failed:', parseErr, 'raw:', content.substring(0, 500));
         return new Response(
-          JSON.stringify({ error: 'Failed to parse section discovery result', raw: content }),
+          JSON.stringify({ error: parseErr || 'Failed to parse section discovery result' }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         );
       }
-
-      let sections: Array<Record<string, unknown>>;
-      try {
-        sections = JSON.parse(jsonMatch[0]);
-      } catch {
-        return new Response(
-          JSON.stringify({ error: 'AI returned malformed JSON for section discovery. Try again.' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-        );
-      }
+      let sections = parsed as Array<Record<string, unknown>>;
       const docLength = item.text_content.length;
 
       // Validate: force full coverage with no gaps
@@ -371,21 +397,13 @@ serve(async (req: Request) => {
 
       const data = await response.json();
       const content = data.choices?.[0]?.message?.content || '';
+      console.log(`[manifest-extract] ${extraction_type} section="${section_title}" raw response length:`, content.length);
 
-      const jsonMatch = content.match(/[\[{][\s\S]*[\]}]/);
-      if (!jsonMatch) {
+      const { parsed: result, error: parseErr } = safeParseJSON(content);
+      if (!result) {
+        console.error(`[manifest-extract] ${extraction_type} parse failed:`, parseErr, 'raw:', content.substring(0, 500));
         return new Response(
-          JSON.stringify({ error: 'Failed to parse extraction result', raw: content }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-        );
-      }
-
-      let result: unknown;
-      try {
-        result = JSON.parse(jsonMatch[0]);
-      } catch {
-        return new Response(
-          JSON.stringify({ error: 'AI returned malformed JSON for section extraction. Try again.' }),
+          JSON.stringify({ error: parseErr || 'Failed to parse extraction result' }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         );
       }
@@ -446,22 +464,13 @@ serve(async (req: Request) => {
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || '';
+    console.log(`[manifest-extract] ${extraction_type} raw response length:`, content.length);
 
-    // Parse JSON from response
-    const jsonMatch = content.match(/[\[{][\s\S]*[\]}]/);
-    if (!jsonMatch) {
+    const { parsed: result, error: parseErr } = safeParseJSON(content);
+    if (!result) {
+      console.error(`[manifest-extract] ${extraction_type} parse failed:`, parseErr, 'raw:', content.substring(0, 500));
       return new Response(
-        JSON.stringify({ error: 'Failed to parse extraction result', raw: content }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
-    }
-
-    let result: unknown;
-    try {
-      result = JSON.parse(jsonMatch[0]);
-    } catch {
-      return new Response(
-        JSON.stringify({ error: 'AI returned malformed JSON for extraction. Try again.' }),
+        JSON.stringify({ error: parseErr || 'Failed to parse extraction result' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }

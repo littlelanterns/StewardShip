@@ -252,7 +252,7 @@ export function useManifestExtraction() {
       section_index: sectionIndex,
       value_name: item.value_name || null,
       declaration_text: item.declaration_text,
-      declaration_style: item.declaration_style,
+      declaration_style: item.declaration_style || 'choosing_committing',
       sort_order: item.sort_order ?? idx,
       is_from_go_deeper: isFromGoDeeper,
     }));
@@ -423,13 +423,18 @@ export function useManifestExtraction() {
 
         // 1. Summary for this section
         setExtractionProgress({ current: i, total: sectionIndices.length, currentType: 'summary' });
-        const summaryOk = await extractSummary(manifestItemId, genres, {
-          sectionTitle: cleanTitle,
-          sectionStart: section.start_char,
-          sectionEnd: section.end_char,
-          sectionIndex: secIdx,
-        });
-        if (!summaryOk) allOk = false;
+        try {
+          const summaryOk = await extractSummary(manifestItemId, genres, {
+            sectionTitle: cleanTitle,
+            sectionStart: section.start_char,
+            sectionEnd: section.end_char,
+            sectionIndex: secIdx,
+          });
+          if (!summaryOk) allOk = false;
+        } catch (err) {
+          console.error(`Summary extraction failed for section "${cleanTitle}":`, err);
+          allOk = false;
+        }
 
         // 2. Framework for this section
         setExtractionProgress({ current: i, total: sectionIndices.length, currentType: 'framework' });
@@ -444,17 +449,23 @@ export function useManifestExtraction() {
           }
         } catch (err) {
           console.error(`Framework extraction failed for section "${cleanTitle}":`, err);
+          allOk = false;
         }
 
         // 3. Declarations for this section
         setExtractionProgress({ current: i, total: sectionIndices.length, currentType: 'mast_content' });
-        const declOk = await extractDeclarations(manifestItemId, genres, {
-          sectionTitle: cleanTitle,
-          sectionStart: section.start_char,
-          sectionEnd: section.end_char,
-          sectionIndex: secIdx,
-        });
-        if (!declOk) allOk = false;
+        try {
+          const declOk = await extractDeclarations(manifestItemId, genres, {
+            sectionTitle: cleanTitle,
+            sectionStart: section.start_char,
+            sectionEnd: section.end_char,
+            sectionIndex: secIdx,
+          });
+          if (!declOk) allOk = false;
+        } catch (err) {
+          console.error(`Declaration extraction failed for section "${cleanTitle}":`, err);
+          allOk = false;
+        }
       }
 
       await updateExtractionStatus(manifestItemId, allOk ? 'completed' : 'failed');
