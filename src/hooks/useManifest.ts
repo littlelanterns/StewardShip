@@ -472,20 +472,28 @@ export function useManifest() {
       });
       if (invokeErr) throw invokeErr;
 
-      // Update local state so UI reflects new values immediately
+      // Always re-fetch from DB to ensure UI reflects saved state
+      // (Edge Function may have saved tags even if response parsing varied)
+      const { data: fresh } = await supabase
+        .from('manifest_items')
+        .select('ai_summary, tags')
+        .eq('id', itemId)
+        .eq('user_id', user.id)
+        .single();
+
       setItems((prev) =>
         prev.map((item) =>
           item.id === itemId
             ? {
                 ...item,
-                ai_summary: data.summary,
-                ...(data.tags ? { tags: data.tags } : {}),
+                ai_summary: fresh?.ai_summary ?? data.summary,
+                tags: fresh?.tags ?? (data.tags ? data.tags : item.tags),
               }
             : item,
         ),
       );
 
-      return data;
+      return { summary: fresh?.ai_summary ?? data.summary, tags: fresh?.tags ?? data.tags };
     } catch (err) {
       console.error('Enrich item failed:', err);
       return null;

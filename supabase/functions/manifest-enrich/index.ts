@@ -152,7 +152,7 @@ Rules:
         },
         body: JSON.stringify({
           model: 'anthropic/claude-haiku-4.5',
-          max_tokens: 128,
+          max_tokens: 256,
           messages: [
             {
               role: 'system',
@@ -169,7 +169,7 @@ Rules:
   relationships, self-compassion, resilience, confidence, purpose, spirituality, health
 - Add specific tags when clearly appropriate (e.g., "adhd", "divorce", "homeschool")
 - Do not use generic tags like "book", "self-help", "nonfiction", "guide"
-- Return ONLY the JSON object.`,
+- Return ONLY the JSON object, no markdown wrapping.`,
             },
             {
               role: 'user',
@@ -181,24 +181,51 @@ Rules:
 
       if (tagResponse.ok) {
         const tagData = await tagResponse.json();
-        const tagText = tagData.choices?.[0]?.message?.content || '';
+        const tagText = (tagData.choices?.[0]?.message?.content || '').trim();
+        let parsedTags: string[] | null = null;
+
+        // Strategy 1: Direct JSON parse
         try {
           const parsed = JSON.parse(tagText);
-          if (Array.isArray(parsed.tags)) {
-            updateData.tags = parsed.tags;
-            result.tags = parsed.tags;
-          }
+          if (Array.isArray(parsed.tags)) parsedTags = parsed.tags;
+          else if (Array.isArray(parsed)) parsedTags = parsed;
         } catch {
-          // If tag parsing fails, skip — keep existing tags
-          const cleaned = tagText.replace(/```json\n?|\n?```/g, '').trim();
+          // Strategy 2: Strip markdown code fences
+          const cleaned = tagText.replace(/```(?:json)?\n?/g, '').replace(/\n?```$/g, '').trim();
           try {
             const reParsed = JSON.parse(cleaned);
-            if (Array.isArray(reParsed.tags)) {
-              updateData.tags = reParsed.tags;
-              result.tags = reParsed.tags;
-            }
+            if (Array.isArray(reParsed.tags)) parsedTags = reParsed.tags;
+            else if (Array.isArray(reParsed)) parsedTags = reParsed;
           } catch {
-            // Skip tag update
+            // Strategy 3: Extract JSON object from surrounding text
+            const jsonMatch = tagText.match(/\{[\s\S]*"tags"\s*:\s*\[[\s\S]*?\][\s\S]*?\}/);
+            if (jsonMatch) {
+              try {
+                const extracted = JSON.parse(jsonMatch[0]);
+                if (Array.isArray(extracted.tags)) parsedTags = extracted.tags;
+              } catch {
+                // Strategy 4: Extract bare array
+                const arrayMatch = tagText.match(/\[[\s\S]*?\]/);
+                if (arrayMatch) {
+                  try {
+                    const arr = JSON.parse(arrayMatch[0]);
+                    if (Array.isArray(arr)) parsedTags = arr;
+                  } catch { /* exhausted strategies */ }
+                }
+              }
+            }
+          }
+        }
+
+        if (parsedTags && parsedTags.length > 0) {
+          // Ensure all tags are lowercase strings
+          const cleanTags = parsedTags
+            .filter((t): t is string => typeof t === 'string')
+            .map((t) => t.toLowerCase().trim().replace(/\s+/g, '-'))
+            .filter((t) => t.length > 0);
+          if (cleanTags.length > 0) {
+            updateData.tags = cleanTags;
+            result.tags = cleanTags;
           }
         }
       }
