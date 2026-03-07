@@ -1370,6 +1370,7 @@ export interface AIFrameworkPrinciple {
   sort_order: number;
   is_user_added: boolean;
   is_included: boolean;
+  section_title: string | null;
   archived_at: string | null;
   created_at: string;
   updated_at: string;

@@ -533,3 +533,46 @@
 .framework-principles__export-menu button:hover {
   background: var(--color-bg-secondary);
 }
+
+/* Section grouping in review/edit view */
+.framework-principles__section-group {
+  margin-bottom: var(--spacing-sm);
+}
+
+.framework-principles__section-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-xs);
+  background: var(--color-bg-secondary);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--transition-fast);
+  margin-bottom: var(--spacing-xs);
+}
+
+.framework-principles__section-header:hover {
+  background: var(--color-warm-sand);
+}
+
+.framework-principles__section-chevron {
+  flex-shrink: 0;
+  color: var(--color-slate-gray);
+}
+
+.framework-principles__section-name {
+  flex: 1;
+  font-family: var(--font-heading);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.framework-principles__section-count {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}

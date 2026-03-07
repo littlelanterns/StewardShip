@@ -199,13 +199,43 @@ export default function BrowseFrameworks({
                 {/* Expanded principles */}
                 {isExpanded && (
                   <div className="browse-frameworks__principles">
-                    <ol className="browse-frameworks__principles-list">
-                      {includedPrinciples.map((p, i) => (
-                        <li key={p.id || i} className="browse-frameworks__principle">
-                          {p.text}
-                        </li>
-                      ))}
-                    </ol>
+                    {(() => {
+                      const hasSections = includedPrinciples.some((p) => p.section_title);
+                      if (!hasSections) {
+                        return (
+                          <ol className="browse-frameworks__principles-list">
+                            {includedPrinciples.map((p, i) => (
+                              <li key={p.id || i} className="browse-frameworks__principle">
+                                {p.text}
+                              </li>
+                            ))}
+                          </ol>
+                        );
+                      }
+                      // Group by section_title
+                      const groups: Array<{ title: string; items: typeof includedPrinciples }> = [];
+                      for (const p of includedPrinciples) {
+                        const title = p.section_title || 'General';
+                        const last = groups[groups.length - 1];
+                        if (last && last.title === title) {
+                          last.items.push(p);
+                        } else {
+                          groups.push({ title, items: [p] });
+                        }
+                      }
+                      return groups.map((g) => (
+                        <div key={g.title} className="browse-frameworks__section-group">
+                          <h5 className="browse-frameworks__section-title">{g.title}</h5>
+                          <ol className="browse-frameworks__principles-list">
+                            {g.items.map((p, i) => (
+                              <li key={p.id || i} className="browse-frameworks__principle">
+                                {p.text}
+                              </li>
+                            ))}
+                          </ol>
+                        </div>
+                      ));
+                    })()}
                     <div className="browse-frameworks__card-footer">
                       <button
                         type="button"

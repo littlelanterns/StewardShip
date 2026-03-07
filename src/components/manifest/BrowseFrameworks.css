@@ -245,3 +245,22 @@
   padding: 0;
 }
 .browse-frameworks__edit-link:hover { text-decoration: underline; }
+
+/* Section grouping within expanded principles */
+.browse-frameworks__section-group {
+  margin-bottom: var(--spacing-sm);
+}
+
+.browse-frameworks__section-group:last-child {
+  margin-bottom: 0;
+}
+
+.browse-frameworks__section-title {
+  margin: 0 0 var(--spacing-xs);
+  font-family: var(--font-heading);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  padding-bottom: var(--spacing-xs);
+  border-bottom: 1px solid var(--color-bg-secondary);
+}

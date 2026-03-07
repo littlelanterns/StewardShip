@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { GripVertical, Plus, Trash2, RefreshCw, Download } from 'lucide-react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { GripVertical, Plus, Trash2, RefreshCw, Download, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button, LoadingSpinner } from '../shared';
 import type { AIFramework } from '../../lib/types';
 import type { SectionInfo, FrameworkExtractionResult } from '../../hooks/useFrameworks';
@@ -11,6 +11,7 @@ interface EditablePrinciple {
   sort_order: number;
   is_user_added: boolean;
   is_included: boolean;
+  section_title?: string;
   id?: string;
 }
 
@@ -28,12 +29,147 @@ interface FrameworkPrinciplesProps {
   onSave: (
     manifestItemId: string,
     name: string,
-    principles: Array<{ text: string; sort_order: number; is_user_added?: boolean; is_included?: boolean }>,
+    principles: Array<{ text: string; sort_order: number; is_user_added?: boolean; is_included?: boolean; section_title?: string }>,
     isActive: boolean,
   ) => Promise<AIFramework | null>;
   onToggle: (frameworkId: string, isActive: boolean) => Promise<void>;
   onUpdateTags?: (frameworkId: string, tags: string[]) => Promise<boolean>;
   onBack: () => void;
+}
+
+// Sub-component: renders principles grouped by section_title (or flat if no sections)
+function PrinciplesList({
+  principles,
+  togglePrincipleIncluded,
+  movePrinciple,
+  updatePrinciple,
+  removePrinciple,
+  autoResizeTextarea,
+}: {
+  principles: EditablePrinciple[];
+  togglePrincipleIncluded: (index: number) => void;
+  movePrinciple: (index: number, dir: 'up' | 'down') => void;
+  updatePrinciple: (index: number, text: string) => void;
+  removePrinciple: (index: number) => void;
+  autoResizeTextarea: (el: HTMLTextAreaElement | null) => void;
+}) {
+  const hasSections = principles.some((p) => p.section_title);
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+
+  const toggleSection = useCallback((section: string) => {
+    setCollapsedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(section)) next.delete(section);
+      else next.add(section);
+      return next;
+    });
+  }, []);
+
+  // Group principles by section, preserving order
+  const sectionGroups = useMemo(() => {
+    if (!hasSections) return null;
+    const groups: Array<{ title: string; items: Array<{ principle: EditablePrinciple; globalIndex: number }> }> = [];
+    let currentTitle = '';
+    for (let i = 0; i < principles.length; i++) {
+      const p = principles[i];
+      const title = p.section_title || 'General';
+      if (title !== currentTitle || groups.length === 0) {
+        // Check if we already have this title (for user-reordered principles)
+        const existing = groups.find((g) => g.title === title);
+        if (existing) {
+          existing.items.push({ principle: p, globalIndex: i });
+        } else {
+          groups.push({ title, items: [{ principle: p, globalIndex: i }] });
+        }
+        currentTitle = title;
+      } else {
+        groups[groups.length - 1].items.push({ principle: p, globalIndex: i });
+      }
+    }
+    return groups;
+  }, [principles, hasSections]);
+
+  const renderPrincipleRow = (principle: EditablePrinciple, index: number) => (
+    <div key={index} className={`framework-principles__item${!principle.is_included ? ' seasonal-focus--excluded' : ''}`}>
+      <input
+        type="checkbox"
+        className="seasonal-focus__checkbox"
+        checked={principle.is_included}
+        onChange={() => togglePrincipleIncluded(index)}
+        title={principle.is_included
+          ? 'Included in AI conversations. Uncheck to exclude.'
+          : 'Excluded from AI conversations. Check to include.'}
+      />
+      <div className="framework-principles__drag-handles">
+        <button
+          className="framework-principles__move-btn"
+          onClick={() => movePrinciple(index, 'up')}
+          disabled={index === 0}
+          title="Move up"
+        >
+          <GripVertical size={14} />
+        </button>
+      </div>
+      <textarea
+        ref={autoResizeTextarea}
+        className="framework-principles__text"
+        value={principle.text}
+        onChange={(e) => {
+          updatePrinciple(index, e.target.value);
+          autoResizeTextarea(e.target as HTMLTextAreaElement);
+        }}
+        rows={1}
+      />
+      <div className="framework-principles__item-actions">
+        {principle.is_user_added && (
+          <span className="framework-principles__manual-badge">Manual</span>
+        )}
+        <button
+          className="framework-principles__delete-btn"
+          onClick={() => removePrinciple(index)}
+          title="Remove principle"
+        >
+          <Trash2 size={14} />
+        </button>
+      </div>
+    </div>
+  );
+
+  // Flat list (no sections)
+  if (!sectionGroups) {
+    return <>{principles.map((p, i) => renderPrincipleRow(p, i))}</>;
+  }
+
+  // Grouped by section
+  return (
+    <>
+      {sectionGroups.map((group) => {
+        const isCollapsed = collapsedSections.has(group.title);
+        const includedCount = group.items.filter((it) => it.principle.is_included).length;
+        return (
+          <div key={group.title} className="framework-principles__section-group">
+            <button
+              type="button"
+              className="framework-principles__section-header"
+              onClick={() => toggleSection(group.title)}
+            >
+              {isCollapsed
+                ? <ChevronRight size={16} className="framework-principles__section-chevron" />
+                : <ChevronDown size={16} className="framework-principles__section-chevron" />
+              }
+              <span className="framework-principles__section-name">{group.title}</span>
+              <span className="framework-principles__section-count">
+                {includedCount}/{group.items.length}
+              </span>
+            </button>
+            {!isCollapsed && group.items.map(({ principle, globalIndex }) =>
+              renderPrincipleRow(principle, globalIndex),
+            )}
+          </div>
+        );
+      })}
+    </>
+  );
 }
 
 export default function FrameworkPrinciples({
@@ -57,6 +193,7 @@ export default function FrameworkPrinciples({
       sort_order: p.sort_order,
       is_user_added: p.is_user_added,
       is_included: p.is_included ?? true,
+      section_title: p.section_title || undefined,
       id: p.id,
     })).sort((a, b) => a.sort_order - b.sort_order) || [],
   );
@@ -209,11 +346,13 @@ export default function FrameworkPrinciples({
           setName(frameworkName);
         }
 
+        const sectionTitle = section.title.replace(/^\[NON-CONTENT\]\s*/i, '');
         const newPrinciples = result.principles.map((p, j) => ({
           text: p.text,
           sort_order: allPrinciples.length + j,
           is_user_added: false,
           is_included: true,
+          section_title: sectionTitle,
         }));
         allPrinciples.push(...newPrinciples);
 
@@ -575,51 +714,14 @@ export default function FrameworkPrinciples({
             {principles.every((p) => p.is_included) ? 'Deselect All' : 'Select All'}
           </button>
         </div>
-        {principles.map((principle, index) => (
-          <div key={index} className={`framework-principles__item${!principle.is_included ? ' seasonal-focus--excluded' : ''}`}>
-            <input
-              type="checkbox"
-              className="seasonal-focus__checkbox"
-              checked={principle.is_included}
-              onChange={() => togglePrincipleIncluded(index)}
-              title={principle.is_included
-                ? 'Included in AI conversations. Uncheck to exclude.'
-                : 'Excluded from AI conversations. Check to include.'}
-            />
-            <div className="framework-principles__drag-handles">
-              <button
-                className="framework-principles__move-btn"
-                onClick={() => movePrinciple(index, 'up')}
-                disabled={index === 0}
-                title="Move up"
-              >
-                <GripVertical size={14} />
-              </button>
-            </div>
-            <textarea
-              ref={autoResizeTextarea}
-              className="framework-principles__text"
-              value={principle.text}
-              onChange={(e) => {
-                updatePrinciple(index, e.target.value);
-                autoResizeTextarea(e.target as HTMLTextAreaElement);
-              }}
-              rows={1}
-            />
-            <div className="framework-principles__item-actions">
-              {principle.is_user_added && (
-                <span className="framework-principles__manual-badge">Manual</span>
-              )}
-              <button
-                className="framework-principles__delete-btn"
-                onClick={() => removePrinciple(index)}
-                title="Remove principle"
-              >
-                <Trash2 size={14} />
-              </button>
-            </div>
-          </div>
-        ))}
+        <PrinciplesList
+          principles={principles}
+          togglePrincipleIncluded={togglePrincipleIncluded}
+          movePrinciple={movePrinciple}
+          updatePrinciple={updatePrinciple}
+          removePrinciple={removePrinciple}
+          autoResizeTextarea={autoResizeTextarea}
+        />
       </div>
 
       <div className="framework-principles__add-row">
