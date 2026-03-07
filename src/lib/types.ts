@@ -1328,6 +1328,7 @@ export interface ManifestItem {
   related_wheel_id: string | null;
   related_goal_id: string | null;
   processing_status: ManifestProcessingStatus;
+  processing_detail: string | null;
   chunk_count: number;
   intake_completed: boolean;
   ai_summary: string | null;

@@ -62,10 +62,14 @@ serve(async (req: Request) => {
       );
     }
 
+    // Helper to update processing_detail for real-time progress
+    const setDetail = (detail: string) =>
+      supabase.from('manifest_items').update({ processing_detail: detail }).eq('id', manifest_item_id);
+
     // 2. Update status to processing
     await supabase
       .from('manifest_items')
-      .update({ processing_status: 'processing' })
+      .update({ processing_status: 'processing', processing_detail: 'Downloading file...' })
       .eq('id', manifest_item_id);
 
     let fullText = item.text_content || '';
@@ -73,6 +77,7 @@ serve(async (req: Request) => {
     // 3. Extract text based on file type
     if (item.file_type === 'pdf' && item.storage_path) {
       try {
+        await setDetail('Downloading PDF...');
         const { data: fileData, error: downloadErr } = await supabase
           .storage
           .from('manifest-files')
@@ -82,6 +87,7 @@ serve(async (req: Request) => {
           throw new Error(`Failed to download PDF: ${downloadErr?.message}`);
         }
 
+        await setDetail('Extracting text from PDF...');
         const arrayBuffer = await fileData.arrayBuffer();
         fullText = await extractCleanTextFromPDF(new Uint8Array(arrayBuffer));
 
@@ -101,6 +107,7 @@ serve(async (req: Request) => {
 
         // TOC extraction (non-fatal)
         try {
+          await setDetail('Extracting table of contents...');
           const toc = await extractTOCFromPDF(new Uint8Array(arrayBuffer));
           if (toc && toc.length > 0) {
             await supabase.from('manifest_items').update({ toc }).eq('id', manifest_item_id);
@@ -122,6 +129,7 @@ serve(async (req: Request) => {
     } else if ((item.file_type === 'txt' || item.file_type === 'md') && item.storage_path) {
       // TXT and MD: direct text read
       try {
+        await setDetail('Downloading file...');
         const { data: fileData, error: downloadErr } = await supabase
           .storage
           .from('manifest-files')
@@ -163,6 +171,7 @@ serve(async (req: Request) => {
     } else if (item.file_type === 'epub' && item.storage_path) {
       // EPUB: ZIP → OPF spine order → XHTML content → stripped HTML
       try {
+        await setDetail('Downloading EPUB...');
         const { data: fileData, error: downloadErr } = await supabase
           .storage
           .from('manifest-files')
@@ -172,6 +181,7 @@ serve(async (req: Request) => {
           throw new Error(`Failed to download EPUB: ${downloadErr?.message}`);
         }
 
+        await setDetail('Extracting text from EPUB...');
         const arrayBuffer = await fileData.arrayBuffer();
         fullText = await extractTextFromEPUB(new Uint8Array(arrayBuffer));
 
@@ -182,6 +192,7 @@ serve(async (req: Request) => {
 
         // TOC extraction (non-fatal)
         try {
+          await setDetail('Extracting table of contents...');
           const toc = await extractTOCFromEPUB(new Uint8Array(arrayBuffer));
           if (toc && toc.length > 0) {
             await supabase.from('manifest_items').update({ toc }).eq('id', manifest_item_id);
@@ -203,6 +214,7 @@ serve(async (req: Request) => {
     } else if (item.file_type === 'docx' && item.storage_path) {
       // DOCX: ZIP → word/document.xml → w:t text runs
       try {
+        await setDetail('Downloading DOCX...');
         const { data: fileData, error: downloadErr } = await supabase
           .storage
           .from('manifest-files')
@@ -212,6 +224,7 @@ serve(async (req: Request) => {
           throw new Error(`Failed to download DOCX: ${downloadErr?.message}`);
         }
 
+        await setDetail('Extracting text from DOCX...');
         const arrayBuffer = await fileData.arrayBuffer();
         fullText = await extractTextFromDOCX(new Uint8Array(arrayBuffer));
 
@@ -222,6 +235,7 @@ serve(async (req: Request) => {
 
         // TOC extraction (non-fatal)
         try {
+          await setDetail('Extracting table of contents...');
           const toc = await extractTOCFromDOCX(new Uint8Array(arrayBuffer));
           if (toc && toc.length > 0) {
             await supabase.from('manifest_items').update({ toc }).eq('id', manifest_item_id);
@@ -243,6 +257,7 @@ serve(async (req: Request) => {
     } else if (item.file_type === 'image' && item.storage_path) {
       // Images: AI vision extraction for charts, screenshots, etc.
       try {
+        await setDetail('Analyzing image with AI vision...');
         const visionText = await extractViaVision(supabase, item.storage_path, 'manifest-files');
         if (visionText) {
           fullText = visionText;
@@ -287,9 +302,11 @@ serve(async (req: Request) => {
     }
 
     // 4. Chunk the text and filter out garbage
+    await setDetail('Chunking content...');
     const rawChunks = chunkText(fullText);
     const chunks = rawChunks.filter((c) => isQualityChunk(c.text));
     console.log(`Chunking: ${rawChunks.length} raw → ${chunks.length} quality chunks (filtered ${rawChunks.length - chunks.length})`);
+    await setDetail(`Chunked into ${chunks.length} segments`);
 
     if (chunks.length === 0) {
       await supabase
@@ -317,6 +334,7 @@ serve(async (req: Request) => {
 
     // Batch embed (OpenAI supports up to 2048 inputs per request)
     const BATCH_SIZE = 100;
+    const totalBatches = Math.ceil(chunks.length / BATCH_SIZE);
     const allChunkRecords: Array<{
       user_id: string;
       manifest_item_id: string;
@@ -328,6 +346,8 @@ serve(async (req: Request) => {
     }> = [];
 
     for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
+      const batchNum = Math.floor(i / BATCH_SIZE) + 1;
+      await setDetail(`Generating embeddings (batch ${batchNum} of ${totalBatches})...`);
       const batch = chunks.slice(i, i + BATCH_SIZE);
       const texts = batch.map((c) => c.text);
 
@@ -378,6 +398,7 @@ serve(async (req: Request) => {
       .eq('manifest_item_id', manifest_item_id);
 
     // 7. Insert chunks in batches
+    await setDetail('Saving to database...');
     const INSERT_BATCH = 50;
     for (let i = 0; i < allChunkRecords.length; i += INSERT_BATCH) {
       const batch = allChunkRecords.slice(i, i + INSERT_BATCH);
@@ -390,12 +411,13 @@ serve(async (req: Request) => {
       }
     }
 
-    // 8. Update manifest item status
+    // 8. Update manifest item status (clear processing_detail on completion)
     await supabase
       .from('manifest_items')
       .update({
         processing_status: 'completed',
         chunk_count: allChunkRecords.length,
+        processing_detail: null,
       })
       .eq('id', manifest_item_id);
 

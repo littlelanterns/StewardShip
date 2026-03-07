@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { FileText, BookOpen, FileCode, Mic, Image, StickyNote, Loader } from 'lucide-react';
 import type { ManifestItem, AIFramework } from '../../lib/types';
 import { MANIFEST_USAGE_LABELS } from '../../lib/types';
@@ -22,13 +21,6 @@ const FILE_TYPE_ICONS = {
   text_note: StickyNote,
 } as const;
 
-const PROCESSING_MESSAGES = [
-  'Extracting text...',
-  'Chunking content...',
-  'Generating embeddings...',
-  'Almost done...',
-];
-
 function getRelativeDate(dateStr: string): string {
   const now = new Date();
   const date = new Date(dateStr);
@@ -49,15 +41,6 @@ export function ManifestItemCard({ item, onClick, framework }: ManifestItemCardP
   const isFailed = item.processing_status === 'failed';
   const isInProgress = isPending || isProcessing;
 
-  const [msgIndex, setMsgIndex] = useState(0);
-  useEffect(() => {
-    if (!isInProgress) return;
-    const interval = setInterval(() => {
-      setMsgIndex((i) => (i + 1) % PROCESSING_MESSAGES.length);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [isInProgress]);
-
   return (
     <Card className="manifest-card" onClick={() => onClick(item)}>
       <div className="manifest-card__content">
@@ -68,7 +51,7 @@ export function ManifestItemCard({ item, onClick, framework }: ManifestItemCardP
           <div className="manifest-card__info">
             <p className="manifest-card__title">{item.title}</p>
             {isInProgress ? (
-              <span className="manifest-card__processing-msg">{PROCESSING_MESSAGES[msgIndex]}</span>
+              <span className="manifest-card__processing-msg">{item.processing_detail || 'Processing...'}</span>
             ) : (
               <span className="manifest-card__date">{getRelativeDate(item.created_at)}</span>
             )}

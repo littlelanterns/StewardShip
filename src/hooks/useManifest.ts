@@ -15,7 +15,7 @@ export function useManifest() {
   const [items, setItems] = useState<ManifestItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollIntervalsRef = useRef<Map<string, ReturnType<typeof setInterval>>>(new Map());
 
   // Fetch all active manifest items
   const fetchItems = useCallback(async () => {
@@ -261,34 +261,45 @@ export function useManifest() {
   const pollProcessingStatus = useCallback((itemId: string) => {
     if (!user) return;
 
-    // Clear any existing poll
-    if (pollIntervalRef.current) {
-      clearInterval(pollIntervalRef.current);
-    }
+    // Clear any existing poll for this specific item
+    const existing = pollIntervalsRef.current.get(itemId);
+    if (existing) clearInterval(existing);
 
-    pollIntervalRef.current = setInterval(async () => {
+    const interval = setInterval(async () => {
       const { data, error: pollErr } = await supabase
         .from('manifest_items')
-        .select('processing_status, chunk_count, ai_summary, toc')
+        .select('processing_status, processing_detail, chunk_count, ai_summary, toc')
         .eq('id', itemId)
         .eq('user_id', user.id)
         .single();
 
       if (pollErr || !data) {
-        if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+        const iv = pollIntervalsRef.current.get(itemId);
+        if (iv) { clearInterval(iv); pollIntervalsRef.current.delete(itemId); }
         return;
       }
 
       const status = data.processing_status;
+
+      // Update local state with latest progress detail
+      setItems((prev) =>
+        prev.map((item) =>
+          item.id === itemId
+            ? {
+                ...item,
+                processing_status: status,
+                processing_detail: data.processing_detail,
+                ...(status === 'completed' || status === 'failed'
+                  ? { chunk_count: data.chunk_count || 0, ai_summary: data.ai_summary, toc: data.toc }
+                  : {}),
+              }
+            : item,
+        ),
+      );
+
       if (status === 'completed' || status === 'failed') {
-        setItems((prev) =>
-          prev.map((item) =>
-            item.id === itemId
-              ? { ...item, processing_status: status, chunk_count: data.chunk_count || 0, ai_summary: data.ai_summary, toc: data.toc }
-              : item,
-          ),
-        );
-        if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+        const iv = pollIntervalsRef.current.get(itemId);
+        if (iv) { clearInterval(iv); pollIntervalsRef.current.delete(itemId); }
 
         // Auto-enrich newly completed items that have no summary yet (fire-and-forget)
         if (status === 'completed' && !data.ai_summary) {
@@ -311,7 +322,55 @@ export function useManifest() {
         }
       }
     }, 3000);
+
+    pollIntervalsRef.current.set(itemId, interval);
   }, [user]);
+
+  // Auto-intake: wait for processing to complete, then run and apply AI intake suggestions
+  // Used by bulk upload for hands-off processing. Fire-and-forget — runs in background.
+  const autoIntakeItem = useCallback(async (itemId: string): Promise<boolean> => {
+    if (!user) return false;
+
+    // Poll DB directly until processing completes (max 5 minutes)
+    const MAX_ATTEMPTS = 100;
+    const POLL_MS = 3000;
+
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, POLL_MS));
+
+      const { data } = await supabase
+        .from('manifest_items')
+        .select('processing_status')
+        .eq('id', itemId)
+        .eq('user_id', user.id)
+        .single();
+
+      if (!data) return false;
+      if (data.processing_status === 'failed') return false;
+      if (data.processing_status === 'completed') break;
+      if (attempt === MAX_ATTEMPTS - 1) return false; // timeout
+    }
+
+    // Run AI intake
+    try {
+      const suggestions = await runIntake(itemId);
+      if (suggestions) {
+        await applyIntake(itemId, {
+          tags: suggestions.suggested_tags,
+          folder_group: suggestions.suggested_folder,
+          usage_designations: [suggestions.suggested_usage],
+        });
+      } else {
+        // Intake failed but mark complete so item isn't stuck
+        await updateItem(itemId, { intake_completed: true });
+      }
+      return true;
+    } catch (err) {
+      console.error('Auto-intake failed (non-fatal):', err);
+      await updateItem(itemId, { intake_completed: true });
+      return false;
+    }
+  }, [user, runIntake, applyIntake, updateItem]);
 
   // Run AI intake analysis on a manifest item
   const runIntake = useCallback(async (itemId: string): Promise<IntakeSuggestions | null> => {
@@ -442,12 +501,11 @@ export function useManifest() {
     ) || null;
   }, [items]);
 
-  // Cleanup poll on unmount
+  // Cleanup all polls on unmount
   useEffect(() => {
     return () => {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-      }
+      pollIntervalsRef.current.forEach((interval) => clearInterval(interval));
+      pollIntervalsRef.current.clear();
     };
   }, []);
 
@@ -470,5 +528,6 @@ export function useManifest() {
     fetchItemDetail,
     checkDuplicate,
     enrichItem,
+    autoIntakeItem,
   };
 }

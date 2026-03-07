@@ -11,7 +11,6 @@ import { ManifestItemCard } from '../components/manifest/ManifestItemCard';
 import { ManifestItemDetail } from '../components/manifest/ManifestItemDetail';
 import { ManifestFilterBar } from '../components/manifest/ManifestFilterBar';
 import { UploadFlow } from '../components/manifest/UploadFlow';
-import { IntakeFlow } from '../components/manifest/IntakeFlow';
 import { TextNoteModal } from '../components/manifest/TextNoteModal';
 import FrameworkPrinciples from '../components/manifest/FrameworkPrinciples';
 import FrameworkManager from '../components/manifest/FrameworkManager';
@@ -24,7 +23,7 @@ import { EmptyState, LoadingSpinner, FeatureGuide } from '../components/shared';
 import { FEATURE_GUIDES } from '../lib/featureGuides';
 import './Manifest.css';
 
-type ViewMode = 'list' | 'detail' | 'upload' | 'intake' | 'framework' | 'frameworks' | 'browse' | 'mast_extract' | 'keel_extract';
+type ViewMode = 'list' | 'detail' | 'upload' | 'framework' | 'frameworks' | 'browse' | 'mast_extract' | 'keel_extract';
 
 export default function Manifest() {
   usePageContext({ page: 'manifest' });
@@ -40,13 +39,12 @@ export default function Manifest() {
     archiveItem,
     deleteItem,
     pollProcessingStatus,
-    runIntake,
-    applyIntake,
     getUniqueTags,
     getUniqueFolders,
     fetchItemDetail,
     checkDuplicate,
     enrichItem,
+    autoIntakeItem,
   } = useManifest();
 
   const {
@@ -72,7 +70,6 @@ export default function Manifest() {
 
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedItem, setSelectedItem] = useState<ManifestItem | null>(null);
-  const [intakeItemId, setIntakeItemId] = useState<string | null>(null);
   const [showTextNoteModal, setShowTextNoteModal] = useState(false);
   const [fabExpanded, setFabExpanded] = useState(false);
 
@@ -100,17 +97,6 @@ export default function Manifest() {
     });
   }, [items, pollProcessingStatus]);
 
-  // Check if any items just completed processing and need intake
-  useEffect(() => {
-    const needsIntake = items.find(
-      (i) => i.processing_status === 'completed' && !i.intake_completed && i.id === intakeItemId,
-    );
-    if (needsIntake && viewMode === 'list') {
-      setSelectedItem(needsIntake);
-      setViewMode('intake');
-    }
-  }, [items, intakeItemId, viewMode]);
-
   const handleSelectItem = useCallback(async (item: ManifestItem) => {
     const detail = await fetchItemDetail(item.id);
     setSelectedItem(detail || item);
@@ -134,7 +120,6 @@ export default function Manifest() {
   const handleUpload = useCallback(async (file: File) => {
     const item = await uploadFile(file);
     if (item) {
-      setIntakeItemId(item.id);
       pollProcessingStatus(item.id);
     }
     return item;
@@ -143,34 +128,14 @@ export default function Manifest() {
   const handleTextNote = useCallback(async (title: string, content: string) => {
     const item = await createTextNote(title, content);
     if (item) {
-      setIntakeItemId(item.id);
       pollProcessingStatus(item.id);
+      // Auto-intake in background (fire-and-forget)
+      autoIntakeItem(item.id).catch((err) =>
+        console.error('Text note auto-intake failed:', err),
+      );
     }
     return item;
-  }, [createTextNote, pollProcessingStatus]);
-
-  const handleIntakeApply = useCallback(async (
-    itemId: string,
-    intake: { tags: string[]; folder_group: string; usage_designations: ManifestUsageDesignation[] },
-  ) => {
-    const result = await applyIntake(itemId, intake);
-    if (result) {
-      setIntakeItemId(null);
-      setViewMode('list');
-      setSelectedItem(null);
-      fetchItems();
-    }
-    return result;
-  }, [applyIntake, fetchItems]);
-
-  const handleIntakeSkip = useCallback(() => {
-    if (intakeItemId) {
-      updateItem(intakeItemId, { intake_completed: true });
-    }
-    setIntakeItemId(null);
-    setViewMode('list');
-    setSelectedItem(null);
-  }, [intakeItemId, updateItem]);
+  }, [createTextNote, pollProcessingStatus, autoIntakeItem]);
 
   const handleAskLibrary = useCallback(() => {
     setFabExpanded(false);
@@ -287,22 +252,8 @@ export default function Manifest() {
         <UploadFlow
           onUpload={handleUpload}
           onCheckDuplicate={checkDuplicate}
+          onAutoIntake={autoIntakeItem}
           onClose={handleBack}
-        />
-      </div>
-    );
-  }
-
-  // Intake view
-  if (viewMode === 'intake' && currentSelectedItem) {
-    return (
-      <div className="page manifest-page">
-        <IntakeFlow
-          item={currentSelectedItem}
-          onRunIntake={runIntake}
-          onApplyIntake={handleIntakeApply}
-          onSkip={handleIntakeSkip}
-          existingFolders={uniqueFolders}
         />
       </div>
     );
@@ -431,7 +382,7 @@ export default function Manifest() {
           onClick={() => setViewMode('upload')}
         >
           <Upload size={16} />
-          Upload
+          Upload Files
         </button>
         <button
           type="button"
@@ -531,7 +482,7 @@ export default function Manifest() {
               className="manifest-page__fab-option"
               onClick={() => { setFabExpanded(false); setViewMode('upload'); }}
             >
-              Upload File
+              Upload Files
             </button>
             <button
               type="button"
