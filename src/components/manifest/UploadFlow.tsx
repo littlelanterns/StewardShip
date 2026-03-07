@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { Upload, FileText, BookOpen, FileCode, Mic, Image, AlertCircle, Check, X, Loader, RotateCcw } from 'lucide-react';
+import { Upload, FileText, BookOpen, FileCode, Mic, Image, Check, X, Loader, RotateCcw } from 'lucide-react';
 import type { ManifestItem } from '../../lib/types';
 import { Button } from '../shared';
 import './UploadFlow.css';
@@ -42,7 +42,6 @@ export function UploadFlow({ onUpload, onCheckDuplicate, onAutoIntake, onClose }
   const [queue, setQueue] = useState<QueuedFile[]>([]);
   const [isProcessingQueue, setIsProcessingQueue] = useState(false);
   const [queueComplete, setQueueComplete] = useState(false);
-  const [currentIndex, setCurrentIndex] = useState(0);
   const abortRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -76,8 +75,6 @@ export function UploadFlow({ onUpload, onCheckDuplicate, onAutoIntake, onClose }
     for (let idx = 0; idx < pendingIndices.length; idx++) {
       if (abortRef.current) break;
       const queueIdx = pendingIndices[idx];
-      setCurrentIndex(queueIdx);
-
       // Mark as uploading
       setQueue((prev) =>
         prev.map((q, i) => (i === queueIdx ? { ...q, status: 'uploading' as const } : q)),

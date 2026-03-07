@@ -327,51 +327,6 @@ export function useManifest() {
   }, [user]);
 
   // Auto-intake: wait for processing to complete, then run and apply AI intake suggestions
-  // Used by bulk upload for hands-off processing. Fire-and-forget — runs in background.
-  const autoIntakeItem = useCallback(async (itemId: string): Promise<boolean> => {
-    if (!user) return false;
-
-    // Poll DB directly until processing completes (max 5 minutes)
-    const MAX_ATTEMPTS = 100;
-    const POLL_MS = 3000;
-
-    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-      await new Promise((resolve) => setTimeout(resolve, POLL_MS));
-
-      const { data } = await supabase
-        .from('manifest_items')
-        .select('processing_status')
-        .eq('id', itemId)
-        .eq('user_id', user.id)
-        .single();
-
-      if (!data) return false;
-      if (data.processing_status === 'failed') return false;
-      if (data.processing_status === 'completed') break;
-      if (attempt === MAX_ATTEMPTS - 1) return false; // timeout
-    }
-
-    // Run AI intake
-    try {
-      const suggestions = await runIntake(itemId);
-      if (suggestions) {
-        await applyIntake(itemId, {
-          tags: suggestions.suggested_tags,
-          folder_group: suggestions.suggested_folder,
-          usage_designations: [suggestions.suggested_usage],
-        });
-      } else {
-        // Intake failed but mark complete so item isn't stuck
-        await updateItem(itemId, { intake_completed: true });
-      }
-      return true;
-    } catch (err) {
-      console.error('Auto-intake failed (non-fatal):', err);
-      await updateItem(itemId, { intake_completed: true });
-      return false;
-    }
-  }, [user, runIntake, applyIntake, updateItem]);
-
   // Run AI intake analysis on a manifest item
   const runIntake = useCallback(async (itemId: string): Promise<IntakeSuggestions | null> => {
     if (!user) return null;
@@ -424,6 +379,51 @@ export function useManifest() {
       intake_completed: true,
     });
   }, [updateItem]);
+
+  // Used by bulk upload for hands-off processing. Fire-and-forget — runs in background.
+  const autoIntakeItem = useCallback(async (itemId: string): Promise<boolean> => {
+    if (!user) return false;
+
+    // Poll DB directly until processing completes (max 5 minutes)
+    const MAX_ATTEMPTS = 100;
+    const POLL_MS = 3000;
+
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, POLL_MS));
+
+      const { data } = await supabase
+        .from('manifest_items')
+        .select('processing_status')
+        .eq('id', itemId)
+        .eq('user_id', user.id)
+        .single();
+
+      if (!data) return false;
+      if (data.processing_status === 'failed') return false;
+      if (data.processing_status === 'completed') break;
+      if (attempt === MAX_ATTEMPTS - 1) return false; // timeout
+    }
+
+    // Run AI intake
+    try {
+      const suggestions = await runIntake(itemId);
+      if (suggestions) {
+        await applyIntake(itemId, {
+          tags: suggestions.suggested_tags,
+          folder_group: suggestions.suggested_folder,
+          usage_designations: [suggestions.suggested_usage],
+        });
+      } else {
+        // Intake failed but mark complete so item isn't stuck
+        await updateItem(itemId, { intake_completed: true });
+      }
+      return true;
+    } catch (err) {
+      console.error('Auto-intake failed (non-fatal):', err);
+      await updateItem(itemId, { intake_completed: true });
+      return false;
+    }
+  }, [user, runIntake, applyIntake, updateItem]);
 
   // Get all unique tags across all items
   const getUniqueTags = useCallback((): string[] => {

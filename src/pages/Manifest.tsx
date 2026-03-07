@@ -40,7 +40,6 @@ export default function Manifest() {
     deleteItem,
     pollProcessingStatus,
     getUniqueTags,
-    getUniqueFolders,
     fetchItemDetail,
     checkDuplicate,
     enrichItem,
@@ -231,7 +230,6 @@ export default function Manifest() {
   }, [filteredItems]);
 
   const uniqueTags = useMemo(() => getUniqueTags(), [getUniqueTags]);
-  const uniqueFolders = useMemo(() => getUniqueFolders(), [getUniqueFolders]);
 
   // Keep selectedItem in sync with items array (so updates via updateItem are reflected)
   const currentSelectedItem = useMemo(
