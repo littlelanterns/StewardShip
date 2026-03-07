@@ -6,6 +6,43 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// --- Genre context block injected into prompts when genres are specified ---
+function buildGenreContext(genres: string[]): string {
+  if (!genres || genres.length === 0) return '';
+
+  const genreGuidance: Record<string, string> = {
+    non_fiction: 'This is non-fiction. Focus on key concepts, frameworks, actionable insights, and mental models the author teaches.',
+    fiction: 'This is fiction. Focus on character development, thematic insights, narrative arcs, allegorical meaning, and lessons embedded in the story.',
+    biography_memoir: 'This is biography/memoir. Focus on pivotal life moments, character-defining decisions, relationship lessons, and wisdom earned through experience.',
+    scriptures_sacred: 'This is scripture or sacred text. Focus on spiritual principles, doctrinal points, devotional insights, promises, and commandments. Treat the text with reverence.',
+    workbook: 'This is a workbook or practical guide. Focus on exercises, self-assessment frameworks, action steps, and structured processes the reader is meant to apply.',
+    poetry_essays: 'This is poetry or essay collection. Focus on imagery, emotional resonance, philosophical insights, and the distinctive voice/perspective of the author.',
+    allegory_parable: 'This is allegory or parable. Focus on the symbolic meanings beneath the surface narrative, moral lessons, and teaching metaphors that illuminate truth.',
+    devotional_spiritual_memoir: 'This is devotional or spiritual memoir. Focus on the spiritual growth journey, faith formation moments, personal revelation, and the intersection of lived experience with divine purpose.',
+  };
+
+  const lines = genres.map((g) => genreGuidance[g]).filter(Boolean);
+  if (lines.length === 0) return '';
+
+  if (lines.length === 1) {
+    return `\n\nGENRE CONTEXT:\n${lines[0]}`;
+  }
+  return `\n\nGENRE CONTEXT (this content blends multiple genres — let all of these lenses inform your extraction):\n${lines.map((l) => `- ${l}`).join('\n')}`;
+}
+
+// --- Go Deeper addendum appended when extracting additional content ---
+function buildGoDeeperAddendum(existingItems: string[]): string {
+  if (!existingItems || existingItems.length === 0) return '';
+  const itemList = existingItems.map((item, i) => `${i + 1}. ${item}`).join('\n');
+  return `\n\nGO DEEPER — ADDITIONAL EXTRACTION:
+You are finding ADDITIONAL content not already captured. The following items have already been extracted. Do NOT duplicate or rephrase these — find genuinely new insights, principles, or content:
+
+Already extracted:
+${itemList}
+
+Look for: overlooked nuances, secondary insights, supporting evidence, contrasting viewpoints, practical applications, and deeper implications not yet captured.`;
+}
+
 const FRAMEWORK_EXTRACTION_PROMPT = `You are an expert at distilling books and content into concise, actionable principles. Given the text of a book section or document, extract the key principles, mental models, and actionable frameworks.
 
 Rules:
@@ -48,20 +85,59 @@ Return ONLY a JSON array:
 Valid entry_type values: "value", "declaration", "faith_foundation", "scripture_quote", "vision"
 No markdown backticks, no preamble.`;
 
-const KEEL_EXTRACTION_PROMPT = `You are helping someone extract self-knowledge from a document. This might be personality test results, therapy insights, self-assessments, or any content that reveals things about who they are.
+const SUMMARY_EXTRACTION_PROMPT = `You are an expert at extracting the essential content from books and documents. Given the text, extract the key concepts, stories, metaphors, lessons, and insights that capture the essence of this content.
 
 Rules:
-- Extract factual self-knowledge statements
-- Frame objectively: "Tends to...", "Strength in...", "Growth area:..."
-- Include personality traits, cognitive patterns, communication styles, triggers, strengths, growth areas
-- Respect the source framework's language (e.g., Enneagram types, DISC profiles, StrengthsFinder themes)
+- Extract 5-20 items depending on content richness
+- Each item should STAND ALONE — someone reading just that item should understand it without having read the book
+- Capture diverse content types: key concepts, memorable stories, powerful metaphors, character insights, practical lessons, notable quotes, thematic observations
+- Preserve the author's distinctive language when it captures something uniquely well
+- For stories and examples, capture enough context to understand the point (2-4 sentences)
+- For concepts and principles, be precise and complete (1-3 sentences)
+- Label each item with its content_type so the user can see what kind of content it is
+- Do NOT extract trivial filler content — each item should be genuinely worth remembering
 
-Return ONLY a JSON array:
-[
-  { "category": "personality_assessment", "text": "Detailed description" }
-]
+Return ONLY a JSON object:
+{
+  "items": [
+    { "content_type": "key_concept", "text": "Clear explanation of the concept...", "sort_order": 0 },
+    { "content_type": "story", "text": "Brief but complete retelling of the key story and its lesson...", "sort_order": 1 },
+    { "content_type": "metaphor", "text": "The author's metaphor and what it illuminates...", "sort_order": 2 },
+    { "content_type": "lesson", "text": "A practical lesson drawn from the content...", "sort_order": 3 },
+    { "content_type": "quote", "text": "A notable quote from the text...", "sort_order": 4 },
+    { "content_type": "insight", "text": "A deeper insight or observation...", "sort_order": 5 }
+  ]
+}
 
-Valid categories: "personality_assessment", "trait_tendency", "strength", "growth_area", "you_inc", "general"
+Valid content_type values: "key_concept", "story", "metaphor", "lesson", "quote", "insight", "theme", "character_insight", "exercise", "principle"
+No markdown backticks, no preamble.`;
+
+const MAST_CONTENT_EXTRACTION_PROMPT = `You are helping someone distill the wisdom from a book into personal declarations — honest commitment statements they can live by.
+
+FIVE DECLARATION STYLES (use the style that best fits each insight):
+1. "choosing_committing" — Active choice: "I choose to..." / "I am committed to..." / "When I feel X, I will Y"
+2. "recognizing_awakening" — New awareness: "I now see that..." / "I recognize that..." / "I am awakening to..."
+3. "claiming_stepping_into" — Identity claim: "I am someone who..." / "I am stepping into..." / "I claim..."
+4. "learning_striving" — Growth posture: "I am learning to..." / "I strive to..." / "I am growing in..."
+5. "resolute_unashamed" — Bold commitment: "I will not apologize for..." / "I refuse to..." / "I unapologetically..."
+
+CRITICAL RULES:
+- STANDALONE RULE: Each declaration must make complete sense on its own, without having read the book. Someone reading just the declaration should understand what it means and why it matters.
+- HONESTY TEST: "If someone who knows me well read this, would they see it as honest, or as performance?" Prefer honest aspiration over performative confidence.
+- Extract 3-10 declarations depending on content richness
+- Each declaration should connect to a genuine value or insight from the content
+- Include an optional value_name (1-3 words) that names the underlying value: e.g., "Patience", "Courage Under Pressure", "Active Listening"
+- Use DIFFERENT styles across your extractions — don't default to just one style
+- Faith-connected declarations are appropriate when the source material has spiritual depth
+
+Return ONLY a JSON object:
+{
+  "items": [
+    { "value_name": "Intentional Presence", "declaration_text": "I choose to be fully present in conversations, putting down my phone and making eye contact, because the people in front of me deserve my attention.", "declaration_style": "choosing_committing", "sort_order": 0 },
+    { "value_name": "Embracing Discomfort", "declaration_text": "I am learning to sit with discomfort instead of rushing to fix it, trusting that growth happens in the tension.", "declaration_style": "learning_striving", "sort_order": 1 }
+  ]
+}
+
 No markdown backticks, no preamble.`;
 
 const SECTION_DISCOVERY_PROMPT = `You are analyzing a document to identify its natural sections or chapters for principle extraction.
@@ -107,7 +183,6 @@ serve(async (req: Request) => {
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
-    // Supabase validates JWT before Edge Function runs — decode for user_id
     const jwt = authHeader.replace('Bearer ', '');
     const payloadB64 = jwt.split('.')[1];
     const b64 = payloadB64.replace(/-/g, '+').replace(/_/g, '/');
@@ -122,7 +197,16 @@ serve(async (req: Request) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 
     const requestBody = await req.json();
-    const { manifest_item_id, extraction_type } = requestBody;
+    const {
+      manifest_item_id,
+      extraction_type,
+      genres,
+      go_deeper,
+      existing_items,
+      section_start,
+      section_end,
+      section_title,
+    } = requestBody;
 
     if (!manifest_item_id || !extraction_type) {
       return new Response(
@@ -174,6 +258,9 @@ serve(async (req: Request) => {
       'HTTP-Referer': Deno.env.get('SITE_URL') || 'https://stewardship.app',
       'X-Title': 'StewardShip',
     };
+
+    const genreContext = buildGenreContext(genres || []);
+    const goDeeperAddendum = go_deeper ? buildGoDeeperAddendum(existing_items || []) : '';
 
     // --- Section Discovery (Haiku — cheap structural classification) ---
     if (extraction_type === 'discover_sections') {
@@ -235,18 +322,28 @@ serve(async (req: Request) => {
       );
     }
 
-    // --- Per-Section Framework Extraction (Sonnet) ---
-    if (extraction_type === 'framework_section') {
-      const { section_start, section_end, section_title } = requestBody;
-
+    // --- Per-Section extraction types (framework_section, summary_section, mast_content_section) ---
+    const sectionTypes = ['framework_section', 'summary_section', 'mast_content_section'];
+    if (sectionTypes.includes(extraction_type)) {
       if (section_start == null || section_end == null) {
         return new Response(
-          JSON.stringify({ error: 'section_start and section_end required for framework_section' }),
+          JSON.stringify({ error: 'section_start and section_end required for section extraction' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         );
       }
 
       const sectionText = item.text_content.substring(section_start, section_end);
+
+      let basePrompt: string;
+      if (extraction_type === 'framework_section') {
+        basePrompt = FRAMEWORK_EXTRACTION_PROMPT;
+      } else if (extraction_type === 'summary_section') {
+        basePrompt = SUMMARY_EXTRACTION_PROMPT;
+      } else {
+        basePrompt = MAST_CONTENT_EXTRACTION_PROMPT;
+      }
+
+      const fullPrompt = basePrompt + genreContext + goDeeperAddendum;
 
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
@@ -255,7 +352,7 @@ serve(async (req: Request) => {
           model: 'anthropic/claude-sonnet-4',
           max_tokens: 4096,
           messages: [
-            { role: 'system', content: FRAMEWORK_EXTRACTION_PROMPT },
+            { role: 'system', content: fullPrompt },
             {
               role: 'user',
               content: `Document title: "${item.title}"\nSection: "${section_title || 'Untitled'}"\n\nContent:\n${sectionText}`,
@@ -294,32 +391,35 @@ serve(async (req: Request) => {
       }
 
       return new Response(
-        JSON.stringify({ extraction_type: 'framework_section', result }),
+        JSON.stringify({ extraction_type, result }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
-    // --- Standard extraction types (framework, mast, keel) ---
-
+    // --- Standard extraction types (framework, mast, summary, mast_content) ---
     let systemPrompt: string;
     switch (extraction_type) {
       case 'framework':
         systemPrompt = FRAMEWORK_EXTRACTION_PROMPT;
         break;
       case 'mast':
+        // Legacy Mast extraction (values/declarations for The Mast page)
         systemPrompt = MAST_EXTRACTION_PROMPT;
         break;
-      case 'keel':
-        systemPrompt = KEEL_EXTRACTION_PROMPT;
+      case 'summary':
+        systemPrompt = SUMMARY_EXTRACTION_PROMPT;
+        break;
+      case 'mast_content':
+        systemPrompt = MAST_CONTENT_EXTRACTION_PROMPT;
         break;
       default:
         return new Response(
-          JSON.stringify({ error: 'Invalid extraction_type. Must be: framework, mast, keel, discover_sections, framework_section' }),
+          JSON.stringify({ error: 'Invalid extraction_type. Must be: framework, mast, summary, mast_content, discover_sections, framework_section, summary_section, mast_content_section' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         );
     }
 
-    // Send full content for single-pass extraction (no truncation)
+    const fullPrompt = systemPrompt + genreContext + goDeeperAddendum;
     const contentToSend = item.text_content;
 
     // Use Sonnet for extraction — deep reasoning work
@@ -330,7 +430,7 @@ serve(async (req: Request) => {
         model: 'anthropic/claude-sonnet-4',
         max_tokens: 4096,
         messages: [
-          { role: 'system', content: systemPrompt },
+          { role: 'system', content: fullPrompt },
           { role: 'user', content: `Document title: "${item.title}"\n\nContent:\n${contentToSend}` },
         ],
       }),

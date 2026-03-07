@@ -1313,6 +1313,48 @@ export type ManifestUsageDesignation =
   | 'goal_specific'
   | 'store_only';
 
+// PRD-24: Genre system
+export type BookGenre =
+  | 'non_fiction'
+  | 'fiction'
+  | 'biography_memoir'
+  | 'scriptures_sacred'
+  | 'workbook'
+  | 'poetry_essays'
+  | 'allegory_parable'
+  | 'devotional_spiritual_memoir';
+
+export type ManifestExtractionStatus = 'none' | 'extracting' | 'completed' | 'failed';
+
+export type DeclarationStyle =
+  | 'choosing_committing'
+  | 'recognizing_awakening'
+  | 'claiming_stepping_into'
+  | 'learning_striving'
+  | 'resolute_unashamed';
+
+export type DiscussionType = 'discuss' | 'generate_goals' | 'generate_questions' | 'generate_tasks' | 'generate_tracker';
+export type DiscussionAudience = 'personal' | 'family' | 'teen' | 'spouse' | 'children';
+
+export const BOOK_GENRE_LABELS: Record<BookGenre, string> = {
+  non_fiction: 'Non-Fiction',
+  fiction: 'Fiction',
+  biography_memoir: 'Biography / Memoir',
+  scriptures_sacred: 'Scriptures / Sacred',
+  workbook: 'Workbook',
+  poetry_essays: 'Poetry / Essays',
+  allegory_parable: 'Allegory / Parable',
+  devotional_spiritual_memoir: 'Devotional / Spiritual Memoir',
+};
+
+export const DECLARATION_STYLE_LABELS: Record<DeclarationStyle, string> = {
+  choosing_committing: 'Choosing & Committing',
+  recognizing_awakening: 'Recognizing & Awakening',
+  claiming_stepping_into: 'Claiming & Stepping Into',
+  learning_striving: 'Learning & Striving',
+  resolute_unashamed: 'Resolute & Unashamed',
+};
+
 export interface ManifestItem {
   id: string;
   user_id: string;
@@ -1333,6 +1375,8 @@ export interface ManifestItem {
   intake_completed: boolean;
   ai_summary: string | null;
   toc: Array<{ title: string; level: number }> | null;
+  genres: BookGenre[];
+  extraction_status: ManifestExtractionStatus;
   archived_at: string | null;
   created_at: string;
   updated_at: string;
@@ -1371,6 +1415,9 @@ export interface AIFrameworkPrinciple {
   is_user_added: boolean;
   is_included: boolean;
   section_title: string | null;
+  is_hearted: boolean;
+  is_deleted: boolean;
+  is_from_go_deeper: boolean;
   archived_at: string | null;
   created_at: string;
   updated_at: string;
@@ -1383,6 +1430,62 @@ export interface ManifestSearchResult {
   metadata: Record<string, unknown>;
   similarity: number;
   source_title?: string;
+}
+
+// PRD-24: Manifest Summaries
+export interface ManifestSummary {
+  id: string;
+  user_id: string;
+  manifest_item_id: string;
+  section_title: string | null;
+  section_index: number;
+  content_type: string;
+  text: string;
+  sort_order: number;
+  is_hearted: boolean;
+  is_deleted: boolean;
+  is_from_go_deeper: boolean;
+  created_at: string;
+}
+
+// PRD-24: Manifest Declarations
+export interface ManifestDeclaration {
+  id: string;
+  user_id: string;
+  manifest_item_id: string;
+  section_title: string | null;
+  section_index: number;
+  value_name: string | null;
+  declaration_text: string;
+  declaration_style: DeclarationStyle;
+  is_hearted: boolean;
+  is_deleted: boolean;
+  sent_to_mast: boolean;
+  mast_entry_id: string | null;
+  sort_order: number;
+  is_from_go_deeper: boolean;
+  created_at: string;
+}
+
+// PRD-24: Book Discussions
+export interface BookDiscussion {
+  id: string;
+  user_id: string;
+  title: string | null;
+  manifest_item_ids: string[];
+  discussion_type: DiscussionType;
+  audience: DiscussionAudience;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BookDiscussionMessage {
+  id: string;
+  user_id: string;
+  discussion_id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  created_at: string;
 }
 
 export const MANIFEST_FILE_TYPE_LABELS: Record<ManifestFileType, string> = {

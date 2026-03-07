@@ -19,6 +19,8 @@ import {
   shouldLoadSphere,
   shouldLoadFrameworks,
   shouldLoadManifest,
+  shouldLoadBookKnowledge,
+  formatBookKnowledgeContext,
   shouldLoadMeeting,
   shouldLoadReflections,
   shouldLoadHatch,
@@ -98,6 +100,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
   const needSphere = shouldLoadSphere(message, pageContext);
   const needFrameworks = shouldLoadFrameworks(message, pageContext, guidedMode);
   const needManifest = shouldLoadManifest(message, pageContext, guidedMode);
+  const needBookKnowledge = shouldLoadBookKnowledge(message, pageContext, guidedMode);
   const needMeeting = shouldLoadMeeting(message, pageContext, guidedMode);
   const needReflections = shouldLoadReflections(message, pageContext);
   const needHatch = shouldLoadHatch(message, pageContext);
@@ -142,6 +145,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
   let sphereContext: string | undefined;
   let frameworksContext: string | undefined;
   let manifestContext: string | undefined;
+  let bookKnowledgeContext: string | undefined;
   let cyranoContext: string | undefined;
   let higginsContext: string | undefined;
   let meetingContext: string | undefined;
@@ -349,12 +353,12 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
         .limit(5)
     : null;
 
-  // Manifest RAG search — depth varies by mode
+  // Manifest RAG search — only for manifest_discuss mode (Discuss This / Ask Your Library)
   const isManifestDiscuss = guidedMode === 'manifest_discuss';
   let manifestPromise: Promise<ManifestSearchResult[]> | null = null;
 
-  if (needManifest && message.trim()) {
-    if (isManifestDiscuss && guidedModeContext?.manifest_item_id) {
+  if (needManifest && message.trim() && isManifestDiscuss) {
+    if (guidedModeContext?.manifest_item_id) {
       // "Discuss This" mode: 8 chunks from specific item + 3 from other sources
       manifestPromise = Promise.all([
         searchManifest(message, userId, {
@@ -368,22 +372,59 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
           excludeItemId: guidedModeContext.manifest_item_id,
         }),
       ]).then(([focused, broader]) => [...focused, ...broader]);
-    } else if (isManifestDiscuss) {
+    } else {
       // "Ask Your Library" mode: 10 from entire library
       manifestPromise = searchManifest(message, userId, {
         matchCount: 10,
         matchThreshold: 0.5,
       });
-    } else {
-      // Standard RAG: 3-5 from library, higher threshold
-      manifestPromise = searchManifest(message, userId, {
-        matchCount: 5,
-        matchThreshold: 0.7,
-      });
     }
   }
 
-  const [keelResult, journalResult, compassResult, victoriesResult, wheelResult, lifeInvResult, riggingResult, prioritiesResult, firstMateResult, spouseInsightsResult, crewResult, sphereEntitiesResult, frameworksResult, manifestResults, meetingResult, agendaResult, reflectionsResult, hatchResult, meetingSectionsResult] = await Promise.all([
+  // Book Knowledge — extracted content from Manifest (PRD-24)
+  // Fetch user's book_knowledge_access preference
+  let bookKnowledgeAccessSetting = 'hearted_only';
+  if (needBookKnowledge) {
+    const { data: bkSettings } = await supabase
+      .from('user_settings')
+      .select('book_knowledge_access')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (bkSettings?.book_knowledge_access) {
+      bookKnowledgeAccessSetting = bkSettings.book_knowledge_access;
+    }
+  }
+
+  // Build book knowledge queries based on setting
+  const shouldLoadExtractedContent = needBookKnowledge && bookKnowledgeAccessSetting !== 'none' && bookKnowledgeAccessSetting !== 'frameworks_only';
+  const heartedOnly = bookKnowledgeAccessSetting === 'hearted_only';
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let bookKnowledgeSummariesPromise: any = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let bookKnowledgeDeclarationsPromise: any = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let bookKnowledgePrinciplesPromise: any = null;
+
+  if (shouldLoadExtractedContent) {
+    let sq = supabase.from('manifest_summaries').select('text, content_type, manifest_item_id').eq('user_id', userId).eq('is_deleted', false);
+    if (heartedOnly) sq = sq.eq('is_hearted', true);
+    bookKnowledgeSummariesPromise = sq.limit(30);
+
+    let dq = supabase.from('manifest_declarations').select('declaration_text, value_name, declaration_style, manifest_item_id').eq('user_id', userId).eq('is_deleted', false);
+    if (heartedOnly) dq = dq.eq('is_hearted', true);
+    bookKnowledgeDeclarationsPromise = dq.limit(20);
+
+    bookKnowledgePrinciplesPromise = supabase
+      .from('ai_framework_principles')
+      .select('text, framework_id')
+      .eq('user_id', userId)
+      .eq('is_hearted', true)
+      .eq('is_deleted', false)
+      .limit(20);
+  }
+
+  const [keelResult, journalResult, compassResult, victoriesResult, wheelResult, lifeInvResult, riggingResult, prioritiesResult, firstMateResult, spouseInsightsResult, crewResult, sphereEntitiesResult, frameworksResult, manifestResults, meetingResult, agendaResult, reflectionsResult, hatchResult, meetingSectionsResult, bkSummariesResult, bkDeclarationsResult, bkPrinciplesResult] = await Promise.all([
     keelPromise,
     journalPromise,
     compassPromise,
@@ -403,6 +444,9 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     reflectionsPromise,
     hatchPromise,
     meetingSectionsPromise,
+    bookKnowledgeSummariesPromise,
+    bookKnowledgeDeclarationsPromise,
+    bookKnowledgePrinciplesPromise,
   ]);
 
   if (keelResult?.data) {
@@ -636,9 +680,24 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     );
   }
 
-  // Manifest RAG context
+  // Manifest RAG context (manifest_discuss mode only)
   if (manifestResults && manifestResults.length > 0) {
     manifestContext = formatManifestContext(manifestResults);
+  }
+
+  // Book Knowledge context (PRD-24: extracted summaries, declarations, hearted principles)
+  if (shouldLoadExtractedContent) {
+    const bkSummaries = (bkSummariesResult?.data || []) as Array<{ text: string; content_type: string; manifest_item_id: string }>;
+    const bkDeclarations = (bkDeclarationsResult?.data || []) as Array<{ declaration_text: string; value_name: string | null; declaration_style: string; manifest_item_id: string }>;
+    const bkPrinciples = (bkPrinciplesResult?.data || []) as Array<{ text: string; framework_id: string }>;
+
+    if (bkSummaries.length > 0 || bkDeclarations.length > 0 || bkPrinciples.length > 0) {
+      bookKnowledgeContext = formatBookKnowledgeContext({
+        summaries: bkSummaries,
+        declarations: bkDeclarations,
+        principles: bkPrinciples,
+      });
+    }
   }
 
   // Reflections context
@@ -715,6 +774,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     sphereContext,
     frameworksContext,
     manifestContext,
+    bookKnowledgeContext,
     cyranoContext,
     higginsContext,
     meetingContext,

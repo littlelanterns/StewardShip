@@ -32,6 +32,7 @@ export interface SystemPromptContext {
   sphereContext?: string;
   frameworksContext?: string;
   manifestContext?: string;
+  bookKnowledgeContext?: string;
   cyranoContext?: string;
   higginsContext?: string;
   meetingContext?: string;
@@ -878,6 +879,16 @@ When referencing this material: paraphrase, attribute the source by title, never
     }
   }
 
+  // Book Knowledge context (PRD-24: extracted summaries, declarations, hearted principles)
+  if (context.bookKnowledgeContext) {
+    const bkSection = `\n\n${context.bookKnowledgeContext}\n\nWhen referencing book knowledge: apply the insights naturally in conversation, connect to user's Mast principles and identity. Attribute sources by book title when relevant. Never lecture — weave wisdom in.`;
+    const bkTokens = estimateTokens(bkSection);
+    if (currentTokens + bkTokens < budget) {
+      prompt += bkSection;
+      currentTokens += bkTokens;
+    }
+  }
+
   if (context.reflectionsContext) {
     const reflTokens = estimateTokens(context.reflectionsContext);
     if (currentTokens + reflTokens < budget) {
@@ -1529,6 +1540,71 @@ export function formatFrameworksContext(
     }
   }
   return result;
+}
+
+// --- Book Knowledge context (PRD-24: extracted content from Manifest) ---
+
+const BOOK_KNOWLEDGE_KEYWORDS = [
+  'book', 'read', 'chapter', 'author', 'framework', 'principle',
+  'according to', 'it says', 'the concept', 'the idea',
+  'what does', 'reference', 'source', 'material', 'manifest',
+  'uploaded', 'that book', 'that article', 'library',
+  'declaration', 'summary', 'extract',
+];
+
+export function shouldLoadBookKnowledge(
+  message: string,
+  pageContext: string,
+  guidedMode?: GuidedMode,
+): boolean {
+  if (pageContext === 'manifest') return true;
+  // manifest_discuss uses RAG, not book knowledge
+  if (guidedMode === 'manifest_discuss') return false;
+  if (['safe_harbor', 'rigging', 'wheel', 'life_inventory'].includes(guidedMode || '')) return true;
+  const lower = message.toLowerCase();
+  return BOOK_KNOWLEDGE_KEYWORDS.some((kw) => lower.includes(kw));
+}
+
+export function formatBookKnowledgeContext(
+  items: {
+    summaries: Array<{ text: string; content_type: string; manifest_item_title?: string }>;
+    declarations: Array<{ declaration_text: string; value_name: string | null; declaration_style: string; manifest_item_title?: string }>;
+    principles: Array<{ text: string; framework_name?: string }>;
+  },
+): string {
+  const parts: string[] = [];
+
+  if (items.summaries.length > 0) {
+    let section = 'KEY INSIGHTS (from user\'s book library):\n';
+    for (const s of items.summaries.slice(0, 30)) {
+      const source = s.manifest_item_title ? ` [${s.manifest_item_title}]` : '';
+      section += `- ${s.text}${source}\n`;
+    }
+    parts.push(section);
+  }
+
+  if (items.declarations.length > 0) {
+    let section = 'PERSONAL DECLARATIONS (from user\'s book library):\n';
+    for (const d of items.declarations.slice(0, 20)) {
+      const name = d.value_name ? `[${d.value_name}] ` : '';
+      const source = d.manifest_item_title ? ` [${d.manifest_item_title}]` : '';
+      section += `- ${name}${d.declaration_text}${source}\n`;
+    }
+    parts.push(section);
+  }
+
+  if (items.principles.length > 0) {
+    let section = 'HEARTED FRAMEWORK PRINCIPLES:\n';
+    for (const p of items.principles.slice(0, 20)) {
+      const fw = p.framework_name ? ` [${p.framework_name}]` : '';
+      const truncated = p.text.length > 200 ? p.text.slice(0, 197) + '...' : p.text;
+      section += `- ${truncated}${fw}\n`;
+    }
+    parts.push(section);
+  }
+
+  if (parts.length === 0) return '';
+  return '\n\nBOOK KNOWLEDGE (extracted wisdom from user\'s Manifest library):\n' + parts.join('\n');
 }
 
 // --- App guide context (in-app help) ---

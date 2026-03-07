@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { ChevronLeft, FileText, FileCode, Mic, Image, StickyNote, MessageSquare, RefreshCw, BookOpen, Anchor, Compass } from 'lucide-react';
+import { ChevronLeft, FileText, FileCode, Mic, Image, StickyNote, MessageSquare, RefreshCw, BookOpen, Anchor } from 'lucide-react';
 import type { ManifestItem, ManifestUsageDesignation } from '../../lib/types';
 import { MANIFEST_FILE_TYPE_LABELS, MANIFEST_STATUS_LABELS } from '../../lib/types';
 import { useHelmContext } from '../../contexts/HelmContext';
@@ -15,7 +15,6 @@ interface ManifestItemDetailProps {
   onDelete: (id: string) => Promise<boolean>;
   onExtractFramework?: () => void;
   onExtractMast?: () => void;
-  onExtractKeel?: () => void;
   onEnrichItem?: (itemId: string, regenerateTags?: boolean) => Promise<{ summary: string; tags?: string[] } | null>;
   hasFramework?: boolean;
   frameworkIsActive?: boolean;
@@ -57,7 +56,6 @@ export function ManifestItemDetail({
   onDelete,
   onExtractFramework,
   onExtractMast,
-  onExtractKeel,
   onEnrichItem,
   hasFramework,
   frameworkIsActive,
@@ -281,17 +279,6 @@ export function ManifestItemDetail({
           >
             <Anchor size={14} />
             Extract Mast Entries
-          </button>
-        )}
-        {isProcessed && item.usage_designations.includes('keel_info') && onExtractKeel && (
-          <button
-            type="button"
-            className="manifest-detail__extraction-btn"
-            onClick={onExtractKeel}
-            title="Extract personality traits, assessment results, and self-knowledge from this content. You'll review before adding to your Keel."
-          >
-            <Compass size={14} />
-            Extract Keel Entries
           </button>
         )}
       </section>

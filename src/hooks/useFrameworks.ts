@@ -13,11 +13,6 @@ export interface MastExtractionResult {
   entry_type: string;
 }
 
-export interface KeelExtractionResult {
-  category: string;
-  text: string;
-}
-
 export interface SectionInfo {
   title: string;
   start_char: number;
@@ -99,30 +94,6 @@ export function useFrameworks() {
         return null;
       }
       return data.result as MastExtractionResult[];
-    } catch (err) {
-      setError((err as Error).message);
-      return null;
-    } finally {
-      setExtracting(false);
-    }
-  }, [user]);
-
-  // Extract Keel entries from a manifest item
-  const extractKeel = useCallback(async (
-    itemId: string,
-  ): Promise<KeelExtractionResult[] | null> => {
-    if (!user) return null;
-    setExtracting(true);
-    setError(null);
-    try {
-      const { data, error: invokeErr } = await supabase.functions.invoke('manifest-extract', {
-        body: { manifest_item_id: itemId, extraction_type: 'keel', user_id: user.id },
-      });
-      if (invokeErr || !data?.result) {
-        setError(invokeErr?.message || 'Keel extraction failed');
-        return null;
-      }
-      return data.result as KeelExtractionResult[];
     } catch (err) {
       setError((err as Error).message);
       return null;
@@ -426,7 +397,6 @@ export function useFrameworks() {
     fetchFrameworks,
     extractFramework,
     extractMast,
-    extractKeel,
     saveFramework,
     toggleFramework,
     batchToggleFrameworks,
