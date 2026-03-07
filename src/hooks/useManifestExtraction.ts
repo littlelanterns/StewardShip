@@ -167,15 +167,20 @@ export function useManifestExtraction() {
   ): Promise<SectionInfo[] | null> => {
     setDiscoveringSections(true);
     setError(null);
+    console.log('[discoverSections] Starting discovery for', manifestItemId);
     try {
       const { data, error: invokeErr } = await supabase.functions.invoke('manifest-extract', {
         body: { manifest_item_id: manifestItemId, extraction_type: 'discover_sections' },
       });
+      console.log('[discoverSections] Response:', { data: data ? Object.keys(data) : null, error: invokeErr?.message });
       if (invokeErr || data?.error) {
-        setError(invokeErr?.message || data?.error || 'Section discovery failed');
+        const msg = invokeErr?.message || data?.error || 'Section discovery failed';
+        console.error('[discoverSections] Error:', msg);
+        setError(msg);
         return null;
       }
       const discovered: SectionInfo[] = data.sections || [];
+      console.log('[discoverSections] Found', discovered.length, 'sections');
       setSections(discovered);
       // Auto-select content sections, skip [NON-CONTENT]
       const defaultSelected = discovered

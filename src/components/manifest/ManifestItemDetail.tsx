@@ -202,22 +202,26 @@ export function ManifestItemDetail({
   }, [item.id, onUpdateGenres]);
 
   const handleExtract = useCallback(async () => {
+    console.log('[handleExtract] Called with genres:', selectedGenres.length, 'phase:', extractionPhase);
     if (selectedGenres.length === 0) {
       setShowGenrePicker(true);
       return;
     }
     // Phase 1: Discover sections
     setExtractionPhase('discovering');
+    console.log('[handleExtract] Calling onDiscoverSections...');
     const discovered = await onDiscoverSections(item.id);
+    console.log('[handleExtract] Discovery result:', discovered?.length ?? 'null');
     if (discovered && discovered.length > 0) {
       setExtractionPhase('selecting');
     } else {
       // Fallback: whole-document extraction
+      console.log('[handleExtract] Falling back to whole-document extraction');
       setExtractionPhase('extracting');
       await onExtractAll(selectedGenres);
       setExtractionPhase('idle');
     }
-  }, [selectedGenres, item.id, onDiscoverSections, onExtractAll]);
+  }, [selectedGenres, item.id, onDiscoverSections, onExtractAll, extractionPhase]);
 
   const handleExtractSelected = useCallback(async () => {
     setExtractionPhase('extracting');
