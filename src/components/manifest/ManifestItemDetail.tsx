@@ -88,7 +88,7 @@ export function ManifestItemDetail({
   extracting,
   extractingTab,
   hasFramework,
-  onExtractAll,
+  onExtractAll: _onExtractAll,
   onExtractAllSections,
   onUpdateGenres,
   onFetchSummaries,
@@ -201,27 +201,25 @@ export function ManifestItemDetail({
     onUpdateGenres(item.id, genres);
   }, [item.id, onUpdateGenres]);
 
+  const [discoveryError, setDiscoveryError] = useState<string | null>(null);
+
   const handleExtract = useCallback(async () => {
-    console.log('[handleExtract] Called with genres:', selectedGenres.length, 'phase:', extractionPhase);
     if (selectedGenres.length === 0) {
       setShowGenrePicker(true);
       return;
     }
-    // Phase 1: Discover sections
+    // Discover sections first — never fall back to whole-document silently
     setExtractionPhase('discovering');
-    console.log('[handleExtract] Calling onDiscoverSections...');
+    setDiscoveryError(null);
     const discovered = await onDiscoverSections(item.id);
-    console.log('[handleExtract] Discovery result:', discovered?.length ?? 'null');
     if (discovered && discovered.length > 0) {
       setExtractionPhase('selecting');
     } else {
-      // Fallback: whole-document extraction
-      console.log('[handleExtract] Falling back to whole-document extraction');
-      setExtractionPhase('extracting');
-      await onExtractAll(selectedGenres);
+      // Discovery failed — show error, don't silently fall back
       setExtractionPhase('idle');
+      setDiscoveryError('Section discovery failed. Please try again.');
     }
-  }, [selectedGenres, item.id, onDiscoverSections, onExtractAll, extractionPhase]);
+  }, [selectedGenres, item.id, onDiscoverSections]);
 
   const handleExtractSelected = useCallback(async () => {
     setExtractionPhase('extracting');
@@ -469,6 +467,14 @@ export function ManifestItemDetail({
             <div className="manifest-detail__discovering">
               <LoadingSpinner />
               <p>Analyzing document structure...</p>
+            </div>
+          )}
+
+          {/* Discovery error */}
+          {discoveryError && extractionPhase === 'idle' && (
+            <div className="manifest-detail__discovery-error">
+              <p>{discoveryError}</p>
+              <Button size="sm" onClick={handleExtract}>Try Again</Button>
             </div>
           )}
 

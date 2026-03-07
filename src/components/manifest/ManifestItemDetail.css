@@ -469,6 +469,22 @@
   font-size: var(--font-size-sm);
 }
 
+.manifest-detail__discovery-error {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-warm-sand);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-cognac);
+}
+
+.manifest-detail__discovery-error p {
+  margin: 0;
+  flex: 1;
+}
+
 .manifest-detail__section-checklist {
   display: flex;
   flex-direction: column;

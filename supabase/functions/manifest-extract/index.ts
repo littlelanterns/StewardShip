@@ -297,6 +297,20 @@ serve(async (req: Request) => {
 
     // --- Section Discovery (Haiku — cheap structural classification) ---
     if (extraction_type === 'discover_sections') {
+      // For discovery we need structural markers, not full content.
+      // Send full text up to ~400K chars (~100K tokens). For larger docs,
+      // send a sampled version: first 200K + last 50K with a gap marker.
+      const MAX_DISCOVERY_CHARS = 400_000;
+      let discoveryText = item.text_content;
+      if (discoveryText.length > MAX_DISCOVERY_CHARS) {
+        const headSize = 300_000;
+        const tailSize = 80_000;
+        discoveryText = discoveryText.substring(0, headSize)
+          + `\n\n[... ${discoveryText.length - headSize - tailSize} characters omitted for section discovery ...]\n\n`
+          + discoveryText.substring(discoveryText.length - tailSize);
+        console.log(`[manifest-extract] discover_sections: text truncated from ${item.text_content.length} to ${discoveryText.length} chars`);
+      }
+
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: openRouterHeaders,
@@ -305,15 +319,16 @@ serve(async (req: Request) => {
           max_tokens: 2048,
           messages: [
             { role: 'system', content: SECTION_DISCOVERY_PROMPT },
-            { role: 'user', content: `Document (${item.text_content.length} characters):\n\n${item.text_content}` },
+            { role: 'user', content: `Document (${item.text_content.length} characters total):\n\n${discoveryText}` },
           ],
         }),
       });
 
       if (!response.ok) {
         const errBody = await response.text();
+        console.error('[manifest-extract] discover_sections AI error:', response.status, errBody.substring(0, 500));
         return new Response(
-          JSON.stringify({ error: `AI error: ${errBody}` }),
+          JSON.stringify({ error: `Section discovery failed (AI ${response.status}). Try again.` }),
           { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         );
       }
