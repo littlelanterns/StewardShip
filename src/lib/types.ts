@@ -1330,6 +1330,8 @@ export interface ManifestItem {
   processing_status: ManifestProcessingStatus;
   chunk_count: number;
   intake_completed: boolean;
+  ai_summary: string | null;
+  toc: Array<{ title: string; level: number }> | null;
   archived_at: string | null;
   created_at: string;
   updated_at: string;
@@ -1352,6 +1354,7 @@ export interface AIFramework {
   manifest_item_id: string;
   name: string;
   is_active: boolean;
+  tags: string[];
   archived_at: string | null;
   created_at: string;
   updated_at: string;

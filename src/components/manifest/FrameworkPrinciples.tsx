@@ -1,8 +1,9 @@
-import { useState, useCallback, useEffect } from 'react';
-import { GripVertical, Plus, Trash2, RefreshCw } from 'lucide-react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { GripVertical, Plus, Trash2, RefreshCw, Download } from 'lucide-react';
 import { Button, LoadingSpinner } from '../shared';
 import type { AIFramework } from '../../lib/types';
 import type { SectionInfo, FrameworkExtractionResult } from '../../hooks/useFrameworks';
+import { exportAsMarkdown, exportAsTxt, exportAsDocx } from '../../lib/exportFramework';
 import './FrameworkPrinciples.css';
 
 interface EditablePrinciple {
@@ -31,6 +32,7 @@ interface FrameworkPrinciplesProps {
     isActive: boolean,
   ) => Promise<AIFramework | null>;
   onToggle: (frameworkId: string, isActive: boolean) => Promise<void>;
+  onUpdateTags?: (frameworkId: string, tags: string[]) => Promise<boolean>;
   onBack: () => void;
 }
 
@@ -45,6 +47,7 @@ export default function FrameworkPrinciples({
   onExtractSection,
   onSave,
   onToggle,
+  onUpdateTags,
   onBack,
 }: FrameworkPrinciplesProps) {
   const [name, setName] = useState(framework?.name || manifestItemTitle);
@@ -60,6 +63,78 @@ export default function FrameworkPrinciples({
   const [isActive, setIsActive] = useState(framework?.is_active ?? true);
   const [saving, setSaving] = useState(false);
   const [newPrincipleText, setNewPrincipleText] = useState('');
+
+  // Tag state
+  const [tags, setTags] = useState<string[]>(framework?.tags || []);
+  const [addingTag, setAddingTag] = useState(false);
+  const [tagInput, setTagInput] = useState('');
+
+  // Sync tags when framework prop changes
+  useEffect(() => {
+    setTags(framework?.tags || []);
+  }, [framework?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleAddTag = useCallback(() => {
+    const trimmed = tagInput.trim().toLowerCase().replace(/\s+/g, '-');
+    if (!trimmed || tags.includes(trimmed)) {
+      setTagInput('');
+      setAddingTag(false);
+      return;
+    }
+    const newTags = [...tags, trimmed];
+    setTags(newTags);
+    setTagInput('');
+    setAddingTag(false);
+    if (framework?.id && onUpdateTags) {
+      onUpdateTags(framework.id, newTags).catch(console.error);
+    }
+  }, [tagInput, tags, framework?.id, onUpdateTags]);
+
+  const handleRemoveTag = useCallback((tag: string) => {
+    const newTags = tags.filter((t) => t !== tag);
+    setTags(newTags);
+    if (framework?.id && onUpdateTags) {
+      onUpdateTags(framework.id, newTags).catch(console.error);
+    }
+  }, [tags, framework?.id, onUpdateTags]);
+
+  // Export state
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const exportWrapperRef = useRef<HTMLDivElement>(null);
+
+  const handleExport = useCallback(async (format: 'md' | 'txt' | 'docx') => {
+    setExportMenuOpen(false);
+    const exportData = {
+      frameworkName: name,
+      sourceTitle: manifestItemTitle,
+      principles,
+    };
+    if (format === 'md') {
+      exportAsMarkdown(exportData);
+    } else if (format === 'txt') {
+      exportAsTxt(exportData);
+    } else {
+      setExporting(true);
+      try {
+        await exportAsDocx(exportData);
+      } finally {
+        setExporting(false);
+      }
+    }
+  }, [name, manifestItemTitle, principles]);
+
+  // Close export menu on outside click
+  useEffect(() => {
+    if (!exportMenuOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (exportWrapperRef.current && !exportWrapperRef.current.contains(e.target as Node)) {
+        setExportMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [exportMenuOpen]);
 
   // Section-based extraction state
   const [phase, setPhase] = useState<Phase>('idle');
@@ -155,13 +230,18 @@ export default function FrameworkPrinciples({
     setSaving(true);
     try {
       const activeState = activate || isActive;
-      await onSave(manifestItemId, name, principles, activeState);
+      const saved = await onSave(manifestItemId, name, principles, activeState);
+      // If this was a new framework and user added tags before saving,
+      // persist them now that we have a framework ID
+      if (saved?.id && tags.length > 0 && onUpdateTags) {
+        onUpdateTags(saved.id, tags).catch(console.error);
+      }
       if (activate) setIsActive(true);
       onBack();
     } finally {
       setSaving(false);
     }
-  }, [manifestItemId, name, principles, isActive, onSave, onBack]);
+  }, [manifestItemId, name, principles, isActive, tags, onSave, onUpdateTags, onBack]);
 
   const updatePrinciple = useCallback((index: number, text: string) => {
     setPrinciples((prev) => {
@@ -414,6 +494,48 @@ export default function FrameworkPrinciples({
         />
       </div>
 
+      <div className="framework-principles__tags-row">
+        <span className="framework-principles__label">Topics</span>
+        <div className="framework-principles__tags-list">
+          {tags.map((tag) => (
+            <span key={tag} className="framework-principles__tag">
+              {tag}
+              <button
+                type="button"
+                className="framework-principles__tag-remove"
+                onClick={() => handleRemoveTag(tag)}
+                aria-label={`Remove tag ${tag}`}
+              >
+                &times;
+              </button>
+            </span>
+          ))}
+          {addingTag ? (
+            <input
+              type="text"
+              className="framework-principles__tag-input"
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              onBlur={handleAddTag}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleAddTag();
+                if (e.key === 'Escape') { setTagInput(''); setAddingTag(false); }
+              }}
+              placeholder="Add topic..."
+              autoFocus
+            />
+          ) : (
+            <button
+              type="button"
+              className="framework-principles__tag-add"
+              onClick={() => setAddingTag(true)}
+            >
+              + Add Topic
+            </button>
+          )}
+        </div>
+      </div>
+
       <div className="framework-principles__source-row">
         <span className="framework-principles__source-label">Source:</span>
         <span className="framework-principles__source-value">{manifestItemTitle}</span>
@@ -527,6 +649,25 @@ export default function FrameworkPrinciples({
       </button>
 
       <div className="framework-principles__actions">
+        <div className="framework-principles__export-wrapper" ref={exportWrapperRef}>
+          <button
+            type="button"
+            className="framework-principles__export-btn"
+            onClick={() => setExportMenuOpen((v) => !v)}
+            disabled={principles.length === 0 || exporting}
+            title="Export framework principles"
+          >
+            <Download size={14} />
+            {exporting ? 'Exporting...' : 'Export'}
+          </button>
+          {exportMenuOpen && (
+            <div className="framework-principles__export-menu">
+              <button type="button" onClick={() => handleExport('md')}>Markdown (.md)</button>
+              <button type="button" onClick={() => handleExport('docx')}>Word Doc (.docx)</button>
+              <button type="button" onClick={() => handleExport('txt')}>Plain Text (.txt)</button>
+            </div>
+          )}
+        </div>
         <Button onClick={onBack} variant="secondary">Cancel</Button>
         <Button
           onClick={() => handleSave(false)}

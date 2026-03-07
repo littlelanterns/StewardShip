@@ -16,6 +16,7 @@ interface ManifestItemDetailProps {
   onExtractFramework?: () => void;
   onExtractMast?: () => void;
   onExtractKeel?: () => void;
+  onEnrichItem?: (itemId: string, regenerateTags?: boolean) => Promise<{ summary: string; tags?: string[] } | null>;
   hasFramework?: boolean;
   frameworkIsActive?: boolean;
 }
@@ -57,6 +58,7 @@ export function ManifestItemDetail({
   onExtractFramework,
   onExtractMast,
   onExtractKeel,
+  onEnrichItem,
   hasFramework,
   frameworkIsActive,
 }: ManifestItemDetailProps) {
@@ -70,6 +72,7 @@ export function ManifestItemDetail({
   const [tagInput, setTagInput] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [reprocessing, setReprocessing] = useState(false);
+  const [enriching, setEnriching] = useState(false);
 
   const Icon = FILE_TYPE_ICONS[item.file_type] || FileText;
 
@@ -125,6 +128,16 @@ export function ManifestItemDetail({
     await onArchive(item.id);
     onBack();
   }, [item.id, onArchive, onBack]);
+
+  const handleRegenerate = useCallback(async () => {
+    if (!onEnrichItem || enriching) return;
+    setEnriching(true);
+    try {
+      await onEnrichItem(item.id, true);
+    } finally {
+      setEnriching(false);
+    }
+  }, [onEnrichItem, item.id, enriching]);
 
   const handleDiscuss = useCallback(() => {
     startGuidedConversation('manifest_discuss', undefined, item.id);
@@ -283,11 +296,11 @@ export function ManifestItemDetail({
         )}
       </section>
 
-      {/* Content Preview */}
-      <section className="manifest-detail__section">
-        <h3 className="manifest-detail__section-title">Content</h3>
-        {(item.file_type === 'text_note' || item.file_type === 'txt' || item.file_type === 'md') ? (
-          editingContent ? (
+      {/* Content — editable for text-based file types */}
+      {(item.file_type === 'text_note' || item.file_type === 'txt' || item.file_type === 'md') && (
+        <section className="manifest-detail__section">
+          <h3 className="manifest-detail__section-title">Content</h3>
+          {editingContent ? (
             <div className="manifest-detail__content-edit">
               <textarea
                 className="manifest-detail__content-textarea"
@@ -309,20 +322,69 @@ export function ManifestItemDetail({
             >
               {item.text_content || 'No content yet. Click to add.'}
             </div>
-          )
-        ) : (
-          <div className="manifest-detail__content-preview">
-            {item.text_content
-              ? item.text_content.substring(0, 500) + (item.text_content.length > 500 ? '...' : '')
-              : item.processing_status === 'completed'
-                ? 'Content extracted and indexed.'
-                : 'Content will be available after processing completes.'}
+          )}
+        </section>
+      )}
+
+      {/* About This Book — shown for completed non-editable items */}
+      {item.processing_status === 'completed' && item.file_type !== 'text_note' && item.file_type !== 'txt' && item.file_type !== 'md' && (
+        <section className="manifest-detail__section">
+          <div className="manifest-detail__section-header">
+            <h3 className="manifest-detail__section-title">About This Book</h3>
+            {onEnrichItem && (
+              <button
+                type="button"
+                className="manifest-detail__enrich-btn"
+                onClick={handleRegenerate}
+                disabled={enriching}
+                title="Regenerate summary and suggest tags"
+              >
+                {enriching ? 'Regenerating...' : 'Regenerate'}
+              </button>
+            )}
           </div>
-        )}
-        {item.chunk_count > 0 && (
-          <p className="manifest-detail__chunk-info">{item.chunk_count} chunks indexed</p>
-        )}
-      </section>
+
+          {item.ai_summary ? (
+            <p className="manifest-detail__summary">{item.ai_summary}</p>
+          ) : (
+            <div className="manifest-detail__summary-empty">
+              <p>No summary yet.</p>
+              {onEnrichItem && (
+                <button
+                  type="button"
+                  className="manifest-detail__enrich-btn manifest-detail__enrich-btn--primary"
+                  onClick={handleRegenerate}
+                  disabled={enriching}
+                >
+                  {enriching ? 'Generating...' : 'Generate Summary & Suggest Tags'}
+                </button>
+              )}
+            </div>
+          )}
+
+          {item.toc && item.toc.length > 0 && (
+            <div className="manifest-detail__toc">
+              <h4 className="manifest-detail__toc-title">Contents</h4>
+              <ol className="manifest-detail__toc-list">
+                {item.toc
+                  .filter((entry) => entry.level <= 2)
+                  .map((entry, i) => (
+                    <li
+                      key={i}
+                      className={`manifest-detail__toc-entry manifest-detail__toc-entry--level-${entry.level}`}
+                    >
+                      {entry.title}
+                    </li>
+                  ))}
+              </ol>
+            </div>
+          )}
+
+          {item.chunk_count > 0 && (
+            <p className="manifest-detail__chunk-info">{item.chunk_count} chunks indexed</p>
+          )}
+        </section>
+      )}
 
       {/* Actions */}
       <section className="manifest-detail__section">

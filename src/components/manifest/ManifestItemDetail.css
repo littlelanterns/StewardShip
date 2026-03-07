@@ -287,10 +287,142 @@
   gap: var(--spacing-sm);
 }
 
+.manifest-detail__content-preview-section {
+  margin-top: var(--spacing-sm);
+}
+
+.manifest-detail__content-label {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--spacing-xs);
+}
+
+.manifest-detail__content-snippet {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+  margin: 0;
+  -webkit-mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+  max-height: 5em;
+  overflow: hidden;
+}
+
+.manifest-detail__content-processing {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  font-style: italic;
+  margin: 0;
+}
+
 .manifest-detail__chunk-info {
   margin: var(--spacing-xs) 0 0;
   font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
+}
+
+/* About This Book */
+.manifest-detail__section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-sm);
+}
+
+.manifest-detail__section-header .manifest-detail__section-title {
+  margin-bottom: 0;
+}
+
+.manifest-detail__enrich-btn {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-slate-gray);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.manifest-detail__enrich-btn:hover:not(:disabled) {
+  border-color: var(--color-mid-teal);
+  color: var(--color-mid-teal);
+}
+
+.manifest-detail__enrich-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.manifest-detail__enrich-btn--primary {
+  border-color: var(--color-mid-teal);
+  background: var(--color-mid-teal);
+  color: var(--color-white);
+  font-size: var(--font-size-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+}
+
+.manifest-detail__enrich-btn--primary:hover:not(:disabled) {
+  background: var(--color-dark-teal);
+  border-color: var(--color-dark-teal);
+  color: var(--color-white);
+}
+
+.manifest-detail__summary {
+  font-size: var(--font-size-sm);
+  line-height: 1.7;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.manifest-detail__summary-empty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  align-items: flex-start;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.manifest-detail__summary-empty p {
+  margin: 0;
+}
+
+.manifest-detail__toc {
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--color-bg-secondary);
+}
+
+.manifest-detail__toc-title {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--spacing-sm);
+}
+
+.manifest-detail__toc-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: toc-counter;
+}
+
+.manifest-detail__toc-entry {
+  font-size: var(--font-size-sm);
+  padding: 2px 0;
+  color: var(--color-text-secondary);
+}
+
+.manifest-detail__toc-entry--level-2 {
+  padding-left: var(--spacing-md);
+  color: var(--color-slate-gray);
+  font-size: var(--font-size-xs);
 }
 
 /* Actions */

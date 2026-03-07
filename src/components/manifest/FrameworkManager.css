@@ -47,6 +47,54 @@
   line-height: 1.5;
 }
 
+.framework-manager__browse-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--color-mid-teal);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: var(--spacing-sm);
+}
+.framework-manager__browse-link:hover { text-decoration: underline; }
+
+.framework-manager__tag-all-btn {
+  background: none;
+  border: 1px solid var(--color-slate-gray);
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  margin-bottom: var(--spacing-md);
+  display: block;
+}
+.framework-manager__tag-all-btn:hover:not(:disabled) {
+  border-color: var(--color-mid-teal);
+  color: var(--color-mid-teal);
+}
+.framework-manager__tag-all-btn:disabled { opacity: 0.6; cursor: default; }
+
+.framework-manager__card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.framework-manager__card-tag {
+  font-size: 10px;
+  padding: 1px 6px;
+  background: var(--color-bg-secondary);
+  color: var(--color-mid-teal);
+  border-radius: 999px;
+  font-weight: 500;
+}
+
 .framework-manager__list {
   display: flex;
   flex-direction: column;
@@ -117,6 +165,104 @@
   justify-content: flex-end;
   padding-top: var(--spacing-sm);
   border-top: 1px solid var(--color-bg-secondary);
+}
+
+/* Per-card export button */
+.framework-manager__card-export {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  padding-top: var(--spacing-md);
+}
+
+.framework-manager__export-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--color-border, var(--color-slate-gray));
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.framework-manager__export-btn:hover:not(:disabled) {
+  border-color: var(--color-mid-teal);
+  color: var(--color-mid-teal);
+}
+
+.framework-manager__export-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.framework-manager__export-menu {
+  position: absolute;
+  top: calc(100% + var(--spacing-xs));
+  right: 0;
+  min-width: 160px;
+  background: var(--color-surface, var(--color-white));
+  border: 1px solid var(--color-border, var(--color-slate-gray));
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  z-index: 100;
+  overflow: hidden;
+}
+
+.framework-manager__export-menu button {
+  display: block;
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: transparent;
+  border: none;
+  text-align: left;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.framework-manager__export-menu button:hover {
+  background: var(--color-bg-secondary);
+}
+
+/* Export Selected button in actions row */
+.framework-manager__export-selected-wrapper {
+  position: relative;
+  margin-right: auto;
+}
+
+.framework-manager__export-selected-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-slate-gray);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.framework-manager__export-selected-btn:hover:not(:disabled) {
+  border-color: var(--color-mid-teal);
+  color: var(--color-mid-teal);
+}
+
+.framework-manager__export-selected-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.framework-manager__export-menu--up {
+  bottom: calc(100% + var(--spacing-xs));
+  top: auto;
 }
 
 .framework-manager__empty {

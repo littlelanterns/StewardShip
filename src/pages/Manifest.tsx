@@ -15,6 +15,7 @@ import { IntakeFlow } from '../components/manifest/IntakeFlow';
 import { TextNoteModal } from '../components/manifest/TextNoteModal';
 import FrameworkPrinciples from '../components/manifest/FrameworkPrinciples';
 import FrameworkManager from '../components/manifest/FrameworkManager';
+import BrowseFrameworks from '../components/manifest/BrowseFrameworks';
 import MastExtractionReview from '../components/manifest/MastExtractionReview';
 import KeelExtractionReview from '../components/manifest/KeelExtractionReview';
 import { CollapsibleGroup } from '../components/shared/CollapsibleGroup';
@@ -23,7 +24,7 @@ import { EmptyState, LoadingSpinner, FeatureGuide } from '../components/shared';
 import { FEATURE_GUIDES } from '../lib/featureGuides';
 import './Manifest.css';
 
-type ViewMode = 'list' | 'detail' | 'upload' | 'intake' | 'framework' | 'frameworks' | 'mast_extract' | 'keel_extract';
+type ViewMode = 'list' | 'detail' | 'upload' | 'intake' | 'framework' | 'frameworks' | 'browse' | 'mast_extract' | 'keel_extract';
 
 export default function Manifest() {
   usePageContext({ page: 'manifest' });
@@ -45,6 +46,7 @@ export default function Manifest() {
     getUniqueFolders,
     fetchItemDetail,
     checkDuplicate,
+    enrichItem,
   } = useManifest();
 
   const {
@@ -61,6 +63,8 @@ export default function Manifest() {
     checkDocumentLength,
     discoverSections,
     extractFromSection,
+    tagFramework,
+    updateFrameworkTags,
   } = useFrameworks();
 
   const mast = useMast();
@@ -172,6 +176,10 @@ export default function Manifest() {
     setFabExpanded(false);
     startGuidedConversation('manifest_discuss');
   }, [startGuidedConversation]);
+
+  const handleBrowseFrameworks = useCallback(() => {
+    setViewMode('browse');
+  }, []);
 
   // Navigate to a framework view for a specific item (from frameworks manager)
   const handleViewFramework = useCallback(async (itemId: string) => {
@@ -315,7 +323,22 @@ export default function Manifest() {
           onExtractSection={extractFromSection}
           onSave={saveFramework}
           onToggle={toggleFramework}
+          onUpdateTags={updateFrameworkTags}
           onBack={handleBackToDetail}
+        />
+      </div>
+    );
+  }
+
+  // Browse frameworks view
+  if (viewMode === 'browse') {
+    return (
+      <div className="page manifest-page">
+        <BrowseFrameworks
+          frameworks={frameworks}
+          items={items}
+          onSelectFramework={handleSelectFrameworkForEdit}
+          onBack={() => setViewMode('frameworks')}
         />
       </div>
     );
@@ -330,6 +353,8 @@ export default function Manifest() {
           items={items}
           onToggleFrameworks={batchToggleFrameworks}
           onSelectFramework={handleSelectFrameworkForEdit}
+          onBrowse={handleBrowseFrameworks}
+          onTagFramework={tagFramework}
           onBack={handleBack}
         />
       </div>
@@ -380,6 +405,7 @@ export default function Manifest() {
           onExtractFramework={handleExtractFramework}
           onExtractMast={handleExtractMast}
           onExtractKeel={handleExtractKeel}
+          onEnrichItem={enrichItem}
           hasFramework={!!getFrameworkForItem(currentSelectedItem.id)}
           frameworkIsActive={getFrameworkForItem(currentSelectedItem.id)?.is_active ?? false}
         />

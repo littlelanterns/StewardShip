@@ -269,7 +269,7 @@ export function useManifest() {
     pollIntervalRef.current = setInterval(async () => {
       const { data, error: pollErr } = await supabase
         .from('manifest_items')
-        .select('processing_status, chunk_count')
+        .select('processing_status, chunk_count, ai_summary, toc')
         .eq('id', itemId)
         .eq('user_id', user.id)
         .single();
@@ -284,11 +284,31 @@ export function useManifest() {
         setItems((prev) =>
           prev.map((item) =>
             item.id === itemId
-              ? { ...item, processing_status: status, chunk_count: data.chunk_count || 0 }
+              ? { ...item, processing_status: status, chunk_count: data.chunk_count || 0, ai_summary: data.ai_summary, toc: data.toc }
               : item,
           ),
         );
         if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+
+        // Auto-enrich newly completed items that have no summary yet (fire-and-forget)
+        if (status === 'completed' && !data.ai_summary) {
+          supabase.functions
+            .invoke('manifest-enrich', {
+              body: { manifest_item_id: itemId, user_id: user.id },
+            })
+            .then(({ data: enrichData }) => {
+              if (enrichData?.summary) {
+                setItems((prev) =>
+                  prev.map((item) =>
+                    item.id === itemId
+                      ? { ...item, ai_summary: enrichData.summary }
+                      : item,
+                  ),
+                );
+              }
+            })
+            .catch((err) => console.error('Auto-enrich failed (non-fatal):', err));
+        }
       }
     }, 3000);
   }, [user]);
@@ -377,6 +397,42 @@ export function useManifest() {
     return data as ManifestItem;
   }, [user]);
 
+  // Generate AI summary (and optionally regenerate tags) for a manifest item
+  const enrichItem = useCallback(async (
+    itemId: string,
+    regenerateTags = false,
+  ): Promise<{ summary: string; tags?: string[] } | null> => {
+    if (!user) return null;
+    try {
+      const { data, error: invokeErr } = await supabase.functions.invoke('manifest-enrich', {
+        body: {
+          manifest_item_id: itemId,
+          user_id: user.id,
+          regenerate_tags: regenerateTags,
+        },
+      });
+      if (invokeErr) throw invokeErr;
+
+      // Update local state so UI reflects new values immediately
+      setItems((prev) =>
+        prev.map((item) =>
+          item.id === itemId
+            ? {
+                ...item,
+                ai_summary: data.summary,
+                ...(data.tags ? { tags: data.tags } : {}),
+              }
+            : item,
+        ),
+      );
+
+      return data;
+    } catch (err) {
+      console.error('Enrich item failed:', err);
+      return null;
+    }
+  }, [user]);
+
   // Check for duplicate before upload
   const checkDuplicate = useCallback((fileName: string, fileSize: number): ManifestItem | null => {
     return items.find(
@@ -413,5 +469,6 @@ export function useManifest() {
     getUniqueFolders,
     fetchItemDetail,
     checkDuplicate,
+    enrichItem,
   };
 }

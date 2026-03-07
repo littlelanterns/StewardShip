@@ -212,6 +212,14 @@ export function useFrameworks() {
           }
           return [...prev, framework];
         });
+
+        // Auto-tag after save — fire-and-forget, non-blocking
+        tagFramework(
+          frameworkId,
+          name,
+          principles.filter((p) => p.is_included !== false).slice(0, 20).map((p) => p.text),
+        ).catch((err) => console.error('Auto-tagging after save failed:', err));
+
         return framework;
       }
       return null;
@@ -219,7 +227,7 @@ export function useFrameworks() {
       setError((err as Error).message);
       return null;
     }
-  }, [user]);
+  }, [user, tagFramework]);
 
   // Toggle framework active/inactive
   const toggleFramework = useCallback(async (frameworkId: string, isActive: boolean) => {
@@ -357,6 +365,58 @@ export function useFrameworks() {
     return frameworks.find((f) => f.manifest_item_id === manifestItemId);
   }, [frameworks]);
 
+  // Generate topic tags for a framework via AI
+  const tagFramework = useCallback(async (
+    frameworkId: string,
+    frameworkName: string,
+    principles: string[],
+  ): Promise<void> => {
+    if (!user) return;
+    try {
+      const { data, error: invokeErr } = await supabase.functions.invoke('manifest-tag-framework', {
+        body: {
+          framework_id: frameworkId,
+          framework_name: frameworkName,
+          principles: principles.slice(0, 20),
+          user_id: user.id,
+        },
+      });
+      if (invokeErr) throw invokeErr;
+      if (data?.tags) {
+        setFrameworks((prev) =>
+          prev.map((fw) =>
+            fw.id === frameworkId ? { ...fw, tags: data.tags } : fw
+          )
+        );
+      }
+    } catch (err) {
+      console.error('tagFramework failed (non-fatal):', err);
+    }
+  }, [user]);
+
+  // Update tags directly (user editing)
+  const updateFrameworkTags = useCallback(async (
+    frameworkId: string,
+    tags: string[],
+  ): Promise<boolean> => {
+    if (!user) return false;
+    try {
+      const { error: updateErr } = await supabase
+        .from('ai_frameworks')
+        .update({ tags })
+        .eq('id', frameworkId)
+        .eq('user_id', user.id);
+      if (updateErr) throw updateErr;
+      setFrameworks((prev) =>
+        prev.map((fw) => fw.id === frameworkId ? { ...fw, tags } : fw)
+      );
+      return true;
+    } catch (err) {
+      console.error('updateFrameworkTags failed:', err);
+      return false;
+    }
+  }, [user]);
+
   return {
     frameworks,
     loading,
@@ -374,5 +434,7 @@ export function useFrameworks() {
     checkDocumentLength,
     discoverSections,
     extractFromSection,
+    tagFramework,
+    updateFrameworkTags,
   };
 }

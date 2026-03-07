@@ -98,6 +98,16 @@ serve(async (req: Request) => {
           .from('manifest_items')
           .update({ text_content: fullText })
           .eq('id', manifest_item_id);
+
+        // TOC extraction (non-fatal)
+        try {
+          const toc = await extractTOCFromPDF(new Uint8Array(arrayBuffer));
+          if (toc && toc.length > 0) {
+            await supabase.from('manifest_items').update({ toc }).eq('id', manifest_item_id);
+          }
+        } catch (tocErr) {
+          console.error('PDF TOC save failed (non-fatal):', tocErr);
+        }
       } catch (pdfErr) {
         console.error('PDF extraction failed:', pdfErr);
         await supabase
@@ -127,6 +137,18 @@ serve(async (req: Request) => {
           .from('manifest_items')
           .update({ text_content: fullText })
           .eq('id', manifest_item_id);
+
+        // MD TOC extraction (non-fatal) — only for .md files
+        if (item.file_type === 'md' && fullText) {
+          try {
+            const toc = extractTOCFromMarkdown(fullText);
+            if (toc && toc.length > 0) {
+              await supabase.from('manifest_items').update({ toc }).eq('id', manifest_item_id);
+            }
+          } catch (tocErr) {
+            console.error('MD TOC save failed (non-fatal):', tocErr);
+          }
+        }
       } catch (txtErr) {
         console.error('Text extraction failed:', txtErr);
         await supabase
@@ -157,6 +179,16 @@ serve(async (req: Request) => {
           .from('manifest_items')
           .update({ text_content: fullText })
           .eq('id', manifest_item_id);
+
+        // TOC extraction (non-fatal)
+        try {
+          const toc = await extractTOCFromEPUB(new Uint8Array(arrayBuffer));
+          if (toc && toc.length > 0) {
+            await supabase.from('manifest_items').update({ toc }).eq('id', manifest_item_id);
+          }
+        } catch (tocErr) {
+          console.error('EPUB TOC save failed (non-fatal):', tocErr);
+        }
       } catch (epubErr) {
         console.error('EPUB extraction failed:', epubErr);
         await supabase
@@ -187,6 +219,16 @@ serve(async (req: Request) => {
           .from('manifest_items')
           .update({ text_content: fullText })
           .eq('id', manifest_item_id);
+
+        // TOC extraction (non-fatal)
+        try {
+          const toc = await extractTOCFromDOCX(new Uint8Array(arrayBuffer));
+          if (toc && toc.length > 0) {
+            await supabase.from('manifest_items').update({ toc }).eq('id', manifest_item_id);
+          }
+        } catch (tocErr) {
+          console.error('DOCX TOC save failed (non-fatal):', tocErr);
+        }
       } catch (docxErr) {
         console.error('DOCX extraction failed:', docxErr);
         await supabase
@@ -372,6 +414,13 @@ serve(async (req: Request) => {
     );
   }
 });
+
+// --- TOC Types ---
+
+interface TocEntry {
+  title: string;
+  level: number;
+}
 
 // --- Helper Functions ---
 
@@ -678,4 +727,198 @@ async function extractViaVision(
     console.error('Vision extraction failed:', err);
     return null;
   }
+}
+
+// --- TOC Extraction Functions ---
+
+/**
+ * Extract table of contents from an EPUB file.
+ * Tries EPUB3 nav document first, falls back to EPUB2 NCX.
+ * Returns null if no TOC can be extracted.
+ */
+async function extractTOCFromEPUB(bytes: Uint8Array): Promise<TocEntry[] | null> {
+  try {
+    const { unzipSync } = await import('https://esm.sh/fflate@0.8.2');
+    const files = unzipSync(bytes);
+
+    const containerBytes = files['META-INF/container.xml'];
+    if (!containerBytes) return null;
+
+    const containerXml = new TextDecoder().decode(containerBytes);
+    const opfPathMatch = containerXml.match(/full-path="([^"]+)"/);
+    const opfPath = opfPathMatch?.[1] || '';
+    if (!opfPath || !files[opfPath]) return null;
+
+    const opfContent = new TextDecoder().decode(files[opfPath]);
+    const opfDir = opfPath.substring(0, opfPath.lastIndexOf('/') + 1);
+
+    // Try EPUB3 nav document first
+    const navItemMatch = opfContent.match(/<item[^>]+properties="[^"]*nav[^"]*"[^>]+href="([^"]+)"/);
+    if (navItemMatch) {
+      const navPath = opfDir + decodeURIComponent(navItemMatch[1]);
+      const navBytes = files[navPath];
+      if (navBytes) {
+        const entries = parseEPUB3Nav(new TextDecoder().decode(navBytes));
+        if (entries.length > 0) return entries;
+      }
+    }
+
+    // Fall back to EPUB2 NCX
+    const ncxItemMatch = opfContent.match(/<item[^>]+media-type="application\/x-dtbncx\+xml"[^>]+href="([^"]+)"/);
+    if (ncxItemMatch) {
+      const ncxPath = opfDir + decodeURIComponent(ncxItemMatch[1]);
+      const ncxBytes = files[ncxPath];
+      if (ncxBytes) {
+        const entries = parseNCX(new TextDecoder().decode(ncxBytes));
+        if (entries.length > 0) return entries;
+      }
+    }
+
+    return null;
+  } catch (err) {
+    console.error('EPUB TOC extraction failed (non-fatal):', err);
+    return null;
+  }
+}
+
+function parseEPUB3Nav(html: string): TocEntry[] {
+  const entries: TocEntry[] = [];
+  const tocNavMatch = html.match(/<nav[^>]+epub:type="[^"]*toc[^"]*"[^>]*>([\s\S]*?)<\/nav>/i);
+  if (!tocNavMatch) return entries;
+  parseNavOl(tocNavMatch[1], entries, 1);
+  return entries;
+}
+
+function parseNavOl(html: string, entries: TocEntry[], level: number): void {
+  const liRegex = /<li[^>]*>([\s\S]*?)<\/li>/gi;
+  let match;
+  while ((match = liRegex.exec(html)) !== null) {
+    const liContent = match[1];
+    const aMatch = liContent.match(/<a[^>]*>([^<]+)<\/a>/i);
+    if (aMatch) {
+      const title = aMatch[1].replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim();
+      if (title) entries.push({ title, level });
+    }
+    const nestedOlMatch = liContent.match(/<ol[^>]*>([\s\S]*?)<\/ol>/i);
+    if (nestedOlMatch) parseNavOl(nestedOlMatch[1], entries, level + 1);
+  }
+}
+
+function parseNCX(xml: string): TocEntry[] {
+  const entries: TocEntry[] = [];
+  parseNavPoints(xml, entries, 1);
+  return entries;
+}
+
+function parseNavPoints(xml: string, entries: TocEntry[], level: number): void {
+  const navPointRegex = /<navPoint[^>]*>([\s\S]*?)<\/navPoint>/gi;
+  let match;
+  while ((match = navPointRegex.exec(xml)) !== null) {
+    const content = match[1];
+    const labelMatch = content.match(/<text>([^<]+)<\/text>/i);
+    if (labelMatch) {
+      const title = labelMatch[1].replace(/&amp;/g, '&').trim();
+      if (title) entries.push({ title, level });
+    }
+    const nestedContent = content
+      .replace(/<navLabel>[\s\S]*?<\/navLabel>/gi, '')
+      .replace(/<content[^>]*\/>/gi, '');
+    if (nestedContent.includes('<navPoint')) {
+      parseNavPoints(nestedContent, entries, level + 1);
+    }
+  }
+}
+
+/**
+ * Extract outline/bookmarks from a PDF file using unpdf/PDF.js.
+ * Returns null if the PDF has no outline or extraction fails.
+ */
+async function extractTOCFromPDF(bytes: Uint8Array): Promise<TocEntry[] | null> {
+  try {
+    const { getDocumentProxy } = await import('https://esm.sh/unpdf@1.4.0');
+    const pdf = await getDocumentProxy(bytes);
+    const outline = await pdf.getOutline();
+    if (!outline || outline.length === 0) return null;
+
+    const entries: TocEntry[] = [];
+    flattenOutline(outline, entries, 1);
+    return entries.length > 0 ? entries : null;
+  } catch (err) {
+    console.error('PDF TOC extraction failed (non-fatal):', err);
+    return null;
+  }
+}
+
+function flattenOutline(
+  items: Array<{ title: string; items?: unknown[] }>,
+  entries: TocEntry[],
+  level: number,
+): void {
+  for (const item of items) {
+    if (item.title?.trim()) {
+      entries.push({ title: item.title.trim(), level });
+    }
+    if (item.items && item.items.length > 0) {
+      flattenOutline(item.items as Array<{ title: string; items?: unknown[] }>, entries, level + 1);
+    }
+  }
+}
+
+/**
+ * Extract headings from a DOCX file as a pseudo-TOC.
+ * Looks for paragraphs with Heading1-Heading3 styles in word/document.xml.
+ * Returns null if no headings found.
+ */
+async function extractTOCFromDOCX(bytes: Uint8Array): Promise<TocEntry[] | null> {
+  try {
+    const { unzipSync } = await import('https://esm.sh/fflate@0.8.2');
+    const files = unzipSync(bytes);
+
+    const documentXml = files['word/document.xml'];
+    if (!documentXml) return null;
+
+    const xml = new TextDecoder().decode(documentXml);
+    const entries: TocEntry[] = [];
+
+    // Split by paragraphs and check for heading styles
+    const paragraphs = xml.split(/<w:p[ >]/);
+    for (const para of paragraphs) {
+      const styleMatch = para.match(/<w:pStyle\s+w:val="Heading(\d)"/i);
+      if (!styleMatch) continue;
+
+      const level = parseInt(styleMatch[1], 10);
+      if (level > 3) continue; // only H1-H3
+
+      // Extract text runs
+      const textRunRegex = /<w:t[^>]*>([^<]*)<\/w:t>/g;
+      let runMatch;
+      const parts: string[] = [];
+      while ((runMatch = textRunRegex.exec(para)) !== null) {
+        parts.push(runMatch[1]);
+      }
+      const title = parts.join('').trim();
+      if (title) entries.push({ title, level });
+    }
+
+    return entries.length > 0 ? entries : null;
+  } catch (err) {
+    console.error('DOCX TOC extraction failed (non-fatal):', err);
+    return null;
+  }
+}
+
+/**
+ * Extract headings from Markdown text as a TOC.
+ * Returns null if no headings found.
+ */
+function extractTOCFromMarkdown(text: string): TocEntry[] | null {
+  const entries: TocEntry[] = [];
+  const lines = text.split('\n');
+  for (const line of lines) {
+    const match = line.match(/^(#{1,3})\s+(.+)/);
+    if (match) {
+      entries.push({ title: match[2].trim(), level: match[1].length });
+    }
+  }
+  return entries.length > 0 ? entries : null;
 }
