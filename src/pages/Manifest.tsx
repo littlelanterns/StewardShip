@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Upload, StickyNote, MessageSquare, Loader, BookOpen } from 'lucide-react';
+import { Upload, StickyNote, MessageSquare, Loader, BookOpen, List, LayoutGrid } from 'lucide-react';
 import { usePageContext } from '../hooks/usePageContext';
 import { useManifest } from '../hooks/useManifest';
 import { useFrameworks } from '../hooks/useFrameworks';
@@ -24,6 +24,7 @@ import { FEATURE_GUIDES } from '../lib/featureGuides';
 import './Manifest.css';
 
 type ViewMode = 'list' | 'detail' | 'upload' | 'framework' | 'frameworks' | 'browse' | 'mast_extract' | 'keel_extract';
+type LibraryLayout = 'compact' | 'grid';
 
 export default function Manifest() {
   usePageContext({ page: 'manifest' });
@@ -68,6 +69,7 @@ export default function Manifest() {
   const keel = useKeel();
 
   const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [libraryLayout, setLibraryLayout] = useState<LibraryLayout>('compact');
   const [selectedItem, setSelectedItem] = useState<ManifestItem | null>(null);
   const [showTextNoteModal, setShowTextNoteModal] = useState(false);
   const [fabExpanded, setFabExpanded] = useState(false);
@@ -362,12 +364,50 @@ export default function Manifest() {
     );
   }
 
+  // Sort items: processing first, then by date newest first
+  const sortedItems = useMemo(() => {
+    return [...filteredItems].sort((a, b) => {
+      const aProcessing = a.processing_status === 'pending' || a.processing_status === 'processing';
+      const bProcessing = b.processing_status === 'pending' || b.processing_status === 'processing';
+      if (aProcessing && !bProcessing) return -1;
+      if (!aProcessing && bProcessing) return 1;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+  }, [filteredItems]);
+
   // List view
   return (
     <div className="page manifest-page">
       <div className="manifest-page__header">
-        <h1 className="manifest-page__title">The Manifest</h1>
-        <p className="manifest-page__subtitle">Your personal knowledge base</p>
+        <div className="manifest-page__header-row">
+          <div>
+            <h1 className="manifest-page__title">The Manifest</h1>
+            <p className="manifest-page__subtitle">
+              Your personal knowledge base
+              {items.length > 0 && <span className="manifest-page__count"> — {items.length} item{items.length !== 1 ? 's' : ''}</span>}
+            </p>
+          </div>
+          {items.length > 0 && (
+            <div className="manifest-page__layout-toggle">
+              <button
+                type="button"
+                className={`manifest-page__layout-btn${libraryLayout === 'compact' ? ' manifest-page__layout-btn--active' : ''}`}
+                onClick={() => setLibraryLayout('compact')}
+                title="List view"
+              >
+                <List size={18} />
+              </button>
+              <button
+                type="button"
+                className={`manifest-page__layout-btn${libraryLayout === 'grid' ? ' manifest-page__layout-btn--active' : ''}`}
+                onClick={() => setLibraryLayout('grid')}
+                title="Card view"
+              >
+                <LayoutGrid size={18} />
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <FeatureGuide {...FEATURE_GUIDES.manifest} />
@@ -447,6 +487,13 @@ export default function Manifest() {
             heading="No matching items"
             message="Try adjusting your filters to see more items."
           />
+        ) : libraryLayout === 'compact' ? (
+          /* Compact list view — flat, dense rows */
+          <div className="manifest-page__compact-list">
+            {sortedItems.map((item) => (
+              <ManifestItemCard key={item.id} item={item} onClick={handleSelectItem} framework={getFrameworkForItem(item.id)} compact />
+            ))}
+          </div>
         ) : folderGroups.length === 1 ? (
           <div className="manifest-page__item-list">
             {folderGroups[0][1].map((item) => (

@@ -1,4 +1,4 @@
-import { FileText, BookOpen, FileCode, Mic, Image, StickyNote, Loader } from 'lucide-react';
+import { FileText, BookOpen, FileCode, Mic, Image, StickyNote, Loader, ChevronRight } from 'lucide-react';
 import type { ManifestItem, AIFramework } from '../../lib/types';
 import { MANIFEST_USAGE_LABELS } from '../../lib/types';
 import { Card } from '../shared/Card';
@@ -8,6 +8,7 @@ interface ManifestItemCardProps {
   item: ManifestItem;
   onClick: (item: ManifestItem) => void;
   framework?: AIFramework;
+  compact?: boolean;
 }
 
 const FILE_TYPE_ICONS = {
@@ -34,12 +35,52 @@ function getRelativeDate(dateStr: string): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-export function ManifestItemCard({ item, onClick, framework }: ManifestItemCardProps) {
+export function ManifestItemCard({ item, onClick, framework, compact }: ManifestItemCardProps) {
   const Icon = FILE_TYPE_ICONS[item.file_type] || FileText;
   const isPending = item.processing_status === 'pending';
   const isProcessing = item.processing_status === 'processing';
   const isFailed = item.processing_status === 'failed';
+  const isCompleted = item.processing_status === 'completed';
   const isInProgress = isPending || isProcessing;
+
+  if (compact) {
+    return (
+      <button
+        type="button"
+        className="manifest-row"
+        onClick={() => onClick(item)}
+      >
+        <div className="manifest-row__icon">
+          <Icon size={16} />
+        </div>
+        <span className="manifest-row__title">{item.title}</span>
+        <div className="manifest-row__status">
+          {isInProgress && (
+            <span className="manifest-row__badge manifest-row__badge--processing">
+              <Loader size={12} className="manifest-card__spinner" />
+              Processing
+            </span>
+          )}
+          {isFailed && (
+            <span className="manifest-row__badge manifest-row__badge--failed">Failed</span>
+          )}
+          {isCompleted && framework?.is_active && (
+            <span className="manifest-row__badge manifest-row__badge--framework">
+              <BookOpen size={12} />
+              Framework
+            </span>
+          )}
+          {isCompleted && framework && !framework.is_active && (
+            <span className="manifest-row__badge manifest-row__badge--framework-off">Framework</span>
+          )}
+          {isCompleted && !framework && (
+            <span className="manifest-row__badge manifest-row__badge--ready">Ready</span>
+          )}
+        </div>
+        <ChevronRight size={16} className="manifest-row__chevron" />
+      </button>
+    );
+  }
 
   return (
     <Card className="manifest-card" onClick={() => onClick(item)}>

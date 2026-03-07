@@ -2,6 +2,13 @@
   margin-bottom: var(--spacing-md);
 }
 
+.manifest-page__header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+}
+
 .manifest-page__title {
   margin: 0;
   font-family: var(--font-heading);
@@ -13,6 +20,45 @@
   margin: var(--spacing-xs) 0 0;
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
+}
+
+.manifest-page__count {
+  color: var(--color-slate-gray);
+}
+
+/* Layout toggle */
+.manifest-page__layout-toggle {
+  display: flex;
+  border: 1px solid var(--color-slate-gray);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.manifest-page__layout-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: var(--color-white);
+  color: var(--color-slate-gray);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.manifest-page__layout-btn + .manifest-page__layout-btn {
+  border-left: 1px solid var(--color-slate-gray);
+}
+
+.manifest-page__layout-btn--active {
+  background: var(--color-mid-teal);
+  color: var(--color-white);
+}
+
+.manifest-page__layout-btn:hover:not(.manifest-page__layout-btn--active) {
+  background: var(--color-bg-secondary);
 }
 
 /* Action buttons */
@@ -76,6 +122,14 @@
 @keyframes manifest-page-spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+/* Compact list container */
+.manifest-page__compact-list {
+  background: var(--color-bg-card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
 }
 
 /* Item list */
