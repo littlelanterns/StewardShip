@@ -480,11 +480,13 @@ export function useManifestExtraction() {
         }
       }
 
-      await updateExtractionStatus(manifestItemId, allOk ? 'completed' : 'failed');
+      // Mark completed even with partial failures — extracted content is still valuable
+      await updateExtractionStatus(manifestItemId, 'completed');
       setExtractionProgress(null);
       return allOk;
     } catch (err) {
       setError((err as Error).message);
+      // Only mark failed if the entire loop threw (no sections extracted)
       await updateExtractionStatus(manifestItemId, 'failed');
       setExtractionProgress(null);
       return false;

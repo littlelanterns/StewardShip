@@ -30,7 +30,11 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
   const [loading, setLoading] = useState(false);
 
   const extractedItems = useMemo(
-    () => items.filter((i) => i.extraction_status === 'completed'),
+    () => items.filter((i) =>
+      i.extraction_status === 'completed' ||
+      i.extraction_status === 'failed' ||
+      i.extraction_status === 'extracting'
+    ),
     [items],
   );
 
