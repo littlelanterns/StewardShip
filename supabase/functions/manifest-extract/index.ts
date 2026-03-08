@@ -202,6 +202,31 @@ function safeParseJSON(raw: string): { parsed: unknown; error?: string } {
   return { parsed: null, error: 'Could not parse JSON from AI response' };
 }
 
+// Retry helper for transient API errors (429 rate limit, 502/503 gateway errors)
+async function fetchWithRetry(
+  url: string,
+  init: RequestInit,
+  maxRetries = 3,
+): Promise<Response> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const response = await fetch(url, init);
+    if (response.ok || attempt === maxRetries) return response;
+
+    const status = response.status;
+    // Only retry on transient errors
+    if (status !== 429 && status !== 502 && status !== 503) return response;
+
+    // Exponential backoff: 2s, 4s, 8s
+    const delay = Math.pow(2, attempt + 1) * 1000;
+    const retryAfter = response.headers.get('retry-after');
+    const waitMs = retryAfter ? Math.min(parseInt(retryAfter, 10) * 1000, 15000) : delay;
+    console.log(`[manifest-extract] Retry ${attempt + 1}/${maxRetries} after ${status}, waiting ${waitMs}ms`);
+    await new Promise((r) => setTimeout(r, waitMs));
+  }
+  // Should never reach here, but TypeScript needs it
+  throw new Error('fetchWithRetry exhausted retries');
+}
+
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -312,7 +337,7 @@ serve(async (req: Request) => {
         console.log(`[manifest-extract] discover_sections: truncated to ${discoveryText.length} chars`);
       }
 
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      const response = await fetchWithRetry('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: openRouterHeaders,
         body: JSON.stringify({
@@ -395,7 +420,7 @@ serve(async (req: Request) => {
 
       const fullPrompt = basePrompt + genreContext + goDeeperAddendum;
 
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      const response = await fetchWithRetry('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: openRouterHeaders,
         body: JSON.stringify({
@@ -486,7 +511,7 @@ serve(async (req: Request) => {
     }
 
     // Use Sonnet for extraction — deep reasoning work
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    const response = await fetchWithRetry('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: openRouterHeaders,
       body: JSON.stringify({

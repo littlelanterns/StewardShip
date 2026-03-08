@@ -422,6 +422,11 @@ export function useManifestExtraction() {
       let allOk = true;
 
       for (let i = 0; i < sectionIndices.length; i++) {
+        // Throttle between sections to avoid OpenRouter rate limits
+        if (i > 0) {
+          await new Promise((r) => setTimeout(r, 1500));
+        }
+
         const secIdx = sectionIndices[i];
         const section = sections[secIdx];
         const cleanTitle = section.title.replace(/^\[NON-CONTENT\]\s*/i, '');
