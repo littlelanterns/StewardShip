@@ -140,6 +140,66 @@ Return ONLY a JSON object:
 
 No markdown backticks, no preamble.`;
 
+const COMBINED_SECTION_PROMPT = `You are an expert at extracting the essential content from books and documents. Given a section of text, perform THREE extraction tasks simultaneously and return all results in a single JSON response.
+
+=== TASK 1: SUMMARIES ===
+Extract the key concepts, stories, metaphors, lessons, and insights that capture the essence of this content.
+- Extract 5-20 items depending on content richness
+- Each item should STAND ALONE — someone reading just that item should understand it without having read the book
+- Capture diverse content types: key concepts, memorable stories, powerful metaphors, character insights, practical lessons, notable quotes, thematic observations
+- Preserve the author's distinctive language when it captures something uniquely well
+- For stories and examples, capture enough context to understand the point (2-4 sentences)
+- For concepts and principles, be precise and complete (1-3 sentences)
+- Label each item with its content_type
+- Do NOT extract trivial filler content
+- Valid content_type values: "key_concept", "story", "metaphor", "lesson", "quote", "insight", "theme", "character_insight", "exercise", "principle"
+
+=== TASK 2: FRAMEWORK PRINCIPLES ===
+Extract the key principles, mental models, and actionable frameworks.
+- Extract 5-20 principles depending on content richness
+- Default principle length: 1-3 complete sentences. Never cut off mid-thought.
+- EXCEPTION — Processes, systems, and step-by-step methods: extract as structured principles with numbered steps (3-8 sentences)
+- Focus on ACTIONABLE insights — things that can guide decisions and behavior
+- Include the source's unique language/metaphors when they capture concepts well
+- Don't just summarize — extract the tools and models
+- Avoid generic self-help platitudes. Extract what makes THIS source distinctive
+- Include contrasts the author draws (e.g., "X vs Y" distinctions)
+- Every principle must be a COMPLETE thought
+
+=== TASK 3: PERSONAL DECLARATIONS (Mast Content) ===
+Distill the wisdom into personal declarations — honest commitment statements someone could live by.
+FIVE DECLARATION STYLES (use the style that best fits each insight):
+1. "choosing_committing" — Active choice: "I choose to..." / "I am committed to..." / "When I feel X, I will Y"
+2. "recognizing_awakening" — New awareness: "I now see that..." / "I recognize that..."
+3. "claiming_stepping_into" — Identity claim: "I am someone who..." / "I am stepping into..."
+4. "learning_striving" — Growth posture: "I am learning to..." / "I strive to..."
+5. "resolute_unashamed" — Bold commitment: "I will not apologize for..." / "I refuse to..."
+- Extract 3-10 declarations depending on content richness
+- STANDALONE RULE: Each declaration must make complete sense on its own
+- HONESTY TEST: Prefer honest aspiration over performative confidence
+- Include an optional value_name (1-3 words) that names the underlying value
+- Use DIFFERENT styles across your extractions
+- Faith-connected declarations are appropriate when the source material has spiritual depth
+
+Return ONLY a JSON object with all three sections:
+{
+  "summaries": [
+    { "content_type": "key_concept", "text": "Clear explanation...", "sort_order": 0 },
+    { "content_type": "story", "text": "Brief retelling...", "sort_order": 1 }
+  ],
+  "framework": {
+    "framework_name": "Suggested name for this framework",
+    "principles": [
+      { "text": "Principle statement — complete thought, 1-3 sentences.", "sort_order": 0 }
+    ]
+  },
+  "declarations": [
+    { "value_name": "Intentional Presence", "declaration_text": "I choose to...", "declaration_style": "choosing_committing", "sort_order": 0 }
+  ]
+}
+
+No markdown backticks, no preamble.`;
+
 const SECTION_DISCOVERY_PROMPT = `You are analyzing a document to identify its natural sections or chapters for principle extraction.
 
 Given the text below, identify the major sections, chapters, or topic boundaries.
@@ -389,7 +449,84 @@ serve(async (req: Request) => {
       );
     }
 
+    // --- Combined per-section extraction (all 3 types in one API call) ---
+    if (extraction_type === 'combined_section') {
+      if (section_start == null || section_end == null) {
+        return new Response(
+          JSON.stringify({ error: 'section_start and section_end required for section extraction' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+
+      let sectionText = item.text_content.substring(section_start, section_end);
+
+      const MAX_SECTION_CHARS = 80_000;
+      if (sectionText.length > MAX_SECTION_CHARS) {
+        console.log(`[manifest-extract] combined_section section="${section_title}" truncated from ${sectionText.length} to ${MAX_SECTION_CHARS} chars`);
+        sectionText = sectionText.substring(0, MAX_SECTION_CHARS)
+          + `\n\n[... ${sectionText.length - MAX_SECTION_CHARS} characters truncated ...]`;
+      }
+
+      const fullPrompt = COMBINED_SECTION_PROMPT + genreContext;
+
+      const response = await fetchWithRetry('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: openRouterHeaders,
+        body: JSON.stringify({
+          model: 'anthropic/claude-sonnet-4',
+          max_tokens: 8192,
+          messages: [
+            { role: 'system', content: fullPrompt },
+            {
+              role: 'user',
+              content: `Document title: "${item.title}"\nSection: "${section_title || 'Untitled'}"\n\nContent:\n${sectionText}`,
+            },
+          ],
+        }),
+      });
+
+      if (!response.ok) {
+        const errBody = await response.text();
+        console.error('[manifest-extract] combined_section AI error:', response.status, errBody.substring(0, 800));
+        return new Response(
+          JSON.stringify({ error: `AI error (${response.status}): ${errBody.substring(0, 200)}` }),
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content || '';
+      console.log(`[manifest-extract] combined_section section="${section_title}" raw response length:`, content.length);
+
+      const { parsed: result, error: parseErr } = safeParseJSON(content);
+      if (!result) {
+        console.error('[manifest-extract] combined_section parse failed:', parseErr, 'raw:', content.substring(0, 500));
+        return new Response(
+          JSON.stringify({ error: parseErr || 'Failed to parse combined extraction result' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+
+      // Sanitize declaration_style on declarations
+      const resultObj = result as Record<string, unknown>;
+      const declarations = resultObj?.declarations as Array<Record<string, unknown>> | undefined;
+      if (declarations && Array.isArray(declarations)) {
+        const VALID_STYLES = ['choosing_committing', 'recognizing_awakening', 'claiming_stepping_into', 'learning_striving', 'resolute_unashamed'];
+        for (const decl of declarations) {
+          if (!decl.declaration_style || !VALID_STYLES.includes(decl.declaration_style as string)) {
+            decl.declaration_style = 'choosing_committing';
+          }
+        }
+      }
+
+      return new Response(
+        JSON.stringify({ extraction_type: 'combined_section', result }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
     // --- Per-Section extraction types (framework_section, summary_section, mast_content_section) ---
+    // Used for Go Deeper and Re-run (single tab at a time)
     const sectionTypes = ['framework_section', 'summary_section', 'mast_content_section'];
     if (sectionTypes.includes(extraction_type)) {
       if (section_start == null || section_end == null) {
@@ -401,7 +538,6 @@ serve(async (req: Request) => {
 
       let sectionText = item.text_content.substring(section_start, section_end);
 
-      // Truncate very large sections to avoid exceeding token limits (~80K chars ≈ 20K tokens)
       const MAX_SECTION_CHARS = 80_000;
       if (sectionText.length > MAX_SECTION_CHARS) {
         console.log(`[manifest-extract] ${extraction_type} section="${section_title}" truncated from ${sectionText.length} to ${MAX_SECTION_CHARS} chars`);

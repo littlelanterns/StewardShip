@@ -405,7 +405,15 @@ export function useManifestExtraction() {
     }
   }, [user, extractSummary, extractDeclarations, callExtract, updateExtractionStatus]);
 
-  // --- Extract All Sections: sequential per-section extraction ---
+  // --- Combined section result shape from Edge Function ---
+
+  interface CombinedSectionResult {
+    summaries?: SummaryExtractionItem[];
+    framework?: FrameworkExtractionResult;
+    declarations?: DeclarationExtractionItem[];
+  }
+
+  // --- Extract All Sections: one combined API call per section ---
 
   const extractAllSections = useCallback(async (
     manifestItemId: string,
@@ -431,51 +439,37 @@ export function useManifestExtraction() {
         const section = sections[secIdx];
         const cleanTitle = section.title.replace(/^\[NON-CONTENT\]\s*/i, '');
 
-        // 1. Summary for this section
+        // Single combined call for all 3 extraction types
         setExtractionProgress({ current: i, total: sectionIndices.length, currentType: 'summary' });
         try {
-          const summaryOk = await extractSummary(manifestItemId, genres, {
+          console.log(`[extractAllSections] Combined extraction for section ${i + 1}/${sectionIndices.length}: "${cleanTitle}"`);
+          const rawResult = await callExtract(manifestItemId, 'combined_section', genres, {
             sectionTitle: cleanTitle,
             sectionStart: section.start_char,
             sectionEnd: section.end_char,
-            sectionIndex: secIdx,
           });
-          if (!summaryOk) allOk = false;
-        } catch (err) {
-          console.error(`Summary extraction failed for section "${cleanTitle}":`, err);
-          allOk = false;
-        }
 
-        // 2. Framework for this section
-        setExtractionProgress({ current: i, total: sectionIndices.length, currentType: 'framework' });
-        try {
-          console.log(`[extractAllSections] Extracting framework for section ${i + 1}/${sectionIndices.length}: "${cleanTitle}"`);
-          const fwResult = await callExtract(manifestItemId, 'framework_section', genres, {
-            sectionTitle: cleanTitle,
-            sectionStart: section.start_char,
-            sectionEnd: section.end_char,
-          });
-          console.log(`[extractAllSections] Framework result for "${cleanTitle}":`, fwResult ? 'got data' : 'null');
-          if (fwResult && onFrameworkResult) {
-            await onFrameworkResult(fwResult as FrameworkExtractionResult, cleanTitle, secIdx);
+          const combined = rawResult as CombinedSectionResult;
+          console.log(`[extractAllSections] Combined result for "${cleanTitle}": summaries=${combined?.summaries?.length || 0}, principles=${combined?.framework?.principles?.length || 0}, declarations=${combined?.declarations?.length || 0}`);
+
+          // Save summaries
+          if (combined?.summaries && combined.summaries.length > 0) {
+            await saveSummaryResults(manifestItemId, combined.summaries, cleanTitle, secIdx);
+            await fetchSummaries(manifestItemId);
+          }
+
+          // Save framework via callback
+          if (combined?.framework && onFrameworkResult) {
+            await onFrameworkResult(combined.framework, cleanTitle, secIdx);
+          }
+
+          // Save declarations
+          if (combined?.declarations && combined.declarations.length > 0) {
+            await saveDeclarationResults(manifestItemId, combined.declarations, cleanTitle, secIdx);
+            await fetchDeclarations(manifestItemId);
           }
         } catch (err) {
-          console.error(`[extractAllSections] Framework extraction failed for section "${cleanTitle}":`, err);
-          allOk = false;
-        }
-
-        // 3. Declarations for this section
-        setExtractionProgress({ current: i, total: sectionIndices.length, currentType: 'mast_content' });
-        try {
-          const declOk = await extractDeclarations(manifestItemId, genres, {
-            sectionTitle: cleanTitle,
-            sectionStart: section.start_char,
-            sectionEnd: section.end_char,
-            sectionIndex: secIdx,
-          });
-          if (!declOk) allOk = false;
-        } catch (err) {
-          console.error(`Declaration extraction failed for section "${cleanTitle}":`, err);
+          console.error(`[extractAllSections] Combined extraction failed for section "${cleanTitle}":`, err);
           allOk = false;
         }
       }
@@ -493,7 +487,7 @@ export function useManifestExtraction() {
     } finally {
       setExtracting(false);
     }
-  }, [user, sections, extractSummary, extractDeclarations, callExtract, updateExtractionStatus]);
+  }, [user, sections, saveSummaryResults, saveDeclarationResults, fetchSummaries, fetchDeclarations, callExtract, updateExtractionStatus]);
 
   // --- Go Deeper: extract additional content for a specific tab/section ---
 
