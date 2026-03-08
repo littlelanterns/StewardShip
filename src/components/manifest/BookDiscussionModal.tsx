@@ -59,6 +59,7 @@ export function BookDiscussionModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [started, setStarted] = useState(!!existingDiscussionId);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -68,15 +69,19 @@ export function BookDiscussionModal({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, sending]);
 
-  // Start or continue discussion on mount
+  // Load existing discussion on mount (new discussions wait for user to click Begin)
   useEffect(() => {
     if (existingDiscussionId) {
       loadExistingDiscussion(existingDiscussionId);
-    } else {
-      startNewDiscussion();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleBegin = useCallback(() => {
+    setStarted(true);
+    startNewDiscussion();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [audience]);
 
   const loadExistingDiscussion = async (id: string) => {
     if (!user) return;
@@ -289,7 +294,7 @@ export function BookDiscussionModal({
         user_id: user.id,
         title: `Goals from ${bookTitles.join(', ')}`,
         description: lastAiMsg.content,
-        framework: 'milestone',
+        planning_framework: 'milestone',
         status: 'active',
       })
       .select('id')
@@ -431,7 +436,22 @@ export function BookDiscussionModal({
             <div className="book-discussion-modal__empty">Loading conversation...</div>
           )}
 
-          {!loading && messages.length === 0 && !sending && (
+          {!loading && !started && (
+            <div className="book-discussion-modal__ready">
+              <p className="book-discussion-modal__ready-text">
+                Choose your audience, then begin.
+              </p>
+              <button
+                type="button"
+                className="book-discussion-modal__begin-btn"
+                onClick={handleBegin}
+              >
+                Begin Discussion
+              </button>
+            </div>
+          )}
+
+          {!loading && started && messages.length === 0 && !sending && (
             <div className="book-discussion-modal__empty">Starting discussion...</div>
           )}
 

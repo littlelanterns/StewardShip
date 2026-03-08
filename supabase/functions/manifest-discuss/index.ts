@@ -110,17 +110,18 @@ Present conversationally. The user can refine tracking criteria and approach.`;
 }
 
 function getAudienceGuidance(audience: string): string {
+  const base = `AUDIENCE TARGET: "${audience.toUpperCase()}" — You MUST tailor ALL content for this audience. If previous messages in the conversation used a different audience style, ADAPT NOW to the current audience.`;
   switch (audience) {
     case 'personal':
-      return 'AUDIENCE: Personal reflection. Speak directly to the user. Questions should be introspective and individually focused.';
+      return `${base}\nGenerate questions appropriate for: Personal reflection. Speak directly to the user. Questions should be introspective, individually focused, and personally challenging.`;
     case 'family':
-      return 'AUDIENCE: Family discussion. Questions and content should be appropriate for the whole family, including children. Use accessible language. Focus on shared values and family application.';
+      return `${base}\nGenerate questions appropriate for: Family discussion. Questions and content should be age-appropriate for the whole family, including children. Use accessible language. Focus on shared values and family application. Frame questions so family members can discuss together.`;
     case 'teen':
-      return 'AUDIENCE: Teen engagement. Use language and examples that resonate with teenage thinking. Make concepts relevant to their world — school, friendships, identity, future. Avoid being preachy.';
+      return `${base}\nGenerate questions appropriate for: Teen engagement. Use language and examples that resonate with teenage thinking. Connect concepts to their world — school, friendships, identity, social media, future dreams. Make it engaging, not preachy. Use a tone that respects their intelligence while being accessible.`;
     case 'spouse':
-      return 'AUDIENCE: Couples discussion. Frame content for partners to discuss together. Focus on relationship application, shared growth, and mutual understanding.';
+      return `${base}\nGenerate questions appropriate for: Couples discussion. Frame content for partners to discuss together. Focus on relationship application, shared growth, mutual understanding, and how the book's ideas apply to their partnership.`;
     case 'children':
-      return 'AUDIENCE: Children. Simplify concepts. Use wonder-driven language. Keep questions short and concrete. Use stories and examples children can relate to.';
+      return `${base}\nGenerate questions appropriate for: Children. Simplify concepts dramatically. Use wonder-driven, curiosity-sparking language. Keep questions short and concrete. Use stories and examples children can relate to. Make it fun and engaging.`;
     default:
       return '';
   }

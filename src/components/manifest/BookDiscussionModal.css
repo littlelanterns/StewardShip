@@ -137,6 +137,39 @@
   font-size: var(--font-size-sm);
 }
 
+/* Ready state — audience picker before starting */
+.book-discussion-modal__ready {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-xl);
+}
+
+.book-discussion-modal__ready-text {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-base);
+  text-align: center;
+}
+
+.book-discussion-modal__begin-btn {
+  padding: var(--spacing-sm) var(--spacing-xl);
+  background: var(--color-mid-teal);
+  color: var(--color-white);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.book-discussion-modal__begin-btn:hover {
+  background: var(--color-dark-teal);
+}
+
 /* Message bubbles */
 
 .book-discussion-msg {
