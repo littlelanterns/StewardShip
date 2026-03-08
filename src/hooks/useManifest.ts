@@ -257,6 +257,27 @@ export function useManifest() {
     return true;
   }, [user, items]);
 
+  // Clone a manifest item to all other users (fire-and-forget)
+  const cloneToAllUsers = useCallback(async (itemId: string, cloneExtractions: boolean) => {
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      const token = session?.session?.access_token;
+      if (!token) return;
+
+      const { error: cloneErr } = await supabase.functions.invoke('manifest-clone', {
+        body: { manifest_item_id: itemId, clone_extractions: cloneExtractions },
+      });
+
+      if (cloneErr) {
+        console.error('[manifest-clone] Failed (non-fatal):', cloneErr);
+      } else {
+        console.log(`[manifest-clone] Cloned ${itemId} (extractions: ${cloneExtractions})`);
+      }
+    } catch (err) {
+      console.error('[manifest-clone] Error (non-fatal):', err);
+    }
+  }, []);
+
   // Poll processing status for an item until it completes or fails
   const pollProcessingStatus = useCallback((itemId: string) => {
     if (!user) return;
@@ -513,27 +534,6 @@ export function useManifest() {
         Math.abs((i.file_size_bytes || 0) - fileSize) < 1024,
     ) || null;
   }, [items]);
-
-  // Clone a manifest item to all other users (fire-and-forget)
-  const cloneToAllUsers = useCallback(async (itemId: string, cloneExtractions: boolean) => {
-    try {
-      const { data: session } = await supabase.auth.getSession();
-      const token = session?.session?.access_token;
-      if (!token) return;
-
-      const { error: cloneErr } = await supabase.functions.invoke('manifest-clone', {
-        body: { manifest_item_id: itemId, clone_extractions: cloneExtractions },
-      });
-
-      if (cloneErr) {
-        console.error('[manifest-clone] Failed (non-fatal):', cloneErr);
-      } else {
-        console.log(`[manifest-clone] Cloned ${itemId} (extractions: ${cloneExtractions})`);
-      }
-    } catch (err) {
-      console.error('[manifest-clone] Error (non-fatal):', err);
-    }
-  }, []);
 
   // Backfill: clone all original (non-cloned) completed items to all other users
   const backfillCloneAll = useCallback(async () => {
