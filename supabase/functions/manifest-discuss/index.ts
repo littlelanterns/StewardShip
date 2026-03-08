@@ -142,13 +142,14 @@ async function buildBookContext(
     // 1. Book metadata
     const { data: item } = await supabase
       .from('manifest_items')
-      .select('title, genres, ai_summary')
+      .select('title, genres, ai_summary, source_manifest_item_id')
       .eq('id', itemId)
       .eq('user_id', userId)
       .single();
 
     if (!item) continue;
     titles.push(item.title);
+    const sourceItemId = item.source_manifest_item_id;
 
     let bookSection = `\n--- ${item.title} ---`;
     if (item.ai_summary) {
@@ -280,7 +281,9 @@ async function buildBookContext(
           });
 
           if (chunks && chunks.length > 0) {
-            const filtered = chunks.filter((c: { manifest_item_id: string }) => c.manifest_item_id === itemId);
+            const filtered = chunks.filter((c: { manifest_item_id: string }) =>
+              c.manifest_item_id === itemId || (sourceItemId && c.manifest_item_id === sourceItemId)
+            );
             if (filtered.length > 0) {
               bookSection += '\n\nRelevant Passages:';
               for (const c of filtered.slice(0, manifestItemIds.length === 1 ? 8 : 5)) {

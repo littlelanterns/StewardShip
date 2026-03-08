@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Settings as SettingsIcon, ChevronRight, BookOpen } from 'lucide-react';
 import { usePageContext } from '../hooks/usePageContext';
 import { useSettings } from '../hooks/useSettings';
+import { useManifest } from '../hooks/useManifest';
 import { useAuthContext } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { AccountSection } from '../components/settings/AccountSection';
@@ -60,6 +61,13 @@ export default function Settings() {
     exportAllData,
     downloadBlob,
   } = useSettings();
+
+  const { fetchItems, items: manifestItems, backfillCloneAll } = useManifest();
+
+  // Fetch manifest items for backfill (only when data section is expanded)
+  useEffect(() => {
+    if (manifestItems.length === 0) fetchItems();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [expandedSections, setExpandedSections] = useState<Set<number>>(new Set());
 
@@ -208,6 +216,7 @@ export default function Settings() {
                 <DataPrivacySection
                   onExportAllData={exportAllData}
                   onDownloadBlob={downloadBlob}
+                  onBackfillCloneAll={backfillCloneAll}
                 />
               )}
               {/* BYOK coming soon — full AIConfigSection preserved below, re-enable when ready */}

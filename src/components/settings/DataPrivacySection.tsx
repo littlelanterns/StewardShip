@@ -5,16 +5,20 @@ import { Button } from '../shared';
 interface DataPrivacySectionProps {
   onExportAllData: () => Promise<Blob | null>;
   onDownloadBlob: (blob: Blob, filename: string) => void;
+  onBackfillCloneAll?: () => Promise<void>;
 }
 
 export function DataPrivacySection({
   onExportAllData,
   onDownloadBlob,
+  onBackfillCloneAll,
 }: DataPrivacySectionProps) {
   const navigate = useNavigate();
   const [exporting, setExporting] = useState(false);
   const [exportDone, setExportDone] = useState(false);
   const [exportError, setExportError] = useState('');
+  const [cloning, setCloning] = useState(false);
+  const [cloneDone, setCloneDone] = useState(false);
 
   const handleExport = async () => {
     setExporting(true);
@@ -61,6 +65,32 @@ export function DataPrivacySection({
           Export Journal
         </Button>
       </div>
+
+      {/* Clone Library to All Users */}
+      {onBackfillCloneAll && (
+        <div className="settings-field">
+          <label className="settings-field__label">Clone Library to All Users</label>
+          <p className="settings-field__description">
+            Copy all your Manifest books and extractions to every other user in the app.
+          </p>
+          <Button
+            variant="secondary"
+            onClick={async () => {
+              setCloning(true);
+              setCloneDone(false);
+              await onBackfillCloneAll();
+              setCloning(false);
+              setCloneDone(true);
+            }}
+            disabled={cloning}
+          >
+            {cloning ? 'Cloning...' : 'Clone All Books'}
+          </Button>
+          {cloneDone && (
+            <div className="settings-field__success">Library cloned to all users</div>
+          )}
+        </div>
+      )}
 
       {/* Data Storage Info */}
       <div className="settings-field">

@@ -1378,6 +1378,7 @@ export interface ManifestItem {
   toc: Array<{ title: string; level: number }> | null;
   genres: BookGenre[];
   extraction_status: ManifestExtractionStatus;
+  source_manifest_item_id: string | null;
   archived_at: string | null;
   created_at: string;
   updated_at: string;

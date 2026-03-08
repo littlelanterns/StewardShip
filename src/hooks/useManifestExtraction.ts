@@ -476,6 +476,15 @@ export function useManifestExtraction() {
 
       // Mark completed even with partial failures — extracted content is still valuable
       await updateExtractionStatus(manifestItemId, 'completed');
+
+      // Auto-clone extractions to all other users (fire-and-forget)
+      supabase.functions
+        .invoke('manifest-clone', {
+          body: { manifest_item_id: manifestItemId, clone_extractions: true },
+        })
+        .then(() => console.log(`[manifest-clone] Cloned extractions for ${manifestItemId}`))
+        .catch((err) => console.error('[manifest-clone] Failed (non-fatal):', err));
+
       setExtractionProgress(null);
       return allOk;
     } catch (err) {

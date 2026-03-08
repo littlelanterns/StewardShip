@@ -301,6 +301,11 @@ export function useManifest() {
         const iv = pollIntervalsRef.current.get(itemId);
         if (iv) { clearInterval(iv); pollIntervalsRef.current.delete(itemId); }
 
+        // Auto-clone to all other users (fire-and-forget, no extractions yet)
+        if (status === 'completed') {
+          cloneToAllUsers(itemId, false).catch(() => {});
+        }
+
         // Auto-enrich newly completed items that have no summary yet (fire-and-forget)
         if (status === 'completed' && !data.ai_summary) {
           supabase.functions
@@ -324,7 +329,7 @@ export function useManifest() {
     }, 3000);
 
     pollIntervalsRef.current.set(itemId, interval);
-  }, [user]);
+  }, [user, cloneToAllUsers]);
 
   // Auto-intake: wait for processing to complete, then run and apply AI intake suggestions
   // Run AI intake analysis on a manifest item
@@ -509,6 +514,44 @@ export function useManifest() {
     ) || null;
   }, [items]);
 
+  // Clone a manifest item to all other users (fire-and-forget)
+  const cloneToAllUsers = useCallback(async (itemId: string, cloneExtractions: boolean) => {
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      const token = session?.session?.access_token;
+      if (!token) return;
+
+      const { error: cloneErr } = await supabase.functions.invoke('manifest-clone', {
+        body: { manifest_item_id: itemId, clone_extractions: cloneExtractions },
+      });
+
+      if (cloneErr) {
+        console.error('[manifest-clone] Failed (non-fatal):', cloneErr);
+      } else {
+        console.log(`[manifest-clone] Cloned ${itemId} (extractions: ${cloneExtractions})`);
+      }
+    } catch (err) {
+      console.error('[manifest-clone] Error (non-fatal):', err);
+    }
+  }, []);
+
+  // Backfill: clone all original (non-cloned) completed items to all other users
+  const backfillCloneAll = useCallback(async () => {
+    if (!user) return;
+    const originals = items.filter(
+      (i) => !i.source_manifest_item_id && i.processing_status === 'completed',
+    );
+    console.log(`[backfill] Cloning ${originals.length} original items to all users...`);
+    for (const item of originals) {
+      const cloneExtractions = item.extraction_status === 'completed';
+      console.log(`[backfill] Cloning "${item.title}" (extractions: ${cloneExtractions})...`);
+      await cloneToAllUsers(item.id, cloneExtractions);
+      // Small delay to avoid rate limiting
+      await new Promise((r) => setTimeout(r, 500));
+    }
+    console.log('[backfill] Done.');
+  }, [user, items, cloneToAllUsers]);
+
   // Cleanup all polls on unmount
   useEffect(() => {
     return () => {
@@ -537,5 +580,7 @@ export function useManifest() {
     checkDuplicate,
     enrichItem,
     autoIntakeItem,
+    cloneToAllUsers,
+    backfillCloneAll,
   };
 }
