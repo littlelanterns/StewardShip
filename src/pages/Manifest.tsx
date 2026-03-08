@@ -1,15 +1,19 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Upload, StickyNote, MessageSquare, Loader, BookOpen, List, LayoutGrid } from 'lucide-react';
+import { Upload, StickyNote, MessageSquare, Loader, BookOpen, List, LayoutGrid, Heart } from 'lucide-react';
 import { usePageContext } from '../hooks/usePageContext';
 import { useManifest } from '../hooks/useManifest';
 import { useFrameworks } from '../hooks/useFrameworks';
 import { useManifestExtraction } from '../hooks/useManifestExtraction';
-import type { ManifestItem, ManifestFileType, ManifestUsageDesignation, BookGenre } from '../lib/types';
+import { useBookDiscussions } from '../hooks/useBookDiscussions';
+import type { ManifestItem, ManifestFileType, ManifestUsageDesignation, BookGenre, DiscussionType, DiscussionAudience } from '../lib/types';
 import { ManifestItemCard } from '../components/manifest/ManifestItemCard';
 import { ManifestItemDetail } from '../components/manifest/ManifestItemDetail';
 import { ManifestFilterBar } from '../components/manifest/ManifestFilterBar';
 import { UploadFlow } from '../components/manifest/UploadFlow';
 import { TextNoteModal } from '../components/manifest/TextNoteModal';
+import { BookDiscussionModal } from '../components/manifest/BookDiscussionModal';
+import { BookSelector } from '../components/manifest/BookSelector';
+import { HeartedItemsView } from '../components/manifest/HeartedItemsView';
 import FrameworkPrinciples from '../components/manifest/FrameworkPrinciples';
 import FrameworkManager from '../components/manifest/FrameworkManager';
 import BrowseFrameworks from '../components/manifest/BrowseFrameworks';
@@ -19,7 +23,7 @@ import { EmptyState, LoadingSpinner, FeatureGuide } from '../components/shared';
 import { FEATURE_GUIDES } from '../lib/featureGuides';
 import './Manifest.css';
 
-type ViewMode = 'list' | 'detail' | 'upload' | 'framework' | 'frameworks' | 'browse';
+type ViewMode = 'list' | 'detail' | 'upload' | 'framework' | 'frameworks' | 'browse' | 'hearted';
 type LibraryLayout = 'compact' | 'grid';
 
 export default function Manifest() {
@@ -66,6 +70,21 @@ export default function Manifest() {
   const [showTextNoteModal, setShowTextNoteModal] = useState(false);
   const [fabExpanded, setFabExpanded] = useState(false);
 
+  // Discussion state
+  const [showBookSelector, setShowBookSelector] = useState(false);
+  const [discussionModal, setDiscussionModal] = useState<{
+    bookTitles: string[];
+    manifestItemIds: string[];
+    discussionType: DiscussionType;
+    audience?: DiscussionAudience;
+    existingDiscussionId?: string;
+  } | null>(null);
+  const {
+    discussions,
+    fetchDiscussions,
+    deleteDiscussion,
+  } = useBookDiscussions();
+
   // Filters
   const [typeFilter, setTypeFilter] = useState<ManifestFileType | 'all'>('all');
   const [usageFilter, setUsageFilter] = useState<ManifestUsageDesignation | 'all'>('all');
@@ -74,7 +93,8 @@ export default function Manifest() {
   useEffect(() => {
     fetchItems();
     fetchFrameworks();
-  }, [fetchItems, fetchFrameworks]);
+    fetchDiscussions();
+  }, [fetchItems, fetchFrameworks, fetchDiscussions]);
 
   // Poll for processing items
   useEffect(() => {
@@ -121,11 +141,54 @@ export default function Manifest() {
     return item;
   }, [createTextNote, pollProcessingStatus, autoIntakeItem]);
 
-  const handleAskLibrary = useCallback(() => {
+  const handleDiscussBooks = useCallback(() => {
     setFabExpanded(false);
-    // TODO: Phase D will replace this with BookDiscussionModal
-    // For now, keep the old manifest_discuss guided mode as a fallback
+    setShowBookSelector(true);
   }, []);
+
+  const handleBookSelectorStart = useCallback((selectedIds: string[], audience: DiscussionAudience) => {
+    const titles = selectedIds.map((id) => {
+      const item = items.find((i) => i.id === id);
+      return item?.title || 'Unknown';
+    });
+    setShowBookSelector(false);
+    setDiscussionModal({
+      bookTitles: titles,
+      manifestItemIds: selectedIds,
+      discussionType: 'discuss',
+      audience,
+    });
+  }, [items]);
+
+  const handleOpenDiscussionFromDetail = useCallback((type: DiscussionType) => {
+    if (!selectedItem) return;
+    setDiscussionModal({
+      bookTitles: [selectedItem.title],
+      manifestItemIds: [selectedItem.id],
+      discussionType: type,
+    });
+  }, [selectedItem]);
+
+  const handleContinueDiscussion = useCallback(async (discussionId: string) => {
+    const disc = discussions.find((d) => d.id === discussionId);
+    if (!disc) return;
+    const titles = disc.manifest_item_ids.map((id) => {
+      const item = items.find((i) => i.id === id);
+      return item?.title || 'Unknown';
+    });
+    setDiscussionModal({
+      bookTitles: titles,
+      manifestItemIds: disc.manifest_item_ids,
+      discussionType: disc.discussion_type,
+      audience: disc.audience,
+      existingDiscussionId: disc.id,
+    });
+  }, [discussions, items]);
+
+  const handleDiscussionClosed = useCallback(() => {
+    setDiscussionModal(null);
+    fetchDiscussions();
+  }, [fetchDiscussions]);
 
   const handleBrowseFrameworks = useCallback(() => {
     setViewMode('browse');
@@ -347,6 +410,26 @@ export default function Manifest() {
     );
   }
 
+  // Hearted items view
+  if (viewMode === 'hearted') {
+    return (
+      <div className="page manifest-page">
+        <HeartedItemsView onBack={handleBack} />
+        {/* Modals rendered outside conditional */}
+        {discussionModal && (
+          <BookDiscussionModal
+            bookTitles={discussionModal.bookTitles}
+            manifestItemIds={discussionModal.manifestItemIds}
+            discussionType={discussionModal.discussionType}
+            initialAudience={discussionModal.audience}
+            existingDiscussionId={discussionModal.existingDiscussionId}
+            onClose={handleDiscussionClosed}
+          />
+        )}
+      </div>
+    );
+  }
+
   // Detail view
   if (viewMode === 'detail' && currentSelectedItem) {
     return (
@@ -399,7 +482,20 @@ export default function Manifest() {
             await extraction.clearExtractions(itemId);
             fetchFrameworks();
           }}
+          // Discussion
+          onOpenDiscussion={handleOpenDiscussionFromDetail}
         />
+        {/* Discussion modal rendered outside conditional content */}
+        {discussionModal && (
+          <BookDiscussionModal
+            bookTitles={discussionModal.bookTitles}
+            manifestItemIds={discussionModal.manifestItemIds}
+            discussionType={discussionModal.discussionType}
+            initialAudience={discussionModal.audience}
+            existingDiscussionId={discussionModal.existingDiscussionId}
+            onClose={handleDiscussionClosed}
+          />
+        )}
       </div>
     );
   }
@@ -463,12 +559,20 @@ export default function Manifest() {
           <button
             type="button"
             className="manifest-page__action-btn"
-            onClick={handleAskLibrary}
-            disabled
-            title="Coming soon — Book Discussions will replace this"
+            onClick={handleDiscussBooks}
           >
             <MessageSquare size={16} />
             Discuss Books
+          </button>
+        )}
+        {hasCompletedItems && (
+          <button
+            type="button"
+            className="manifest-page__action-btn"
+            onClick={() => setViewMode('hearted')}
+          >
+            <Heart size={16} />
+            My Hearted Items
           </button>
         )}
         {frameworks.length > 0 && (
@@ -548,6 +652,46 @@ export default function Manifest() {
         )
       )}
 
+      {/* Discussion Archive */}
+      {discussions.length > 0 && (
+        <CollapsibleGroup label="Past Discussions" count={discussions.length}>
+          <div className="manifest-page__discussions">
+            {discussions.map((disc) => {
+              const typeLabel = disc.discussion_type === 'discuss' ? 'Discussion'
+                : disc.discussion_type === 'generate_goals' ? 'Goals'
+                : disc.discussion_type === 'generate_questions' ? 'Questions'
+                : disc.discussion_type === 'generate_tasks' ? 'Tasks'
+                : 'Tracker';
+              return (
+                <div key={disc.id} className="manifest-page__discussion-item">
+                  <button
+                    type="button"
+                    className="manifest-page__discussion-btn"
+                    onClick={() => handleContinueDiscussion(disc.id)}
+                  >
+                    <span className="manifest-page__discussion-type">{typeLabel}</span>
+                    <span className="manifest-page__discussion-title">
+                      {disc.title || 'Untitled discussion'}
+                    </span>
+                    <span className="manifest-page__discussion-date">
+                      {new Date(disc.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className="manifest-page__discussion-delete"
+                    onClick={() => deleteDiscussion(disc.id)}
+                    title="Delete discussion"
+                  >
+                    x
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </CollapsibleGroup>
+      )}
+
       {/* FAB */}
       <div className="manifest-page__fab-area">
         {fabExpanded && (
@@ -578,6 +722,27 @@ export default function Manifest() {
         <TextNoteModal
           onSave={handleTextNote}
           onClose={() => setShowTextNoteModal(false)}
+        />
+      )}
+
+      {/* Book Selector Modal */}
+      {showBookSelector && (
+        <BookSelector
+          items={items}
+          onStart={handleBookSelectorStart}
+          onClose={() => setShowBookSelector(false)}
+        />
+      )}
+
+      {/* Discussion Modal */}
+      {discussionModal && (
+        <BookDiscussionModal
+          bookTitles={discussionModal.bookTitles}
+          manifestItemIds={discussionModal.manifestItemIds}
+          discussionType={discussionModal.discussionType}
+          initialAudience={discussionModal.audience}
+          existingDiscussionId={discussionModal.existingDiscussionId}
+          onClose={handleDiscussionClosed}
         />
       )}
     </div>

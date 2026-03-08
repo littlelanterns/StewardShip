@@ -585,3 +585,27 @@
   padding-top: var(--spacing-sm);
   border-top: 1px solid var(--color-bg-secondary);
 }
+
+/* Floating discuss FAB */
+.manifest-detail__discuss-fab {
+  position: fixed;
+  bottom: calc(var(--spacing-lg) + 60px);
+  right: var(--spacing-lg);
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  background: var(--color-mid-teal);
+  color: var(--color-white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--shadow-md);
+  z-index: 10;
+  transition: background var(--transition-fast);
+}
+
+.manifest-detail__discuss-fab:hover {
+  background: var(--color-dark-teal);
+}

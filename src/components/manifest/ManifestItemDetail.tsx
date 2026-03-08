@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
-import { ChevronLeft, FileText, FileCode, Mic, Image, StickyNote, RefreshCw, BookOpen, Wand2, MessageSquare, Target, HelpCircle, CheckSquare } from 'lucide-react';
-import type { ManifestItem, ManifestSummary, ManifestDeclaration, AIFrameworkPrinciple, BookGenre } from '../../lib/types';
+import { ChevronLeft, FileText, FileCode, Mic, Image, StickyNote, RefreshCw, BookOpen, Wand2, MessageSquare, Target, HelpCircle, CheckSquare, BarChart3 } from 'lucide-react';
+import type { ManifestItem, ManifestSummary, ManifestDeclaration, AIFrameworkPrinciple, BookGenre, DiscussionType } from '../../lib/types';
 import { MANIFEST_FILE_TYPE_LABELS, MANIFEST_STATUS_LABELS } from '../../lib/types';
 import type { SectionInfo } from '../../hooks/useManifestExtraction';
 import { Button, LoadingSpinner } from '../shared';
@@ -55,6 +55,8 @@ interface ManifestItemDetailProps {
   onSendDeclarationToMast: (id: string) => void;
   onDeclarationGoDeeper: (sectionTitle: string | undefined, existingItems: string[], sectionIndex?: number) => void;
   onDeclarationReRun: (sectionTitle?: string) => void;
+  // Discussion
+  onOpenDiscussion?: (type: DiscussionType) => void;
 }
 
 const FILE_TYPE_ICONS = {
@@ -115,6 +117,7 @@ export function ManifestItemDetail({
   onSendDeclarationToMast,
   onDeclarationGoDeeper,
   onDeclarationReRun,
+  onOpenDiscussion,
 }: ManifestItemDetailProps) {
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(item.title);
@@ -608,25 +611,66 @@ export function ManifestItemDetail({
           <div className="apply-section">
             <h3 className="apply-section__title">Apply This</h3>
             <div className="apply-section__buttons">
-              <button type="button" className="apply-section__btn" disabled title="Coming in Phase D">
+              <button
+                type="button"
+                className="apply-section__btn"
+                onClick={() => onOpenDiscussion?.('discuss')}
+                disabled={!onOpenDiscussion}
+              >
                 <MessageSquare size={14} />
                 Discuss Book
               </button>
-              <button type="button" className="apply-section__btn" disabled title="Coming in Phase D">
+              <button
+                type="button"
+                className="apply-section__btn"
+                onClick={() => onOpenDiscussion?.('generate_goals')}
+                disabled={!onOpenDiscussion}
+              >
                 <Target size={14} />
                 Generate Goals
               </button>
-              <button type="button" className="apply-section__btn" disabled title="Coming in Phase D">
+              <button
+                type="button"
+                className="apply-section__btn"
+                onClick={() => onOpenDiscussion?.('generate_questions')}
+                disabled={!onOpenDiscussion}
+              >
                 <HelpCircle size={14} />
                 Generate Questions
               </button>
-              <button type="button" className="apply-section__btn" disabled title="Coming in Phase D">
+              <button
+                type="button"
+                className="apply-section__btn"
+                onClick={() => onOpenDiscussion?.('generate_tasks')}
+                disabled={!onOpenDiscussion}
+              >
                 <CheckSquare size={14} />
                 Generate Tasks
+              </button>
+              <button
+                type="button"
+                className="apply-section__btn"
+                onClick={() => onOpenDiscussion?.('generate_tracker')}
+                disabled={!onOpenDiscussion}
+              >
+                <BarChart3 size={14} />
+                Generate Tracker
               </button>
             </div>
           </div>
         </section>
+      )}
+
+      {/* Floating Discuss Button — shown when extractions exist */}
+      {isProcessed && hasExtraction && !extracting && onOpenDiscussion && (
+        <button
+          type="button"
+          className="manifest-detail__discuss-fab"
+          onClick={() => onOpenDiscussion('discuss')}
+          title="Discuss this book"
+        >
+          <MessageSquare size={20} />
+        </button>
       )}
 
       {/* Actions */}
