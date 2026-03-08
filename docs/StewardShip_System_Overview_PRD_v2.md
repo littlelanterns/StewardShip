@@ -561,21 +561,37 @@ WRITES TO:
 
 ```
 WRITTEN BY:
-  PDF upload
-  Audio file upload â†’ transcription â†’ stored as searchable text
+  File upload (PDF, EPUB, DOCX, TXT, MD, images)
   Direct text/note addition
 
-INTAKE FLOW (on upload, AI asks how to use it):
-  â†’ General reference (stays in Manifest, available via RAG)
-  â†’ Extract principles for The Mast
-  â†’ Inform The Keel (personality data)
-  â†’ Reference for specific goal or Wheel
-  â†’ Store for later
+GENRE SELECTION (on upload or later — guides extraction):
+  8 genres: Non-Fiction, Fiction, Biography/Memoir, Scriptures/Sacred,
+  Workbook, Poetry/Essays, Allegory/Parable, Devotional/Spiritual Memoir
+
+EXTRACTION (PRD-24 — single "Extract" action per book):
+  → Summary tab (key concepts, stories, metaphors, lessons, quotes, insights)
+  → Frameworks tab (actionable principles)
+  → Mast Content tab (honest commitment declarations in 5 styles)
+  All content sub-nested under chapter/section headings.
+  Heart-based curation (hearted, neutral, deleted) on all items.
+  Go Deeper per chapter. Re-run per tab. Inline editing.
+
+APPLY SECTION:
+  → Discuss Book (dedicated discussion modal)
+  → Generate Goals → Rigging
+  → Generate Questions → Lists
+  → Generate Tasks → Compass
+  → Generate Tracker (post-MVP)
+
+BOOK DISCUSSIONS:
+  Own tables (book_discussions, book_discussion_messages).
+  Single-book or multi-book. Audience selector (personal, family, teen, spouse, children).
 
 READ BY:
-  The Helm (RAG: relevant passages pulled into conversation context)
+  The Helm (extracted content based on user’s book_knowledge_access setting)
+  Manifest Discuss mode (RAG for item-specific or library-wide discussions)
   Safe Harbor (wisdom drawn from uploaded materials)
-  Reveille (spiritual/motivational thoughts from uploaded materials)
+  Reveille/Reckoning (Manifest devotional readings via RAG)
   The Wheel (framework concepts for identity work)
   Rigging (reference material for planning)
 ```
@@ -1403,7 +1419,10 @@ stewardship/
 | Phase 9.5+: Routine & List Enhancements | Built ✅ |
 | Accomplishment Rearchitecture | Built ✅ (Victory → Accomplishment model, SparkleOverlay, CompletionNotePrompt, useAccomplishments) |
 | Onboarding Flow | Built ✅ (Welcome → Gender → Relationship Status → Done) |
-| PRD-21: The Hatch (Smart Notepad) | Phase 13 — Not Started |
+| PRD-21: The Hatch (Smart Notepad) | Phase 13 Built ✅ |
+| PRD-22: Priorities + SLL + Bulk Add | Built ✅ |
+| PRD-23: Framework Tags & Browse Frameworks | Built ✅ |
+| PRD-24: Manifest Extract & Discuss | Built ✅ (genre-aware extraction, 3-tab UI, heart curation, book discussions, Apply routing) |
 
 ---
 

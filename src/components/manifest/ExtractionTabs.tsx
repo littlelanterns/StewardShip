@@ -50,6 +50,15 @@ function SummaryTab({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState('');
   const [confirmReRun, setConfirmReRun] = useState(false);
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+
+  const handleAnimatedDelete = useCallback((id: string) => {
+    setDeletingIds((prev) => new Set(prev).add(id));
+    setTimeout(() => {
+      onDelete(id);
+      setDeletingIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
+    }, 300);
+  }, [onDelete]);
 
   const visible = useMemo(() => {
     let items = summaries.filter((s) => !s.is_deleted);
@@ -153,7 +162,7 @@ function SummaryTab({
             {!isCollapsed && (
               <div className="extraction-tab__section-items">
                 {items.map((item) => (
-                  <div key={item.id} className={`extraction-item${item.is_from_go_deeper ? ' extraction-item--deeper' : ''}`}>
+                  <div key={item.id} className={`extraction-item${item.is_from_go_deeper ? ' extraction-item--deeper' : ''}${deletingIds.has(item.id) ? ' extraction-item--deleting' : ''}`}>
                     <div className="extraction-item__type-badge">{item.content_type.replace(/_/g, ' ')}</div>
 
                     {editingId === item.id ? (
@@ -191,7 +200,7 @@ function SummaryTab({
                       <button
                         type="button"
                         className="extraction-item__delete"
-                        onClick={() => onDelete(item.id)}
+                        onClick={() => handleAnimatedDelete(item.id)}
                         title="Delete"
                       >
                         <Trash2 size={14} />
@@ -241,6 +250,15 @@ function FrameworksTab({
   hasFramework,
 }: FrameworksTabProps) {
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+
+  const handleAnimatedDelete = useCallback((id: string) => {
+    setDeletingIds((prev) => new Set(prev).add(id));
+    setTimeout(() => {
+      onDelete(id);
+      setDeletingIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
+    }, 300);
+  }, [onDelete]);
 
   const visible = useMemo(() => {
     let items = principles.filter((p) => !p.is_deleted);
@@ -318,7 +336,7 @@ function FrameworksTab({
             {!isCollapsed && (
               <div className="extraction-tab__section-items">
                 {items.map((item) => (
-                  <div key={item.id} className={`extraction-item${item.is_from_go_deeper ? ' extraction-item--deeper' : ''}`}>
+                  <div key={item.id} className={`extraction-item${item.is_from_go_deeper ? ' extraction-item--deeper' : ''}${deletingIds.has(item.id) ? ' extraction-item--deleting' : ''}`}>
                     <p className="extraction-item__text">
                       {item.is_from_go_deeper && <Sparkles size={12} className="extraction-item__deeper-icon" />}
                       {item.text}
@@ -331,7 +349,7 @@ function FrameworksTab({
                       >
                         <Heart size={14} fill={item.is_hearted ? 'currentColor' : 'none'} />
                       </button>
-                      <button type="button" className="extraction-item__delete" onClick={() => onDelete(item.id)}>
+                      <button type="button" className="extraction-item__delete" onClick={() => handleAnimatedDelete(item.id)}>
                         <Trash2 size={14} />
                       </button>
                     </div>
@@ -380,6 +398,15 @@ function MastContentTab({
   const [editDraft, setEditDraft] = useState('');
   const [confirmReRun, setConfirmReRun] = useState(false);
   const [sendingToMast, setSendingToMast] = useState<Set<string>>(new Set());
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+
+  const handleAnimatedDelete = useCallback((id: string) => {
+    setDeletingIds((prev) => new Set(prev).add(id));
+    setTimeout(() => {
+      onDelete(id);
+      setDeletingIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
+    }, 300);
+  }, [onDelete]);
 
   const visible = useMemo(() => {
     let items = declarations.filter((d) => !d.is_deleted);
@@ -493,7 +520,7 @@ function MastContentTab({
             {!isCollapsed && (
               <div className="extraction-tab__section-items">
                 {items.map((item) => (
-                  <div key={item.id} className={`extraction-item extraction-item--declaration${item.is_from_go_deeper ? ' extraction-item--deeper' : ''}`}>
+                  <div key={item.id} className={`extraction-item extraction-item--declaration${item.is_from_go_deeper ? ' extraction-item--deeper' : ''}${deletingIds.has(item.id) ? ' extraction-item--deleting' : ''}`}>
                     <div className="extraction-item__declaration-meta">
                       {item.value_name && (
                         <span className="extraction-item__value-name">{item.value_name}</span>
@@ -550,7 +577,7 @@ function MastContentTab({
                         </button>
                       )}
 
-                      <button type="button" className="extraction-item__delete" onClick={() => onDelete(item.id)}>
+                      <button type="button" className="extraction-item__delete" onClick={() => handleAnimatedDelete(item.id)}>
                         <Trash2 size={14} />
                       </button>
                     </div>

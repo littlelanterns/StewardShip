@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { ChevronLeft, Download, FileText, FileCode } from 'lucide-react';
-import JSZip from 'jszip';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../contexts/AuthContext';
 import type { ManifestSummary, ManifestDeclaration, AIFrameworkPrinciple } from '../../lib/types';
+import { exportHeartedMd, exportHeartedTxt, exportHeartedDocx } from '../../lib/exportExtractions';
+import type { BookExtractionGroup } from '../../lib/exportExtractions';
 import './HeartedItemsView.css';
 
 interface HeartedItemsViewProps {
@@ -16,26 +17,6 @@ interface BookGroup {
   summaries: ManifestSummary[];
   declarations: ManifestDeclaration[];
   principles: (AIFrameworkPrinciple & { framework_name?: string })[];
-}
-
-function triggerDownload(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
-function escapeXml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
 }
 
 export function HeartedItemsView({ onBack }: HeartedItemsViewProps) {
@@ -125,123 +106,26 @@ export function HeartedItemsView({ onBack }: HeartedItemsViewProps) {
   }, [bookGroups]);
 
   // --- Export functions ---
-
-  const buildMarkdownContent = useCallback((): string => {
-    const lines: string[] = [
-      '# My Hearted Items',
-      '',
-      `Exported: ${new Date().toISOString().split('T')[0]}`,
-      `Total items: ${totalCount}`,
-      '',
-    ];
-
-    for (const group of bookGroups) {
-      lines.push(`## ${group.bookTitle}`);
-      lines.push('');
-
-      if (group.summaries.length > 0) {
-        lines.push('### Key Insights');
-        for (const s of group.summaries) {
-          lines.push(`- **[${s.content_type}]** ${s.text}`);
-        }
-        lines.push('');
-      }
-
-      if (group.principles.length > 0) {
-        lines.push(`### Framework Principles${group.principles[0]?.framework_name ? ` (${group.principles[0].framework_name})` : ''}`);
-        for (const p of group.principles) {
-          lines.push(`- ${p.text}`);
-        }
-        lines.push('');
-      }
-
-      if (group.declarations.length > 0) {
-        lines.push('### Declarations');
-        for (const d of group.declarations) {
-          const prefix = d.value_name ? `**${d.value_name}:** ` : '';
-          lines.push(`- ${prefix}${d.declaration_text}`);
-        }
-        lines.push('');
-      }
-    }
-
-    return lines.join('\n');
-  }, [bookGroups, totalCount]);
+  const exportGroups = useMemo((): BookExtractionGroup[] => {
+    return bookGroups.map((g) => ({
+      bookTitle: g.bookTitle,
+      summaries: g.summaries,
+      declarations: g.declarations,
+      principles: g.principles,
+    }));
+  }, [bookGroups]);
 
   const handleExportMd = useCallback(() => {
-    const content = buildMarkdownContent();
-    const blob = new Blob([content], { type: 'text/markdown' });
-    triggerDownload(blob, `hearted-items-${new Date().toISOString().split('T')[0]}.md`);
-  }, [buildMarkdownContent]);
+    exportHeartedMd(exportGroups);
+  }, [exportGroups]);
 
   const handleExportTxt = useCallback(() => {
-    // Strip markdown formatting for plain text
-    const content = buildMarkdownContent()
-      .replace(/^#{1,3}\s*/gm, '')
-      .replace(/\*\*/g, '')
-      .replace(/\*\*/g, '');
-    const blob = new Blob([content], { type: 'text/plain' });
-    triggerDownload(blob, `hearted-items-${new Date().toISOString().split('T')[0]}.txt`);
-  }, [buildMarkdownContent]);
+    exportHeartedTxt(exportGroups);
+  }, [exportGroups]);
 
   const handleExportDocx = useCallback(async () => {
-    // Simple OOXML via JSZip
-    const zip = new JSZip();
-
-    const bodyXml: string[] = [];
-    for (const group of bookGroups) {
-      bodyXml.push(`<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>${escapeXml(group.bookTitle)}</w:t></w:r></w:p>`);
-
-      if (group.summaries.length > 0) {
-        bodyXml.push(`<w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:t>Key Insights</w:t></w:r></w:p>`);
-        for (const s of group.summaries) {
-          bodyXml.push(`<w:p><w:r><w:t>${escapeXml(`[${s.content_type}] ${s.text}`)}</w:t></w:r></w:p>`);
-        }
-      }
-
-      if (group.principles.length > 0) {
-        bodyXml.push(`<w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:t>Framework Principles</w:t></w:r></w:p>`);
-        for (const p of group.principles) {
-          bodyXml.push(`<w:p><w:r><w:t>${escapeXml(p.text)}</w:t></w:r></w:p>`);
-        }
-      }
-
-      if (group.declarations.length > 0) {
-        bodyXml.push(`<w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:t>Declarations</w:t></w:r></w:p>`);
-        for (const d of group.declarations) {
-          const prefix = d.value_name ? `[${d.value_name}] ` : '';
-          bodyXml.push(`<w:p><w:r><w:t>${escapeXml(`${prefix}${d.declaration_text}`)}</w:t></w:r></w:p>`);
-        }
-      }
-    }
-
-    const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-  <w:body>
-    <w:p><w:pPr><w:pStyle w:val="Title"/></w:pPr><w:r><w:t>My Hearted Items</w:t></w:r></w:p>
-    ${bodyXml.join('\n')}
-  </w:body>
-</w:document>`;
-
-    const contentTypesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-  <Default Extension="xml" ContentType="application/xml"/>
-  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
-</Types>`;
-
-    const relsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
-</Relationships>`;
-
-    zip.file('[Content_Types].xml', contentTypesXml);
-    zip.file('_rels/.rels', relsXml);
-    zip.file('word/document.xml', documentXml);
-
-    const blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-    triggerDownload(blob, `hearted-items-${new Date().toISOString().split('T')[0]}.docx`);
-  }, [bookGroups]);
+    await exportHeartedDocx(exportGroups);
+  }, [exportGroups]);
 
   if (loading) {
     return (
@@ -299,7 +183,7 @@ export function HeartedItemsView({ onBack }: HeartedItemsViewProps) {
                 <div className="hearted-items__type-label">Key Insights</div>
                 {group.summaries.map((s) => (
                   <div key={s.id} className="hearted-items__item">
-                    <span className="hearted-items__item-badge">{s.content_type}</span>
+                    <span className="hearted-items__item-badge">{s.content_type.replace(/_/g, ' ')}</span>
                     {s.text}
                   </div>
                 ))}

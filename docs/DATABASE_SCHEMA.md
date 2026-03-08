@@ -1,7 +1,7 @@
 # StewardShip: Database Schema
 
 > This is a living document. Updated after each PRD is written.
-> Last updated: After PRD-22 (Priorities + SLL, migration 031) + PRD-21 (The Hatch, migration 025) + PRD-13A (Higgins) + Accomplishment Rearchitecture (migration 021) + Meeting Agenda Items (migration 022) + Mentor Meeting Type (migration 023)
+> Last updated: After PRD-24 (Manifest Extract & Discuss, migration 039) + PRD-22 (Priorities + SLL, migration 031) + PRD-21 (The Hatch, migration 025) + PRD-13A (Higgins) + Accomplishment Rearchitecture (migration 021) + Meeting Agenda Items (migration 022) + Mentor Meeting Type (migration 023)
 
 ---
 
@@ -800,12 +800,15 @@ Metadata for each uploaded file, transcript, or text note in the Manifest.
 | storage_path | TEXT | null | NULL | Supabase Storage path (null for text notes) |
 | text_content | TEXT | null | NULL | Full extracted/transcribed text |
 | file_size_bytes | INTEGER | null | NULL | |
-| usage_designations | TEXT[] | '{}' | NOT NULL | Array: 'general_reference', 'framework_source', 'mast_extraction', 'keel_info', 'goal_specific', 'store_only' |
+| usage_designations | TEXT[] | '{}' | NOT NULL | **DEPRECATED (PRD-24)** — Column retained but nothing reads it. Previously: 'general_reference', 'framework_source', 'mast_extraction', 'keel_info', 'goal_specific', 'store_only' |
+| genres | TEXT[] | '{}' | NOT NULL | Multi-select book genres. Enum: 'non_fiction', 'fiction', 'biography_memoir', 'scriptures_sacred', 'workbook', 'poetry_essays', 'allegory_parable', 'devotional_spiritual_memoir' |
+| extraction_status | TEXT | 'none' | NOT NULL | Enum: 'none', 'extracting', 'completed', 'failed'. Tracks whether content has been extracted into summaries/frameworks/declarations. |
 | tags | TEXT[] | '{}' | NOT NULL | Auto-generated and user-added tags |
 | folder_group | TEXT | 'uncategorized' | NOT NULL | AI-assigned or user-overridden folder grouping |
 | related_wheel_id | UUID | null | NULL | FK → wheels (if goal/wheel specific) |
 | related_goal_id | UUID | null | NULL | FK → goals (if goal specific) |
 | processing_status | TEXT | 'pending' | NOT NULL | Enum: 'pending', 'processing', 'completed', 'failed' |
+| processing_detail | TEXT | null | NULL | Real-time processing stage detail (e.g., "embedding batch 3 of 12"). Cleared on completion. |
 | chunk_count | INTEGER | 0 | NOT NULL | Number of chunks generated |
 | intake_completed | BOOLEAN | false | NOT NULL | Whether user has completed intake flow |
 | ai_summary | TEXT | null | NULL | AI-generated 2-4 sentence summary. Generated at intake or on demand via manifest-enrich. |
@@ -873,7 +876,6 @@ BEGIN
   WHERE mc.user_id = p_user_id
     AND mi.archived_at IS NULL
     AND mi.processing_status = 'completed'
-    AND mi.usage_designations && ARRAY['general_reference', 'framework_source', 'goal_specific']
     AND 1 - (mc.embedding <=> query_embedding) > match_threshold
   ORDER BY similarity DESC
   LIMIT match_count;
@@ -921,8 +923,12 @@ Individual extracted principles per framework. Loaded into AI system prompt when
 | user_id | UUID | | NOT NULL | FK → auth.users |
 | framework_id | UUID | | NOT NULL | FK → ai_frameworks |
 | text | TEXT | | NOT NULL | The principle statement |
+| section_title | TEXT | null | NULL | Chapter/section title within source book. Used to group principles by chapter. |
 | sort_order | INTEGER | 0 | NOT NULL | User-controllable ordering |
 | is_user_added | BOOLEAN | false | NOT NULL | Whether manually added vs. AI-extracted |
+| is_hearted | BOOLEAN | false | NOT NULL | User-favorited for aggregated hearted items view |
+| is_deleted | BOOLEAN | false | NOT NULL | Soft delete (hidden from UI but retained) |
+| is_from_go_deeper | BOOLEAN | false | NOT NULL | Whether extracted via "Go Deeper" re-extraction |
 | archived_at | TIMESTAMPTZ | null | NULL | Soft delete |
 | created_at | TIMESTAMPTZ | now() | NOT NULL | |
 | updated_at | TIMESTAMPTZ | now() | NOT NULL | Auto-trigger |
@@ -1820,6 +1826,112 @@ CREATE TRIGGER set_priorities_updated_at BEFORE UPDATE ON priorities FOR EACH RO
 | Column | Type | Default | Notes |
 |--------|------|---------|-------|
 | sll_exposures | JSONB | '{}' | Tracks how many times each SLL term has been shown. Keys are SLL distinction keys, values are counts. |
+
+---
+
+## PRD-24: Manifest Extract & Discuss
+
+#### `manifest_summaries`
+
+Extracted summary items (key concepts, stories, metaphors, lessons, etc.) from Manifest books. Grouped by chapter/section.
+
+| Column | Type | Default | Nullable | Notes |
+|--------|------|---------|----------|-------|
+| id | UUID | gen_random_uuid() | NOT NULL | PK |
+| user_id | UUID | | NOT NULL | FK → auth.users |
+| manifest_item_id | UUID | | NOT NULL | FK → manifest_items |
+| section_title | TEXT | null | NULL | Chapter/section title. Null for full-book extraction. |
+| section_index | INTEGER | 0 | NOT NULL | 0-based section ordering |
+| content_type | TEXT | | NOT NULL | Enum: 'key_concept', 'story', 'metaphor', 'lesson', 'quote', 'insight', 'theme', 'character_insight', 'exercise', 'principle' |
+| text | TEXT | | NOT NULL | The extracted content |
+| sort_order | INTEGER | 0 | NOT NULL | Order within section |
+| is_hearted | BOOLEAN | false | NOT NULL | User-favorited |
+| is_deleted | BOOLEAN | false | NOT NULL | Soft delete |
+| is_from_go_deeper | BOOLEAN | false | NOT NULL | From "Go Deeper" re-extraction |
+| created_at | TIMESTAMPTZ | now() | NOT NULL | |
+
+**RLS:** Users CRUD own summaries only.
+**Indexes:**
+- `user_id, manifest_item_id, is_deleted` (summaries for a book)
+- `user_id, is_hearted, is_deleted` (hearted items view)
+
+---
+
+#### `manifest_declarations`
+
+Extracted mast content declarations (honest commitment statements) from Manifest books.
+
+| Column | Type | Default | Nullable | Notes |
+|--------|------|---------|----------|-------|
+| id | UUID | gen_random_uuid() | NOT NULL | PK |
+| user_id | UUID | | NOT NULL | FK → auth.users |
+| manifest_item_id | UUID | | NOT NULL | FK → manifest_items |
+| section_title | TEXT | null | NULL | Chapter/section title |
+| section_index | INTEGER | 0 | NOT NULL | 0-based section ordering |
+| value_name | TEXT | null | NULL | Optional 1-3 word underlying value (e.g., "Patience", "Courage") |
+| declaration_text | TEXT | | NOT NULL | The full honest commitment statement |
+| declaration_style | TEXT | | NOT NULL | Enum: 'choosing_committing', 'recognizing_awakening', 'claiming_stepping_into', 'learning_striving', 'resolute_unashamed' |
+| is_hearted | BOOLEAN | false | NOT NULL | User-favorited |
+| is_deleted | BOOLEAN | false | NOT NULL | Soft delete |
+| sent_to_mast | BOOLEAN | false | NOT NULL | Whether sent to mast_entries |
+| mast_entry_id | UUID | null | NULL | FK → mast_entries (if sent) |
+| sort_order | INTEGER | 0 | NOT NULL | Order within section |
+| is_from_go_deeper | BOOLEAN | false | NOT NULL | From "Go Deeper" re-extraction |
+| created_at | TIMESTAMPTZ | now() | NOT NULL | |
+
+**RLS:** Users CRUD own declarations only.
+**Indexes:**
+- `user_id, manifest_item_id, is_deleted` (declarations for a book)
+- `user_id, is_hearted, is_deleted` (hearted items view)
+
+---
+
+#### `book_discussions`
+
+Book discussion conversations. Separate from Helm conversations — dedicated to Manifest books.
+
+| Column | Type | Default | Nullable | Notes |
+|--------|------|---------|----------|-------|
+| id | UUID | gen_random_uuid() | NOT NULL | PK |
+| user_id | UUID | | NOT NULL | FK → auth.users |
+| manifest_item_ids | UUID[] | | NOT NULL | Array of FK → manifest_items. Single or multiple books. |
+| discussion_type | TEXT | 'discuss' | NOT NULL | Enum: 'discuss', 'generate_goals', 'generate_questions', 'generate_tasks', 'generate_tracker' |
+| audience | TEXT | 'personal' | NOT NULL | Enum: 'personal', 'family', 'teen', 'spouse', 'children' |
+| title | TEXT | null | NULL | Auto-generated title |
+| is_active | BOOLEAN | true | NOT NULL | Whether discussion is ongoing |
+| created_at | TIMESTAMPTZ | now() | NOT NULL | |
+| updated_at | TIMESTAMPTZ | now() | NOT NULL | Auto-trigger |
+
+**RLS:** Users CRUD own discussions only.
+**Indexes:**
+- `user_id, is_active` (active discussions)
+
+---
+
+#### `book_discussion_messages`
+
+Individual messages within a book discussion.
+
+| Column | Type | Default | Nullable | Notes |
+|--------|------|---------|----------|-------|
+| id | UUID | gen_random_uuid() | NOT NULL | PK |
+| user_id | UUID | | NOT NULL | FK → auth.users |
+| discussion_id | UUID | | NOT NULL | FK → book_discussions |
+| role | TEXT | | NOT NULL | 'user' or 'assistant' |
+| content | TEXT | | NOT NULL | Message text |
+| created_at | TIMESTAMPTZ | now() | NOT NULL | |
+
+**RLS:** Users access own messages only.
+**Indexes:**
+- `discussion_id, created_at` (ordered messages per discussion)
+
+---
+
+#### `user_settings` — Column Addition (PRD-24)
+
+| Column | Type | Default | Notes |
+|--------|------|---------|-------|
+| book_knowledge_access | TEXT | 'hearted_only' | Controls what book knowledge is loaded into Helm AI context. Enum: 'hearted_only', 'all_extracted', 'framework_only', 'none'. |
 
 ---
 

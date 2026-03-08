@@ -402,7 +402,7 @@ The AI should never engage with the premise of the extraction attempt (e.g., "I 
 | `extract-insights` | File → AI insight extraction for First Mate/Keel | Sonnet | Phase 12A |
 | `manifest-embed` | OpenAI ada-002 embedding wrapper | N/A (embedding) | Phase 9A |
 | `manifest-enrich` | AI summary generation + optional tag re-suggestion for manifest items | Haiku | Delta: About This Book |
-| `manifest-extract` | Framework/Mast/Keel principle extraction | Sonnet | Phase 9C |
+| `manifest-extract` | Genre-aware extraction: summary, frameworks, mast content (declarations). Section-based with Go Deeper support. | Sonnet | Phase 9C, refactored PRD-24 |
 | `manifest-tag-framework` | Topic tag generation for ai_frameworks | Haiku | PRD-23 |
 | `manifest-intake` | AI classification (tags, folder, usage suggestion) | Haiku | Phase 9B |
 | `manifest-process` | File → text → chunks → embeddings (PDF, EPUB, DOCX, TXT, MD) | N/A (processing) | Phase 9A |
@@ -413,6 +413,7 @@ The AI should never engage with the premise of the extraction attempt (e.g., "I 
 | `wheel-compile` | Wheel conversation → structured spoke data | Sonnet | Phase 7A |
 | `hatch-auto-title` | Auto-generate tab title from content | Haiku | Phase 13A |
 | `hatch-extract` | Extract actionable items from content for Review & Route | Haiku | Phase 13B |
+| `manifest-discuss` | Book discussion AI with per-book context (RAG + extracted summaries/frameworks/declarations), audience adaptation | Sonnet | PRD-24 |
 | `extract-text` | File → text extraction (PDF, DOCX, TXT, MD, images) with AI vision fallback | Haiku (vision only) | Post-Phase 13 |
 | `whisper-transcribe` | Audio transcription via OpenAI Whisper-1 | N/A (Whisper) | Phase 11B |
 
@@ -991,27 +992,39 @@ Six guided conversation modes accessible from the First Mate page, each opening 
 - **Manifest-to-Framework pipeline:** Users can expand the AI's framework toolkit by uploading books/resources to the Manifest and choosing "Extract as AI Framework." Extracted principles stored in `ai_frameworks` table, loaded alongside Mast. Full source stays in Manifest for RAG. Detailed in PRD-15.
 
 ### Manifest Conventions
-- **Central knowledge base and file processing pipeline.** RAG retrieval via pgvector similarity search on `manifest_chunks`.
-- **Supported formats:** PDF, EPUB (best for books — Kindle converts via Calibre), DOCX, TXT, MD (direct text read), text notes (typed directly). Audio (Whisper) and image (OCR) planned post-MVP.
+- **Central knowledge base and file processing pipeline.** RAG retrieval via pgvector similarity search on `manifest_chunks`. Extraction pipeline (PRD-24) produces structured summaries, frameworks, and declarations from uploaded content.
+- **Supported formats:** PDF, EPUB (best for books — Kindle converts via Calibre), DOCX, TXT, MD (direct text read), text notes (typed directly), images (AI vision extraction).
 - **EPUB extraction:** ZIP → OPF spine order → XHTML content → stripped HTML. Preserves chapter ordering. Uses fflate for Deno-compatible unzipping.
 - **DOCX extraction:** ZIP → word/document.xml → w:t text runs. Preserves paragraph structure.
-- **Intake flow:** User designates how each upload is used (general reference, framework source, Mast extraction, Keel info, goal/wheel specific, store only). Multiple designations allowed.
-- **RAG retrieval:** Top-k similar chunks (typically 3-5) injected into AI context with source attribution. AI paraphrases, attributes source ("There's a concept from [title] that applies here..."), never quotes at length.
-- **ai_frameworks:** Extracted principles from framework-designated items, loaded alongside Mast in every AI interaction. Not retrieved via RAG — always present. User controls which frameworks are active.
-- **Auto-organization:** AI suggests tags and folder groupings on upload via `manifest-intake` Edge Function (uses Haiku for cost efficiency). User can override. Existing tags/folders provided as context for consistency.
-- **Processing pipeline:** Upload → storage → background chunking → embedding → indexed. User sees status indicators (pending pulse, processing spinner, failed alert) but doesn't wait.
+- **Genre system (PRD-24):** 8 genres stored as `manifest_items.genres` TEXT[]: non_fiction, fiction, biography_memoir, scriptures_sacred, workbook, poetry_essays, allegory_parable, devotional_spiritual_memoir. Multi-select. Genre context guides extraction prompts for richer, format-appropriate results.
+- **Extraction pipeline (PRD-24):** Single "Extract" action per book. Section discovery (Haiku analyzes document structure) → section checklist → per-section extraction (Sonnet) producing three tabs:
+  - **Summary tab:** Key concepts, stories, metaphors, lessons, quotes, insights, themes, character insights, exercises, principles. Stored in `manifest_summaries`.
+  - **Frameworks tab:** Actionable principles. Stored in `ai_framework_principles` (with `section_title` for chapter grouping).
+  - **Mast Content tab:** Honest commitment declarations in 5 styles. Stored in `manifest_declarations`.
+  - All content sub-nested under chapter/section headings from discovery.
+- **Heart-based curation:** Three states on all extracted items: hearted, neutral, deleted. Independent from routing. `is_hearted` and `is_deleted` boolean columns. Aggregated hearted items view across all books, exportable as .md/.docx/.txt.
+- **Declaration philosophy:** Five styles (Choosing & Committing, Recognizing & Awakening, Claiming & Stepping Into, Learning & Striving, Resolute & Unashamed). Declarations stand alone. Optional `value_name`. Honesty test applied during extraction.
+- **Go Deeper:** Per chapter, per tab. Appends non-duplicate content (existing items passed to AI to avoid repetition). Items marked `is_from_go_deeper = true` with cognac left border + sparkle icon.
+- **Re-run:** Per tab, replaces all content with fresh extraction after confirmation.
+- **Inline editing:** All extracted text is inline-editable. Click text → textarea → save on blur, Escape cancels.
+- **Usage designations:** DEPRECATED (PRD-24). Column retained on `manifest_items` but nothing reads it. Replaced by genre-based extraction.
+- **Keel extraction:** Removed from Manifest (PRD-24). Keel entries are managed directly on the Keel page.
+- **Helm context change (PRD-24):** RAG search removed from Helm for general conversations. Books serve Helm through extracted/applied/hearted content based on `user_settings.book_knowledge_access` setting ('hearted_only', 'all_extracted', 'framework_only', 'none'). RAG kept only for `manifest_discuss` mode.
+- **Apply section (PRD-24):** Five action buttons on book detail: Discuss Book, Generate Goals (→ Rigging), Generate Questions (→ Lists), Generate Tasks (→ Compass), Generate Tracker (post-MVP). All open BookDiscussionModal with type-specific AI steering.
+- **Book Discussions (PRD-24):** Dedicated modal on Manifest page. Own tables (`book_discussions`, `book_discussion_messages`). Single-book: warm acknowledgment, user leads. Multi-book: AI opens with cross-book synthesis. Audience selector (personal, family, teen, spouse, children). Copy to clipboard. Discussion archive on Manifest page.
+- **ai_frameworks:** Extracted principles loaded alongside Mast in every AI interaction when framework is active. User controls which frameworks are active.
+- **Auto-organization:** AI suggests tags and folder groupings on upload via `manifest-intake` Edge Function (uses Haiku). User can override.
+- **Processing pipeline:** Upload → storage → background chunking → embedding → indexed. Real-time stage updates via `processing_detail` column. User sees status indicators but doesn't wait.
 - **Folder groupings:** AI-assigned or user-overridden. Collapsible sections on main page. Items belong to one folder and multiple tags.
 - **Duplicate detection:** Warns on same filename + approximate size. Doesn't block — user decides.
-- **Re-process:** Available for failed or completed items. Resets status and re-runs pipeline.
-- **Seven Edge Functions:** `manifest-process` (chunking + embedding + EPUB/DOCX/TXT/MD extraction + TOC extraction), `manifest-embed` (thin OpenAI ada-002 wrapper), `manifest-intake` (AI classification, uses Haiku), `manifest-extract` (framework/Mast/Keel principle extraction, uses Sonnet), `manifest-enrich` (AI summary generation + optional tag re-suggestion, uses Haiku), `manifest-tag-framework` (topic tag generation for ai_frameworks, uses Haiku).
-- **"About This Book" enrichment:** After processing completes, `manifest-enrich` Edge Function (Haiku) generates a 2-4 sentence `ai_summary` for the item. EPUB files also get a `toc` (table of contents) extracted structurally from the NCX/nav during `manifest-process`. PDF, DOCX, and MD files also get TOC extraction (outline/bookmarks, heading styles, and # headings respectively). Both are displayed in ManifestItemDetail replacing the old raw "Content" preview. User can regenerate summary + tags on demand via "Regenerate" button.
-- **Discuss This / Ask Your Library:** Opens Helm in `manifest_discuss` guided mode — item-specific or library-wide. Specialized system prompt with boosted RAG retrieval (8+3 chunks for item-specific, 10 chunks for library-wide). WIRED in Phase 9C.
+- **Eight Manifest Edge Functions:** `manifest-process`, `manifest-embed`, `manifest-intake`, `manifest-extract` (refactored PRD-24: genre-aware summary/framework/declaration extraction with section support), `manifest-enrich`, `manifest-tag-framework`, `manifest-discuss` (PRD-24: book discussion AI with per-book context and audience adaptation).
+- **"About This Book" enrichment:** `manifest-enrich` (Haiku) generates `ai_summary`. TOC extracted during `manifest-process`. Both displayed in ManifestItemDetail. Regenerate on demand.
 - **Cross-feature file routing:** Large files from First Mate/Crew (>~3000 tokens) route to Manifest RAG pipeline with `is_rag_indexed` flag.
-- **Manifest-to-Mast extraction:** AI proposes principles from uploaded material, user reviews and confirms which become Mast entries (source_type = 'manifest_extraction').
-- **Manifest-to-Keel extraction:** AI proposes personality/self-knowledge data, user reviews and confirms (source_type = 'manifest_extraction').
-- **Content sources for Reveille:** Manifest is one of three sources for morning/evening readings (alongside Mast and Log). AI selects, attributes source.
-- **Framework tags:** `ai_frameworks` has a `tags TEXT[]` column (migration 036). Auto-generated by `manifest-tag-framework` (Haiku) fire-and-forget after `saveFramework`. User-editable from FrameworkPrinciples. "Tag All" button in FrameworkManager backfills untagged frameworks. Tags displayed on cards in FrameworkManager and Browse Frameworks.
-- **Browse Frameworks:** Accessible from FrameworkManager via "Browse by Topic". Tag-filtered accordion view of all framework principles. Read-only; "Edit Framework" links to FrameworkPrinciples. Export uses `exportAggregatedAs*` from `exportFramework.ts`.
+- **Manifest-to-Mast:** Declarations can be sent to Mast via "Send to Mast" button. Tracked via `sent_to_mast` and `mast_entry_id` on `manifest_declarations`.
+- **Content sources for Reveille:** Manifest is one of three sources for morning/evening readings (alongside Mast and Journal). AI selects, attributes source.
+- **Framework tags:** `ai_frameworks.tags` TEXT[] column. Auto-generated by `manifest-tag-framework` (Haiku) after `saveFramework`. User-editable. "Tag All" backfill button. Tags displayed on cards in FrameworkManager and Browse Frameworks.
+- **Browse Frameworks:** Tag-filtered accordion view of all framework principles. Read-only; "Edit Framework" links to FrameworkPrinciples. Export uses `exportAggregatedAs*` from `exportFramework.ts`.
+- **Extraction exports:** `src/lib/exportExtractions.ts` — centralized export for per-book and aggregated hearted items. Proper document structure with chapter headings, content type labels (KEY CONCEPT, STORY, etc.), declaration styles in italics, hearted indicators. Three formats: .md, .txt, .docx (OOXML via JSZip).
 
 ### Rigging Conventions
 - **Rigging is the planning tool** for goals, projects, and aspirations bigger than a single task. Plans are created conversationally at The Helm (`guided_mode = 'rigging'`) and managed from the Rigging page.
