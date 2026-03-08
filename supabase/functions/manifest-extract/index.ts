@@ -373,7 +373,15 @@ serve(async (req: Request) => {
         );
       }
 
-      const sectionText = item.text_content.substring(section_start, section_end);
+      let sectionText = item.text_content.substring(section_start, section_end);
+
+      // Truncate very large sections to avoid exceeding token limits (~80K chars ≈ 20K tokens)
+      const MAX_SECTION_CHARS = 80_000;
+      if (sectionText.length > MAX_SECTION_CHARS) {
+        console.log(`[manifest-extract] ${extraction_type} section="${section_title}" truncated from ${sectionText.length} to ${MAX_SECTION_CHARS} chars`);
+        sectionText = sectionText.substring(0, MAX_SECTION_CHARS)
+          + `\n\n[... ${sectionText.length - MAX_SECTION_CHARS} characters truncated ...]`;
+      }
 
       let basePrompt: string;
       if (extraction_type === 'framework_section') {
@@ -423,6 +431,19 @@ serve(async (req: Request) => {
         );
       }
 
+      // Sanitize mast_content results: ensure declaration_style is always present
+      if (extraction_type === 'mast_content_section') {
+        const resultObj = result as { items?: Array<Record<string, unknown>> };
+        if (resultObj?.items && Array.isArray(resultObj.items)) {
+          const VALID_STYLES = ['choosing_committing', 'recognizing_awakening', 'claiming_stepping_into', 'learning_striving', 'resolute_unashamed'];
+          for (const item of resultObj.items) {
+            if (!item.declaration_style || !VALID_STYLES.includes(item.declaration_style as string)) {
+              item.declaration_style = 'choosing_committing';
+            }
+          }
+        }
+      }
+
       return new Response(
         JSON.stringify({ extraction_type, result }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
@@ -453,7 +474,15 @@ serve(async (req: Request) => {
     }
 
     const fullPrompt = systemPrompt + genreContext + goDeeperAddendum;
-    const contentToSend = item.text_content;
+
+    // Truncate very large documents for whole-document extraction
+    let contentToSend = item.text_content;
+    const MAX_WHOLE_DOC_CHARS = 120_000;
+    if (contentToSend.length > MAX_WHOLE_DOC_CHARS) {
+      console.log(`[manifest-extract] ${extraction_type} whole-doc truncated from ${contentToSend.length} to ${MAX_WHOLE_DOC_CHARS} chars`);
+      contentToSend = contentToSend.substring(0, MAX_WHOLE_DOC_CHARS)
+        + `\n\n[... ${contentToSend.length - MAX_WHOLE_DOC_CHARS} characters truncated ...]`;
+    }
 
     // Use Sonnet for extraction — deep reasoning work
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -488,6 +517,19 @@ serve(async (req: Request) => {
         JSON.stringify({ error: parseErr || 'Failed to parse extraction result' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
+    }
+
+    // Sanitize mast_content results: ensure declaration_style is always present
+    if (extraction_type === 'mast_content') {
+      const resultObj = result as { items?: Array<Record<string, unknown>> };
+      if (resultObj?.items && Array.isArray(resultObj.items)) {
+        const VALID_STYLES = ['choosing_committing', 'recognizing_awakening', 'claiming_stepping_into', 'learning_striving', 'resolute_unashamed'];
+        for (const item of resultObj.items) {
+          if (!item.declaration_style || !VALID_STYLES.includes(item.declaration_style as string)) {
+            item.declaration_style = 'choosing_committing';
+          }
+        }
+      }
     }
 
     return new Response(

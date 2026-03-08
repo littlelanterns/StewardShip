@@ -257,7 +257,7 @@ export function useManifestExtraction() {
       section_index: sectionIndex,
       value_name: item.value_name || null,
       declaration_text: item.declaration_text,
-      declaration_style: item.declaration_style || 'choosing_committing',
+      declaration_style: (['choosing_committing', 'recognizing_awakening', 'claiming_stepping_into', 'learning_striving', 'resolute_unashamed'].includes(item.declaration_style) ? item.declaration_style : 'choosing_committing') as DeclarationStyle,
       sort_order: item.sort_order ?? idx,
       is_from_go_deeper: isFromGoDeeper,
     }));
