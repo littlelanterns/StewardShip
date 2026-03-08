@@ -536,9 +536,22 @@ export function useManifest() {
   }, [items]);
 
   // Backfill: clone all original (non-cloned) completed items to all other users
+  // Fetches fresh data from DB to avoid stale React state
   const backfillCloneAll = useCallback(async () => {
     if (!user) return;
-    const originals = items.filter(
+
+    const { data: freshItems, error: fetchErr } = await supabase
+      .from('manifest_items')
+      .select('id, title, processing_status, extraction_status, source_manifest_item_id')
+      .eq('user_id', user.id)
+      .is('archived_at', null);
+
+    if (fetchErr || !freshItems) {
+      console.error('[backfill] Failed to fetch items:', fetchErr);
+      return;
+    }
+
+    const originals = freshItems.filter(
       (i) => !i.source_manifest_item_id && i.processing_status === 'completed',
     );
     console.log(`[backfill] Cloning ${originals.length} original items to all users...`);
@@ -546,11 +559,10 @@ export function useManifest() {
       const cloneExtractions = item.extraction_status === 'completed';
       console.log(`[backfill] Cloning "${item.title}" (extractions: ${cloneExtractions})...`);
       await cloneToAllUsers(item.id, cloneExtractions);
-      // Small delay to avoid rate limiting
       await new Promise((r) => setTimeout(r, 500));
     }
     console.log('[backfill] Done.');
-  }, [user, items, cloneToAllUsers]);
+  }, [user, cloneToAllUsers]);
 
   // Cleanup all polls on unmount
   useEffect(() => {

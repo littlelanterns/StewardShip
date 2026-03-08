@@ -177,9 +177,16 @@ export default function Manifest() {
 
   // --- Extraction handlers (wired to useManifestExtraction) ---
 
+  // Refresh selected item + items list after extraction to sync extraction_status
+  const refreshAfterExtraction = useCallback(async (itemId: string) => {
+    const detail = await fetchItemDetail(itemId);
+    if (detail) setSelectedItem(detail);
+    fetchItems();
+  }, [fetchItemDetail, fetchItems]);
+
   const handleExtractAll = useCallback(async (genres: BookGenre[]): Promise<boolean> => {
     if (!selectedItem) return false;
-    return extraction.extractAll(selectedItem.id, genres, async (result) => {
+    const success = await extraction.extractAll(selectedItem.id, genres, async (result) => {
       // Save framework result through useFrameworks
       if (result && result.framework_name && result.principles?.length > 0) {
         await saveFramework(
@@ -194,7 +201,9 @@ export default function Manifest() {
         fetchFrameworks();
       }
     });
-  }, [selectedItem, extraction, saveFramework, fetchFrameworks]);
+    await refreshAfterExtraction(selectedItem.id);
+    return success;
+  }, [selectedItem, extraction, saveFramework, fetchFrameworks, refreshAfterExtraction]);
 
   const handleDiscoverSections = useCallback(async () => {
     if (!selectedItem) return [];
@@ -213,6 +222,7 @@ export default function Manifest() {
         const principles = result.principles.map((p: { text: string; sort_order: number }, idx: number) => ({
           text: p.text,
           sort_order: principleOffset + idx,
+          section_title: sectionTitle,
         }));
         principleOffset += principles.length;
         // First section: replace existing principles (append=false). Subsequent: append.
@@ -223,8 +233,9 @@ export default function Manifest() {
     });
 
     fetchFrameworks();
+    await refreshAfterExtraction(selectedItem.id);
     return success;
-  }, [selectedItem, extraction, saveFramework, fetchFrameworks]);
+  }, [selectedItem, extraction, saveFramework, fetchFrameworks, refreshAfterExtraction]);
 
   const handleSummaryGoDeeper = useCallback((sectionTitle: string | undefined, existingItems: string[], sectionIndex?: number) => {
     if (!selectedItem) return;
