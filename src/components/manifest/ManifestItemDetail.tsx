@@ -47,7 +47,6 @@ interface ManifestItemDetailProps {
   // Framework actions
   onTogglePrincipleHeart: (id: string) => void;
   onDeletePrinciple: (id: string) => void;
-  onViewFramework: () => void;
   // Declaration actions
   onToggleDeclarationHeart: (id: string) => void;
   onDeleteDeclaration: (id: string) => void;
@@ -110,7 +109,6 @@ export function ManifestItemDetail({
   onSummaryReRun,
   onTogglePrincipleHeart,
   onDeletePrinciple,
-  onViewFramework,
   onToggleDeclarationHeart,
   onDeleteDeclaration,
   onUpdateDeclaration,
@@ -593,7 +591,6 @@ export function ManifestItemDetail({
             onSummaryReRun={onSummaryReRun}
             onTogglePrincipleHeart={onTogglePrincipleHeart}
             onDeletePrinciple={onDeletePrinciple}
-            onViewFramework={onViewFramework}
             onToggleDeclarationHeart={onToggleDeclarationHeart}
             onDeleteDeclaration={onDeleteDeclaration}
             onUpdateDeclaration={onUpdateDeclaration}

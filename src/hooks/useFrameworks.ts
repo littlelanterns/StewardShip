@@ -137,6 +137,7 @@ export function useFrameworks() {
     name: string,
     principles: Array<{ text: string; sort_order: number; is_user_added?: boolean; is_included?: boolean; section_title?: string }>,
     isActive: boolean,
+    append?: boolean,
   ): Promise<AIFramework | null> => {
     if (!user) return null;
     setError(null);
@@ -160,11 +161,13 @@ export function useFrameworks() {
           .eq('id', existing.id);
         frameworkId = existing.id;
 
-        // Delete AI-extracted principles (keep user-added ones)
-        await supabase
-          .from('ai_framework_principles')
-          .delete()
-          .eq('framework_id', frameworkId);
+        // In append mode, keep existing principles (used by per-section extraction)
+        if (!append) {
+          await supabase
+            .from('ai_framework_principles')
+            .delete()
+            .eq('framework_id', frameworkId);
+        }
       } else {
         const { data: fw, error: insertErr } = await supabase
           .from('ai_frameworks')

@@ -46,7 +46,7 @@ Look for: overlooked nuances, secondary insights, supporting evidence, contrasti
 const FRAMEWORK_EXTRACTION_PROMPT = `You are an expert at distilling books and content into concise, actionable principles. Given the text of a book section or document, extract the key principles, mental models, and actionable frameworks.
 
 Rules:
-- Extract 5-15 principles (more for richer content, fewer for shorter sections)
+- Extract 5-20 principles depending on content richness (more for richer content, fewer for shorter sections)
 - Default principle length: 1-3 complete sentences. Never cut off mid-thought.
 - EXCEPTION — Processes, systems, and step-by-step methods: When content describes a multi-step process, a system, or a sequential method, extract it as a structured principle with numbered steps. These may be 3-8 sentences to capture the full process.
 - Focus on ACTIONABLE insights — things that can guide decisions and behavior

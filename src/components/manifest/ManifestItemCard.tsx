@@ -1,5 +1,5 @@
 import { FileText, BookOpen, FileCode, Mic, Image, StickyNote, Loader, ChevronRight } from 'lucide-react';
-import type { ManifestItem, AIFramework } from '../../lib/types';
+import type { ManifestItem } from '../../lib/types';
 import { MANIFEST_USAGE_LABELS } from '../../lib/types';
 import { Card } from '../shared/Card';
 import './ManifestItemCard.css';
@@ -7,7 +7,6 @@ import './ManifestItemCard.css';
 interface ManifestItemCardProps {
   item: ManifestItem;
   onClick: (item: ManifestItem) => void;
-  framework?: AIFramework;
   compact?: boolean;
 }
 
@@ -35,7 +34,7 @@ function getRelativeDate(dateStr: string): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-export function ManifestItemCard({ item, onClick, framework, compact }: ManifestItemCardProps) {
+export function ManifestItemCard({ item, onClick, compact }: ManifestItemCardProps) {
   const Icon = FILE_TYPE_ICONS[item.file_type] || FileText;
   const isPending = item.processing_status === 'pending';
   const isProcessing = item.processing_status === 'processing';
@@ -64,16 +63,12 @@ export function ManifestItemCard({ item, onClick, framework, compact }: Manifest
           {isFailed && (
             <span className="manifest-row__badge manifest-row__badge--failed">Failed</span>
           )}
-          {isCompleted && framework?.is_active && (
-            <span className="manifest-row__badge manifest-row__badge--framework">
-              <BookOpen size={12} />
-              Framework
+          {isCompleted && item.extraction_status === 'completed' && (
+            <span className="manifest-row__badge manifest-row__badge--extracted">
+              Extracted
             </span>
           )}
-          {isCompleted && framework && !framework.is_active && (
-            <span className="manifest-row__badge manifest-row__badge--framework-off">Framework</span>
-          )}
-          {isCompleted && !framework && (
+          {isCompleted && item.extraction_status !== 'completed' && (
             <span className="manifest-row__badge manifest-row__badge--ready">Ready</span>
           )}
         </div>
@@ -119,18 +114,10 @@ export function ManifestItemCard({ item, onClick, framework, compact }: Manifest
         )}
 
         <div className="manifest-card__meta">
-          {framework ? (
-            <span
-              className={`manifest-card__badge manifest-card__badge--framework${framework.is_active ? '' : ' manifest-card__badge--framework-inactive'}`}
-              title={framework.is_active
-                ? `Framework active: ${framework.name} (${framework.principles?.length || 0} principles)`
-                : `Framework inactive: ${framework.name}`}
-            >
-              <BookOpen size={12} />
-              {framework.is_active ? 'Framework Active' : 'Framework'}
+          {item.extraction_status === 'completed' ? (
+            <span className="manifest-card__badge manifest-card__badge--extracted">
+              Extracted
             </span>
-          ) : item.usage_designations.includes('framework_source') ? (
-            <span className="manifest-card__badge manifest-card__badge--framework-pending">Framework Source</span>
           ) : null}
           {item.usage_designations.filter((u) => u !== 'general_reference' && u !== 'framework_source').slice(0, 1).map((u) => (
             <span key={u} className="manifest-card__badge">

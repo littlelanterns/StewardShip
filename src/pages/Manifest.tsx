@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Upload, StickyNote, MessageSquare, Loader, BookOpen, List, LayoutGrid, Heart } from 'lucide-react';
+import { Upload, StickyNote, MessageSquare, Loader, BookOpen, List, LayoutGrid, Heart, Layers } from 'lucide-react';
 import { usePageContext } from '../hooks/usePageContext';
 import { useManifest } from '../hooks/useManifest';
 import { useFrameworks } from '../hooks/useFrameworks';
@@ -14,16 +14,14 @@ import { TextNoteModal } from '../components/manifest/TextNoteModal';
 import { BookDiscussionModal } from '../components/manifest/BookDiscussionModal';
 import { BookSelector } from '../components/manifest/BookSelector';
 import { HeartedItemsView } from '../components/manifest/HeartedItemsView';
-import FrameworkPrinciples from '../components/manifest/FrameworkPrinciples';
-import FrameworkManager from '../components/manifest/FrameworkManager';
-import BrowseFrameworks from '../components/manifest/BrowseFrameworks';
+import { ExtractionsView } from '../components/manifest/ExtractionsView';
 import { CollapsibleGroup } from '../components/shared/CollapsibleGroup';
 import { FloatingActionButton } from '../components/shared/FloatingActionButton';
 import { EmptyState, LoadingSpinner, FeatureGuide } from '../components/shared';
 import { FEATURE_GUIDES } from '../lib/featureGuides';
 import './Manifest.css';
 
-type ViewMode = 'list' | 'detail' | 'upload' | 'framework' | 'frameworks' | 'browse' | 'hearted';
+type ViewMode = 'list' | 'detail' | 'upload' | 'extractions' | 'hearted';
 type LibraryLayout = 'compact' | 'grid';
 
 export default function Manifest() {
@@ -47,19 +45,9 @@ export default function Manifest() {
   } = useManifest();
 
   const {
-    frameworks,
-    extracting: frameworkExtracting,
-    extractFramework,
     saveFramework,
-    toggleFramework,
-    batchToggleFrameworks,
     getFrameworkForItem,
     fetchFrameworks,
-    checkDocumentLength,
-    discoverSections,
-    extractFromSection,
-    tagFramework,
-    updateFrameworkTags,
   } = useFrameworks();
 
   const extraction = useManifestExtraction();
@@ -190,23 +178,6 @@ export default function Manifest() {
     fetchDiscussions();
   }, [fetchDiscussions]);
 
-  const handleBrowseFrameworks = useCallback(() => {
-    setViewMode('browse');
-  }, []);
-
-  const handleViewFramework = useCallback(async (itemId: string) => {
-    const detail = await fetchItemDetail(itemId);
-    const item = detail || items.find((i) => i.id === itemId);
-    if (item) {
-      setSelectedItem(item);
-      setViewMode('framework');
-    }
-  }, [fetchItemDetail, items]);
-
-  const handleSelectFrameworkForEdit = useCallback(async (fw: { manifest_item_id: string }) => {
-    await handleViewFramework(fw.manifest_item_id);
-  }, [handleViewFramework]);
-
   // --- Extraction handlers (wired to useManifestExtraction) ---
 
   const handleExtractAll = useCallback(async (genres: BookGenre[]): Promise<boolean> => {
@@ -236,6 +207,7 @@ export default function Manifest() {
   const handleExtractAllSections = useCallback(async (genres: BookGenre[], sectionIndices: number[]): Promise<boolean> => {
     if (!selectedItem) return false;
     let principleOffset = 0;
+    let isFirstSection = true;
 
     const success = await extraction.extractAllSections(selectedItem.id, genres, sectionIndices, async (result, sectionTitle, _sectionIndex) => {
       // Save framework results progressively per-section so they appear in the UI immediately
@@ -246,8 +218,10 @@ export default function Manifest() {
           sort_order: principleOffset + idx,
         }));
         principleOffset += principles.length;
-        // append = true so each section's principles add to the existing framework
-        await saveFramework(selectedItem.id, result.framework_name, principles, true);
+        // First section: replace existing principles (append=false). Subsequent: append.
+        const shouldAppend = !isFirstSection;
+        isFirstSection = false;
+        await saveFramework(selectedItem.id, result.framework_name, principles, true, shouldAppend);
       }
     });
 
@@ -287,12 +261,6 @@ export default function Manifest() {
     extraction.reRunTab(selectedItem.id, 'mast_content', selectedItem.genres || [], sectionTitle, offsets?.start, offsets?.end, offsets?.index);
   }, [selectedItem, extraction]);
 
-  const handleViewFrameworkFromDetail = useCallback(() => {
-    if (selectedItem) {
-      setViewMode('framework');
-    }
-  }, [selectedItem]);
-
   // Filtering
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
@@ -323,6 +291,7 @@ export default function Manifest() {
   );
 
   const hasCompletedItems = items.some((i) => i.processing_status === 'completed');
+  const hasExtractedItems = items.some((i) => i.extraction_status === 'completed');
   const processingItems = items.filter(
     (i) => i.processing_status === 'pending' || i.processing_status === 'processing',
   );
@@ -357,55 +326,21 @@ export default function Manifest() {
     );
   }
 
-  // Framework extraction view
-  if (viewMode === 'framework' && currentSelectedItem) {
+  // Extractions view
+  if (viewMode === 'extractions') {
     return (
       <div className="page manifest-page">
-        <FrameworkPrinciples
-          manifestItemId={currentSelectedItem.id}
-          manifestItemTitle={currentSelectedItem.title}
-          framework={getFrameworkForItem(currentSelectedItem.id)}
-          extracting={frameworkExtracting}
-          onExtract={extractFramework}
-          onCheckDocumentLength={checkDocumentLength}
-          onDiscoverSections={discoverSections}
-          onExtractSection={extractFromSection}
-          onSave={saveFramework}
-          onToggle={toggleFramework}
-          onUpdateTags={updateFrameworkTags}
-          onBack={handleBackToDetail}
-        />
-      </div>
-    );
-  }
-
-  // Browse frameworks view
-  if (viewMode === 'browse') {
-    return (
-      <div className="page manifest-page">
-        <BrowseFrameworks
-          frameworks={frameworks}
-          items={items}
-          onSelectFramework={handleSelectFrameworkForEdit}
-          onBack={() => setViewMode('frameworks')}
-        />
-      </div>
-    );
-  }
-
-  // Frameworks manager view
-  if (viewMode === 'frameworks') {
-    return (
-      <div className="page manifest-page">
-        <FrameworkManager
-          frameworks={frameworks}
-          items={items}
-          onToggleFrameworks={batchToggleFrameworks}
-          onSelectFramework={handleSelectFrameworkForEdit}
-          onBrowse={handleBrowseFrameworks}
-          onTagFramework={tagFramework}
-          onBack={handleBack}
-        />
+        <ExtractionsView items={items} onBack={handleBack} />
+        {discussionModal && (
+          <BookDiscussionModal
+            bookTitles={discussionModal.bookTitles}
+            manifestItemIds={discussionModal.manifestItemIds}
+            discussionType={discussionModal.discussionType}
+            initialAudience={discussionModal.audience}
+            existingDiscussionId={discussionModal.existingDiscussionId}
+            onClose={handleDiscussionClosed}
+          />
+        )}
       </div>
     );
   }
@@ -462,7 +397,6 @@ export default function Manifest() {
           // Framework actions
           onTogglePrincipleHeart={extraction.togglePrincipleHeart}
           onDeletePrinciple={extraction.deletePrinciple}
-          onViewFramework={handleViewFrameworkFromDetail}
           // Declaration actions
           onToggleDeclarationHeart={extraction.toggleDeclarationHeart}
           onDeleteDeclaration={extraction.deleteDeclaration}
@@ -575,14 +509,14 @@ export default function Manifest() {
             My Hearted Items
           </button>
         )}
-        {frameworks.length > 0 && (
+        {hasExtractedItems && (
           <button
             type="button"
             className="manifest-page__action-btn"
-            onClick={() => setViewMode('frameworks')}
+            onClick={() => setViewMode('extractions')}
           >
-            <BookOpen size={16} />
-            Frameworks ({frameworks.length})
+            <Layers size={16} />
+            Extractions
           </button>
         )}
       </div>
@@ -625,13 +559,13 @@ export default function Manifest() {
         ) : libraryLayout === 'compact' ? (
           <div className="manifest-page__compact-list">
             {sortedItems.map((item) => (
-              <ManifestItemCard key={item.id} item={item} onClick={handleSelectItem} framework={getFrameworkForItem(item.id)} compact />
+              <ManifestItemCard key={item.id} item={item} onClick={handleSelectItem} compact />
             ))}
           </div>
         ) : folderGroups.length === 1 ? (
           <div className="manifest-page__item-list">
             {folderGroups[0][1].map((item) => (
-              <ManifestItemCard key={item.id} item={item} onClick={handleSelectItem} framework={getFrameworkForItem(item.id)} />
+              <ManifestItemCard key={item.id} item={item} onClick={handleSelectItem} />
             ))}
           </div>
         ) : (
@@ -644,7 +578,7 @@ export default function Manifest() {
             >
               <div className="manifest-page__item-list">
                 {folderItems.map((item) => (
-                  <ManifestItemCard key={item.id} item={item} onClick={handleSelectItem} framework={getFrameworkForItem(item.id)} />
+                  <ManifestItemCard key={item.id} item={item} onClick={handleSelectItem} />
                 ))}
               </div>
             </CollapsibleGroup>

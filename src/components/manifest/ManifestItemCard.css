@@ -117,23 +117,9 @@
   color: var(--color-text-secondary);
 }
 
-.manifest-card__badge--framework {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+.manifest-card__badge--extracted {
   background: var(--color-mid-teal);
   color: var(--color-white);
-}
-
-.manifest-card__badge--framework-inactive {
-  background: var(--color-slate-gray);
-  color: var(--color-white);
-}
-
-.manifest-card__badge--framework-pending {
-  background: var(--color-bg-secondary);
-  color: var(--color-text-secondary);
-  border: 1px dashed var(--color-slate-gray);
 }
 
 /* Compact row view */
@@ -212,14 +198,9 @@
   color: var(--color-cognac);
 }
 
-.manifest-row__badge--framework {
+.manifest-row__badge--extracted {
   background: var(--color-mid-teal);
   color: var(--color-white);
-}
-
-.manifest-row__badge--framework-off {
-  background: var(--color-bg-secondary);
-  color: var(--color-slate-gray);
 }
 
 .manifest-row__badge--ready {

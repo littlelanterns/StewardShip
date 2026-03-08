@@ -228,7 +228,6 @@ interface FrameworksTabProps {
   extractingTab: string | null;
   onToggleHeart: (id: string) => void;
   onDelete: (id: string) => void;
-  onViewFramework: () => void;
   filterMode: FilterMode;
   hasFramework: boolean;
 }
@@ -238,7 +237,6 @@ function FrameworksTab({
   extractingTab,
   onToggleHeart,
   onDelete,
-  onViewFramework,
   filterMode,
   hasFramework,
 }: FrameworksTabProps) {
@@ -299,14 +297,6 @@ function FrameworksTab({
         <div className="extraction-tab__progress">
           <div className="extraction-tab__progress-bar" />
           <span>Extracting...</span>
-        </div>
-      )}
-
-      {hasFramework && (
-        <div className="extraction-tab__toolbar">
-          <button type="button" className="extraction-tab__rerun-btn" onClick={onViewFramework}>
-            View full framework editor
-          </button>
         </div>
       )}
 
@@ -608,7 +598,6 @@ interface ExtractionTabsProps {
   // Framework actions
   onTogglePrincipleHeart: (id: string) => void;
   onDeletePrinciple: (id: string) => void;
-  onViewFramework: () => void;
   // Declaration actions
   onToggleDeclarationHeart: (id: string) => void;
   onDeleteDeclaration: (id: string) => void;
@@ -634,7 +623,6 @@ export function ExtractionTabs({
   onSummaryReRun,
   onTogglePrincipleHeart,
   onDeletePrinciple,
-  onViewFramework,
   onToggleDeclarationHeart,
   onDeleteDeclaration,
   onUpdateDeclaration,
@@ -711,7 +699,6 @@ export function ExtractionTabs({
             extractingTab={extractingTab}
             onToggleHeart={onTogglePrincipleHeart}
             onDelete={onDeletePrinciple}
-            onViewFramework={onViewFramework}
             filterMode={filterMode}
             hasFramework={hasFramework}
           />
