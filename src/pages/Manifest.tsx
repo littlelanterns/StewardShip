@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Upload, StickyNote, MessageSquare, Loader, BookOpen, List, LayoutGrid, Heart, Layers } from 'lucide-react';
+import { Upload, StickyNote, MessageSquare, Loader, List, LayoutGrid, Heart, Layers } from 'lucide-react';
 import { usePageContext } from '../hooks/usePageContext';
 import { useManifest } from '../hooks/useManifest';
 import { useFrameworks } from '../hooks/useFrameworks';
@@ -106,9 +106,6 @@ export default function Manifest() {
     fetchItems();
   }, [fetchItems]);
 
-  const handleBackToDetail = useCallback(() => {
-    setViewMode('detail');
-  }, []);
 
   const handleUpload = useCallback(async (file: File) => {
     const item = await uploadFile(file);
