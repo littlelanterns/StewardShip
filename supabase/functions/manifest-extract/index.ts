@@ -263,6 +263,22 @@ function safeParseJSON(raw: string): { parsed: unknown; error?: string } {
     } catch { /* fall through */ }
   }
 
+  // Try 4: Truncated JSON array recovery — AI hit max_tokens and JSON was cut off
+  // Find the last complete object "}" and close the array with "]"
+  if (cleaned.startsWith('[')) {
+    const lastCompleteObj = cleaned.lastIndexOf('}');
+    if (lastCompleteObj > 0) {
+      const truncated = cleaned.substring(0, lastCompleteObj + 1) + '\n]';
+      try {
+        const result = JSON.parse(truncated);
+        if (Array.isArray(result) && result.length > 0) {
+          console.log(`[safeParseJSON] Recovered truncated JSON array with ${result.length} items`);
+          return { parsed: result };
+        }
+      } catch { /* fall through */ }
+    }
+  }
+
   return { parsed: null, error: 'Could not parse JSON from AI response' };
 }
 
@@ -341,6 +357,7 @@ serve(async (req: Request) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Fetch the item's text content
+    console.log(`[manifest-extract] Fetching item ${manifest_item_id} for user ${userId}, type=${extraction_type}`);
     const { data: item, error: fetchErr } = await supabase
       .from('manifest_items')
       .select('text_content, title')
@@ -348,12 +365,32 @@ serve(async (req: Request) => {
       .eq('user_id', userId)
       .single();
 
-    if (fetchErr || !item?.text_content) {
+    if (fetchErr) {
+      console.error(`[manifest-extract] Fetch error:`, fetchErr.message, fetchErr.code);
+      // Check if the item exists at all (might belong to a different user)
+      const { data: anyItem } = await supabase
+        .from('manifest_items')
+        .select('user_id, title, processing_status')
+        .eq('id', manifest_item_id)
+        .maybeSingle();
+      if (anyItem) {
+        console.error(`[manifest-extract] Item exists but belongs to user ${anyItem.user_id} (caller: ${userId}), status=${anyItem.processing_status}, title="${anyItem.title}"`);
+      } else {
+        console.error(`[manifest-extract] Item ${manifest_item_id} does not exist in database at all`);
+      }
       return new Response(
-        JSON.stringify({ error: 'Item not found or no text content' }),
+        JSON.stringify({ error: `Item fetch failed: ${fetchErr.message}` }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
+    if (!item?.text_content) {
+      console.error(`[manifest-extract] Item found but no text_content. title="${item?.title}", has text_content=${!!item?.text_content}`);
+      return new Response(
+        JSON.stringify({ error: 'Item has no text content. Try reprocessing the file.' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+    console.log(`[manifest-extract] Loaded item "${item.title}", text_content length=${item.text_content.length} chars`);
 
     // Get API key
     const { data: settings } = await supabase
@@ -406,7 +443,7 @@ serve(async (req: Request) => {
         headers: openRouterHeaders,
         body: JSON.stringify({
           model: 'anthropic/claude-haiku-4.5',
-          max_tokens: 2048,
+          max_tokens: 4096,
           messages: [
             { role: 'system', content: SECTION_DISCOVERY_PROMPT },
             { role: 'user', content: `Document (${item.text_content.length} characters total):\n\n${discoveryText}` },
