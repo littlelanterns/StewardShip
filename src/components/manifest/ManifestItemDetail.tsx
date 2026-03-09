@@ -121,6 +121,7 @@ export function ManifestItemDetail({
   const [titleDraft, setTitleDraft] = useState(item.title);
   const [editingContent, setEditingContent] = useState(false);
   const [contentDraft, setContentDraft] = useState(item.text_content || '');
+  const [contentExpanded, setContentExpanded] = useState(false);
   const [addingTag, setAddingTag] = useState(false);
   const [tagInput, setTagInput] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -366,19 +367,34 @@ export function ManifestItemDetail({
               </div>
             </div>
           ) : (
-            <div
-              className="manifest-detail__content-preview manifest-detail__content-preview--editable"
-              onClick={() => { setContentDraft(item.text_content || ''); setEditingContent(true); }}
-              title="Click to edit"
-            >
-              {item.text_content || 'No content yet. Click to add.'}
+            <div>
+              <div
+                className="manifest-detail__content-preview manifest-detail__content-preview--editable"
+                onClick={() => { setContentDraft(item.text_content || ''); setEditingContent(true); }}
+                title="Click to edit"
+              >
+                {!item.text_content
+                  ? 'No content yet. Click to add.'
+                  : item.text_content.length > 500 && !contentExpanded
+                    ? item.text_content.substring(0, 500) + '...'
+                    : item.text_content}
+              </div>
+              {item.text_content && item.text_content.length > 500 && (
+                <button
+                  type="button"
+                  className="manifest-detail__content-toggle"
+                  onClick={() => setContentExpanded(!contentExpanded)}
+                >
+                  {contentExpanded ? 'Show less' : 'Show more'}
+                </button>
+              )}
             </div>
           )}
         </section>
       )}
 
-      {/* About This Book — shown for completed non-editable items */}
-      {item.processing_status === 'completed' && item.file_type !== 'text_note' && item.file_type !== 'txt' && item.file_type !== 'md' && (
+      {/* About This Book — shown for completed items (except text notes) */}
+      {item.processing_status === 'completed' && item.file_type !== 'text_note' && (
         <section className="manifest-detail__section">
           <div className="manifest-detail__section-header">
             <h3 className="manifest-detail__section-title">About This Book</h3>

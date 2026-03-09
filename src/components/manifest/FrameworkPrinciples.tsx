@@ -341,11 +341,6 @@ export default function FrameworkPrinciples({
       );
 
       if (result?.principles) {
-        if (i === 0 && result.framework_name && frameworkName === manifestItemTitle) {
-          frameworkName = result.framework_name;
-          setName(frameworkName);
-        }
-
         const sectionTitle = section.title.replace(/^\[NON-CONTENT\]\s*/i, '');
         const newPrinciples = result.principles.map((p, j) => ({
           text: p.text,

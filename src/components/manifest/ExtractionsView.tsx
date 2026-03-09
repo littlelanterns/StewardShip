@@ -1,11 +1,14 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { ChevronLeft, Heart, Download, FileText, FileCode } from 'lucide-react';
+import { ChevronLeft, Heart, Download, FileText, FileCode, ChevronDown, ChevronRight, Trash2, Anchor, RefreshCw, Sparkles } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../contexts/AuthContext';
-import type { ManifestItem, ManifestSummary, ManifestDeclaration, AIFrameworkPrinciple } from '../../lib/types';
+import type { ManifestItem, ManifestSummary, ManifestDeclaration, AIFrameworkPrinciple, BookGenre } from '../../lib/types';
+import { DECLARATION_STYLE_LABELS } from '../../lib/types';
 import { exportExtractionsMd, exportExtractionsTxt, exportExtractionsDocx } from '../../lib/exportExtractions';
 import type { BookExtractionGroup } from '../../lib/exportExtractions';
+import { Button } from '../shared';
 import './ExtractionsView.css';
+import './ExtractionTabs.css';
 
 interface ExtractionsViewProps {
   items: ManifestItem[];
@@ -13,21 +16,47 @@ interface ExtractionsViewProps {
 }
 
 type TabType = 'summary' | 'frameworks' | 'mast_content';
+type FilterMode = 'all' | 'hearted';
 
 interface BookExtractions {
   bookId: string;
   bookTitle: string;
+  genres: BookGenre[];
   summaries: ManifestSummary[];
   declarations: ManifestDeclaration[];
   principles: (AIFrameworkPrinciple & { framework_name?: string })[];
+}
+
+// Group items by section_title, sorted by section_index
+function groupBySection<T extends { section_title: string | null; section_index?: number }>(
+  items: T[],
+  fallbackKey = '__full_book__',
+): Array<[string, T[]]> {
+  const map = new Map<string, T[]>();
+  for (const item of items) {
+    const key = item.section_title || fallbackKey;
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(item);
+  }
+  return Array.from(map.entries()).sort((a, b) => {
+    const aIdx = (a[1][0] as { section_index?: number })?.section_index ?? 0;
+    const bIdx = (b[1][0] as { section_index?: number })?.section_index ?? 0;
+    return aIdx - bIdx;
+  });
 }
 
 export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
   const { user } = useAuthContext();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<TabType>('summary');
+  const [filterMode, setFilterMode] = useState<FilterMode>('all');
   const [bookData, setBookData] = useState<Map<string, BookExtractions>>(new Map());
   const [loading, setLoading] = useState(false);
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+  const [extractingBookTab, setExtractingBookTab] = useState<string | null>(null);
+  const [confirmReRun, setConfirmReRun] = useState<string | null>(null); // bookId or null
+  const [sendingToMast, setSendingToMast] = useState<Set<string>>(new Set());
 
   const extractedItems = useMemo(
     () => items.filter((i) =>
@@ -45,7 +74,7 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
     }
   }, [extractedItems]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Fetch extractions for selected books
+  // Fetch extractions for selected books (with fixed sort order)
   const fetchExtractions = useCallback(async (ids: string[]) => {
     if (!user || ids.length === 0) return;
     setLoading(true);
@@ -59,6 +88,7 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
           .eq('is_deleted', false)
           .in('manifest_item_id', ids)
           .order('manifest_item_id')
+          .order('section_index', { ascending: true })
           .order('sort_order', { ascending: true }),
         supabase
           .from('manifest_declarations')
@@ -67,6 +97,7 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
           .eq('is_deleted', false)
           .in('manifest_item_id', ids)
           .order('manifest_item_id')
+          .order('section_index', { ascending: true })
           .order('sort_order', { ascending: true }),
         supabase
           .from('ai_framework_principles')
@@ -87,6 +118,7 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
         newData.set(id, {
           bookId: id,
           bookTitle: item?.title || 'Unknown Book',
+          genres: (item?.genres || []) as BookGenre[],
           summaries: summaries.filter((s) => s.manifest_item_id === id),
           declarations: declarations.filter((d) => d.manifest_item_id === id),
           principles: rawPrinciples
@@ -112,11 +144,8 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
   const handleToggle = useCallback((id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   }, []);
@@ -130,6 +159,285 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
     return result;
   }, [selectedIds, bookData]);
 
+  // --- Toggle section collapse ---
+  const toggleSection = useCallback((key: string) => {
+    setCollapsedSections((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  }, []);
+
+  // --- Heart toggle ---
+  const toggleHeart = useCallback(async (table: string, id: string, currentVal: boolean) => {
+    if (!user) return;
+    await supabase.from(table).update({ is_hearted: !currentVal }).eq('id', id).eq('user_id', user.id);
+  }, [user]);
+
+  const handleHeartSummary = useCallback(async (id: string, currentVal: boolean) => {
+    setBookData((prev) => {
+      const next = new Map(prev);
+      for (const [bookId, book] of next) {
+        const idx = book.summaries.findIndex((s) => s.id === id);
+        if (idx >= 0) {
+          const updated = { ...book, summaries: [...book.summaries] };
+          updated.summaries[idx] = { ...updated.summaries[idx], is_hearted: !currentVal };
+          next.set(bookId, updated);
+          break;
+        }
+      }
+      return next;
+    });
+    await toggleHeart('manifest_summaries', id, currentVal);
+  }, [toggleHeart]);
+
+  const handleHeartPrinciple = useCallback(async (id: string, currentVal: boolean) => {
+    setBookData((prev) => {
+      const next = new Map(prev);
+      for (const [bookId, book] of next) {
+        const idx = book.principles.findIndex((p) => p.id === id);
+        if (idx >= 0) {
+          const updated = { ...book, principles: [...book.principles] };
+          updated.principles[idx] = { ...updated.principles[idx], is_hearted: !currentVal };
+          next.set(bookId, updated);
+          break;
+        }
+      }
+      return next;
+    });
+    await toggleHeart('ai_framework_principles', id, currentVal);
+  }, [toggleHeart]);
+
+  const handleHeartDeclaration = useCallback(async (id: string, currentVal: boolean) => {
+    setBookData((prev) => {
+      const next = new Map(prev);
+      for (const [bookId, book] of next) {
+        const idx = book.declarations.findIndex((d) => d.id === id);
+        if (idx >= 0) {
+          const updated = { ...book, declarations: [...book.declarations] };
+          updated.declarations[idx] = { ...updated.declarations[idx], is_hearted: !currentVal };
+          next.set(bookId, updated);
+          break;
+        }
+      }
+      return next;
+    });
+    await toggleHeart('manifest_declarations', id, currentVal);
+  }, [toggleHeart]);
+
+  // --- Animated delete ---
+  const handleDeleteItem = useCallback(async (table: string, id: string) => {
+    if (!user) return;
+    setDeletingIds((prev) => new Set(prev).add(id));
+    setTimeout(async () => {
+      await supabase.from(table).update({ is_deleted: true }).eq('id', id).eq('user_id', user.id);
+      setBookData((prev) => {
+        const next = new Map(prev);
+        for (const [bookId, book] of next) {
+          const updated = { ...book };
+          updated.summaries = book.summaries.filter((s) => s.id !== id);
+          updated.declarations = book.declarations.filter((d) => d.id !== id);
+          updated.principles = book.principles.filter((p) => p.id !== id);
+          next.set(bookId, updated);
+        }
+        return next;
+      });
+      setDeletingIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
+    }, 300);
+  }, [user]);
+
+  // --- Send to Mast ---
+  const handleSendToMast = useCallback(async (declId: string) => {
+    if (!user) return;
+    setSendingToMast((prev) => new Set(prev).add(declId));
+    try {
+      let declData: ManifestDeclaration | undefined;
+      for (const book of bookData.values()) {
+        declData = book.declarations.find((d) => d.id === declId);
+        if (declData) break;
+      }
+      if (!declData) return;
+
+      const { data: mastEntry } = await supabase
+        .from('mast_entries')
+        .insert({
+          user_id: user.id,
+          type: 'declaration',
+          text: declData.declaration_text,
+          category: declData.value_name || null,
+          source: 'manifest_extraction',
+        })
+        .select('id')
+        .single();
+
+      if (mastEntry) {
+        await supabase.from('manifest_declarations')
+          .update({ sent_to_mast: true, mast_entry_id: mastEntry.id })
+          .eq('id', declId).eq('user_id', user.id);
+
+        setBookData((prev) => {
+          const next = new Map(prev);
+          for (const [bookId, book] of next) {
+            const idx = book.declarations.findIndex((d) => d.id === declId);
+            if (idx >= 0) {
+              const updated = { ...book, declarations: [...book.declarations] };
+              updated.declarations[idx] = { ...updated.declarations[idx], sent_to_mast: true, mast_entry_id: mastEntry.id };
+              next.set(bookId, updated);
+              break;
+            }
+          }
+          return next;
+        });
+      }
+    } finally {
+      setSendingToMast((prev) => { const n = new Set(prev); n.delete(declId); return n; });
+    }
+  }, [user, bookData]);
+
+  // --- Go Deeper ---
+  const handleGoDeeper = useCallback(async (
+    bookId: string,
+    tabType: 'summary' | 'mast_content',
+    sectionTitle: string | undefined,
+    existingItems: string[],
+    sectionIndex?: number,
+  ) => {
+    if (!user) return;
+    const book = bookData.get(bookId);
+    if (!book) return;
+
+    const key = `${bookId}-${tabType}`;
+    setExtractingBookTab(key);
+
+    try {
+      const extractionType = tabType === 'summary' ? 'summary' : 'mast_content';
+      const body: Record<string, unknown> = {
+        manifest_item_id: bookId,
+        extraction_type: extractionType,
+        genres: book.genres,
+        go_deeper: true,
+        existing_items: existingItems,
+      };
+      if (sectionTitle) body.section_title = sectionTitle;
+
+      const { data, error } = await supabase.functions.invoke('manifest-extract', { body });
+      if (error || data?.error) {
+        console.error('Go Deeper failed:', error?.message || data?.error);
+        return;
+      }
+
+      const result = data?.result ?? data;
+      const items = result?.items || (Array.isArray(result) ? result : []);
+
+      if (items.length > 0) {
+        const table = tabType === 'summary' ? 'manifest_summaries' : 'manifest_declarations';
+        if (tabType === 'summary') {
+          const records = items.map((item: { content_type: string; text: string; sort_order: number }, idx: number) => ({
+            user_id: user.id,
+            manifest_item_id: bookId,
+            section_title: sectionTitle || null,
+            section_index: sectionIndex ?? 0,
+            content_type: item.content_type,
+            text: item.text,
+            sort_order: item.sort_order ?? idx,
+            is_from_go_deeper: true,
+          }));
+          await supabase.from(table).insert(records);
+        } else {
+          const VALID_STYLES = ['choosing_committing', 'recognizing_awakening', 'claiming_stepping_into', 'learning_striving', 'resolute_unashamed'];
+          const records = items.map((item: { value_name?: string; declaration_text: string; declaration_style: string; sort_order: number }, idx: number) => ({
+            user_id: user.id,
+            manifest_item_id: bookId,
+            section_title: sectionTitle || null,
+            section_index: sectionIndex ?? 0,
+            value_name: item.value_name || null,
+            declaration_text: item.declaration_text,
+            declaration_style: VALID_STYLES.includes(item.declaration_style) ? item.declaration_style : 'choosing_committing',
+            sort_order: item.sort_order ?? idx,
+            is_from_go_deeper: true,
+          }));
+          await supabase.from(table).insert(records);
+        }
+
+        // Refetch this book's data
+        await fetchExtractions(Array.from(selectedIds));
+      }
+    } finally {
+      setExtractingBookTab(null);
+    }
+  }, [user, bookData, selectedIds, fetchExtractions]);
+
+  // --- Re-run ---
+  const handleReRun = useCallback(async (bookId: string, tabType: 'summary' | 'mast_content') => {
+    if (!user) return;
+    const book = bookData.get(bookId);
+    if (!book) return;
+
+    const key = `${bookId}-${tabType}`;
+    setExtractingBookTab(key);
+    setConfirmReRun(null);
+
+    try {
+      const table = tabType === 'summary' ? 'manifest_summaries' : 'manifest_declarations';
+
+      // Soft-delete all items for this book + tab
+      await supabase.from(table)
+        .update({ is_deleted: true })
+        .eq('manifest_item_id', bookId)
+        .eq('user_id', user.id);
+
+      // Re-extract from whole document
+      const extractionType = tabType === 'summary' ? 'summary' : 'mast_content';
+      const { data, error } = await supabase.functions.invoke('manifest-extract', {
+        body: {
+          manifest_item_id: bookId,
+          extraction_type: extractionType,
+          genres: book.genres,
+        },
+      });
+
+      if (!error && !data?.error) {
+        const result = data?.result ?? data;
+        const items = result?.items || (Array.isArray(result) ? result : []);
+
+        if (items.length > 0) {
+          if (tabType === 'summary') {
+            const records = items.map((item: { content_type: string; text: string; sort_order: number }, idx: number) => ({
+              user_id: user.id,
+              manifest_item_id: bookId,
+              section_title: null,
+              section_index: 0,
+              content_type: item.content_type,
+              text: item.text,
+              sort_order: item.sort_order ?? idx,
+              is_from_go_deeper: false,
+            }));
+            await supabase.from(table).insert(records);
+          } else {
+            const VALID_STYLES = ['choosing_committing', 'recognizing_awakening', 'claiming_stepping_into', 'learning_striving', 'resolute_unashamed'];
+            const records = items.map((item: { value_name?: string; declaration_text: string; declaration_style: string; sort_order: number }, idx: number) => ({
+              user_id: user.id,
+              manifest_item_id: bookId,
+              section_title: null,
+              section_index: 0,
+              value_name: item.value_name || null,
+              declaration_text: item.declaration_text,
+              declaration_style: VALID_STYLES.includes(item.declaration_style) ? item.declaration_style : 'choosing_committing',
+              sort_order: item.sort_order ?? idx,
+              is_from_go_deeper: false,
+            }));
+            await supabase.from(table).insert(records);
+          }
+        }
+      }
+
+      await fetchExtractions(Array.from(selectedIds));
+    } finally {
+      setExtractingBookTab(null);
+    }
+  }, [user, bookData, selectedIds, fetchExtractions]);
+
+  // --- Counts ---
   const totalCounts = useMemo(() => {
     let summaries = 0, frameworks = 0, declarations = 0;
     for (const d of selectedData) {
@@ -155,17 +463,279 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
     return undefined;
   }, [exportGroups]);
 
-  const handleExportMd = useCallback(() => {
-    exportExtractionsMd(exportGroups, singleBookTitle);
-  }, [exportGroups, singleBookTitle]);
+  const handleExportMd = useCallback(() => exportExtractionsMd(exportGroups, singleBookTitle), [exportGroups, singleBookTitle]);
+  const handleExportTxt = useCallback(() => exportExtractionsTxt(exportGroups, singleBookTitle), [exportGroups, singleBookTitle]);
+  const handleExportDocx = useCallback(async () => exportExtractionsDocx(exportGroups, singleBookTitle), [exportGroups, singleBookTitle]);
 
-  const handleExportTxt = useCallback(() => {
-    exportExtractionsTxt(exportGroups, singleBookTitle);
-  }, [exportGroups, singleBookTitle]);
+  // --- Render helpers ---
 
-  const handleExportDocx = useCallback(async () => {
-    await exportExtractionsDocx(exportGroups, singleBookTitle);
-  }, [exportGroups, singleBookTitle]);
+  const renderSummarySection = (book: BookExtractions) => {
+    const visible = filterMode === 'hearted'
+      ? book.summaries.filter((s) => s.is_hearted)
+      : book.summaries;
+
+    if (visible.length === 0) {
+      return <div className="extraction-tab__empty"><p>{filterMode === 'hearted' ? 'No hearted summaries.' : 'No summaries extracted.'}</p></div>;
+    }
+
+    const sections = groupBySection(visible);
+    const isExtracting = extractingBookTab === `${book.bookId}-summary`;
+
+    return (
+      <div className="extraction-tab">
+        {isExtracting && (
+          <div className="extraction-tab__progress">
+            <div className="extraction-tab__progress-bar" />
+            <span>Extracting...</span>
+          </div>
+        )}
+
+        <div className="extraction-tab__toolbar">
+          {confirmReRun === `${book.bookId}-summary` ? (
+            <div className="extraction-tab__confirm">
+              <span>Replace all summaries with fresh extraction?</span>
+              <Button size="sm" onClick={() => handleReRun(book.bookId, 'summary')}>Re-run</Button>
+              <Button size="sm" variant="text" onClick={() => setConfirmReRun(null)}>Cancel</Button>
+            </div>
+          ) : (
+            <button type="button" className="extraction-tab__rerun-btn" onClick={() => setConfirmReRun(`${book.bookId}-summary`)} disabled={isExtracting}>
+              <RefreshCw size={12} /> Re-run
+            </button>
+          )}
+        </div>
+
+        {sections.map(([sectionKey, items]) => {
+          const collapseKey = `${book.bookId}-summary-${sectionKey}`;
+          const isCollapsed = collapsedSections.has(collapseKey);
+          const label = sectionKey === '__full_book__' ? 'Full Book' : sectionKey;
+
+          return (
+            <div key={sectionKey} className="extraction-tab__section">
+              <button type="button" className="extraction-tab__section-header" onClick={() => toggleSection(collapseKey)}>
+                {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+                <span className="extraction-tab__section-title">{label}</span>
+                <span className="extraction-tab__section-count">{items.length}</span>
+              </button>
+
+              {!isCollapsed && (
+                <div className="extraction-tab__section-items">
+                  {items.map((item) => (
+                    <div key={item.id} className={`extraction-item${item.is_from_go_deeper ? ' extraction-item--deeper' : ''}${deletingIds.has(item.id) ? ' extraction-item--deleting' : ''}`}>
+                      <div className="extraction-item__type-badge">{item.content_type.replace(/_/g, ' ')}</div>
+                      <p className="extraction-item__text">
+                        {item.is_from_go_deeper && <Sparkles size={12} className="extraction-item__deeper-icon" />}
+                        {item.text}
+                      </p>
+                      <div className="extraction-item__actions">
+                        <button
+                          type="button"
+                          className={`extraction-item__heart${item.is_hearted ? ' extraction-item__heart--active' : ''}`}
+                          onClick={() => handleHeartSummary(item.id, item.is_hearted)}
+                          title={item.is_hearted ? 'Remove heart' : 'Heart this'}
+                        >
+                          <Heart size={14} fill={item.is_hearted ? 'currentColor' : 'none'} />
+                        </button>
+                        <button type="button" className="extraction-item__delete" onClick={() => handleDeleteItem('manifest_summaries', item.id)} title="Delete">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                  <button
+                    type="button"
+                    className="extraction-tab__go-deeper"
+                    onClick={() => handleGoDeeper(
+                      book.bookId,
+                      'summary',
+                      sectionKey === '__full_book__' ? undefined : sectionKey,
+                      items.map((i) => i.text),
+                      items[0]?.section_index,
+                    )}
+                    disabled={isExtracting}
+                  >
+                    Go Deeper
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderFrameworksSection = (book: BookExtractions) => {
+    const visible = filterMode === 'hearted'
+      ? book.principles.filter((p) => p.is_hearted)
+      : book.principles;
+
+    if (visible.length === 0) {
+      return <div className="extraction-tab__empty"><p>{filterMode === 'hearted' ? 'No hearted principles.' : 'No framework principles extracted.'}</p></div>;
+    }
+
+    const sections = groupBySection(
+      visible.map((p) => ({ ...p, section_title: p.section_title || null, section_index: 0 })),
+      '__general__',
+    );
+
+    return (
+      <div className="extraction-tab">
+        {sections.map(([sectionKey, items]) => {
+          const collapseKey = `${book.bookId}-fw-${sectionKey}`;
+          const isCollapsed = collapsedSections.has(collapseKey);
+          const label = sectionKey === '__general__' ? 'General' : sectionKey;
+
+          return (
+            <div key={sectionKey} className="extraction-tab__section">
+              <button type="button" className="extraction-tab__section-header" onClick={() => toggleSection(collapseKey)}>
+                {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+                <span className="extraction-tab__section-title">{label}</span>
+                <span className="extraction-tab__section-count">{items.length}</span>
+              </button>
+
+              {!isCollapsed && (
+                <div className="extraction-tab__section-items">
+                  {items.map((item) => (
+                    <div key={item.id} className={`extraction-item${item.is_from_go_deeper ? ' extraction-item--deeper' : ''}${deletingIds.has(item.id) ? ' extraction-item--deleting' : ''}`}>
+                      <p className="extraction-item__text">
+                        {item.is_from_go_deeper && <Sparkles size={12} className="extraction-item__deeper-icon" />}
+                        {item.text}
+                      </p>
+                      <div className="extraction-item__actions">
+                        <button
+                          type="button"
+                          className={`extraction-item__heart${item.is_hearted ? ' extraction-item__heart--active' : ''}`}
+                          onClick={() => handleHeartPrinciple(item.id, item.is_hearted)}
+                        >
+                          <Heart size={14} fill={item.is_hearted ? 'currentColor' : 'none'} />
+                        </button>
+                        <button type="button" className="extraction-item__delete" onClick={() => handleDeleteItem('ai_framework_principles', item.id)}>
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderMastContentSection = (book: BookExtractions) => {
+    const visible = filterMode === 'hearted'
+      ? book.declarations.filter((d) => d.is_hearted)
+      : book.declarations;
+
+    if (visible.length === 0) {
+      return <div className="extraction-tab__empty"><p>{filterMode === 'hearted' ? 'No hearted declarations.' : 'No declarations extracted.'}</p></div>;
+    }
+
+    const sections = groupBySection(visible);
+    const isExtracting = extractingBookTab === `${book.bookId}-mast_content`;
+
+    return (
+      <div className="extraction-tab">
+        {isExtracting && (
+          <div className="extraction-tab__progress">
+            <div className="extraction-tab__progress-bar" />
+            <span>Extracting...</span>
+          </div>
+        )}
+
+        <div className="extraction-tab__toolbar">
+          {confirmReRun === `${book.bookId}-mast_content` ? (
+            <div className="extraction-tab__confirm">
+              <span>Replace all declarations with fresh extraction?</span>
+              <Button size="sm" onClick={() => handleReRun(book.bookId, 'mast_content')}>Re-run</Button>
+              <Button size="sm" variant="text" onClick={() => setConfirmReRun(null)}>Cancel</Button>
+            </div>
+          ) : (
+            <button type="button" className="extraction-tab__rerun-btn" onClick={() => setConfirmReRun(`${book.bookId}-mast_content`)} disabled={isExtracting}>
+              <RefreshCw size={12} /> Re-run
+            </button>
+          )}
+        </div>
+
+        {sections.map(([sectionKey, items]) => {
+          const collapseKey = `${book.bookId}-mast-${sectionKey}`;
+          const isCollapsed = collapsedSections.has(collapseKey);
+          const label = sectionKey === '__full_book__' ? 'Full Book' : sectionKey;
+
+          return (
+            <div key={sectionKey} className="extraction-tab__section">
+              <button type="button" className="extraction-tab__section-header" onClick={() => toggleSection(collapseKey)}>
+                {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+                <span className="extraction-tab__section-title">{label}</span>
+                <span className="extraction-tab__section-count">{items.length}</span>
+              </button>
+
+              {!isCollapsed && (
+                <div className="extraction-tab__section-items">
+                  {items.map((item) => (
+                    <div key={item.id} className={`extraction-item extraction-item--declaration${item.is_from_go_deeper ? ' extraction-item--deeper' : ''}${deletingIds.has(item.id) ? ' extraction-item--deleting' : ''}`}>
+                      <div className="extraction-item__declaration-meta">
+                        {item.value_name && <span className="extraction-item__value-name">{item.value_name}</span>}
+                        <span className="extraction-item__style-label">{DECLARATION_STYLE_LABELS[item.declaration_style]}</span>
+                      </div>
+                      <p className="extraction-item__text extraction-item__text--declaration">
+                        {item.is_from_go_deeper && <Sparkles size={12} className="extraction-item__deeper-icon" />}
+                        &ldquo;{item.declaration_text}&rdquo;
+                      </p>
+                      <div className="extraction-item__actions">
+                        <button
+                          type="button"
+                          className={`extraction-item__heart${item.is_hearted ? ' extraction-item__heart--active' : ''}`}
+                          onClick={() => handleHeartDeclaration(item.id, item.is_hearted)}
+                        >
+                          <Heart size={14} fill={item.is_hearted ? 'currentColor' : 'none'} />
+                        </button>
+                        {item.sent_to_mast ? (
+                          <span className="extraction-item__mast-sent">In Mast</span>
+                        ) : (
+                          <button
+                            type="button"
+                            className="extraction-item__send-mast"
+                            onClick={() => handleSendToMast(item.id)}
+                            disabled={sendingToMast.has(item.id)}
+                            title="Send to Mast"
+                          >
+                            <Anchor size={14} />
+                            {sendingToMast.has(item.id) ? 'Sending...' : 'Send to Mast'}
+                          </button>
+                        )}
+                        <button type="button" className="extraction-item__delete" onClick={() => handleDeleteItem('manifest_declarations', item.id)}>
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                  <button
+                    type="button"
+                    className="extraction-tab__go-deeper"
+                    onClick={() => handleGoDeeper(
+                      book.bookId,
+                      'mast_content',
+                      sectionKey === '__full_book__' ? undefined : sectionKey,
+                      items.map((i) => i.declaration_text),
+                      items[0]?.section_index,
+                    )}
+                    disabled={isExtracting}
+                  >
+                    Go Deeper
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
     <div className="extractions-view">
@@ -240,6 +810,18 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
                 </button>
               </div>
 
+              {/* Filter toggle */}
+              <div className="extraction-tabs__filter">
+                <button
+                  type="button"
+                  className={`extraction-tabs__filter-btn${filterMode === 'hearted' ? ' extraction-tabs__filter-btn--active' : ''}`}
+                  onClick={() => setFilterMode((m) => m === 'hearted' ? 'all' : 'hearted')}
+                >
+                  <Heart size={12} fill={filterMode === 'hearted' ? 'currentColor' : 'none'} />
+                  {filterMode === 'hearted' ? 'Hearted' : 'All'}
+                </button>
+              </div>
+
               {/* Content */}
               {loading ? (
                 <div className="extractions-view__loading">Loading extractions...</div>
@@ -247,70 +829,11 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
                 <div className="extractions-view__content">
                   {selectedData.map((group) => (
                     <div key={group.bookId} className="extractions-view__book-section">
-                      {selectedIds.size > 1 && (
-                        <h3 className="extractions-view__book-heading">{group.bookTitle}</h3>
-                      )}
+                      <h3 className="extractions-view__book-heading">{group.bookTitle}</h3>
 
-                      {activeTab === 'summary' && (
-                        group.summaries.length === 0 ? (
-                          <div className="extractions-view__tab-empty">No summaries extracted.</div>
-                        ) : (
-                          group.summaries.map((s) => (
-                            <div key={s.id} className="extractions-view__item">
-                              <div className="extractions-view__item-row">
-                                <span className="extractions-view__item-badge">{s.content_type.replace(/_/g, ' ')}</span>
-                                {s.is_hearted && <Heart size={12} className="extractions-view__hearted" fill="currentColor" />}
-                              </div>
-                              <div className="extractions-view__item-text">{s.text}</div>
-                              {s.section_title && (
-                                <div className="extractions-view__item-section">{s.section_title}</div>
-                              )}
-                            </div>
-                          ))
-                        )
-                      )}
-
-                      {activeTab === 'frameworks' && (
-                        group.principles.length === 0 ? (
-                          <div className="extractions-view__tab-empty">No framework principles extracted.</div>
-                        ) : (
-                          <>
-                            {group.principles[0]?.framework_name && (
-                              <div className="extractions-view__framework-name">{group.principles[0].framework_name}</div>
-                            )}
-                            {group.principles.map((p) => (
-                              <div key={p.id} className="extractions-view__item">
-                                <div className="extractions-view__item-row">
-                                  {p.is_hearted && <Heart size={12} className="extractions-view__hearted" fill="currentColor" />}
-                                </div>
-                                <div className="extractions-view__item-text">{p.text}</div>
-                                {p.section_title && (
-                                  <div className="extractions-view__item-section">{p.section_title}</div>
-                                )}
-                              </div>
-                            ))}
-                          </>
-                        )
-                      )}
-
-                      {activeTab === 'mast_content' && (
-                        group.declarations.length === 0 ? (
-                          <div className="extractions-view__tab-empty">No declarations extracted.</div>
-                        ) : (
-                          group.declarations.map((d) => (
-                            <div key={d.id} className="extractions-view__item">
-                              <div className="extractions-view__item-row">
-                                {d.value_name && <span className="extractions-view__item-badge">{d.value_name}</span>}
-                                {d.is_hearted && <Heart size={12} className="extractions-view__hearted" fill="currentColor" />}
-                              </div>
-                              <div className="extractions-view__item-text">{d.declaration_text}</div>
-                              {d.section_title && (
-                                <div className="extractions-view__item-section">{d.section_title}</div>
-                              )}
-                            </div>
-                          ))
-                        )
-                      )}
+                      {activeTab === 'summary' && renderSummarySection(group)}
+                      {activeTab === 'frameworks' && renderFrameworksSection(group)}
+                      {activeTab === 'mast_content' && renderMastContentSection(group)}
                     </div>
                   ))}
                 </div>

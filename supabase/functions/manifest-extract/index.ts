@@ -46,9 +46,10 @@ Look for: overlooked nuances, secondary insights, supporting evidence, contrasti
 const FRAMEWORK_EXTRACTION_PROMPT = `You are an expert at distilling books and content into concise, actionable principles. Given the text of a book section or document, extract the key principles, mental models, and actionable frameworks.
 
 Rules:
-- Extract 5-20 principles depending on content richness (more for richer content, fewer for shorter sections)
+- Extract 5-25 principles depending on content richness (more for richer content with multiple processes or techniques, fewer for shorter or thematic sections)
 - Default principle length: 1-3 complete sentences. Never cut off mid-thought.
 - EXCEPTION — Processes, systems, and step-by-step methods: When content describes a multi-step process, a system, or a sequential method, extract it as a structured principle with numbered steps. These may be 3-8 sentences to capture the full process.
+- NEVER skip a named process, technique, step sequence, or method. If the content describes a specific procedure with steps (e.g., "The Rule of 3," "The 5-Step Correction Process," "How to disagree appropriately"), extract the COMPLETE process with all steps. These are often the most valuable content in the source material.
 - Focus on ACTIONABLE insights — things that can guide decisions and behavior
 - Include the source's unique language/metaphors when they capture concepts well
 - Don't just summarize — extract the tools and models
@@ -156,9 +157,10 @@ Extract the key concepts, stories, metaphors, lessons, and insights that capture
 
 === TASK 2: FRAMEWORK PRINCIPLES ===
 Extract the key principles, mental models, and actionable frameworks.
-- Extract 5-20 principles depending on content richness
+- Extract 5-25 principles depending on content richness (more for richer content with multiple processes or techniques, fewer for shorter or thematic sections)
 - Default principle length: 1-3 complete sentences. Never cut off mid-thought.
 - EXCEPTION — Processes, systems, and step-by-step methods: extract as structured principles with numbered steps (3-8 sentences)
+- NEVER skip a named process, technique, step sequence, or method. If the content describes a specific procedure with steps (e.g., "The Rule of 3," "The 5-Step Correction Process," "How to disagree appropriately"), extract the COMPLETE process with all steps. These are often the most valuable content in the source material.
 - Focus on ACTIONABLE insights — things that can guide decisions and behavior
 - Include the source's unique language/metaphors when they capture concepts well
 - Don't just summarize — extract the tools and models
@@ -208,10 +210,12 @@ CRITICAL RULES:
 - Sections must cover the ENTIRE document with NO GAPS. Every character must belong to a section.
 - Section boundaries must be contiguous: section 1 ends where section 2 begins, section 2 ends where section 3 begins, etc.
 - The first section must start at character 0. The last section must end at the final character of the document.
-- Identify 3-15 sections depending on document length and structure
+- Identify 3-30 sections depending on document length and structure
+- Always prefer individual chapters over grouped/meta sections. If the text references "Chapters X-Y" as a group (e.g., a book's structural overview like "Trunk Section (Chapters 7-15)"), still split into individual chapters. The meta-grouping title can be noted in the section description but each chapter should be its own section.
+- If the document has individually titled chapters, each chapter should be its own section, even if the book groups them into parts or sections.
 - Use chapter headings if they exist in the text
 - If no clear chapter structure, identify major topic shifts
-- Each section should be substantial enough to contain extractable principles (at least 2000 characters)
+- Each section should be substantial enough to contain extractable principles (at least 2000 characters). For documents with many short chapters, it is acceptable for sections to be shorter than 2000 characters rather than merging chapters together.
 - Section titles should be descriptive of the CONTENT, not just "Chapter 1"
 - Include ALL content — introductions, conclusions, and all chapters. The user will choose which to skip.
 
