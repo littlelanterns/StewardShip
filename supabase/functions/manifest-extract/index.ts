@@ -12,12 +12,12 @@ function buildGenreContext(genres: string[]): string {
 
   const genreGuidance: Record<string, string> = {
     non_fiction: 'This is non-fiction. Focus on key concepts, frameworks, actionable insights, and mental models the author teaches.',
-    fiction: 'This is fiction. Focus on character development, thematic insights, narrative arcs, allegorical meaning, lessons embedded in the story, and memorable quotes — lines of dialogue or narration that capture something profound, beautiful, or true. Fiction often carries its deepest wisdom in its most quotable lines.',
+    fiction: 'This is fiction. For the narrative_summary, focus on plot events, character actions, conflicts, and story progression. Then extract: character development, thematic insights, allegorical meaning, lessons embedded in the story, and memorable quotes — lines of dialogue or narration that capture something profound, beautiful, or true. Fiction often carries its deepest wisdom in its most quotable lines.',
     biography_memoir: 'This is biography/memoir. Focus on pivotal life moments, character-defining decisions, relationship lessons, and wisdom earned through experience.',
     scriptures_sacred: 'This is scripture or sacred text. Focus on spiritual principles, doctrinal points, devotional insights, promises, and commandments. Treat the text with reverence.',
     workbook: 'This is a workbook or practical guide. Focus on exercises, self-assessment frameworks, action steps, and structured processes the reader is meant to apply.',
     poetry_essays: 'This is poetry or essay collection. Focus on imagery, emotional resonance, philosophical insights, and the distinctive voice/perspective of the author.',
-    allegory_parable: 'This is allegory or parable. Focus on the symbolic meanings beneath the surface narrative, moral lessons, teaching metaphors that illuminate truth, and memorable quotes — lines that distill the allegory\'s deeper meaning into words worth remembering.',
+    allegory_parable: 'This is allegory or parable. For the narrative_summary, cover both the surface events and hint at the symbolic layer beneath. Then extract: symbolic meanings beneath the surface narrative, moral lessons, teaching metaphors that illuminate truth, and memorable quotes — lines that distill the allegory\'s deeper meaning into words worth remembering.',
     devotional_spiritual_memoir: 'This is devotional or spiritual memoir. Focus on the spiritual growth journey, faith formation moments, personal revelation, and the intersection of lived experience with divine purpose.',
   };
 
@@ -90,8 +90,9 @@ No markdown backticks, no preamble.`;
 const SUMMARY_EXTRACTION_PROMPT = `You are an expert at extracting the essential content from books and documents. Given the text, extract the key concepts, stories, metaphors, lessons, and insights that capture the essence of this content.
 
 Rules:
+- SECTION SYNOPSIS: ALWAYS begin with a "narrative_summary" item — a 3-6 sentence overview of what this section covers and its key takeaways. For fiction/allegory, summarize the plot events, character actions, and how the story advances. For non-fiction, summarize the chapter's argument, main points, and what the reader should take away. This anchors all the detailed extractions that follow.
 - COHESION RULE: Group related ideas into a single item. A multi-step process, a complete story arc, or a cluster of related points from the same concept should be ONE item, not split across several. Prefer fewer, richer items over more granular ones.
-- Use section length as a rough guide: ~1 item per 2,000-3,000 characters of input. A short section should produce 2-5 items, a long one 8-15. Exceed this for genuinely dense content, but never pad with thin extractions to fill a quota.
+- Use section length as a rough guide: ~1 item per 2,000-3,000 characters of input (not counting the narrative_summary). A short section should produce 2-5 items, a long one 8-15. Exceed this for genuinely dense content, but never pad with thin extractions to fill a quota.
 - Each item should STAND ALONE — someone reading just that item should understand it without having read the book
 - Capture diverse content types: key concepts, memorable stories, powerful metaphors, character insights, practical lessons, notable quotes, thematic observations
 - Preserve the author's distinctive language when it captures something uniquely well
@@ -104,16 +105,17 @@ Rules:
 Return ONLY a JSON object:
 {
   "items": [
-    { "content_type": "key_concept", "text": "Clear explanation of the concept...", "sort_order": 0 },
-    { "content_type": "story", "text": "Brief but complete retelling of the key story and its lesson...", "sort_order": 1 },
-    { "content_type": "metaphor", "text": "The author's metaphor and what it illuminates...", "sort_order": 2 },
-    { "content_type": "lesson", "text": "A practical lesson drawn from the content...", "sort_order": 3 },
-    { "content_type": "quote", "text": "\"Exact quote from the text.\" — Speaker or context", "sort_order": 4 },
-    { "content_type": "insight", "text": "A deeper insight or observation...", "sort_order": 5 }
+    { "content_type": "narrative_summary", "text": "Synopsis of what this section covers and its key takeaways...", "sort_order": 0 },
+    { "content_type": "key_concept", "text": "Clear explanation of the concept...", "sort_order": 1 },
+    { "content_type": "story", "text": "Brief but complete retelling of the key story and its lesson...", "sort_order": 2 },
+    { "content_type": "metaphor", "text": "The author's metaphor and what it illuminates...", "sort_order": 3 },
+    { "content_type": "lesson", "text": "A practical lesson drawn from the content...", "sort_order": 4 },
+    { "content_type": "quote", "text": "\"Exact quote from the text.\" — Speaker or context", "sort_order": 5 },
+    { "content_type": "insight", "text": "A deeper insight or observation...", "sort_order": 6 }
   ]
 }
 
-Valid content_type values: "key_concept", "story", "metaphor", "lesson", "quote", "insight", "theme", "character_insight", "exercise", "principle"
+Valid content_type values: "narrative_summary", "key_concept", "story", "metaphor", "lesson", "quote", "insight", "theme", "character_insight", "exercise", "principle"
 No markdown backticks, no preamble.`;
 
 const MAST_CONTENT_EXTRACTION_PROMPT = `You are helping someone distill the wisdom from a book into personal declarations — honest commitment statements they can live by.
@@ -149,8 +151,9 @@ const COMBINED_SECTION_PROMPT = `You are an expert at extracting the essential c
 
 === TASK 1: SUMMARIES ===
 Extract the key concepts, stories, metaphors, lessons, and insights that capture the essence of this content.
+- SECTION SYNOPSIS: ALWAYS begin with a "narrative_summary" item — a 3-6 sentence overview of what this section covers and its key takeaways. For fiction/allegory, summarize the plot events, character actions, and how the story advances. For non-fiction, summarize the chapter's argument, main points, and what the reader should take away. This anchors all the detailed extractions that follow.
 - COHESION RULE: Group related ideas into a single item. A multi-step process, a complete story arc, or a cluster of related points from the same concept should be ONE item, not split across several. Prefer fewer, richer items over more granular ones.
-- Use section length as a rough guide: ~1 item per 2,000-3,000 characters of input. A short section should produce 2-5 items, a long one 8-15. Exceed this for genuinely dense content, but never pad with thin extractions to fill a quota.
+- Use section length as a rough guide: ~1 item per 2,000-3,000 characters of input (not counting the narrative_summary). A short section should produce 2-5 items, a long one 8-15. Exceed this for genuinely dense content, but never pad with thin extractions to fill a quota.
 - Each item should STAND ALONE — someone reading just that item should understand it without having read the book
 - Capture diverse content types: key concepts, memorable stories, powerful metaphors, character insights, practical lessons, notable quotes, thematic observations
 - Preserve the author's distinctive language when it captures something uniquely well
@@ -159,7 +162,7 @@ Extract the key concepts, stories, metaphors, lessons, and insights that capture
 - For quotes: extract the EXACT words from the text — do not paraphrase. Include the speaker or context briefly (e.g., "Aslan says: '...'"). Prioritize lines that are profound, beautiful, moving, or capture deep truth.
 - Label each item with its content_type
 - Do NOT extract trivial filler content
-- Valid content_type values: "key_concept", "story", "metaphor", "lesson", "quote", "insight", "theme", "character_insight", "exercise", "principle"
+- Valid content_type values: "narrative_summary", "key_concept", "story", "metaphor", "lesson", "quote", "insight", "theme", "character_insight", "exercise", "principle"
 
 === TASK 2: FRAMEWORK PRINCIPLES ===
 Extract the key principles, mental models, and actionable frameworks.
