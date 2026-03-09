@@ -630,22 +630,6 @@ export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsVie
     }
   }, [user, bookData, selectedIds, fetchExtractions]);
 
-  // --- Counts ---
-  const totalCounts = useMemo(() => {
-    let summaries = 0, frameworks = 0, declarations = 0, actionSteps = 0, notes = 0;
-    for (const d of selectedData) {
-      summaries += d.summaries.length;
-      frameworks += d.principles.length;
-      declarations += d.declarations.length;
-      actionSteps += d.actionSteps.length;
-      notes += d.summaries.filter((s) => s.user_note).length;
-      notes += d.principles.filter((p) => p.user_note).length;
-      notes += d.declarations.filter((dc) => dc.user_note).length;
-      notes += d.actionSteps.filter((a) => a.user_note).length;
-    }
-    return { summaries, frameworks, declarations, actionSteps, notes };
-  }, [selectedData]);
-
   // Derive sorted tag list from all selected books' frameworks (most-used first)
   const allTags = useMemo(() => {
     const counts: Record<string, number> = {};
