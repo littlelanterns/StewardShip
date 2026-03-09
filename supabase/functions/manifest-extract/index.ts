@@ -287,6 +287,12 @@ CRITICAL RULES:
 - Section titles should be descriptive of the CONTENT, not just "Chapter 1"
 - Include ALL content — introductions, conclusions, and all chapters. The user will choose which to skip.
 
+SAMPLED DOCUMENTS:
+- For very large documents, you may receive evenly-spaced text samples with [POSITION: chars X-Y of Z] markers.
+- Use position markers to determine accurate start_char and end_char boundaries for each section.
+- Chapter headings may appear anywhere in the samples — scan ALL samples thoroughly for structural markers.
+- Every part of the document between position 0 and the total length must be covered by a section, including regions between samples.
+
 NON-CONTENT TAGGING:
 - Prefix section titles with [NON-CONTENT] for sections that are NOT substantive content: table of contents, bibliography, references, appendices, indexes, author bios, acknowledgments, copyright pages, endnotes, footnotes, glossaries, "also by" pages, epigraphs, dedications.
 - Do NOT tag introductions, forewords, prefaces, or conclusions as non-content — they often contain key ideas.
@@ -491,19 +497,30 @@ serve(async (req: Request) => {
 
     // --- Section Discovery (Haiku — cheap structural classification) ---
     if (extraction_type === 'discover_sections') {
-      // For discovery we need structural markers, not full content.
-      // Haiku context ~200K tokens. Keep text under 150K chars (~37K tokens)
-      // to leave room for system prompt + response. For larger docs, sample head + tail.
-      const MAX_DISCOVERY_CHARS = 150_000;
+      // Haiku context ~200K tokens. 600K chars ≈ 150K tokens, leaving ~50K for
+      // system prompt + response. This fits most books without any truncation.
+      // For very large docs (>600K), take evenly-spaced samples so the AI sees
+      // chapter headings throughout the entire document, not just head + tail.
+      const MAX_DISCOVERY_CHARS = 600_000;
       let discoveryText = item.text_content;
       console.log(`[manifest-extract] discover_sections: doc length=${discoveryText.length} chars`);
       if (discoveryText.length > MAX_DISCOVERY_CHARS) {
-        const headSize = 120_000;
-        const tailSize = 25_000;
-        discoveryText = discoveryText.substring(0, headSize)
-          + `\n\n[... ${discoveryText.length - headSize - tailSize} characters omitted for section discovery ...]\n\n`
-          + discoveryText.substring(discoveryText.length - tailSize);
-        console.log(`[manifest-extract] discover_sections: truncated to ${discoveryText.length} chars`);
+        // Take evenly-spaced samples across the full document to capture all chapter headings.
+        // Each sample is a window of text; windows are spaced to cover the entire document.
+        const sampleSize = 15_000;    // chars per sample window
+        const numSamples = Math.floor(MAX_DISCOVERY_CHARS / sampleSize); // ~40 samples
+        const step = Math.floor(discoveryText.length / numSamples);
+        const samples: string[] = [];
+        for (let i = 0; i < numSamples; i++) {
+          const start = i * step;
+          const end = Math.min(start + sampleSize, discoveryText.length);
+          samples.push(
+            `[POSITION: chars ${start}-${end} of ${discoveryText.length}]\n`
+            + discoveryText.substring(start, end)
+          );
+        }
+        discoveryText = samples.join('\n\n---\n\n');
+        console.log(`[manifest-extract] discover_sections: sampled ${numSamples} windows (${discoveryText.length} chars) from ${item.text_content.length} char doc`);
       }
 
       const response = await fetchWithRetry('https://openrouter.ai/api/v1/chat/completions', {
