@@ -130,8 +130,8 @@ FIVE DECLARATION STYLES (use the style that best fits each insight):
 CRITICAL RULES:
 - STANDALONE RULE: Each declaration must make complete sense on its own, without having read the book. Someone reading just the declaration should understand what it means and why it matters.
 - HONESTY TEST: "If someone who knows me well read this, would they see it as honest, or as performance?" Prefer honest aspiration over performative confidence.
-- COHESION RULE: One declaration per genuine value or insight. Don't create multiple declarations about slightly different angles of the same idea — find the single best expression.
-- Extract 2-6 declarations depending on content richness
+- COHESION RULE: Don't create multiple declarations about the same idea from different angles — but distinct values or insights each deserve their own declaration.
+- Extract 3-10 declarations depending on content richness. It is better to offer a declaration the user can delete than to miss one that would have resonated.
 - Each declaration should connect to a genuine value or insight from the content
 - Include an optional value_name (1-3 words) that names the underlying value: e.g., "Patience", "Courage Under Pressure", "Active Listening"
 - Use DIFFERENT styles across your extractions — don't default to just one style
@@ -186,8 +186,8 @@ FIVE DECLARATION STYLES (use the style that best fits each insight):
 3. "claiming_stepping_into" — Identity claim: "I am someone who..." / "I am stepping into..."
 4. "learning_striving" — Growth posture: "I am learning to..." / "I strive to..."
 5. "resolute_unashamed" — Bold commitment: "I will not apologize for..." / "I refuse to..."
-- COHESION RULE: One declaration per genuine value or insight. Don't create multiple declarations about slightly different angles of the same idea — find the single best expression.
-- Extract 2-6 declarations depending on content richness
+- COHESION RULE: Don't create multiple declarations about the same idea from different angles — but distinct values or insights each deserve their own declaration.
+- Extract 3-10 declarations depending on content richness. It is better to offer a declaration the user can delete than to miss one that would have resonated.
 - STANDALONE RULE: Each declaration must make complete sense on its own
 - HONESTY TEST: Prefer honest aspiration over performative confidence
 - Include an optional value_name (1-3 words) that names the underlying value
