@@ -660,26 +660,14 @@ export default function Manifest() {
             heading="No matching items"
             message="Try adjusting your filters to see more items."
           />
-        ) : libraryLayout === 'compact' ? (
-          <div className="manifest-page__compact-list">
-            {sortedItems.map((item) => (
-              <ManifestItemCard
-                key={item.id}
-                item={item}
-                onClick={selectMode ? () => toggleSelectItem(item.id) : handleSelectItem}
-                compact
-                selectable={selectMode}
-                selected={selectedIds.has(item.id)}
-              />
-            ))}
-          </div>
         ) : folderGroups.length === 1 ? (
-          <div className="manifest-page__item-list">
+          <div className={libraryLayout === 'compact' ? 'manifest-page__compact-list' : 'manifest-page__item-list'}>
             {folderGroups[0][1].map((item) => (
               <ManifestItemCard
                 key={item.id}
                 item={item}
                 onClick={selectMode ? () => toggleSelectItem(item.id) : handleSelectItem}
+                compact={libraryLayout === 'compact'}
                 selectable={selectMode}
                 selected={selectedIds.has(item.id)}
               />
@@ -693,12 +681,13 @@ export default function Manifest() {
               count={folderItems.length}
               defaultExpanded
             >
-              <div className="manifest-page__item-list">
+              <div className={libraryLayout === 'compact' ? 'manifest-page__compact-list' : 'manifest-page__item-list'}>
                 {folderItems.map((item) => (
                   <ManifestItemCard
                     key={item.id}
                     item={item}
                     onClick={selectMode ? () => toggleSelectItem(item.id) : handleSelectItem}
+                    compact={libraryLayout === 'compact'}
                     selectable={selectMode}
                     selected={selectedIds.has(item.id)}
                   />
