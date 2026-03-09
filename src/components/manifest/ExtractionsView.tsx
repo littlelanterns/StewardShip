@@ -6,7 +6,7 @@ import { useAuthContext } from '../../contexts/AuthContext';
 import type { ManifestItem, ManifestSummary, ManifestDeclaration, ManifestActionStep, AIFrameworkPrinciple, BookGenre } from '../../lib/types';
 import { DECLARATION_STYLE_LABELS, ACTION_STEP_CONTENT_TYPE_LABELS } from '../../lib/types';
 import type { ActionStepContentType } from '../../lib/types';
-import { exportExtractionsMd, exportExtractionsTxt, exportExtractionsDocx, exportNotesMd, exportNotesTxt, exportNotesDocx } from '../../lib/exportExtractions';
+import { exportExtractionsMd, exportExtractionsTxt, exportExtractionsDocx, exportNotesMd, exportNotesTxt, exportNotesDocx, exportHeartedMd, exportHeartedTxt, exportHeartedDocx } from '../../lib/exportExtractions';
 import type { BookExtractionGroup } from '../../lib/exportExtractions';
 import { Button } from '../shared';
 import './ExtractionsView.css';
@@ -15,6 +15,7 @@ import './ExtractionTabs.css';
 interface ExtractionsViewProps {
   items: ManifestItem[];
   onBack?: () => void;
+  favoritesMode?: boolean;
 }
 
 type TabType = 'summary' | 'frameworks' | 'action_steps' | 'mast_content';
@@ -29,6 +30,7 @@ interface BookExtractions {
   declarations: ManifestDeclaration[];
   actionSteps: ManifestActionStep[];
   principles: (AIFrameworkPrinciple & { framework_name?: string })[];
+  frameworkTags: string[];
 }
 
 // Group items by section_title, sorted by section_index
@@ -49,13 +51,13 @@ function groupBySection<T extends { section_title: string | null; section_index?
   });
 }
 
-export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
+export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsViewProps) {
   const navigate = useNavigate();
   const { user } = useAuthContext();
   const handleBack = onBack || (() => navigate('/manifest'));
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<TabType>('summary');
-  const [filterMode, setFilterMode] = useState<FilterMode>('all');
+  const [filterMode, setFilterMode] = useState<FilterMode>(favoritesMode ? 'hearted' : 'all');
   const [viewMode, setViewMode] = useState<ViewMode>('tabs');
   const [bookData, setBookData] = useState<Map<string, BookExtractions>>(new Map());
   const [loading, setLoading] = useState(false);
@@ -70,6 +72,7 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
   const [editingText, setEditingText] = useState('');
   const [notingId, setNotingId] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState('');
+  const [activeTag, setActiveTag] = useState<string | null>(null);
 
   const extractedItems = useMemo(
     () => items.filter((i) =>
@@ -80,10 +83,14 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
     [items],
   );
 
-  // Auto-select first extracted item
+  // Auto-select: all books in favorites mode, first book in regular mode
   useEffect(() => {
     if (extractedItems.length > 0 && selectedIds.size === 0) {
-      setSelectedIds(new Set([extractedItems[0].id]));
+      if (favoritesMode) {
+        setSelectedIds(new Set(extractedItems.map((i) => i.id)));
+      } else {
+        setSelectedIds(new Set([extractedItems[0].id]));
+      }
     }
   }, [extractedItems]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -114,7 +121,7 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
           .order('sort_order', { ascending: true }),
         supabase
           .from('ai_framework_principles')
-          .select('*, ai_frameworks!inner(manifest_item_id, name)')
+          .select('*, ai_frameworks!inner(manifest_item_id, name, tags)')
           .eq('user_id', user.id)
           .eq('is_deleted', false)
           .in('ai_frameworks.manifest_item_id', ids)
@@ -132,12 +139,18 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
 
       const summaries = (summaryRes.data || []) as ManifestSummary[];
       const declarations = (declRes.data || []) as ManifestDeclaration[];
-      const rawPrinciples = (principleRes.data || []) as Array<AIFrameworkPrinciple & { ai_frameworks: { manifest_item_id: string; name: string } }>;
+      const rawPrinciples = (principleRes.data || []) as Array<AIFrameworkPrinciple & { ai_frameworks: { manifest_item_id: string; name: string; tags: string[] | null } }>;
       const actionSteps = (actionStepRes.data || []) as ManifestActionStep[];
 
       const newData = new Map<string, BookExtractions>();
       for (const id of ids) {
         const item = extractedItems.find((i) => i.id === id);
+        const bookPrinciples = rawPrinciples.filter((p) => p.ai_frameworks.manifest_item_id === id);
+        // Collect unique tags from all frameworks associated with this book
+        const tagSet = new Set<string>();
+        bookPrinciples.forEach((p) => {
+          (p.ai_frameworks.tags || []).forEach((t) => tagSet.add(t));
+        });
         newData.set(id, {
           bookId: id,
           bookTitle: item?.title || 'Unknown Book',
@@ -145,9 +158,8 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
           summaries: summaries.filter((s) => s.manifest_item_id === id),
           declarations: declarations.filter((d) => d.manifest_item_id === id),
           actionSteps: actionSteps.filter((a) => a.manifest_item_id === id),
-          principles: rawPrinciples
-            .filter((p) => p.ai_frameworks.manifest_item_id === id)
-            .map((p) => ({ ...p, framework_name: p.ai_frameworks.name })),
+          principles: bookPrinciples.map((p) => ({ ...p, framework_name: p.ai_frameworks.name })),
+          frameworkTags: Array.from(tagSet),
         });
       }
       setBookData(newData);
@@ -634,6 +646,59 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
     return { summaries, frameworks, declarations, actionSteps, notes };
   }, [selectedData]);
 
+  // Derive sorted tag list from all selected books' frameworks (most-used first)
+  const allTags = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const d of selectedData) {
+      d.frameworkTags.forEach((tag) => {
+        counts[tag] = (counts[tag] || 0) + 1;
+      });
+    }
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([tag]) => tag);
+  }, [selectedData]);
+
+  // Filter by tag + favorites mode
+  const visibleData = useMemo(() => {
+    let data = selectedData;
+
+    // In favorites mode, filter out books with no hearted items
+    if (favoritesMode) {
+      data = data.filter((d) =>
+        d.summaries.some((s) => s.is_hearted) ||
+        d.principles.some((p) => p.is_hearted) ||
+        d.actionSteps.some((a) => a.is_hearted) ||
+        d.declarations.some((dc) => dc.is_hearted)
+      );
+    }
+
+    // Filter by active tag (books whose frameworks include the tag)
+    if (activeTag) {
+      data = data.filter((d) => d.frameworkTags.includes(activeTag));
+    }
+
+    return data;
+  }, [favoritesMode, activeTag, selectedData]);
+
+  // Counts that reflect what's actually displayed (respects filter mode + tag)
+  const displayCounts = useMemo(() => {
+    const useHearted = favoritesMode || filterMode === 'hearted';
+    let summaries = 0, frameworks = 0, declarations = 0, actionSteps = 0, notes = 0;
+    for (const d of visibleData) {
+      const vs = useHearted ? d.summaries.filter((s) => s.is_hearted) : d.summaries;
+      const vp = useHearted ? d.principles.filter((p) => p.is_hearted) : d.principles;
+      const va = useHearted ? d.actionSteps.filter((a) => a.is_hearted) : d.actionSteps;
+      const vd = useHearted ? d.declarations.filter((dc) => dc.is_hearted) : d.declarations;
+      summaries += vs.length;
+      frameworks += vp.length;
+      actionSteps += va.length;
+      declarations += vd.length;
+      notes += vs.filter((s) => s.user_note).length + vp.filter((p) => p.user_note).length + va.filter((a) => a.user_note).length + vd.filter((dc) => dc.user_note).length;
+    }
+    return { summaries, frameworks, declarations, actionSteps, notes };
+  }, [favoritesMode, filterMode, visibleData]);
+
   // --- Export ---
   const exportGroups = useMemo((): BookExtractionGroup[] => {
     return selectedData.map((d) => ({
@@ -646,13 +711,13 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
   }, [selectedData]);
 
   const singleBookTitle = useMemo(() => {
-    if (exportGroups.length === 1) return `${exportGroups[0].bookTitle} - Extractions`;
+    if (exportGroups.length === 1) return `${exportGroups[0].bookTitle} - ${favoritesMode ? 'Favorites' : 'Extractions'}`;
     return undefined;
-  }, [exportGroups]);
+  }, [exportGroups, favoritesMode]);
 
-  const handleExportMd = useCallback(() => exportExtractionsMd(exportGroups, singleBookTitle), [exportGroups, singleBookTitle]);
-  const handleExportTxt = useCallback(() => exportExtractionsTxt(exportGroups, singleBookTitle), [exportGroups, singleBookTitle]);
-  const handleExportDocx = useCallback(async () => exportExtractionsDocx(exportGroups, singleBookTitle), [exportGroups, singleBookTitle]);
+  const handleExportMd = useCallback(() => favoritesMode ? exportHeartedMd(exportGroups) : exportExtractionsMd(exportGroups, singleBookTitle), [exportGroups, singleBookTitle, favoritesMode]);
+  const handleExportTxt = useCallback(() => favoritesMode ? exportHeartedTxt(exportGroups) : exportExtractionsTxt(exportGroups, singleBookTitle), [exportGroups, singleBookTitle, favoritesMode]);
+  const handleExportDocx = useCallback(async () => favoritesMode ? exportHeartedDocx(exportGroups) : exportExtractionsDocx(exportGroups, singleBookTitle), [exportGroups, singleBookTitle, favoritesMode]);
 
   const notesTitle = useMemo(() => {
     if (exportGroups.length === 1) return `${exportGroups[0].bookTitle} - My Notes`;
@@ -678,26 +743,28 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
 
     return (
       <div className="extraction-tab">
-        {isExtracting && (
+        {!favoritesMode && isExtracting && (
           <div className="extraction-tab__progress">
             <div className="extraction-tab__progress-bar" />
             <span>Extracting...</span>
           </div>
         )}
 
-        <div className="extraction-tab__toolbar">
-          {confirmReRun === `${book.bookId}-summary` ? (
-            <div className="extraction-tab__confirm">
-              <span>Replace all summaries with fresh extraction?</span>
-              <Button size="sm" onClick={() => handleReRun(book.bookId, 'summary')}>Re-run</Button>
-              <Button size="sm" variant="text" onClick={() => setConfirmReRun(null)}>Cancel</Button>
-            </div>
-          ) : (
-            <button type="button" className="extraction-tab__rerun-btn" onClick={() => setConfirmReRun(`${book.bookId}-summary`)} disabled={isExtracting}>
-              <RefreshCw size={12} /> Re-run
-            </button>
-          )}
-        </div>
+        {!favoritesMode && (
+          <div className="extraction-tab__toolbar">
+            {confirmReRun === `${book.bookId}-summary` ? (
+              <div className="extraction-tab__confirm">
+                <span>Replace all summaries with fresh extraction?</span>
+                <Button size="sm" onClick={() => handleReRun(book.bookId, 'summary')}>Re-run</Button>
+                <Button size="sm" variant="text" onClick={() => setConfirmReRun(null)}>Cancel</Button>
+              </div>
+            ) : (
+              <button type="button" className="extraction-tab__rerun-btn" onClick={() => setConfirmReRun(`${book.bookId}-summary`)} disabled={isExtracting}>
+                <RefreshCw size={12} /> Re-run
+              </button>
+            )}
+          </div>
+        )}
 
         {sections.map(([sectionKey, items]) => {
           const collapseKey = `${book.bookId}-summary-${sectionKey}`;
@@ -774,20 +841,22 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
                     </div>
                   ))}
 
-                  <button
-                    type="button"
-                    className="extraction-tab__go-deeper"
-                    onClick={() => handleGoDeeper(
-                      book.bookId,
-                      'summary',
-                      sectionKey === '__full_book__' ? undefined : sectionKey,
-                      items.map((i) => i.text),
-                      items[0]?.section_index,
-                    )}
-                    disabled={isExtracting}
-                  >
-                    Go Deeper
-                  </button>
+                  {!favoritesMode && (
+                    <button
+                      type="button"
+                      className="extraction-tab__go-deeper"
+                      onClick={() => handleGoDeeper(
+                        book.bookId,
+                        'summary',
+                        sectionKey === '__full_book__' ? undefined : sectionKey,
+                        items.map((i) => i.text),
+                        items[0]?.section_index,
+                      )}
+                      disabled={isExtracting}
+                    >
+                      Go Deeper
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -908,26 +977,28 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
 
     return (
       <div className="extraction-tab">
-        {isExtracting && (
+        {!favoritesMode && isExtracting && (
           <div className="extraction-tab__progress">
             <div className="extraction-tab__progress-bar" />
             <span>Extracting...</span>
           </div>
         )}
 
-        <div className="extraction-tab__toolbar">
-          {confirmReRun === `${book.bookId}-action_steps` ? (
-            <div className="extraction-tab__confirm">
-              <span>Replace all action steps with fresh extraction?</span>
-              <Button size="sm" onClick={() => handleReRun(book.bookId, 'action_steps')}>Re-run</Button>
-              <Button size="sm" variant="text" onClick={() => setConfirmReRun(null)}>Cancel</Button>
-            </div>
-          ) : (
-            <button type="button" className="extraction-tab__rerun-btn" onClick={() => setConfirmReRun(`${book.bookId}-action_steps`)} disabled={isExtracting}>
-              <RefreshCw size={12} /> Re-run
-            </button>
-          )}
-        </div>
+        {!favoritesMode && (
+          <div className="extraction-tab__toolbar">
+            {confirmReRun === `${book.bookId}-action_steps` ? (
+              <div className="extraction-tab__confirm">
+                <span>Replace all action steps with fresh extraction?</span>
+                <Button size="sm" onClick={() => handleReRun(book.bookId, 'action_steps')}>Re-run</Button>
+                <Button size="sm" variant="text" onClick={() => setConfirmReRun(null)}>Cancel</Button>
+              </div>
+            ) : (
+              <button type="button" className="extraction-tab__rerun-btn" onClick={() => setConfirmReRun(`${book.bookId}-action_steps`)} disabled={isExtracting}>
+                <RefreshCw size={12} /> Re-run
+              </button>
+            )}
+          </div>
+        )}
 
         {sections.map(([sectionKey, items]) => {
           const collapseKey = `${book.bookId}-action-${sectionKey}`;
@@ -1020,20 +1091,22 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
                     </div>
                   ))}
 
-                  <button
-                    type="button"
-                    className="extraction-tab__go-deeper"
-                    onClick={() => handleGoDeeper(
-                      book.bookId,
-                      'action_steps',
-                      sectionKey === '__full_book__' ? undefined : sectionKey,
-                      items.map((i) => i.text),
-                      items[0]?.section_index,
-                    )}
-                    disabled={isExtracting}
-                  >
-                    Go Deeper
-                  </button>
+                  {!favoritesMode && (
+                    <button
+                      type="button"
+                      className="extraction-tab__go-deeper"
+                      onClick={() => handleGoDeeper(
+                        book.bookId,
+                        'action_steps',
+                        sectionKey === '__full_book__' ? undefined : sectionKey,
+                        items.map((i) => i.text),
+                        items[0]?.section_index,
+                      )}
+                      disabled={isExtracting}
+                    >
+                      Go Deeper
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -1057,26 +1130,28 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
 
     return (
       <div className="extraction-tab">
-        {isExtracting && (
+        {!favoritesMode && isExtracting && (
           <div className="extraction-tab__progress">
             <div className="extraction-tab__progress-bar" />
             <span>Extracting...</span>
           </div>
         )}
 
-        <div className="extraction-tab__toolbar">
-          {confirmReRun === `${book.bookId}-mast_content` ? (
-            <div className="extraction-tab__confirm">
-              <span>Replace all declarations with fresh extraction?</span>
-              <Button size="sm" onClick={() => handleReRun(book.bookId, 'mast_content')}>Re-run</Button>
-              <Button size="sm" variant="text" onClick={() => setConfirmReRun(null)}>Cancel</Button>
-            </div>
-          ) : (
-            <button type="button" className="extraction-tab__rerun-btn" onClick={() => setConfirmReRun(`${book.bookId}-mast_content`)} disabled={isExtracting}>
-              <RefreshCw size={12} /> Re-run
-            </button>
-          )}
-        </div>
+        {!favoritesMode && (
+          <div className="extraction-tab__toolbar">
+            {confirmReRun === `${book.bookId}-mast_content` ? (
+              <div className="extraction-tab__confirm">
+                <span>Replace all declarations with fresh extraction?</span>
+                <Button size="sm" onClick={() => handleReRun(book.bookId, 'mast_content')}>Re-run</Button>
+                <Button size="sm" variant="text" onClick={() => setConfirmReRun(null)}>Cancel</Button>
+              </div>
+            ) : (
+              <button type="button" className="extraction-tab__rerun-btn" onClick={() => setConfirmReRun(`${book.bookId}-mast_content`)} disabled={isExtracting}>
+                <RefreshCw size={12} /> Re-run
+              </button>
+            )}
+          </div>
+        )}
 
         {sections.map(([sectionKey, items]) => {
           const collapseKey = `${book.bookId}-mast-${sectionKey}`;
@@ -1169,20 +1244,22 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
                     </div>
                   ))}
 
-                  <button
-                    type="button"
-                    className="extraction-tab__go-deeper"
-                    onClick={() => handleGoDeeper(
-                      book.bookId,
-                      'mast_content',
-                      sectionKey === '__full_book__' ? undefined : sectionKey,
-                      items.map((i) => i.declaration_text),
-                      items[0]?.section_index,
-                    )}
-                    disabled={isExtracting}
-                  >
-                    Go Deeper
-                  </button>
+                  {!favoritesMode && (
+                    <button
+                      type="button"
+                      className="extraction-tab__go-deeper"
+                      onClick={() => handleGoDeeper(
+                        book.bookId,
+                        'mast_content',
+                        sectionKey === '__full_book__' ? undefined : sectionKey,
+                        items.map((i) => i.declaration_text),
+                        items[0]?.section_index,
+                      )}
+                      disabled={isExtracting}
+                    >
+                      Go Deeper
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -1197,14 +1274,16 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
       <div className="extractions-view__header">
         <button type="button" className="extractions-view__back" onClick={handleBack}>
           <ChevronLeft size={16} />
-          Back to Library
+          {favoritesMode ? 'Back' : 'Back to Library'}
         </button>
-        <h2 className="extractions-view__title">Extractions</h2>
+        <h2 className="extractions-view__title">{favoritesMode ? 'Favorites' : 'Extractions'}</h2>
       </div>
 
       {extractedItems.length === 0 ? (
         <div className="extractions-view__empty">
-          No books with extractions yet. Extract content from a book's detail page first.
+          {favoritesMode
+            ? 'No hearted items yet. Heart items you love across your books and they\'ll appear here.'
+            : 'No books with extractions yet. Extract content from a book\'s detail page first.'}
         </div>
       ) : (
         <>
@@ -1224,6 +1303,29 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
               </label>
             ))}
           </div>
+
+          {/* Tag filter bar */}
+          {allTags.length > 0 && (
+            <div className="extractions-view__tag-bar">
+              <button
+                type="button"
+                className={`extractions-view__tag-chip${activeTag === null ? ' extractions-view__tag-chip--active' : ''}`}
+                onClick={() => setActiveTag(null)}
+              >
+                All
+              </button>
+              {allTags.map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  className={`extractions-view__tag-chip${activeTag === tag ? ' extractions-view__tag-chip--active' : ''}`}
+                  onClick={() => setActiveTag(tag)}
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+          )}
 
           {selectedIds.size > 0 && (
             <>
@@ -1248,40 +1350,42 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
                     className={`extractions-view__tab${activeTab === 'summary' ? ' extractions-view__tab--active' : ''}`}
                     onClick={() => setActiveTab('summary')}
                   >
-                    Summary {totalCounts.summaries > 0 && <span className="extractions-view__tab-count">{totalCounts.summaries}</span>}
+                    Summary {displayCounts.summaries > 0 && <span className="extractions-view__tab-count">{displayCounts.summaries}</span>}
                   </button>
                   <button
                     type="button"
                     className={`extractions-view__tab${activeTab === 'frameworks' ? ' extractions-view__tab--active' : ''}`}
                     onClick={() => setActiveTab('frameworks')}
                   >
-                    Frameworks {totalCounts.frameworks > 0 && <span className="extractions-view__tab-count">{totalCounts.frameworks}</span>}
+                    Frameworks {displayCounts.frameworks > 0 && <span className="extractions-view__tab-count">{displayCounts.frameworks}</span>}
                   </button>
                   <button
                     type="button"
                     className={`extractions-view__tab${activeTab === 'action_steps' ? ' extractions-view__tab--active' : ''}`}
                     onClick={() => setActiveTab('action_steps')}
                   >
-                    Action Steps {totalCounts.actionSteps > 0 && <span className="extractions-view__tab-count">{totalCounts.actionSteps}</span>}
+                    Action Steps {displayCounts.actionSteps > 0 && <span className="extractions-view__tab-count">{displayCounts.actionSteps}</span>}
                   </button>
                   <button
                     type="button"
                     className={`extractions-view__tab${activeTab === 'mast_content' ? ' extractions-view__tab--active' : ''}`}
                     onClick={() => setActiveTab('mast_content')}
                   >
-                    Mast {totalCounts.declarations > 0 && <span className="extractions-view__tab-count">{totalCounts.declarations}</span>}
+                    Mast {displayCounts.declarations > 0 && <span className="extractions-view__tab-count">{displayCounts.declarations}</span>}
                   </button>
                 </div>
 
                 <div className="extractions-view__controls-row">
-                  <button
-                    type="button"
-                    className={`extraction-tabs__filter-btn${filterMode === 'hearted' ? ' extraction-tabs__filter-btn--active' : ''}`}
-                    onClick={() => setFilterMode((m) => m === 'hearted' ? 'all' : 'hearted')}
-                  >
-                    <Heart size={12} fill={filterMode === 'hearted' ? 'currentColor' : 'none'} />
-                    {filterMode === 'hearted' ? 'Hearted' : 'All'}
-                  </button>
+                  {!favoritesMode && (
+                    <button
+                      type="button"
+                      className={`extraction-tabs__filter-btn${filterMode === 'hearted' ? ' extraction-tabs__filter-btn--active' : ''}`}
+                      onClick={() => setFilterMode((m) => m === 'hearted' ? 'all' : 'hearted')}
+                    >
+                      <Heart size={12} fill={filterMode === 'hearted' ? 'currentColor' : 'none'} />
+                      {filterMode === 'hearted' ? 'Hearted' : 'All'}
+                    </button>
+                  )}
                   <div className="extraction-tabs__view-toggle">
                     <button
                       type="button"
@@ -1303,7 +1407,7 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
                       type="button"
                       className={`extraction-tabs__view-btn${viewMode === 'notes' ? ' extraction-tabs__view-btn--active' : ''}`}
                       onClick={() => setViewMode('notes')}
-                      title={`My notes${totalCounts.notes > 0 ? ` (${totalCounts.notes})` : ''}`}
+                      title={`My notes${displayCounts.notes > 0 ? ` (${displayCounts.notes})` : ''}`}
                     >
                       <StickyNote size={14} />
                     </button>
@@ -1313,11 +1417,15 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
 
               {/* Content */}
               {loading ? (
-                <div className="extractions-view__loading">Loading extractions...</div>
+                <div className="extractions-view__loading">Loading {favoritesMode ? 'favorites' : 'extractions'}...</div>
+              ) : favoritesMode && visibleData.length === 0 ? (
+                <div className="extractions-view__empty">
+                  No hearted items yet. Heart items you love across your books and they'll appear here.
+                </div>
               ) : viewMode === 'notes' ? (
                 /* --- Notes View: only items with user_note --- */
                 <div className="extractions-view__content">
-                  {totalCounts.notes > 0 && (
+                  {displayCounts.notes > 0 && (
                     <div className="extractions-view__export-row">
                       <span className="extractions-view__export-label">Export Notes:</span>
                       <button type="button" className="extractions-view__export-btn" onClick={handleExportNotesMd}>
@@ -1331,9 +1439,9 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
                       </button>
                     </div>
                   )}
-                  {totalCounts.notes === 0 ? (
+                  {displayCounts.notes === 0 ? (
                     <div className="extractions-view__tab-empty">No notes yet. Add notes to extraction items using the sticky note button.</div>
-                  ) : selectedData.map((group) => {
+                  ) : visibleData.map((group) => {
                     const noted = [
                       ...group.summaries.filter((s) => s.user_note).map((s) => ({ id: s.id, type: 'summary' as const, text: s.text, note: s.user_note!, badge: s.content_type.replace(/_/g, ' '), section: s.section_title, table: 'manifest_summaries' })),
                       ...group.principles.filter((p) => p.user_note).map((p) => ({ id: p.id, type: 'framework' as const, text: p.text, note: p.user_note!, badge: 'framework', section: p.section_title, table: 'ai_framework_principles' })),
@@ -1397,7 +1505,7 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
                 </div>
               ) : viewMode === 'chapters' ? (
                 <div className="extractions-view__content">
-                  {selectedData.map((group) => {
+                  {visibleData.map((group) => {
                     // Collect all unique section titles across all content types
                     const sectionMap = new Map<string, { index: number }>();
                     const addSections = (items: Array<{ section_title: string | null; section_index?: number }>) => {
@@ -1630,7 +1738,7 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
                 </div>
               ) : (
                 <div className="extractions-view__content">
-                  {selectedData.map((group) => (
+                  {visibleData.map((group) => (
                     <div key={group.bookId} className="extractions-view__book-section">
                       <button
                         type="button"
