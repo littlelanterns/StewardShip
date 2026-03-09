@@ -268,4 +268,8 @@ The following examples span all five categories of honest declaration language. 
 47. Stewardship means I honor what I've been trusted with — my responsibilities, my resources, my words, my time, my talents. I wisely use what I've been given to serve, to build, and to bless.
 48. Restoration is the process of becoming whole — stronger, truer, and filled with meaning. I honor that process at work in me and for me.
 49. I will not shrink to make others comfortable. I will grow to make others brave.
-50. I refuse to let fear write my story. I hand the pen to faith, and I trust the Author.
+50. I refuse to let fear write the story that faith has already authored.
+
+---
+
+The best declaration is the one that makes every part of you — mind, spirit, gut — say "yes, that's true." Not someday. Right now.
