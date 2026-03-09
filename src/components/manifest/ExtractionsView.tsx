@@ -900,7 +900,7 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
       : book.actionSteps;
 
     if (visible.length === 0) {
-      return <div className="extraction-tab__empty"><p>{filterMode === 'hearted' ? 'No hearted actions.' : 'No actions extracted.'}</p></div>;
+      return <div className="extraction-tab__empty"><p>{filterMode === 'hearted' ? 'No hearted action steps.' : 'No action steps extracted.'}</p></div>;
     }
 
     const sections = groupBySection(visible);
@@ -918,7 +918,7 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
         <div className="extraction-tab__toolbar">
           {confirmReRun === `${book.bookId}-action_steps` ? (
             <div className="extraction-tab__confirm">
-              <span>Replace all actions with fresh extraction?</span>
+              <span>Replace all action steps with fresh extraction?</span>
               <Button size="sm" onClick={() => handleReRun(book.bookId, 'action_steps')}>Re-run</Button>
               <Button size="sm" variant="text" onClick={() => setConfirmReRun(null)}>Cancel</Button>
             </div>
@@ -1262,7 +1262,7 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
                     className={`extractions-view__tab${activeTab === 'action_steps' ? ' extractions-view__tab--active' : ''}`}
                     onClick={() => setActiveTab('action_steps')}
                   >
-                    Actions {totalCounts.actionSteps > 0 && <span className="extractions-view__tab-count">{totalCounts.actionSteps}</span>}
+                    Action Steps {totalCounts.actionSteps > 0 && <span className="extractions-view__tab-count">{totalCounts.actionSteps}</span>}
                   </button>
                   <button
                     type="button"
@@ -1526,7 +1526,7 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
                                   )}
                                   {secActions.length > 0 && (
                                     <div className="chapter-view__type-group">
-                                      <h5 className="chapter-view__type-heading">Actions</h5>
+                                      <h5 className="chapter-view__type-heading">Action Steps</h5>
                                       {secActions.map((a) => (
                                         <div key={a.id} className={`extraction-item${a.is_from_go_deeper ? ' extraction-item--deeper' : ''}${deletingIds.has(a.id) ? ' extraction-item--deleting' : ''}`}>
                                           <div className="extraction-item__type-badge">
