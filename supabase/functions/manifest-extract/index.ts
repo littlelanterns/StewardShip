@@ -46,8 +46,8 @@ Look for: overlooked nuances, secondary insights, supporting evidence, contrasti
 const FRAMEWORK_EXTRACTION_PROMPT = `You are an expert at distilling books and content into concise, actionable principles. Given the text of a book section or document, extract the key principles, mental models, and actionable frameworks.
 
 Rules:
-- COHESION RULE: A named process, technique, or system is ONE principle — never split its steps across multiple principles. Related concepts from the same framework belong together. Prefer fewer, complete principles over many fragments.
-- Use section length as a rough guide: ~1 principle per 2,000-3,000 characters of input. A short section may produce 2-5 principles, a long one 8-15. Exceed this for genuinely dense content with many distinct techniques, but never pad with thin extractions to fill a quota.
+- COHESION RULE: A named process, technique, or system is ONE principle — never split its steps across multiple principles. But distinct standalone insights should each be their own principle even if they relate to a common theme.
+- Be thorough — extract generously. Use section length as a rough guide: ~1 principle per 1,000-2,000 characters of input. A short section may produce 3-8 principles, a long one 10-20. It is better to capture a principle that turns out to be minor than to miss one that matters. Never pad with generic filler, but do not hold back on distinct, actionable content.
 - Default principle length: 1-3 complete sentences. Never cut off mid-thought.
 - EXCEPTION — Processes, systems, and step-by-step methods: When content describes a multi-step process, a system, or a sequential method, extract it as a structured principle with numbered steps. These may be 3-8 sentences to capture the full process.
 - NEVER skip a named process, technique, step sequence, or method. If the content describes a specific procedure with steps (e.g., "The Rule of 3," "The 5-Step Correction Process," "How to disagree appropriately"), extract the COMPLETE process with all steps. These are often the most valuable content in the source material.
@@ -166,8 +166,8 @@ Extract the key concepts, stories, metaphors, lessons, and insights that capture
 
 === TASK 2: FRAMEWORK PRINCIPLES ===
 Extract the key principles, mental models, and actionable frameworks.
-- COHESION RULE: A named process, technique, or system is ONE principle — never split its steps across multiple principles. Related concepts from the same framework belong together. Prefer fewer, complete principles over many fragments.
-- Use section length as a rough guide: ~1 principle per 2,000-3,000 characters of input. A short section may produce 2-5 principles, a long one 8-15. Exceed this for genuinely dense content with many distinct techniques, but never pad.
+- COHESION RULE: A named process, technique, or system is ONE principle — never split its steps across multiple principles. But distinct standalone insights should each be their own principle even if they relate to a common theme.
+- Be thorough — extract generously. Use section length as a rough guide: ~1 principle per 1,000-2,000 characters of input. A short section may produce 3-8 principles, a long one 10-20. It is better to capture a principle that turns out to be minor than to miss one that matters. Never pad with generic filler, but do not hold back on distinct, actionable content.
 - Default principle length: 1-3 complete sentences. Never cut off mid-thought.
 - EXCEPTION — Processes, systems, and step-by-step methods: extract as structured principles with numbered steps (3-8 sentences)
 - NEVER skip a named process, technique, step sequence, or method. If the content describes a specific procedure with steps (e.g., "The Rule of 3," "The 5-Step Correction Process," "How to disagree appropriately"), extract the COMPLETE process with all steps. These are often the most valuable content in the source material.
