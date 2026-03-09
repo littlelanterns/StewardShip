@@ -170,7 +170,7 @@ serve(async (req: Request) => {
     let extractionsCopied = 0;
     if (clone_extractions && originalItem.extraction_status === 'completed') {
       // Fetch source extraction data
-      const [summariesRes, frameworksRes, declarationsRes] = await Promise.all([
+      const [summariesRes, frameworksRes, declarationsRes, actionStepsRes] = await Promise.all([
         supabase
           .from('manifest_summaries')
           .select('*')
@@ -189,11 +189,18 @@ serve(async (req: Request) => {
           .eq('manifest_item_id', sourceId)
           .eq('user_id', sourceUserId)
           .eq('is_deleted', false),
+        supabase
+          .from('manifest_action_steps')
+          .select('*')
+          .eq('manifest_item_id', sourceId)
+          .eq('user_id', sourceUserId)
+          .eq('is_deleted', false),
       ]);
 
       const sourceSummaries = summariesRes.data || [];
       const sourceFrameworks = frameworksRes.data || [];
       const sourceDeclarations = declarationsRes.data || [];
+      const sourceActionSteps = actionStepsRes.data || [];
 
       for (const [targetUserId, clonedItemId] of clonedItemMap.entries()) {
         if (targetUserId === sourceUserId) continue;
@@ -392,6 +399,50 @@ serve(async (req: Request) => {
               }
             }
 
+            // --- Action Steps merge ---
+            const { data: targetActionSteps } = await supabase
+              .from('manifest_action_steps')
+              .select('id, text, section_title, section_index, is_hearted, is_deleted')
+              .eq('manifest_item_id', clonedItemId)
+              .eq('user_id', targetUserId);
+
+            const heartedActionSteps = (targetActionSteps || []).filter((a: Record<string, unknown>) => a.is_hearted);
+            const heartedActionStepKeys = new Set(
+              heartedActionSteps.map((a: Record<string, unknown>) => `${a.text}||${a.section_title}||${a.section_index}`),
+            );
+
+            // Delete neutral action steps
+            await supabase
+              .from('manifest_action_steps')
+              .delete()
+              .eq('manifest_item_id', clonedItemId)
+              .eq('user_id', targetUserId)
+              .eq('is_hearted', false)
+              .eq('is_deleted', false);
+
+            // Insert source action steps that don't duplicate hearted items
+            const newActionSteps = sourceActionSteps
+              .filter((a: Record<string, unknown>) =>
+                !heartedActionStepKeys.has(`${a.text}||${a.section_title}||${a.section_index}`),
+              )
+              .map((a: Record<string, unknown>) => ({
+                user_id: targetUserId,
+                manifest_item_id: clonedItemId,
+                section_title: a.section_title,
+                section_index: a.section_index,
+                content_type: a.content_type,
+                text: a.text,
+                sort_order: a.sort_order,
+                is_hearted: false,
+                is_deleted: false,
+                is_from_go_deeper: a.is_from_go_deeper || false,
+                sent_to_compass: false,
+              }));
+
+            if (newActionSteps.length > 0) {
+              await supabase.from('manifest_action_steps').insert(newActionSteps);
+            }
+
             // Update cloned item metadata (extraction_status, genres, ai_summary, toc)
             await supabase
               .from('manifest_items')
@@ -471,6 +522,24 @@ serve(async (req: Request) => {
               sent_to_mast: false,
             }));
             await supabase.from('manifest_declarations').insert(declRecords);
+          }
+
+          // Clone action steps
+          if (sourceActionSteps.length > 0) {
+            const actionStepRecords = sourceActionSteps.map((a: Record<string, unknown>) => ({
+              user_id: targetUserId,
+              manifest_item_id: clonedItemId,
+              section_title: a.section_title,
+              section_index: a.section_index,
+              content_type: a.content_type,
+              text: a.text,
+              sort_order: a.sort_order,
+              is_hearted: false,
+              is_deleted: false,
+              is_from_go_deeper: a.is_from_go_deeper || false,
+              sent_to_compass: false,
+            }));
+            await supabase.from('manifest_action_steps').insert(actionStepRecords);
           }
 
           // Update cloned item's extraction_status

@@ -359,3 +359,231 @@
   justify-content: flex-end;
   margin-top: var(--spacing-xs);
 }
+
+/* Admin Book Manager */
+.admin-book-manager {
+  margin-bottom: var(--spacing-md);
+  border: 1px solid var(--color-slate-gray);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.admin-book-manager__header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-bg-secondary);
+  border: none;
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.admin-book-manager__header:hover {
+  background: var(--color-warm-sand);
+}
+
+.admin-book-manager__content {
+  padding: var(--spacing-sm);
+}
+
+.admin-book-manager__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-sm);
+}
+
+.admin-book-manager__refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px var(--spacing-sm);
+  border: 1px solid var(--color-slate-gray);
+  border-radius: var(--radius-md);
+  background: var(--color-white);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.admin-book-manager__refresh:hover {
+  border-color: var(--color-mid-teal);
+  color: var(--color-mid-teal);
+}
+
+.admin-book-manager__count {
+  font-size: var(--font-size-xs);
+  color: var(--color-slate-gray);
+}
+
+.admin-book-manager__status {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+  background: var(--color-warm-sand);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.admin-book-manager__loading {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.admin-book-manager__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.admin-book-manager__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-md);
+}
+
+.admin-book-manager__row:hover {
+  background: var(--color-bg-secondary);
+}
+
+.admin-book-manager__row-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-book-manager__row-title {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-book-manager__row-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  margin-top: 2px;
+}
+
+.admin-book-manager__badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+}
+
+.admin-book-manager__badge--done {
+  background: var(--color-mid-teal);
+  color: var(--color-white);
+}
+
+.admin-book-manager__badge--extracting {
+  background: var(--color-cognac);
+  color: var(--color-white);
+}
+
+.admin-book-manager__clone-count {
+  font-size: 10px;
+  color: var(--color-slate-gray);
+}
+
+.admin-book-manager__actions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.admin-book-manager__action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: none;
+  color: var(--color-slate-gray);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+}
+
+.admin-book-manager__action:hover:not(:disabled) {
+  background: var(--color-bg-secondary);
+  color: var(--color-mid-teal);
+}
+
+.admin-book-manager__action:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.admin-book-manager__action--danger:hover:not(:disabled) {
+  color: var(--color-error, #c0392b);
+}
+
+.admin-book-manager__confirm {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  flex-shrink: 0;
+}
+
+.admin-book-manager__confirm-text {
+  font-size: var(--font-size-xs);
+  color: var(--color-error, #c0392b);
+  font-weight: 600;
+}
+
+.admin-book-manager__confirm-yes,
+.admin-book-manager__confirm-no {
+  padding: 2px var(--spacing-sm);
+  border: 1px solid var(--color-slate-gray);
+  border-radius: var(--radius-md);
+  background: var(--color-white);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.admin-book-manager__confirm-yes {
+  border-color: var(--color-error, #c0392b);
+  color: var(--color-error, #c0392b);
+}
+
+.admin-book-manager__confirm-yes:hover {
+  background: var(--color-error, #c0392b);
+  color: var(--color-white);
+}
+
+.admin-book-manager__confirm-no:hover {
+  border-color: var(--color-mid-teal);
+}
+
+.admin-book-manager__empty {
+  padding: var(--spacing-md);
+  text-align: center;
+  font-size: var(--font-size-sm);
+  color: var(--color-slate-gray);
+}
+
+.admin-book-manager__spin {
+  animation: admin-spin 1.2s linear infinite;
+}
+
+@keyframes admin-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

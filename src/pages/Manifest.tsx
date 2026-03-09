@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Upload, StickyNote, MessageSquare, Loader, List, LayoutGrid, Heart, Layers, Trash2 } from 'lucide-react';
 import { usePageContext } from '../hooks/usePageContext';
+import { useAuthContext } from '../contexts/AuthContext';
 import { useManifest } from '../hooks/useManifest';
 import { useFrameworks } from '../hooks/useFrameworks';
 import { useManifestExtraction } from '../hooks/useManifestExtraction';
@@ -15,6 +16,7 @@ import { BookDiscussionModal } from '../components/manifest/BookDiscussionModal'
 import { BookSelector } from '../components/manifest/BookSelector';
 import { HeartedItemsView } from '../components/manifest/HeartedItemsView';
 import { ExtractionsView } from '../components/manifest/ExtractionsView';
+import { AdminBookManager } from '../components/manifest/AdminBookManager';
 import { CollapsibleGroup } from '../components/shared/CollapsibleGroup';
 import { FloatingActionButton } from '../components/shared/FloatingActionButton';
 import { Button, EmptyState, LoadingSpinner, FeatureGuide } from '../components/shared';
@@ -35,6 +37,7 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
 
 export default function Manifest() {
   usePageContext({ page: 'manifest' });
+  const { user } = useAuthContext();
   const {
     items,
     loading,
@@ -635,6 +638,11 @@ export default function Manifest() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Admin Book Manager */}
+      {user?.email === 'tenisewertman@gmail.com' && (
+        <AdminBookManager onBooksChanged={fetchItems} />
       )}
 
       {/* Processing indicator */}
