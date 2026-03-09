@@ -289,25 +289,6 @@ export default function Manifest() {
     });
   }, [items, typeFilter, usageFilter, tagFilter]);
 
-  // Group by folder (uses sortedItems so items within folders respect sort order)
-  const folderGroups = useMemo(() => {
-    const groups: Record<string, ManifestItem[]> = {};
-    for (const item of sortedItems) {
-      const folder = item.folder_group || 'Uncategorized';
-      if (!groups[folder]) groups[folder] = [];
-      groups[folder].push(item);
-    }
-    return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
-  }, [sortedItems]);
-
-  const uniqueTags = useMemo(() => getUniqueTags(), [getUniqueTags]);
-
-  // Keep selectedItem in sync with items array
-  const currentSelectedItem = useMemo(
-    () => (selectedItem ? items.find((i) => i.id === selectedItem.id) || selectedItem : null),
-    [items, selectedItem],
-  );
-
   const hasCompletedItems = items.some((i) => i.processing_status === 'completed');
   const hasExtractedItems = items.some((i) => i.extraction_status === 'completed');
   const processingItems = items.filter(
@@ -342,6 +323,25 @@ export default function Manifest() {
       }
     });
   }, [filteredItems, sortOption]);
+
+  // Group by folder (uses sortedItems so items within folders respect sort order)
+  const folderGroups = useMemo(() => {
+    const groups: Record<string, ManifestItem[]> = {};
+    for (const item of sortedItems) {
+      const folder = item.folder_group || 'Uncategorized';
+      if (!groups[folder]) groups[folder] = [];
+      groups[folder].push(item);
+    }
+    return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
+  }, [sortedItems]);
+
+  const uniqueTags = useMemo(() => getUniqueTags(), [getUniqueTags]);
+
+  // Keep selectedItem in sync with items array
+  const currentSelectedItem = useMemo(
+    () => (selectedItem ? items.find((i) => i.id === selectedItem.id) || selectedItem : null),
+    [items, selectedItem],
+  );
 
   // Get framework principles for current item
   const currentFramework = currentSelectedItem ? getFrameworkForItem(currentSelectedItem.id) : undefined;
