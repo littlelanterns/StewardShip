@@ -23,6 +23,15 @@ import './Manifest.css';
 
 type ViewMode = 'list' | 'detail' | 'upload' | 'extractions' | 'hearted';
 type LibraryLayout = 'compact' | 'grid';
+type SortOption = 'newest' | 'oldest' | 'name_asc' | 'name_desc' | 'has_extractions';
+
+const SORT_OPTIONS: { value: SortOption; label: string }[] = [
+  { value: 'newest', label: 'Newest' },
+  { value: 'oldest', label: 'Oldest' },
+  { value: 'name_asc', label: 'Name A-Z' },
+  { value: 'name_desc', label: 'Name Z-A' },
+  { value: 'has_extractions', label: 'Has Extractions' },
+];
 
 export default function Manifest() {
   usePageContext({ page: 'manifest' });
@@ -73,10 +82,11 @@ export default function Manifest() {
     deleteDiscussion,
   } = useBookDiscussions();
 
-  // Filters
+  // Filters & sort
   const [typeFilter, setTypeFilter] = useState<ManifestFileType | 'all'>('all');
   const [usageFilter, setUsageFilter] = useState<ManifestUsageDesignation | 'all'>('all');
   const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const [sortOption, setSortOption] = useState<SortOption>('newest');
 
   useEffect(() => {
     fetchItems();
@@ -279,16 +289,16 @@ export default function Manifest() {
     });
   }, [items, typeFilter, usageFilter, tagFilter]);
 
-  // Group by folder
+  // Group by folder (uses sortedItems so items within folders respect sort order)
   const folderGroups = useMemo(() => {
     const groups: Record<string, ManifestItem[]> = {};
-    for (const item of filteredItems) {
+    for (const item of sortedItems) {
       const folder = item.folder_group || 'Uncategorized';
       if (!groups[folder]) groups[folder] = [];
       groups[folder].push(item);
     }
     return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
-  }, [filteredItems]);
+  }, [sortedItems]);
 
   const uniqueTags = useMemo(() => getUniqueTags(), [getUniqueTags]);
 
@@ -305,16 +315,33 @@ export default function Manifest() {
   );
   const hasProcessingItems = processingItems.length > 0;
 
-  // Sort items: processing first, then by date newest first
+  // Sort items: processing always first, then by selected sort option
   const sortedItems = useMemo(() => {
     return [...filteredItems].sort((a, b) => {
       const aProcessing = a.processing_status === 'pending' || a.processing_status === 'processing';
       const bProcessing = b.processing_status === 'pending' || b.processing_status === 'processing';
       if (aProcessing && !bProcessing) return -1;
       if (!aProcessing && bProcessing) return 1;
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+
+      switch (sortOption) {
+        case 'oldest':
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        case 'name_asc':
+          return a.title.localeCompare(b.title);
+        case 'name_desc':
+          return b.title.localeCompare(a.title);
+        case 'has_extractions': {
+          const aExtracted = a.extraction_status === 'completed' ? 0 : 1;
+          const bExtracted = b.extraction_status === 'completed' ? 0 : 1;
+          if (aExtracted !== bExtracted) return aExtracted - bExtracted;
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        }
+        case 'newest':
+        default:
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      }
     });
-  }, [filteredItems]);
+  }, [filteredItems, sortOption]);
 
   // Get framework principles for current item
   const currentFramework = currentSelectedItem ? getFrameworkForItem(currentSelectedItem.id) : undefined;
@@ -537,17 +564,32 @@ export default function Manifest() {
         </div>
       )}
 
-      {/* Filter bar */}
+      {/* Filter bar + sort */}
       {items.length > 0 && (
-        <ManifestFilterBar
-          typeFilter={typeFilter}
-          usageFilter={usageFilter}
-          tagFilter={tagFilter}
-          uniqueTags={uniqueTags}
-          onTypeChange={setTypeFilter}
-          onUsageChange={setUsageFilter}
-          onTagChange={setTagFilter}
-        />
+        <>
+          <ManifestFilterBar
+            typeFilter={typeFilter}
+            usageFilter={usageFilter}
+            tagFilter={tagFilter}
+            uniqueTags={uniqueTags}
+            onTypeChange={setTypeFilter}
+            onUsageChange={setUsageFilter}
+            onTagChange={setTagFilter}
+          />
+          <div className="manifest-page__sort-bar">
+            <span className="manifest-page__sort-label">Sort:</span>
+            {SORT_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                className={`manifest-page__sort-btn${sortOption === opt.value ? ' manifest-page__sort-btn--active' : ''}`}
+                onClick={() => setSortOption(opt.value)}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </>
       )}
 
       {/* Content */}

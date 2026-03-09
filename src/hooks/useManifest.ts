@@ -25,7 +25,7 @@ export function useManifest() {
     try {
       const { data, error: fetchErr } = await supabase
         .from('manifest_items')
-        .select('*')
+        .select('id, user_id, title, file_type, file_name, storage_path, file_size_bytes, usage_designations, tags, folder_group, processing_status, processing_detail, chunk_count, intake_completed, ai_summary, extraction_status, genres, source_manifest_item_id, archived_at, created_at, updated_at')
         .eq('user_id', user.id)
         .is('archived_at', null)
         .order('folder_group')

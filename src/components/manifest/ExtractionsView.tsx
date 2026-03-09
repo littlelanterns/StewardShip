@@ -53,6 +53,7 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
   const [bookData, setBookData] = useState<Map<string, BookExtractions>>(new Map());
   const [loading, setLoading] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+  const [collapsedBooks, setCollapsedBooks] = useState<Set<string>>(new Set());
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const [extractingBookTab, setExtractingBookTab] = useState<string | null>(null);
   const [confirmReRun, setConfirmReRun] = useState<string | null>(null); // bookId or null
@@ -158,6 +159,15 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
     }
     return result;
   }, [selectedIds, bookData]);
+
+  // --- Toggle book collapse ---
+  const toggleBook = useCallback((bookId: string) => {
+    setCollapsedBooks((prev) => {
+      const next = new Set(prev);
+      next.has(bookId) ? next.delete(bookId) : next.add(bookId);
+      return next;
+    });
+  }, []);
 
   // --- Toggle section collapse ---
   const toggleSection = useCallback((key: string) => {
@@ -829,11 +839,22 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
                 <div className="extractions-view__content">
                   {selectedData.map((group) => (
                     <div key={group.bookId} className="extractions-view__book-section">
-                      <h3 className="extractions-view__book-heading">{group.bookTitle}</h3>
+                      <button
+                        type="button"
+                        className="extractions-view__book-heading"
+                        onClick={() => toggleBook(group.bookId)}
+                      >
+                        {collapsedBooks.has(group.bookId) ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+                        <span>{group.bookTitle}</span>
+                      </button>
 
-                      {activeTab === 'summary' && renderSummarySection(group)}
-                      {activeTab === 'frameworks' && renderFrameworksSection(group)}
-                      {activeTab === 'mast_content' && renderMastContentSection(group)}
+                      {!collapsedBooks.has(group.bookId) && (
+                        <>
+                          {activeTab === 'summary' && renderSummarySection(group)}
+                          {activeTab === 'frameworks' && renderFrameworksSection(group)}
+                          {activeTab === 'mast_content' && renderMastContentSection(group)}
+                        </>
+                      )}
                     </div>
                   ))}
                 </div>

@@ -381,6 +381,10 @@
   animation: heart-fill-pulse 0.3s ease;
 }
 
+.extraction-item__heart--active svg {
+  fill: var(--color-cognac);
+}
+
 @keyframes heart-fill-pulse {
   0% { transform: scale(1); }
   50% { transform: scale(1.3); }

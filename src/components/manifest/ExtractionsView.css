@@ -160,12 +160,25 @@
 }
 
 .extractions-view__book-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  width: 100%;
+  background: none;
+  border: none;
   font-family: var(--font-heading);
   font-size: var(--font-size-base);
   color: var(--color-deep-teal);
   margin: 0 0 var(--spacing-xs);
+  padding: var(--spacing-xs) 0;
   padding-bottom: var(--spacing-xs);
   border-bottom: 1px solid var(--color-border);
+  cursor: pointer;
+  text-align: left;
+}
+
+.extractions-view__book-heading:hover {
+  color: var(--color-dark-teal);
 }
 
 .extractions-view__framework-name {
