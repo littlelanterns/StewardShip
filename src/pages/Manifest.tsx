@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 
-import { Upload, MessageSquare, Loader, List, LayoutGrid, Trash2, CheckSquare, FolderInput, X, Plus } from 'lucide-react';
+import { Upload, MessageSquare, Loader, List, LayoutGrid, CheckSquare, FolderInput, X, Plus } from 'lucide-react';
 import { usePageContext } from '../hooks/usePageContext';
 import { useAuthContext } from '../contexts/AuthContext';
 import { useManifest } from '../hooks/useManifest';
