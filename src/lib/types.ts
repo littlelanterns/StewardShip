@@ -1469,6 +1469,45 @@ export interface ManifestDeclaration {
   created_at: string;
 }
 
+// PRD-24: Action Steps
+export type ActionStepContentType =
+  | 'exercise'
+  | 'practice'
+  | 'habit'
+  | 'reflection_prompt'
+  | 'conversation_starter'
+  | 'project'
+  | 'daily_action'
+  | 'weekly_practice';
+
+export const ACTION_STEP_CONTENT_TYPE_LABELS: Record<ActionStepContentType, string> = {
+  exercise: 'Exercise',
+  practice: 'Practice',
+  habit: 'Habit',
+  reflection_prompt: 'Reflection Prompt',
+  conversation_starter: 'Conversation Starter',
+  project: 'Project',
+  daily_action: 'Daily Action',
+  weekly_practice: 'Weekly Practice',
+};
+
+export interface ManifestActionStep {
+  id: string;
+  user_id: string;
+  manifest_item_id: string;
+  section_title: string | null;
+  section_index: number;
+  content_type: ActionStepContentType;
+  text: string;
+  sort_order: number;
+  is_hearted: boolean;
+  is_deleted: boolean;
+  is_from_go_deeper: boolean;
+  sent_to_compass: boolean;
+  compass_task_id: string | null;
+  created_at: string;
+}
+
 // PRD-24: Book Discussions
 export interface BookDiscussion {
   id: string;

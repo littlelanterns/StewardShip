@@ -5,6 +5,7 @@ import type { SectionInfo } from './useFrameworks';
 import type {
   ManifestSummary,
   ManifestDeclaration,
+  ManifestActionStep,
   AIFrameworkPrinciple,
   BookGenre,
   ManifestExtractionStatus,
@@ -28,6 +29,12 @@ interface DeclarationExtractionItem {
   sort_order: number;
 }
 
+interface ActionStepExtractionItem {
+  content_type: string;
+  text: string;
+  sort_order: number;
+}
+
 interface FrameworkExtractionResult {
   framework_name: string;
   principles: Array<{ text: string; sort_order: number }>;
@@ -39,8 +46,9 @@ export function useManifestExtraction() {
   const { user } = useAuthContext();
   const [summaries, setSummaries] = useState<ManifestSummary[]>([]);
   const [declarations, setDeclarations] = useState<ManifestDeclaration[]>([]);
+  const [actionSteps, setActionSteps] = useState<ManifestActionStep[]>([]);
   const [extracting, setExtracting] = useState(false);
-  const [extractingTab, setExtractingTab] = useState<'summary' | 'framework' | 'mast_content' | null>(null);
+  const [extractingTab, setExtractingTab] = useState<'summary' | 'framework' | 'mast_content' | 'action_steps' | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Section discovery state
@@ -50,7 +58,7 @@ export function useManifestExtraction() {
   const [extractionProgress, setExtractionProgress] = useState<{
     current: number;
     total: number;
-    currentType: 'summary' | 'framework' | 'mast_content';
+    currentType: 'summary' | 'framework' | 'mast_content' | 'action_steps';
   } | null>(null);
 
   // --- Fetch existing extracted items for an item ---
@@ -89,6 +97,24 @@ export function useManifestExtraction() {
       return;
     }
     setDeclarations(data || []);
+  }, [user]);
+
+  const fetchActionSteps = useCallback(async (manifestItemId: string) => {
+    if (!user) return;
+    const { data, error: fetchErr } = await supabase
+      .from('manifest_action_steps')
+      .select('*')
+      .eq('manifest_item_id', manifestItemId)
+      .eq('user_id', user.id)
+      .eq('is_deleted', false)
+      .order('section_index', { ascending: true })
+      .order('sort_order', { ascending: true });
+
+    if (fetchErr) {
+      console.error('fetchActionSteps error:', fetchErr);
+      return;
+    }
+    setActionSteps(data || []);
   }, [user]);
 
   // --- Update extraction status on manifest_items ---
@@ -274,6 +300,38 @@ export function useManifestExtraction() {
     }
   }, [user]);
 
+  // --- Save action step extraction results to DB ---
+
+  const saveActionStepResults = useCallback(async (
+    manifestItemId: string,
+    items: ActionStepExtractionItem[],
+    sectionTitle?: string,
+    sectionIndex: number = 0,
+    isFromGoDeeper: boolean = false,
+  ) => {
+    if (!user || items.length === 0) return;
+
+    const records = items.map((item, idx) => ({
+      user_id: user.id,
+      manifest_item_id: manifestItemId,
+      section_title: sectionTitle || null,
+      section_index: sectionIndex,
+      content_type: item.content_type,
+      text: item.text,
+      sort_order: item.sort_order ?? idx,
+      is_from_go_deeper: isFromGoDeeper,
+    }));
+
+    const { error: insertErr } = await supabase
+      .from('manifest_action_steps')
+      .insert(records);
+
+    if (insertErr) {
+      console.error('saveActionStepResults error:', insertErr);
+      throw insertErr;
+    }
+  }, [user]);
+
   // --- Extract Summary ---
 
   const extractSummary = useCallback(async (
@@ -362,6 +420,50 @@ export function useManifestExtraction() {
     }
   }, [user, callExtract, saveDeclarationResults, fetchDeclarations]);
 
+  // --- Extract Action Steps ---
+
+  const extractActionSteps = useCallback(async (
+    manifestItemId: string,
+    genres: BookGenre[],
+    options?: {
+      sectionTitle?: string;
+      sectionStart?: number;
+      sectionEnd?: number;
+      goDeeper?: boolean;
+      existingItems?: string[];
+      sectionIndex?: number;
+    },
+  ): Promise<boolean> => {
+    if (!user) return false;
+    setExtractingTab('action_steps');
+    setError(null);
+    try {
+      const isSection = options?.sectionStart != null;
+      const type = isSection ? 'action_steps_section' : 'action_steps';
+
+      const result = await callExtract(manifestItemId, type, genres, options);
+      const resultObj = result as { items?: ActionStepExtractionItem[] };
+      const items = resultObj?.items || (Array.isArray(result) ? result : []);
+
+      if (items.length > 0) {
+        await saveActionStepResults(
+          manifestItemId,
+          items,
+          options?.sectionTitle,
+          options?.sectionIndex ?? 0,
+          options?.goDeeper ?? false,
+        );
+        await fetchActionSteps(manifestItemId);
+      }
+      return true;
+    } catch (err) {
+      setError((err as Error).message);
+      return false;
+    } finally {
+      setExtractingTab(null);
+    }
+  }, [user, callExtract, saveActionStepResults, fetchActionSteps]);
+
   // --- Extract All: fires summary + framework + mast_content in parallel ---
 
   const extractAll = useCallback(async (
@@ -412,6 +514,7 @@ export function useManifestExtraction() {
   interface CombinedSectionResult {
     summaries?: SummaryExtractionItem[];
     framework?: FrameworkExtractionResult;
+    action_steps?: ActionStepExtractionItem[];
     declarations?: DeclarationExtractionItem[];
   }
 
@@ -452,7 +555,7 @@ export function useManifestExtraction() {
           });
 
           const combined = rawResult as CombinedSectionResult;
-          console.log(`[extractAllSections] Combined result for "${cleanTitle}": summaries=${combined?.summaries?.length || 0}, principles=${combined?.framework?.principles?.length || 0}, declarations=${combined?.declarations?.length || 0}`);
+          console.log(`[extractAllSections] Combined result for "${cleanTitle}": summaries=${combined?.summaries?.length || 0}, principles=${combined?.framework?.principles?.length || 0}, action_steps=${combined?.action_steps?.length || 0}, declarations=${combined?.declarations?.length || 0}`);
 
           // Save summaries
           if (combined?.summaries && combined.summaries.length > 0) {
@@ -463,6 +566,12 @@ export function useManifestExtraction() {
           // Save framework via callback
           if (combined?.framework && onFrameworkResult) {
             await onFrameworkResult(combined.framework, cleanTitle, secIdx);
+          }
+
+          // Save action steps
+          if (combined?.action_steps && combined.action_steps.length > 0) {
+            await saveActionStepResults(manifestItemId, combined.action_steps, cleanTitle, secIdx);
+            await fetchActionSteps(manifestItemId);
           }
 
           // Save declarations
@@ -498,13 +607,13 @@ export function useManifestExtraction() {
     } finally {
       setExtracting(false);
     }
-  }, [user, sections, saveSummaryResults, saveDeclarationResults, fetchSummaries, fetchDeclarations, callExtract, updateExtractionStatus]);
+  }, [user, sections, saveSummaryResults, saveDeclarationResults, saveActionStepResults, fetchSummaries, fetchDeclarations, fetchActionSteps, callExtract, updateExtractionStatus]);
 
   // --- Go Deeper: extract additional content for a specific tab/section ---
 
   const goDeeper = useCallback(async (
     manifestItemId: string,
-    tabType: 'summary' | 'framework' | 'mast_content',
+    tabType: 'summary' | 'framework' | 'mast_content' | 'action_steps',
     genres: BookGenre[],
     sectionTitle: string | undefined,
     existingItems: string[],
@@ -529,6 +638,8 @@ export function useManifestExtraction() {
 
     if (tabType === 'summary') {
       return extractSummary(manifestItemId, genres, extractOptions);
+    } else if (tabType === 'action_steps') {
+      return extractActionSteps(manifestItemId, genres, extractOptions);
     } else if (tabType === 'mast_content') {
       return extractDeclarations(manifestItemId, genres, extractOptions);
     } else if (tabType === 'framework') {
@@ -549,13 +660,13 @@ export function useManifestExtraction() {
       }
     }
     return false;
-  }, [user, extractSummary, extractDeclarations, callExtract]);
+  }, [user, extractSummary, extractDeclarations, extractActionSteps, callExtract]);
 
   // --- Re-run tab: clear existing items, re-extract ---
 
   const reRunTab = useCallback(async (
     manifestItemId: string,
-    tabType: 'summary' | 'mast_content',
+    tabType: 'summary' | 'mast_content' | 'action_steps',
     genres: BookGenre[],
     sectionTitle?: string,
     sectionStart?: number,
@@ -566,7 +677,11 @@ export function useManifestExtraction() {
     setError(null);
 
     try {
-      const table = tabType === 'summary' ? 'manifest_summaries' : 'manifest_declarations';
+      const table = tabType === 'summary'
+        ? 'manifest_summaries'
+        : tabType === 'action_steps'
+          ? 'manifest_action_steps'
+          : 'manifest_declarations';
 
       // Soft-delete: scoped to section if provided, otherwise all
       let query = supabase
@@ -583,6 +698,8 @@ export function useManifestExtraction() {
 
       if (tabType === 'summary') {
         return extractSummary(manifestItemId, genres, options);
+      } else if (tabType === 'action_steps') {
+        return extractActionSteps(manifestItemId, genres, options);
       } else {
         return extractDeclarations(manifestItemId, genres, options);
       }
@@ -590,7 +707,7 @@ export function useManifestExtraction() {
       setError((err as Error).message);
       return false;
     }
-  }, [user, extractSummary, extractDeclarations]);
+  }, [user, extractSummary, extractDeclarations, extractActionSteps]);
 
   // --- CRUD: Summary items ---
 
@@ -732,6 +849,115 @@ export function useManifestExtraction() {
     return mastEntry.id;
   }, [user, declarations]);
 
+  // --- CRUD: Action Step items ---
+
+  const updateActionStepText = useCallback(async (actionStepId: string, text: string) => {
+    if (!user) return;
+    const { error: updateErr } = await supabase
+      .from('manifest_action_steps')
+      .update({ text })
+      .eq('id', actionStepId)
+      .eq('user_id', user.id);
+    if (updateErr) {
+      setError(updateErr.message);
+      return;
+    }
+    setActionSteps((prev) => prev.map((a) => a.id === actionStepId ? { ...a, text } : a));
+  }, [user]);
+
+  const toggleActionStepHeart = useCallback(async (actionStepId: string) => {
+    if (!user) return;
+    const item = actionSteps.find((a) => a.id === actionStepId);
+    if (!item) return;
+    const newVal = !item.is_hearted;
+    const { error: updateErr } = await supabase
+      .from('manifest_action_steps')
+      .update({ is_hearted: newVal })
+      .eq('id', actionStepId)
+      .eq('user_id', user.id);
+    if (updateErr) {
+      setError(updateErr.message);
+      return;
+    }
+    setActionSteps((prev) => prev.map((a) => a.id === actionStepId ? { ...a, is_hearted: newVal } : a));
+  }, [user, actionSteps]);
+
+  const deleteActionStep = useCallback(async (actionStepId: string) => {
+    if (!user) return;
+    setActionSteps((prev) => prev.filter((a) => a.id !== actionStepId));
+    const { error: updateErr } = await supabase
+      .from('manifest_action_steps')
+      .update({ is_deleted: true })
+      .eq('id', actionStepId)
+      .eq('user_id', user.id);
+    if (updateErr) {
+      setError(updateErr.message);
+    }
+  }, [user]);
+
+  // --- Send Action Step to Compass ---
+
+  const sendActionStepToCompass = useCallback(async (
+    actionStepId: string,
+  ): Promise<string | null> => {
+    if (!user) return null;
+    const step = actionSteps.find((a) => a.id === actionStepId);
+    if (!step) return null;
+
+    // Truncate title to ~200 chars for the task title
+    const title = step.text.length > 200
+      ? step.text.substring(0, 197) + '...'
+      : step.text;
+
+    const { data: task, error: taskErr } = await supabase
+      .from('compass_tasks')
+      .insert({
+        user_id: user.id,
+        title,
+        description: step.text.length > 200 ? step.text : null,
+        source: 'manifest_extraction',
+        source_reference_id: actionStepId,
+        due_date: new Date().toISOString().split('T')[0],
+      })
+      .select('id')
+      .single();
+
+    if (taskErr || !task) {
+      setError(taskErr?.message || 'Failed to create task');
+      return null;
+    }
+
+    // Auto-tag the task (fire-and-forget)
+    supabase.functions
+      .invoke('auto-tag', {
+        body: { text: step.text, entity_type: 'task' },
+      })
+      .then(({ data }) => {
+        if (data?.tags?.[0]) {
+          supabase
+            .from('compass_tasks')
+            .update({ life_area_tag: data.tags[0] })
+            .eq('id', task.id);
+        }
+      })
+      .catch(() => {});
+
+    // Mark action step as sent
+    await supabase
+      .from('manifest_action_steps')
+      .update({ sent_to_compass: true, compass_task_id: task.id })
+      .eq('id', actionStepId)
+      .eq('user_id', user.id);
+
+    setActionSteps((prev) =>
+      prev.map((a) => a.id === actionStepId
+        ? { ...a, sent_to_compass: true, compass_task_id: task.id }
+        : a),
+    );
+
+    return task.id;
+  }, [user, actionSteps]);
+
   // --- CRUD: Framework principle heart/delete (extends existing ai_framework_principles) ---
 
   const togglePrincipleHeart = useCallback(async (principleId: string) => {
@@ -764,10 +990,11 @@ export function useManifestExtraction() {
     summaries: ManifestSummary[];
     declarations: ManifestDeclaration[];
     principles: AIFrameworkPrinciple[];
+    actionSteps: ManifestActionStep[];
   }> => {
-    if (!user) return { summaries: [], declarations: [], principles: [] };
+    if (!user) return { summaries: [], declarations: [], principles: [], actionSteps: [] };
 
-    const [summaryRes, declRes, principleRes] = await Promise.all([
+    const [summaryRes, declRes, principleRes, actionStepRes] = await Promise.all([
       supabase
         .from('manifest_summaries')
         .select('*')
@@ -789,12 +1016,20 @@ export function useManifestExtraction() {
         .eq('is_hearted', true)
         .eq('is_deleted', false)
         .order('created_at', { ascending: false }),
+      supabase
+        .from('manifest_action_steps')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('is_hearted', true)
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: false }),
     ]);
 
     return {
       summaries: summaryRes.data || [],
       declarations: declRes.data || [],
       principles: principleRes.data || [],
+      actionSteps: actionStepRes.data || [],
     };
   }, [user]);
 
@@ -813,10 +1048,11 @@ export function useManifestExtraction() {
       await supabase.from('ai_framework_principles').delete().eq('framework_id', fw.id).eq('user_id', user.id);
       await supabase.from('ai_frameworks').delete().eq('id', fw.id).eq('user_id', user.id);
     }
-    // Delete summaries and declarations
+    // Delete summaries, declarations, and action steps
     await Promise.all([
       supabase.from('manifest_summaries').delete().eq('manifest_item_id', manifestItemId).eq('user_id', user.id),
       supabase.from('manifest_declarations').delete().eq('manifest_item_id', manifestItemId).eq('user_id', user.id),
+      supabase.from('manifest_action_steps').delete().eq('manifest_item_id', manifestItemId).eq('user_id', user.id),
     ]);
     // Reset extraction status and genres
     await supabase.from('manifest_items').update({
@@ -825,16 +1061,80 @@ export function useManifestExtraction() {
     // Clear local state
     setSummaries([]);
     setDeclarations([]);
+    setActionSteps([]);
     setSections([]);
     setSelectedSectionIndices([]);
     setExtractionProgress(null);
     setError(null);
   }, [user]);
 
+  // --- Reset All Extractions (Fresh Start) ---
+
+  const resetAllExtractions = useCallback(async (options?: { removeClones?: boolean }) => {
+    if (!user) return;
+    setError(null);
+
+    try {
+      // Delete all extraction data for this user
+      await Promise.all([
+        supabase.from('manifest_summaries').delete().eq('user_id', user.id),
+        supabase.from('manifest_declarations').delete().eq('user_id', user.id),
+        supabase.from('manifest_action_steps').delete().eq('user_id', user.id),
+      ]);
+
+      // Delete framework principles then frameworks
+      const { data: frameworks } = await supabase
+        .from('ai_frameworks')
+        .select('id')
+        .eq('user_id', user.id);
+
+      if (frameworks && frameworks.length > 0) {
+        const fwIds = frameworks.map((f: { id: string }) => f.id);
+        await supabase.from('ai_framework_principles').delete().in('framework_id', fwIds);
+        await supabase.from('ai_frameworks').delete().eq('user_id', user.id);
+      }
+
+      // Reset extraction_status on all manifest_items
+      await supabase
+        .from('manifest_items')
+        .update({ extraction_status: 'none' })
+        .eq('user_id', user.id);
+
+      // Optionally remove cloned books
+      if (options?.removeClones) {
+        const { data: clones } = await supabase
+          .from('manifest_items')
+          .select('id')
+          .eq('user_id', user.id)
+          .not('source_manifest_item_id', 'is', null);
+
+        if (clones && clones.length > 0) {
+          const cloneIds = clones.map((c: { id: string }) => c.id);
+          // Clean up chunks for cloned items
+          for (const id of cloneIds) {
+            await supabase.from('manifest_chunks').delete().eq('manifest_item_id', id);
+          }
+          await supabase.from('manifest_items').delete().in('id', cloneIds);
+        }
+      }
+
+      // Clear local state
+      setSummaries([]);
+      setDeclarations([]);
+      setActionSteps([]);
+      setSections([]);
+      setSelectedSectionIndices([]);
+      setExtractionProgress(null);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }, [user]);
+
   return {
     // State
     summaries,
     declarations,
+    actionSteps,
     extracting,
     extractingTab,
     error,
@@ -847,6 +1147,7 @@ export function useManifestExtraction() {
     // Fetch
     fetchSummaries,
     fetchDeclarations,
+    fetchActionSteps,
     fetchHeartedItems,
     // Extraction
     extractAll,
@@ -854,6 +1155,7 @@ export function useManifestExtraction() {
     discoverSections,
     extractSummary,
     extractDeclarations,
+    extractActionSteps,
     goDeeper,
     reRunTab,
     getSectionOffsets,
@@ -869,10 +1171,16 @@ export function useManifestExtraction() {
     toggleDeclarationHeart,
     deleteDeclaration,
     sendDeclarationToMast,
+    // Action Step CRUD
+    updateActionStepText,
+    toggleActionStepHeart,
+    deleteActionStep,
+    sendActionStepToCompass,
     // Framework principle heart/delete
     togglePrincipleHeart,
     deletePrinciple,
     // Clear all
     clearExtractions,
+    resetAllExtractions,
   };
 }

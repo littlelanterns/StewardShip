@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { ChevronLeft, FileText, FileCode, Mic, Image, StickyNote, RefreshCw, BookOpen, Wand2, MessageSquare, Target, HelpCircle, CheckSquare, BarChart3, Users } from 'lucide-react';
-import type { ManifestItem, ManifestSummary, ManifestDeclaration, AIFrameworkPrinciple, BookGenre, DiscussionType } from '../../lib/types';
+import type { ManifestItem, ManifestSummary, ManifestDeclaration, ManifestActionStep, AIFrameworkPrinciple, BookGenre, DiscussionType } from '../../lib/types';
 import { MANIFEST_FILE_TYPE_LABELS, MANIFEST_STATUS_LABELS } from '../../lib/types';
 import type { SectionInfo } from '../../hooks/useManifestExtraction';
 import { supabase } from '../../lib/supabase';
@@ -22,6 +22,7 @@ interface ManifestItemDetailProps {
   // Extraction
   summaries: ManifestSummary[];
   declarations: ManifestDeclaration[];
+  actionSteps: ManifestActionStep[];
   principles: AIFrameworkPrinciple[];
   extracting: boolean;
   extractingTab: string | null;
@@ -31,13 +32,14 @@ interface ManifestItemDetailProps {
   onUpdateGenres: (itemId: string, genres: BookGenre[]) => Promise<boolean>;
   onFetchSummaries: (itemId: string) => void;
   onFetchDeclarations: (itemId: string) => void;
+  onFetchActionSteps: (itemId: string) => void;
   // Section discovery
   onDiscoverSections: (itemId: string) => Promise<SectionInfo[] | null>;
   sections: SectionInfo[];
   selectedSectionIndices: number[];
   onSetSelectedSectionIndices: (indices: number[]) => void;
   discoveringSections: boolean;
-  extractionProgress: { current: number; total: number; currentType: 'summary' | 'framework' | 'mast_content' } | null;
+  extractionProgress: { current: number; total: number; currentType: 'summary' | 'framework' | 'mast_content' | 'action_steps' } | null;
   onClearExtractions: (itemId: string) => Promise<void>;
   // Summary actions
   onToggleSummaryHeart: (id: string) => void;
@@ -55,6 +57,13 @@ interface ManifestItemDetailProps {
   onSendDeclarationToMast: (id: string) => void;
   onDeclarationGoDeeper: (sectionTitle: string | undefined, existingItems: string[], sectionIndex?: number) => void;
   onDeclarationReRun: (sectionTitle?: string) => void;
+  // Action Step actions
+  onToggleActionStepHeart: (id: string) => void;
+  onDeleteActionStep: (id: string) => void;
+  onUpdateActionStepText: (id: string, text: string) => void;
+  onSendActionStepToCompass: (id: string) => void;
+  onActionStepGoDeeper: (sectionTitle: string | undefined, existingItems: string[], sectionIndex?: number) => void;
+  onActionStepReRun: (sectionTitle?: string) => void;
   // Discussion
   onOpenDiscussion?: (type: DiscussionType) => void;
 }
@@ -87,6 +96,7 @@ export function ManifestItemDetail({
   onEnrichItem,
   summaries,
   declarations,
+  actionSteps,
   principles,
   extracting,
   extractingTab,
@@ -96,6 +106,7 @@ export function ManifestItemDetail({
   onUpdateGenres,
   onFetchSummaries,
   onFetchDeclarations,
+  onFetchActionSteps,
   onDiscoverSections,
   sections,
   selectedSectionIndices,
@@ -116,6 +127,12 @@ export function ManifestItemDetail({
   onSendDeclarationToMast,
   onDeclarationGoDeeper,
   onDeclarationReRun,
+  onToggleActionStepHeart,
+  onDeleteActionStep,
+  onUpdateActionStepText,
+  onSendActionStepToCompass,
+  onActionStepGoDeeper,
+  onActionStepReRun,
   onOpenDiscussion,
 }: ManifestItemDetailProps) {
   const [editingTitle, setEditingTitle] = useState(false);
@@ -143,15 +160,16 @@ export function ManifestItemDetail({
 
   const Icon = FILE_TYPE_ICONS[item.file_type] || FileText;
   const isProcessed = item.processing_status === 'completed';
-  const hasExtraction = item.extraction_status !== 'none' || summaries.length > 0 || declarations.length > 0 || principles.length > 0;
+  const hasExtraction = item.extraction_status !== 'none' || summaries.length > 0 || declarations.length > 0 || actionSteps.length > 0 || principles.length > 0;
 
   // Fetch existing extractions on mount
   useEffect(() => {
     if (isProcessed) {
       onFetchSummaries(item.id);
       onFetchDeclarations(item.id);
+      onFetchActionSteps(item.id);
     }
-  }, [item.id, isProcessed, onFetchSummaries, onFetchDeclarations]);
+  }, [item.id, isProcessed, onFetchSummaries, onFetchDeclarations, onFetchActionSteps]);
 
   const saveTitle = useCallback(() => {
     if (titleDraft.trim() && titleDraft.trim() !== item.title) {
@@ -622,6 +640,7 @@ export function ManifestItemDetail({
             genres={selectedGenres}
             summaries={summaries}
             declarations={declarations}
+            actionSteps={actionSteps}
             principles={principles}
             extractingTab={extractingTab}
             hasFramework={hasFramework}
@@ -638,6 +657,12 @@ export function ManifestItemDetail({
             onSendDeclarationToMast={onSendDeclarationToMast}
             onDeclarationGoDeeper={onDeclarationGoDeeper}
             onDeclarationReRun={onDeclarationReRun}
+            onToggleActionStepHeart={onToggleActionStepHeart}
+            onDeleteActionStep={onDeleteActionStep}
+            onUpdateActionStepText={onUpdateActionStepText}
+            onSendActionStepToCompass={onSendActionStepToCompass}
+            onActionStepGoDeeper={onActionStepGoDeeper}
+            onActionStepReRun={onActionStepReRun}
             extractionProgress={extractionProgress}
           />
         </section>

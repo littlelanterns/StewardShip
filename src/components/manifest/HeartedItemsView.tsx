@@ -2,7 +2,9 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { ChevronLeft, Download, FileText, FileCode } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../contexts/AuthContext';
-import type { ManifestSummary, ManifestDeclaration, AIFrameworkPrinciple } from '../../lib/types';
+import type { ManifestSummary, ManifestDeclaration, ManifestActionStep, AIFrameworkPrinciple } from '../../lib/types';
+import { ACTION_STEP_CONTENT_TYPE_LABELS } from '../../lib/types';
+import type { ActionStepContentType } from '../../lib/types';
 import { exportHeartedMd, exportHeartedTxt, exportHeartedDocx } from '../../lib/exportExtractions';
 import type { BookExtractionGroup } from '../../lib/exportExtractions';
 import './HeartedItemsView.css';
@@ -16,6 +18,7 @@ interface BookGroup {
   bookTitle: string;
   summaries: ManifestSummary[];
   declarations: ManifestDeclaration[];
+  actionSteps: ManifestActionStep[];
   principles: (AIFrameworkPrinciple & { framework_name?: string })[];
 }
 
@@ -30,7 +33,7 @@ export function HeartedItemsView({ onBack }: HeartedItemsViewProps) {
     (async () => {
       setLoading(true);
       try {
-        const [summaryRes, declRes, principleRes] = await Promise.all([
+        const [summaryRes, declRes, principleRes, actionStepRes] = await Promise.all([
           supabase
             .from('manifest_summaries')
             .select('*')
@@ -54,17 +57,27 @@ export function HeartedItemsView({ onBack }: HeartedItemsViewProps) {
             .eq('is_hearted', true)
             .eq('is_deleted', false)
             .order('sort_order', { ascending: true }),
+          supabase
+            .from('manifest_action_steps')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('is_hearted', true)
+            .eq('is_deleted', false)
+            .order('manifest_item_id')
+            .order('sort_order', { ascending: true }),
         ]);
 
         const summaries = (summaryRes.data || []) as ManifestSummary[];
         const declarations = (declRes.data || []) as ManifestDeclaration[];
         const rawPrinciples = (principleRes.data || []) as Array<AIFrameworkPrinciple & { ai_frameworks: { manifest_item_id: string; name: string } }>;
+        const actionSteps = (actionStepRes.data || []) as ManifestActionStep[];
 
         // Get all unique manifest_item_ids
         const itemIds = new Set<string>();
         summaries.forEach((s) => itemIds.add(s.manifest_item_id));
         declarations.forEach((d) => itemIds.add(d.manifest_item_id));
         rawPrinciples.forEach((p) => itemIds.add(p.ai_frameworks.manifest_item_id));
+        actionSteps.forEach((a) => itemIds.add(a.manifest_item_id));
 
         // Fetch book titles
         const { data: items } = await supabase
@@ -82,11 +95,12 @@ export function HeartedItemsView({ onBack }: HeartedItemsViewProps) {
             bookTitle: titleMap.get(bookId) || 'Unknown Book',
             summaries: summaries.filter((s) => s.manifest_item_id === bookId),
             declarations: declarations.filter((d) => d.manifest_item_id === bookId),
+            actionSteps: actionSteps.filter((a) => a.manifest_item_id === bookId),
             principles: rawPrinciples
               .filter((p) => p.ai_frameworks.manifest_item_id === bookId)
               .map((p) => ({ ...p, framework_name: p.ai_frameworks.name })),
           };
-          if (group.summaries.length > 0 || group.declarations.length > 0 || group.principles.length > 0) {
+          if (group.summaries.length > 0 || group.declarations.length > 0 || group.principles.length > 0 || group.actionSteps.length > 0) {
             groups.push(group);
           }
         }
@@ -100,7 +114,7 @@ export function HeartedItemsView({ onBack }: HeartedItemsViewProps) {
 
   const totalCount = useMemo(() => {
     return bookGroups.reduce(
-      (sum, g) => sum + g.summaries.length + g.declarations.length + g.principles.length,
+      (sum, g) => sum + g.summaries.length + g.declarations.length + g.principles.length + g.actionSteps.length,
       0,
     );
   }, [bookGroups]);
@@ -111,6 +125,7 @@ export function HeartedItemsView({ onBack }: HeartedItemsViewProps) {
       bookTitle: g.bookTitle,
       summaries: g.summaries,
       declarations: g.declarations,
+      actionSteps: g.actionSteps,
       principles: g.principles,
     }));
   }, [bookGroups]);
@@ -199,6 +214,20 @@ export function HeartedItemsView({ onBack }: HeartedItemsViewProps) {
                 {group.principles.map((p) => (
                   <div key={p.id} className="hearted-items__item">
                     {p.text}
+                  </div>
+                ))}
+              </>
+            )}
+
+            {group.actionSteps.length > 0 && (
+              <>
+                <div className="hearted-items__type-label">Action Steps</div>
+                {group.actionSteps.map((a) => (
+                  <div key={a.id} className="hearted-items__item">
+                    <span className="hearted-items__item-badge">
+                      {ACTION_STEP_CONTENT_TYPE_LABELS[a.content_type as ActionStepContentType] || a.content_type.replace(/_/g, ' ')}
+                    </span>
+                    {a.text}
                   </div>
                 ))}
               </>

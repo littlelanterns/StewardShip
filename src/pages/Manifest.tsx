@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Upload, StickyNote, MessageSquare, Loader, List, LayoutGrid, Heart, Layers } from 'lucide-react';
+import { Upload, StickyNote, MessageSquare, Loader, List, LayoutGrid, Heart, Layers, Trash2 } from 'lucide-react';
 import { usePageContext } from '../hooks/usePageContext';
 import { useManifest } from '../hooks/useManifest';
 import { useFrameworks } from '../hooks/useFrameworks';
@@ -17,7 +17,7 @@ import { HeartedItemsView } from '../components/manifest/HeartedItemsView';
 import { ExtractionsView } from '../components/manifest/ExtractionsView';
 import { CollapsibleGroup } from '../components/shared/CollapsibleGroup';
 import { FloatingActionButton } from '../components/shared/FloatingActionButton';
-import { EmptyState, LoadingSpinner, FeatureGuide } from '../components/shared';
+import { Button, EmptyState, LoadingSpinner, FeatureGuide } from '../components/shared';
 import { FEATURE_GUIDES } from '../lib/featureGuides';
 import './Manifest.css';
 
@@ -279,6 +279,40 @@ export default function Manifest() {
     extraction.reRunTab(selectedItem.id, 'mast_content', selectedItem.genres || [], sectionTitle, offsets?.start, offsets?.end, offsets?.index);
   }, [selectedItem, extraction]);
 
+  const handleActionStepGoDeeper = useCallback((sectionTitle: string | undefined, existingItems: string[], sectionIndex?: number) => {
+    if (!selectedItem) return;
+    const offsets = sectionTitle ? extraction.getSectionOffsets(sectionTitle) : null;
+    extraction.goDeeper(selectedItem.id, 'action_steps', selectedItem.genres || [], sectionTitle, existingItems, {
+      sectionIndex: sectionIndex ?? offsets?.index,
+      sectionStart: offsets?.start,
+      sectionEnd: offsets?.end,
+    });
+  }, [selectedItem, extraction]);
+
+  const handleActionStepReRun = useCallback((sectionTitle?: string) => {
+    if (!selectedItem) return;
+    const offsets = sectionTitle ? extraction.getSectionOffsets(sectionTitle) : null;
+    extraction.reRunTab(selectedItem.id, 'action_steps', selectedItem.genres || [], sectionTitle, offsets?.start, offsets?.end, offsets?.index);
+  }, [selectedItem, extraction]);
+
+  // Fresh Start state
+  const [showFreshStart, setShowFreshStart] = useState(false);
+  const [freshStartRemoveClones, setFreshStartRemoveClones] = useState(false);
+  const [freshStartRunning, setFreshStartRunning] = useState(false);
+
+  const handleFreshStart = useCallback(async () => {
+    setFreshStartRunning(true);
+    try {
+      await extraction.resetAllExtractions({ removeClones: freshStartRemoveClones });
+      fetchFrameworks();
+      fetchItems();
+      setShowFreshStart(false);
+      setFreshStartRemoveClones(false);
+    } finally {
+      setFreshStartRunning(false);
+    }
+  }, [extraction, freshStartRemoveClones, fetchFrameworks, fetchItems]);
+
   // Filtering
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
@@ -415,6 +449,7 @@ export default function Manifest() {
           // Extraction props
           summaries={extraction.summaries}
           declarations={extraction.declarations}
+          actionSteps={extraction.actionSteps}
           principles={currentPrinciples}
           extracting={extraction.extracting}
           extractingTab={extraction.extractingTab}
@@ -423,6 +458,7 @@ export default function Manifest() {
           onUpdateGenres={extraction.updateGenres}
           onFetchSummaries={extraction.fetchSummaries}
           onFetchDeclarations={extraction.fetchDeclarations}
+          onFetchActionSteps={extraction.fetchActionSteps}
           // Summary actions
           onToggleSummaryHeart={extraction.toggleSummaryHeart}
           onDeleteSummary={extraction.deleteSummary}
@@ -439,6 +475,13 @@ export default function Manifest() {
           onSendDeclarationToMast={extraction.sendDeclarationToMast}
           onDeclarationGoDeeper={handleDeclarationGoDeeper}
           onDeclarationReRun={handleDeclarationReRun}
+          // Action Step actions
+          onToggleActionStepHeart={extraction.toggleActionStepHeart}
+          onDeleteActionStep={extraction.deleteActionStep}
+          onUpdateActionStepText={extraction.updateActionStepText}
+          onSendActionStepToCompass={extraction.sendActionStepToCompass}
+          onActionStepGoDeeper={handleActionStepGoDeeper}
+          onActionStepReRun={handleActionStepReRun}
           // Section discovery props
           onDiscoverSections={handleDiscoverSections}
           onExtractAllSections={handleExtractAllSections}
@@ -554,7 +597,45 @@ export default function Manifest() {
             Extractions
           </button>
         )}
+        {hasExtractedItems && (
+          <button
+            type="button"
+            className="manifest-page__action-btn manifest-page__action-btn--danger"
+            onClick={() => setShowFreshStart(true)}
+          >
+            <Trash2 size={16} />
+            Fresh Start
+          </button>
+        )}
       </div>
+
+      {/* Fresh Start confirmation */}
+      {showFreshStart && (
+        <div className="manifest-page__fresh-start">
+          <div className="manifest-page__fresh-start-card">
+            <h3 className="manifest-page__fresh-start-title">Fresh Start</h3>
+            <p className="manifest-page__fresh-start-desc">
+              This will permanently delete all extracted content (summaries, frameworks, action steps, and declarations) for every book. You can re-extract after.
+            </p>
+            <label className="manifest-page__fresh-start-option">
+              <input
+                type="checkbox"
+                checked={freshStartRemoveClones}
+                onChange={(e) => setFreshStartRemoveClones(e.target.checked)}
+              />
+              Also remove cloned books (books shared by another user)
+            </label>
+            <div className="manifest-page__fresh-start-actions">
+              <Button variant="secondary" onClick={() => { setShowFreshStart(false); setFreshStartRemoveClones(false); }} disabled={freshStartRunning}>
+                Cancel
+              </Button>
+              <Button onClick={handleFreshStart} disabled={freshStartRunning}>
+                {freshStartRunning ? 'Clearing...' : 'Clear All Extractions'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Processing indicator */}
       {hasProcessingItems && (

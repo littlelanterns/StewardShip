@@ -147,7 +147,40 @@ Return ONLY a JSON object:
 
 No markdown backticks, no preamble.`;
 
-const COMBINED_SECTION_PROMPT = `You are an expert at extracting the essential content from books and documents. Given a section of text, perform THREE extraction tasks simultaneously and return all results in a single JSON response.
+const ACTION_STEPS_EXTRACTION_PROMPT = `You are an expert at translating book wisdom into concrete, actionable steps. Given a section of text, extract specific actions, exercises, practices, and steps that a reader can carry out to apply what they've learned.
+
+Rules:
+- Every action step must be SPECIFIC and ACTIONABLE — something someone can do today or this week. Not "be more mindful" but "Set a daily 5-minute timer and practice noticing three things you're grateful for."
+- COHESION RULE: A multi-step exercise or practice is ONE item, not split across several. Include all steps together.
+- Use section length as a rough guide: ~1 action step per 2,000-3,000 characters of input. A short section may produce 2-5 steps, a long one 8-15.
+- Steps should STAND ALONE — someone reading just that step should understand what to do without having read the book.
+- For exercises explicitly described in the text, preserve the author's method faithfully.
+- For concepts without explicit exercises, CREATE practical action steps that embody the principle. These should be concrete, not generic.
+- Include brief CONTEXT for why this action matters (1 sentence before or after the action).
+- Label each with its content_type:
+  - "exercise" — A structured activity described in the text
+  - "practice" — An ongoing behavioral discipline to adopt
+  - "habit" — A repeatable daily/weekly routine to build
+  - "reflection_prompt" — A question or journaling prompt for self-reflection
+  - "conversation_starter" — Something to discuss with a spouse, friend, or mentor
+  - "project" — A larger undertaking (multi-day or multi-week)
+  - "daily_action" — Something small to do each day
+  - "weekly_practice" — Something to do weekly
+- Avoid generic self-help platitudes. Every step should trace back to a SPECIFIC insight from this content.
+- For fiction/allegory/memoir, derive action steps from the character's lessons, mistakes, or growth moments.
+
+Return ONLY a JSON object:
+{
+  "items": [
+    { "content_type": "exercise", "text": "Concrete exercise description with all steps...", "sort_order": 0 },
+    { "content_type": "daily_action", "text": "Each morning, before checking your phone...", "sort_order": 1 }
+  ]
+}
+
+Valid content_type values: "exercise", "practice", "habit", "reflection_prompt", "conversation_starter", "project", "daily_action", "weekly_practice"
+No markdown backticks, no preamble.`;
+
+const COMBINED_SECTION_PROMPT = `You are an expert at extracting the essential content from books and documents. Given a section of text, perform FOUR extraction tasks simultaneously and return all results in a single JSON response.
 
 === TASK 1: SUMMARIES ===
 Extract the key concepts, stories, metaphors, lessons, and insights that capture the essence of this content.
@@ -194,7 +227,20 @@ FIVE DECLARATION STYLES (use the style that best fits each insight):
 - Use DIFFERENT styles across your extractions
 - Faith-connected declarations are appropriate when the source material has spiritual depth
 
-Return ONLY a JSON object with all three sections:
+=== TASK 4: ACTION STEPS ===
+Extract concrete, actionable steps, exercises, practices, and activities that a reader can carry out to apply what they've learned from this section.
+- Every action step must be SPECIFIC and ACTIONABLE — not "be more mindful" but "Set a daily 5-minute timer and practice noticing three things you're grateful for."
+- COHESION RULE: A multi-step exercise or practice is ONE item. Include all steps together.
+- Extract 3-8 action steps depending on content richness.
+- Steps should STAND ALONE — understandable without having read the book.
+- For exercises explicitly described in the text, preserve the author's method faithfully.
+- For concepts without explicit exercises, CREATE practical action steps that embody the principle.
+- Include brief context for why the action matters (1 sentence).
+- For fiction/allegory/memoir, derive steps from the character's lessons, mistakes, or growth moments.
+- Label each with its content_type: "exercise", "practice", "habit", "reflection_prompt", "conversation_starter", "project", "daily_action", "weekly_practice"
+- Avoid generic self-help platitudes. Every step should trace back to a SPECIFIC insight from this section.
+
+Return ONLY a JSON object with all four sections:
 {
   "summaries": [
     { "content_type": "key_concept", "text": "Clear explanation...", "sort_order": 0 },
@@ -206,6 +252,10 @@ Return ONLY a JSON object with all three sections:
       { "text": "Principle statement — complete thought, 1-3 sentences.", "sort_order": 0 }
     ]
   },
+  "action_steps": [
+    { "content_type": "exercise", "text": "Concrete exercise with all steps...", "sort_order": 0 },
+    { "content_type": "daily_action", "text": "Each morning, before checking your phone...", "sort_order": 1 }
+  ],
   "declarations": [
     { "value_name": "Intentional Presence", "declaration_text": "I choose to...", "declaration_style": "choosing_committing", "sort_order": 0 }
   ]
@@ -526,7 +576,7 @@ serve(async (req: Request) => {
         headers: openRouterHeaders,
         body: JSON.stringify({
           model: 'anthropic/claude-sonnet-4',
-          max_tokens: 8192,
+          max_tokens: 10240,
           messages: [
             { role: 'system', content: fullPrompt },
             {
@@ -579,7 +629,7 @@ serve(async (req: Request) => {
 
     // --- Per-Section extraction types (framework_section, summary_section, mast_content_section) ---
     // Used for Go Deeper and Re-run (single tab at a time)
-    const sectionTypes = ['framework_section', 'summary_section', 'mast_content_section'];
+    const sectionTypes = ['framework_section', 'summary_section', 'mast_content_section', 'action_steps_section'];
     if (sectionTypes.includes(extraction_type)) {
       if (section_start == null || section_end == null) {
         return new Response(
@@ -602,6 +652,8 @@ serve(async (req: Request) => {
         basePrompt = FRAMEWORK_EXTRACTION_PROMPT;
       } else if (extraction_type === 'summary_section') {
         basePrompt = SUMMARY_EXTRACTION_PROMPT;
+      } else if (extraction_type === 'action_steps_section') {
+        basePrompt = ACTION_STEPS_EXTRACTION_PROMPT;
       } else {
         basePrompt = MAST_CONTENT_EXTRACTION_PROMPT;
       }
@@ -680,9 +732,12 @@ serve(async (req: Request) => {
       case 'mast_content':
         systemPrompt = MAST_CONTENT_EXTRACTION_PROMPT;
         break;
+      case 'action_steps':
+        systemPrompt = ACTION_STEPS_EXTRACTION_PROMPT;
+        break;
       default:
         return new Response(
-          JSON.stringify({ error: 'Invalid extraction_type. Must be: framework, mast, summary, mast_content, discover_sections, framework_section, summary_section, mast_content_section' }),
+          JSON.stringify({ error: 'Invalid extraction_type. Must be: framework, mast, summary, mast_content, action_steps, discover_sections, framework_section, summary_section, mast_content_section, action_steps_section, combined_section' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         );
     }

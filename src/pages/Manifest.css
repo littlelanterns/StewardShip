@@ -305,3 +305,57 @@
   color: var(--color-cognac);
   background: var(--color-bg-secondary);
 }
+
+/* Fresh Start */
+.manifest-page__action-btn--danger {
+  color: var(--color-error, #c0392b);
+  border-color: var(--color-error, #c0392b);
+}
+
+.manifest-page__action-btn--danger:hover {
+  background: var(--color-error, #c0392b);
+  color: var(--color-white);
+}
+
+.manifest-page__fresh-start {
+  padding: var(--spacing-md);
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-error, #c0392b);
+}
+
+.manifest-page__fresh-start-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.manifest-page__fresh-start-title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: var(--font-size-base);
+  color: var(--color-error, #c0392b);
+}
+
+.manifest-page__fresh-start-desc {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+.manifest-page__fresh-start-option {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.manifest-page__fresh-start-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  justify-content: flex-end;
+  margin-top: var(--spacing-xs);
+}

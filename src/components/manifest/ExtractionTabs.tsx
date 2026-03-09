@@ -1,24 +1,27 @@
 import { useState, useMemo, useCallback } from 'react';
-import { Heart, Trash2, ChevronDown, ChevronRight, Anchor, RefreshCw, Sparkles } from 'lucide-react';
+import { Heart, Trash2, ChevronDown, ChevronRight, Anchor, Compass, RefreshCw, Sparkles, LayoutList, BookOpen } from 'lucide-react';
 import type {
   ManifestSummary,
   ManifestDeclaration,
+  ManifestActionStep,
   AIFrameworkPrinciple,
   BookGenre,
 } from '../../lib/types';
-import { DECLARATION_STYLE_LABELS } from '../../lib/types';
+import { DECLARATION_STYLE_LABELS, ACTION_STEP_CONTENT_TYPE_LABELS } from '../../lib/types';
+import type { ActionStepContentType } from '../../lib/types';
 import { Button, LoadingSpinner } from '../shared';
 import './ExtractionTabs.css';
 
-type TabType = 'summary' | 'frameworks' | 'mast_content';
+type TabType = 'summary' | 'frameworks' | 'action_steps' | 'mast_content';
 type FilterMode = 'all' | 'hearted';
+type ViewMode = 'tabs' | 'chapters';
 
 // --- Summary Tab ---
 
 interface ExtractionProgressInfo {
   current: number;
   total: number;
-  currentType: 'summary' | 'framework' | 'mast_content';
+  currentType: 'summary' | 'framework' | 'mast_content' | 'action_steps';
 }
 
 interface SummaryTabProps {
@@ -364,6 +367,243 @@ function FrameworksTab({
   );
 }
 
+// --- Action Steps Tab ---
+
+interface ActionStepsTabProps {
+  actionSteps: ManifestActionStep[];
+  extractingTab: string | null;
+  genres: BookGenre[];
+  manifestItemId: string;
+  onToggleHeart: (id: string) => void;
+  onDelete: (id: string) => void;
+  onUpdateText: (id: string, text: string) => void;
+  onSendToCompass: (id: string) => void;
+  onGoDeeper: (sectionTitle: string | undefined, existingItems: string[], sectionIndex?: number) => void;
+  onReRun: (sectionTitle?: string) => void;
+  filterMode: FilterMode;
+  extractionProgress?: ExtractionProgressInfo | null;
+}
+
+function ActionStepsTab({
+  actionSteps,
+  extractingTab,
+  onToggleHeart,
+  onDelete,
+  onUpdateText,
+  onSendToCompass,
+  onGoDeeper,
+  onReRun,
+  filterMode,
+  extractionProgress,
+}: ActionStepsTabProps) {
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState('');
+  const [confirmReRun, setConfirmReRun] = useState(false);
+  const [sendingToCompass, setSendingToCompass] = useState<Set<string>>(new Set());
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+
+  const handleAnimatedDelete = useCallback((id: string) => {
+    setDeletingIds((prev) => new Set(prev).add(id));
+    setTimeout(() => {
+      onDelete(id);
+      setDeletingIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
+    }, 300);
+  }, [onDelete]);
+
+  const visible = useMemo(() => {
+    let items = actionSteps.filter((a) => !a.is_deleted);
+    if (filterMode === 'hearted') items = items.filter((a) => a.is_hearted);
+    return items;
+  }, [actionSteps, filterMode]);
+
+  const sections = useMemo(() => {
+    const map = new Map<string, ManifestActionStep[]>();
+    for (const a of visible) {
+      const key = a.section_title || '__full_book__';
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(a);
+    }
+    return Array.from(map.entries()).sort((a, b) => {
+      const aIdx = a[1][0]?.section_index ?? 0;
+      const bIdx = b[1][0]?.section_index ?? 0;
+      return aIdx - bIdx;
+    });
+  }, [visible]);
+
+  const toggleSection = (key: string) => {
+    setCollapsedSections((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  };
+
+  const startEdit = (item: ManifestActionStep) => {
+    setEditingId(item.id);
+    setEditDraft(item.text);
+  };
+
+  const saveEdit = () => {
+    if (editingId && editDraft.trim()) {
+      onUpdateText(editingId, editDraft.trim());
+    }
+    setEditingId(null);
+  };
+
+  const handleSendToCompass = useCallback(async (id: string) => {
+    setSendingToCompass((prev) => new Set(prev).add(id));
+    await onSendToCompass(id);
+    setSendingToCompass((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  }, [onSendToCompass]);
+
+  if (extractingTab === 'action_steps' && visible.length === 0) {
+    return (
+      <div className="extraction-tab__loading">
+        <LoadingSpinner />
+        <p>Extracting action steps...</p>
+      </div>
+    );
+  }
+
+  if (visible.length === 0) {
+    return (
+      <div className="extraction-tab__empty">
+        <p>No action steps yet. Click Extract above to analyze this book.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="extraction-tab">
+      {extractingTab === 'action_steps' && (
+        <div className="extraction-tab__progress">
+          <div className="extraction-tab__progress-bar" />
+          <span>
+            {extractionProgress
+              ? `Extracting section ${extractionProgress.current + 1} of ${extractionProgress.total} (Action Steps)...`
+              : 'Extracting...'}
+          </span>
+        </div>
+      )}
+
+      <div className="extraction-tab__toolbar">
+        {confirmReRun ? (
+          <div className="extraction-tab__confirm">
+            <span>Replace all action steps with fresh extraction?</span>
+            <Button size="sm" onClick={() => { onReRun(); setConfirmReRun(false); }}>Re-run</Button>
+            <Button size="sm" variant="text" onClick={() => setConfirmReRun(false)}>Cancel</Button>
+          </div>
+        ) : (
+          <button type="button" className="extraction-tab__rerun-btn" onClick={() => setConfirmReRun(true)}>
+            <RefreshCw size={12} /> Re-run
+          </button>
+        )}
+      </div>
+
+      {sections.map(([sectionKey, items]) => {
+        const isCollapsed = collapsedSections.has(sectionKey);
+        const label = sectionKey === '__full_book__' ? 'Full Book' : sectionKey;
+        return (
+          <div key={sectionKey} className="extraction-tab__section">
+            <button
+              type="button"
+              className="extraction-tab__section-header"
+              onClick={() => toggleSection(sectionKey)}
+            >
+              {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+              <span className="extraction-tab__section-title">{label}</span>
+              <span className="extraction-tab__section-count">{items.length}</span>
+            </button>
+
+            {!isCollapsed && (
+              <div className="extraction-tab__section-items">
+                {items.map((item) => (
+                  <div key={item.id} className={`extraction-item${item.is_from_go_deeper ? ' extraction-item--deeper' : ''}${deletingIds.has(item.id) ? ' extraction-item--deleting' : ''}`}>
+                    <div className="extraction-item__type-badge">
+                      {ACTION_STEP_CONTENT_TYPE_LABELS[item.content_type as ActionStepContentType] || item.content_type.replace(/_/g, ' ')}
+                    </div>
+
+                    {editingId === item.id ? (
+                      <textarea
+                        className="extraction-item__edit-textarea"
+                        value={editDraft}
+                        onChange={(e) => setEditDraft(e.target.value)}
+                        onBlur={saveEdit}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Escape') setEditingId(null);
+                        }}
+                        autoFocus
+                        rows={3}
+                      />
+                    ) : (
+                      <p
+                        className="extraction-item__text"
+                        onClick={() => startEdit(item)}
+                        title="Click to edit"
+                      >
+                        {item.is_from_go_deeper && <Sparkles size={12} className="extraction-item__deeper-icon" />}
+                        {item.text}
+                      </p>
+                    )}
+
+                    <div className="extraction-item__actions">
+                      <button
+                        type="button"
+                        className={`extraction-item__heart${item.is_hearted ? ' extraction-item__heart--active' : ''}`}
+                        onClick={() => onToggleHeart(item.id)}
+                        title={item.is_hearted ? 'Remove heart' : 'Heart this'}
+                      >
+                        <Heart size={14} fill={item.is_hearted ? 'currentColor' : 'none'} />
+                      </button>
+
+                      {item.sent_to_compass ? (
+                        <span className="extraction-item__compass-sent">In Compass</span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="extraction-item__send-compass"
+                          onClick={() => handleSendToCompass(item.id)}
+                          disabled={sendingToCompass.has(item.id)}
+                          title="Send to Compass"
+                        >
+                          <Compass size={14} />
+                          {sendingToCompass.has(item.id) ? 'Sending...' : 'Send to Compass'}
+                        </button>
+                      )}
+
+                      <button type="button" className="extraction-item__delete" onClick={() => handleAnimatedDelete(item.id)}>
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
+                <button
+                  type="button"
+                  className="extraction-tab__go-deeper"
+                  onClick={() => onGoDeeper(
+                    sectionKey === '__full_book__' ? undefined : sectionKey,
+                    items.map((i) => i.text),
+                    items[0]?.section_index,
+                  )}
+                  disabled={extractingTab === 'action_steps'}
+                >
+                  Go Deeper
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // --- Mast Content Tab ---
 
 interface MastContentTabProps {
@@ -612,6 +852,7 @@ interface ExtractionTabsProps {
   genres: BookGenre[];
   summaries: ManifestSummary[];
   declarations: ManifestDeclaration[];
+  actionSteps: ManifestActionStep[];
   principles: AIFrameworkPrinciple[];
   extractingTab: string | null;
   hasFramework: boolean;
@@ -625,6 +866,13 @@ interface ExtractionTabsProps {
   // Framework actions
   onTogglePrincipleHeart: (id: string) => void;
   onDeletePrinciple: (id: string) => void;
+  // Action Step actions
+  onToggleActionStepHeart: (id: string) => void;
+  onDeleteActionStep: (id: string) => void;
+  onUpdateActionStepText: (id: string, text: string) => void;
+  onSendActionStepToCompass: (id: string) => void;
+  onActionStepGoDeeper: (sectionTitle: string | undefined, existingItems: string[], sectionIndex?: number) => void;
+  onActionStepReRun: (sectionTitle?: string) => void;
   // Declaration actions
   onToggleDeclarationHeart: (id: string) => void;
   onDeleteDeclaration: (id: string) => void;
@@ -639,6 +887,7 @@ export function ExtractionTabs({
   genres,
   summaries,
   declarations,
+  actionSteps,
   principles,
   extractingTab,
   hasFramework,
@@ -650,6 +899,12 @@ export function ExtractionTabs({
   onSummaryReRun,
   onTogglePrincipleHeart,
   onDeletePrinciple,
+  onToggleActionStepHeart,
+  onDeleteActionStep,
+  onUpdateActionStepText,
+  onSendActionStepToCompass,
+  onActionStepGoDeeper,
+  onActionStepReRun,
   onToggleDeclarationHeart,
   onDeleteDeclaration,
   onUpdateDeclaration,
@@ -659,9 +914,11 @@ export function ExtractionTabs({
 }: ExtractionTabsProps) {
   const [activeTab, setActiveTab] = useState<TabType>('summary');
   const [filterMode, setFilterMode] = useState<FilterMode>('all');
+  const [viewMode, setViewMode] = useState<ViewMode>('tabs');
 
   const summaryCount = summaries.filter((s) => !s.is_deleted).length;
   const frameworkCount = principles.filter((p) => !p.is_deleted).length;
+  const actionStepCount = actionSteps.filter((a) => !a.is_deleted).length;
   const declarationCount = declarations.filter((d) => !d.is_deleted).length;
 
   return (
@@ -684,6 +941,13 @@ export function ExtractionTabs({
         </button>
         <button
           type="button"
+          className={`extraction-tabs__tab${activeTab === 'action_steps' ? ' extraction-tabs__tab--active' : ''}`}
+          onClick={() => setActiveTab('action_steps')}
+        >
+          Action Steps {actionStepCount > 0 && <span className="extraction-tabs__tab-count">{actionStepCount}</span>}
+        </button>
+        <button
+          type="button"
           className={`extraction-tabs__tab${activeTab === 'mast_content' ? ' extraction-tabs__tab--active' : ''}`}
           onClick={() => setActiveTab('mast_content')}
         >
@@ -691,7 +955,7 @@ export function ExtractionTabs({
         </button>
       </div>
 
-      {/* Filter toggle */}
+      {/* Filter + view mode toggle */}
       <div className="extraction-tabs__filter">
         <button
           type="button"
@@ -701,52 +965,259 @@ export function ExtractionTabs({
           <Heart size={12} fill={filterMode === 'hearted' ? 'currentColor' : 'none'} />
           {filterMode === 'hearted' ? 'Hearted' : 'All'}
         </button>
+        <div className="extraction-tabs__view-toggle">
+          <button
+            type="button"
+            className={`extraction-tabs__view-btn${viewMode === 'tabs' ? ' extraction-tabs__view-btn--active' : ''}`}
+            onClick={() => setViewMode('tabs')}
+            title="View by tab"
+          >
+            <LayoutList size={14} />
+          </button>
+          <button
+            type="button"
+            className={`extraction-tabs__view-btn${viewMode === 'chapters' ? ' extraction-tabs__view-btn--active' : ''}`}
+            onClick={() => setViewMode('chapters')}
+            title="View by chapter"
+          >
+            <BookOpen size={14} />
+          </button>
+        </div>
       </div>
 
       {/* Tab content */}
       <div className="extraction-tabs__content">
-        {activeTab === 'summary' && (
-          <SummaryTab
+        {viewMode === 'tabs' ? (
+          <>
+            {activeTab === 'summary' && (
+              <SummaryTab
+                summaries={summaries}
+                extractingTab={extractingTab}
+                genres={genres}
+                manifestItemId={manifestItemId}
+                onToggleHeart={onToggleSummaryHeart}
+                onDelete={onDeleteSummary}
+                onUpdateText={onUpdateSummaryText}
+                onGoDeeper={onSummaryGoDeeper}
+                onReRun={onSummaryReRun}
+                filterMode={filterMode}
+                extractionProgress={extractionProgress}
+              />
+            )}
+            {activeTab === 'frameworks' && (
+              <FrameworksTab
+                principles={principles}
+                extractingTab={extractingTab}
+                onToggleHeart={onTogglePrincipleHeart}
+                onDelete={onDeletePrinciple}
+                filterMode={filterMode}
+                hasFramework={hasFramework}
+              />
+            )}
+            {activeTab === 'action_steps' && (
+              <ActionStepsTab
+                actionSteps={actionSteps}
+                extractingTab={extractingTab}
+                genres={genres}
+                manifestItemId={manifestItemId}
+                onToggleHeart={onToggleActionStepHeart}
+                onDelete={onDeleteActionStep}
+                onUpdateText={onUpdateActionStepText}
+                onSendToCompass={onSendActionStepToCompass}
+                onGoDeeper={onActionStepGoDeeper}
+                onReRun={onActionStepReRun}
+                filterMode={filterMode}
+                extractionProgress={extractionProgress}
+              />
+            )}
+            {activeTab === 'mast_content' && (
+              <MastContentTab
+                declarations={declarations}
+                extractingTab={extractingTab}
+                genres={genres}
+                manifestItemId={manifestItemId}
+                onToggleHeart={onToggleDeclarationHeart}
+                onDelete={onDeleteDeclaration}
+                onUpdate={onUpdateDeclaration}
+                onSendToMast={onSendDeclarationToMast}
+                onGoDeeper={onDeclarationGoDeeper}
+                onReRun={onDeclarationReRun}
+                filterMode={filterMode}
+                extractionProgress={extractionProgress}
+              />
+            )}
+          </>
+        ) : (
+          <ChapterView
             summaries={summaries}
-            extractingTab={extractingTab}
-            genres={genres}
-            manifestItemId={manifestItemId}
-            onToggleHeart={onToggleSummaryHeart}
-            onDelete={onDeleteSummary}
-            onUpdateText={onUpdateSummaryText}
-            onGoDeeper={onSummaryGoDeeper}
-            onReRun={onSummaryReRun}
-            filterMode={filterMode}
-            extractionProgress={extractionProgress}
-          />
-        )}
-        {activeTab === 'frameworks' && (
-          <FrameworksTab
             principles={principles}
-            extractingTab={extractingTab}
-            onToggleHeart={onTogglePrincipleHeart}
-            onDelete={onDeletePrinciple}
-            filterMode={filterMode}
-            hasFramework={hasFramework}
-          />
-        )}
-        {activeTab === 'mast_content' && (
-          <MastContentTab
+            actionSteps={actionSteps}
             declarations={declarations}
-            extractingTab={extractingTab}
-            genres={genres}
-            manifestItemId={manifestItemId}
-            onToggleHeart={onToggleDeclarationHeart}
-            onDelete={onDeleteDeclaration}
-            onUpdate={onUpdateDeclaration}
-            onSendToMast={onSendDeclarationToMast}
-            onGoDeeper={onDeclarationGoDeeper}
-            onReRun={onDeclarationReRun}
             filterMode={filterMode}
-            extractionProgress={extractionProgress}
           />
         )}
       </div>
+    </div>
+  );
+}
+
+// --- Chapter View (read-only aggregated view per chapter) ---
+
+interface ChapterViewProps {
+  summaries: ManifestSummary[];
+  principles: AIFrameworkPrinciple[];
+  actionSteps: ManifestActionStep[];
+  declarations: ManifestDeclaration[];
+  filterMode: FilterMode;
+}
+
+function ChapterView({ summaries, principles, actionSteps, declarations, filterMode }: ChapterViewProps) {
+  const [collapsedChapters, setCollapsedChapters] = useState<Set<string>>(new Set());
+
+  // Collect all unique section titles and their indexes across all data
+  const chapters = useMemo(() => {
+    const sectionMap = new Map<string, number>();
+
+    const addItem = (title: string | null, index: number) => {
+      const key = title || '__full_book__';
+      if (!sectionMap.has(key) || (sectionMap.get(key)! > index)) {
+        sectionMap.set(key, index);
+      }
+    };
+
+    for (const s of summaries) if (!s.is_deleted && (filterMode !== 'hearted' || s.is_hearted)) addItem(s.section_title, s.section_index ?? 0);
+    for (const p of principles) if (!p.is_deleted && (filterMode !== 'hearted' || p.is_hearted)) addItem(p.section_title, 0);
+    for (const a of actionSteps) if (!a.is_deleted && (filterMode !== 'hearted' || a.is_hearted)) addItem(a.section_title, a.section_index ?? 0);
+    for (const d of declarations) if (!d.is_deleted && (filterMode !== 'hearted' || d.is_hearted)) addItem(d.section_title, d.section_index ?? 0);
+
+    return Array.from(sectionMap.entries())
+      .sort((a, b) => a[1] - b[1])
+      .map(([key]) => key);
+  }, [summaries, principles, actionSteps, declarations, filterMode]);
+
+  const filterItems = <T extends { is_deleted?: boolean; is_hearted?: boolean }>(items: T[]): T[] => {
+    let filtered = items.filter((i) => !i.is_deleted);
+    if (filterMode === 'hearted') filtered = filtered.filter((i) => i.is_hearted);
+    return filtered;
+  };
+
+  const toggleChapter = (key: string) => {
+    setCollapsedChapters((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  };
+
+  if (chapters.length === 0) {
+    return (
+      <div className="extraction-tab__empty">
+        <p>No extraction content to display.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="extraction-tab chapter-view">
+      {chapters.map((chapterKey) => {
+        const isCollapsed = collapsedChapters.has(chapterKey);
+        const label = chapterKey === '__full_book__' ? 'Full Book' : chapterKey;
+        const matchTitle = chapterKey === '__full_book__' ? null : chapterKey;
+
+        const chSummaries = filterItems(summaries.filter((s) => (s.section_title || null) === matchTitle));
+        const chPrinciples = filterItems(principles.filter((p) => (p.section_title || null) === matchTitle));
+        const chActionSteps = filterItems(actionSteps.filter((a) => (a.section_title || null) === matchTitle));
+        const chDeclarations = filterItems(declarations.filter((d) => (d.section_title || null) === matchTitle));
+        const totalCount = chSummaries.length + chPrinciples.length + chActionSteps.length + chDeclarations.length;
+
+        if (totalCount === 0) return null;
+
+        return (
+          <div key={chapterKey} className="chapter-view__chapter">
+            <button
+              type="button"
+              className="chapter-view__chapter-header"
+              onClick={() => toggleChapter(chapterKey)}
+            >
+              {isCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+              <span className="chapter-view__chapter-title">{label}</span>
+              <span className="extraction-tab__section-count">{totalCount}</span>
+            </button>
+
+            {!isCollapsed && (
+              <div className="chapter-view__chapter-content">
+                {chSummaries.length > 0 && (
+                  <div className="chapter-view__type-group">
+                    <div className="chapter-view__type-label">Summary</div>
+                    {chSummaries.map((item) => (
+                      <div key={item.id} className={`extraction-item${item.is_from_go_deeper ? ' extraction-item--deeper' : ''}`}>
+                        <div className="extraction-item__type-badge">{item.content_type.replace(/_/g, ' ')}</div>
+                        <p className="extraction-item__text">
+                          {item.is_from_go_deeper && <Sparkles size={12} className="extraction-item__deeper-icon" />}
+                          {item.text}
+                        </p>
+                        {item.is_hearted && <Heart size={12} className="chapter-view__hearted-icon" fill="currentColor" />}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {chPrinciples.length > 0 && (
+                  <div className="chapter-view__type-group">
+                    <div className="chapter-view__type-label">Frameworks</div>
+                    {chPrinciples.map((item) => (
+                      <div key={item.id} className={`extraction-item${item.is_from_go_deeper ? ' extraction-item--deeper' : ''}`}>
+                        <p className="extraction-item__text">
+                          {item.is_from_go_deeper && <Sparkles size={12} className="extraction-item__deeper-icon" />}
+                          {item.text}
+                        </p>
+                        {item.is_hearted && <Heart size={12} className="chapter-view__hearted-icon" fill="currentColor" />}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {chActionSteps.length > 0 && (
+                  <div className="chapter-view__type-group">
+                    <div className="chapter-view__type-label">Action Steps</div>
+                    {chActionSteps.map((item) => (
+                      <div key={item.id} className={`extraction-item${item.is_from_go_deeper ? ' extraction-item--deeper' : ''}`}>
+                        <div className="extraction-item__type-badge">
+                          {ACTION_STEP_CONTENT_TYPE_LABELS[item.content_type as ActionStepContentType] || item.content_type.replace(/_/g, ' ')}
+                        </div>
+                        <p className="extraction-item__text">
+                          {item.is_from_go_deeper && <Sparkles size={12} className="extraction-item__deeper-icon" />}
+                          {item.text}
+                        </p>
+                        {item.is_hearted && <Heart size={12} className="chapter-view__hearted-icon" fill="currentColor" />}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {chDeclarations.length > 0 && (
+                  <div className="chapter-view__type-group">
+                    <div className="chapter-view__type-label">Mast Content</div>
+                    {chDeclarations.map((item) => (
+                      <div key={item.id} className={`extraction-item extraction-item--declaration${item.is_from_go_deeper ? ' extraction-item--deeper' : ''}`}>
+                        <div className="extraction-item__declaration-meta">
+                          {item.value_name && <span className="extraction-item__value-name">{item.value_name}</span>}
+                          <span className="extraction-item__style-label">{DECLARATION_STYLE_LABELS[item.declaration_style]}</span>
+                        </div>
+                        <p className="extraction-item__text extraction-item__text--declaration">
+                          {item.is_from_go_deeper && <Sparkles size={12} className="extraction-item__deeper-icon" />}
+                          &ldquo;{item.declaration_text}&rdquo;
+                        </p>
+                        {item.is_hearted && <Heart size={12} className="chapter-view__hearted-icon" fill="currentColor" />}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

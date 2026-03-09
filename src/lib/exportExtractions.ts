@@ -1,6 +1,7 @@
 import JSZip from 'jszip';
-import type { ManifestSummary, ManifestDeclaration, AIFrameworkPrinciple } from './types';
-import { DECLARATION_STYLE_LABELS } from './types';
+import type { ManifestSummary, ManifestDeclaration, ManifestActionStep, AIFrameworkPrinciple } from './types';
+import { DECLARATION_STYLE_LABELS, ACTION_STEP_CONTENT_TYPE_LABELS } from './types';
+import type { ActionStepContentType } from './types';
 
 // --- Shared types ---
 
@@ -8,6 +9,7 @@ export interface BookExtractionGroup {
   bookTitle: string;
   summaries: ManifestSummary[];
   declarations: ManifestDeclaration[];
+  actionSteps?: ManifestActionStep[];
   principles: (AIFrameworkPrinciple & { framework_name?: string })[];
 }
 
@@ -58,6 +60,11 @@ function contentTypeLabel(type: string): string {
 /** Format a declaration style enum to display label */
 function styleLabel(style: string): string {
   return DECLARATION_STYLE_LABELS[style as keyof typeof DECLARATION_STYLE_LABELS] || style.replace(/_/g, ' ');
+}
+
+/** Format action step content_type to display label */
+function actionStepLabel(type: string): string {
+  return ACTION_STEP_CONTENT_TYPE_LABELS[type as ActionStepContentType] || type.replace(/_/g, ' ').toUpperCase();
 }
 
 // --- Group summaries/declarations by section_title ---
@@ -140,6 +147,21 @@ function buildBookMarkdown(group: BookExtractionGroup, headingLevel: '#' | '##')
           lines.push(`- ${heartPrefix}${cleanText(p.text)}`);
         }
         lines.push('');
+      }
+    }
+  }
+
+  // --- Action Steps ---
+  if (group.actionSteps && group.actionSteps.length > 0) {
+    lines.push(`${sub} Action Steps`, '');
+    const sections = groupBySection(group.actionSteps);
+    for (const section of sections) {
+      if (section.sectionTitle) {
+        lines.push(`${subsub} ${section.sectionTitle}`, '');
+      }
+      for (const a of section.items) {
+        const heartPrefix = a.is_hearted ? '\u2764\uFE0F ' : '';
+        lines.push(`${heartPrefix}**${actionStepLabel(a.content_type)}** \u2014 ${cleanText(a.text)}`, '');
       }
     }
   }
@@ -239,6 +261,21 @@ function buildBookTxt(group: BookExtractionGroup, isTopLevel: boolean): string[]
           const heartPrefix = p.is_hearted ? '[hearted] ' : '';
           lines.push(`${heartPrefix}${cleanText(p.text)}`, '');
         }
+      }
+    }
+  }
+
+  // --- Action Steps ---
+  if (group.actionSteps && group.actionSteps.length > 0) {
+    lines.push(`${sectionDivider} ACTION STEPS ${sectionDivider}`, '');
+    const sections = groupBySection(group.actionSteps);
+    for (const section of sections) {
+      if (section.sectionTitle) {
+        lines.push(`--- ${section.sectionTitle} ---`, '');
+      }
+      for (const a of section.items) {
+        const heartPrefix = a.is_hearted ? '[hearted] ' : '';
+        lines.push(`${heartPrefix}${actionStepLabel(a.content_type)}: ${cleanText(a.text)}`, '');
       }
     }
   }
@@ -349,6 +386,25 @@ function buildDocxParagraphs(groups: BookExtractionGroup[], isMultiBook: boolean
         }
       }
       paras.push(docxSpacer());
+    }
+
+    // --- Action Steps ---
+    if (group.actionSteps && group.actionSteps.length > 0) {
+      paras.push(docxHeading('Action Steps', h2));
+      const sections = groupBySection(group.actionSteps);
+      for (const section of sections) {
+        if (section.sectionTitle) {
+          paras.push(docxHeading(section.sectionTitle, h3));
+        }
+        for (const a of section.items) {
+          const heartPrefix = a.is_hearted ? '\u2764\uFE0F ' : '';
+          paras.push(docxBoldPrefixParagraph(
+            `${heartPrefix}${actionStepLabel(a.content_type)}`,
+            cleanText(a.text),
+          ));
+        }
+        paras.push(docxSpacer());
+      }
     }
 
     // --- Mast Content ---

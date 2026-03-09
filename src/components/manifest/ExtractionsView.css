@@ -101,11 +101,20 @@
   border-color: var(--color-mid-teal);
 }
 
+/* Tabs row — tabs + view toggle */
+.extractions-view__tabs-row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--spacing-sm);
+}
+
 /* Tabs */
 .extractions-view__tabs {
   display: flex;
   gap: 2px;
   border-bottom: 2px solid var(--color-bg-secondary);
+  flex: 1;
+  min-width: 0;
 }
 
 .extractions-view__tab {
