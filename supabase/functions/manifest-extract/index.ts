@@ -497,11 +497,10 @@ serve(async (req: Request) => {
 
     // --- Section Discovery (Haiku — cheap structural classification) ---
     if (extraction_type === 'discover_sections') {
-      // Haiku context ~200K tokens. 600K chars ≈ 150K tokens, leaving ~50K for
-      // system prompt + response. This fits most books without any truncation.
-      // For very large docs (>600K), take evenly-spaced samples so the AI sees
-      // chapter headings throughout the entire document, not just head + tail.
-      const MAX_DISCOVERY_CHARS = 600_000;
+      // Haiku 4.5 context = 200K tokens. Reserve ~5K for system prompt + response.
+      // ~195K usable tokens × ~4 chars/token = ~780K chars.
+      // Send the full text whenever possible; only sample for very large documents.
+      const MAX_DISCOVERY_CHARS = 780_000;
       let discoveryText = item.text_content;
       console.log(`[manifest-extract] discover_sections: doc length=${discoveryText.length} chars`);
       if (discoveryText.length > MAX_DISCOVERY_CHARS) {
