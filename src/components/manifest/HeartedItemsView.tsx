@@ -481,7 +481,7 @@ export function HeartedItemsView({ onBack }: HeartedItemsViewProps) {
 
             {group.actionSteps.length > 0 && (
               <>
-                <div className="hearted-items__type-label">Action Steps</div>
+                <div className="hearted-items__type-label">Actions</div>
                 {group.actionSteps.map((a) => (
                   <div key={a.id} className={`extraction-item${a.is_from_go_deeper ? ' extraction-item--deeper' : ''}${deletingIds.has(a.id) ? ' extraction-item--deleting' : ''}`}>
                     <span className="extraction-item__type-badge">

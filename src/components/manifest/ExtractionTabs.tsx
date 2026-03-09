@@ -569,7 +569,7 @@ function ActionStepsTab({
     return (
       <div className="extraction-tab__loading">
         <LoadingSpinner />
-        <p>Extracting action steps...</p>
+        <p>Extracting actions...</p>
       </div>
     );
   }
@@ -577,7 +577,7 @@ function ActionStepsTab({
   if (visible.length === 0) {
     return (
       <div className="extraction-tab__empty">
-        <p>No action steps yet. Click Extract above to analyze this book.</p>
+        <p>No actions yet. Click Extract above to analyze this book.</p>
       </div>
     );
   }
@@ -589,7 +589,7 @@ function ActionStepsTab({
           <div className="extraction-tab__progress-bar" />
           <span>
             {extractionProgress
-              ? `Extracting section ${extractionProgress.current + 1} of ${extractionProgress.total} (Action Steps)...`
+              ? `Extracting section ${extractionProgress.current + 1} of ${extractionProgress.total} (Actions)...`
               : 'Extracting...'}
           </span>
         </div>
@@ -598,7 +598,7 @@ function ActionStepsTab({
       <div className="extraction-tab__toolbar">
         {confirmReRun ? (
           <div className="extraction-tab__confirm">
-            <span>Replace all action steps with fresh extraction?</span>
+            <span>Replace all actions with fresh extraction?</span>
             <Button size="sm" onClick={() => { onReRun(); setConfirmReRun(false); }}>Re-run</Button>
             <Button size="sm" variant="text" onClick={() => setConfirmReRun(false)}>Cancel</Button>
           </div>
@@ -1128,7 +1128,7 @@ export function ExtractionTabs({
           className={`extraction-tabs__tab${activeTab === 'action_steps' ? ' extraction-tabs__tab--active' : ''}`}
           onClick={() => setActiveTab('action_steps')}
         >
-          Steps {actionStepCount > 0 && <span className="extraction-tabs__tab-count">{actionStepCount}</span>}
+          Actions {actionStepCount > 0 && <span className="extraction-tabs__tab-count">{actionStepCount}</span>}
         </button>
         <button
           type="button"
@@ -1448,7 +1448,7 @@ function ChapterView({ summaries, principles, actionSteps, declarations, filterM
 
                 {chActionSteps.length > 0 && (
                   <div className="chapter-view__type-group">
-                    <div className="chapter-view__type-label">Action Steps</div>
+                    <div className="chapter-view__type-label">Actions</div>
                     {chActionSteps.map((item) => (
                       <div key={item.id} className={`extraction-item${item.is_from_go_deeper ? ' extraction-item--deeper' : ''}`}>
                         <div className="extraction-item__type-badge">
