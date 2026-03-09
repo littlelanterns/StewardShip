@@ -62,6 +62,7 @@ export function useManifestExtraction() {
       .select('*')
       .eq('manifest_item_id', manifestItemId)
       .eq('user_id', user.id)
+      .eq('is_deleted', false)
       .order('section_index', { ascending: true })
       .order('sort_order', { ascending: true });
 
@@ -79,6 +80,7 @@ export function useManifestExtraction() {
       .select('*')
       .eq('manifest_item_id', manifestItemId)
       .eq('user_id', user.id)
+      .eq('is_deleted', false)
       .order('section_index', { ascending: true })
       .order('sort_order', { ascending: true });
 
@@ -625,6 +627,8 @@ export function useManifestExtraction() {
 
   const deleteSummary = useCallback(async (summaryId: string) => {
     if (!user) return;
+    // Optimistic removal from state
+    setSummaries((prev) => prev.filter((s) => s.id !== summaryId));
     const { error: updateErr } = await supabase
       .from('manifest_summaries')
       .update({ is_deleted: true })
@@ -632,9 +636,7 @@ export function useManifestExtraction() {
       .eq('user_id', user.id);
     if (updateErr) {
       setError(updateErr.message);
-      return;
     }
-    setSummaries((prev) => prev.map((s) => s.id === summaryId ? { ...s, is_deleted: true } : s));
   }, [user]);
 
   // --- CRUD: Declaration items ---
@@ -675,6 +677,8 @@ export function useManifestExtraction() {
 
   const deleteDeclaration = useCallback(async (declarationId: string) => {
     if (!user) return;
+    // Optimistic removal from state
+    setDeclarations((prev) => prev.filter((d) => d.id !== declarationId));
     const { error: updateErr } = await supabase
       .from('manifest_declarations')
       .update({ is_deleted: true })
@@ -682,9 +686,7 @@ export function useManifestExtraction() {
       .eq('user_id', user.id);
     if (updateErr) {
       setError(updateErr.message);
-      return;
     }
-    setDeclarations((prev) => prev.map((d) => d.id === declarationId ? { ...d, is_deleted: true } : d));
   }, [user]);
 
   // --- Send Declaration to Mast ---

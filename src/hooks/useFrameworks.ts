@@ -41,10 +41,10 @@ export function useFrameworks() {
 
       if (fetchErr) throw fetchErr;
 
-      // Map Supabase join name to our type property name
+      // Map Supabase join name to our type property name, filter out soft-deleted principles
       const mapped = (data || []).map((fw: any) => ({
         ...fw,
-        principles: fw.ai_framework_principles || [],
+        principles: (fw.ai_framework_principles || []).filter((p: any) => !p.is_deleted),
       }));
       setFrameworks(mapped as AIFramework[]);
     } catch (err) {
