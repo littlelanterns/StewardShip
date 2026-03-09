@@ -327,7 +327,6 @@ export default function FrameworkPrinciples({
     setPhase('extracting');
     setTotalSectionsToExtract(selectedSections.length);
     const allPrinciples: EditablePrinciple[] = [];
-    let frameworkName = name || manifestItemTitle;
 
     for (let i = 0; i < selectedSections.length; i++) {
       setCurrentSectionIndex(i);
