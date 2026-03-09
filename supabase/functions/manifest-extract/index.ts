@@ -46,7 +46,8 @@ Look for: overlooked nuances, secondary insights, supporting evidence, contrasti
 const FRAMEWORK_EXTRACTION_PROMPT = `You are an expert at distilling books and content into concise, actionable principles. Given the text of a book section or document, extract the key principles, mental models, and actionable frameworks.
 
 Rules:
-- Extract 5-25 principles depending on content richness (more for richer content with multiple processes or techniques, fewer for shorter or thematic sections)
+- COHESION RULE: A named process, technique, or system is ONE principle — never split its steps across multiple principles. Related concepts from the same framework belong together. Prefer fewer, complete principles over many fragments.
+- Use section length as a rough guide: ~1 principle per 2,000-3,000 characters of input. A short section may produce 2-5 principles, a long one 8-15. Exceed this for genuinely dense content with many distinct techniques, but never pad with thin extractions to fill a quota.
 - Default principle length: 1-3 complete sentences. Never cut off mid-thought.
 - EXCEPTION — Processes, systems, and step-by-step methods: When content describes a multi-step process, a system, or a sequential method, extract it as a structured principle with numbered steps. These may be 3-8 sentences to capture the full process.
 - NEVER skip a named process, technique, step sequence, or method. If the content describes a specific procedure with steps (e.g., "The Rule of 3," "The 5-Step Correction Process," "How to disagree appropriately"), extract the COMPLETE process with all steps. These are often the most valuable content in the source material.
@@ -89,7 +90,8 @@ No markdown backticks, no preamble.`;
 const SUMMARY_EXTRACTION_PROMPT = `You are an expert at extracting the essential content from books and documents. Given the text, extract the key concepts, stories, metaphors, lessons, and insights that capture the essence of this content.
 
 Rules:
-- Extract 5-20 items depending on content richness
+- COHESION RULE: Group related ideas into a single item. A multi-step process, a complete story arc, or a cluster of related points from the same concept should be ONE item, not split across several. Prefer fewer, richer items over more granular ones.
+- Use section length as a rough guide: ~1 item per 2,000-3,000 characters of input. A short section should produce 2-5 items, a long one 8-15. Exceed this for genuinely dense content, but never pad with thin extractions to fill a quota.
 - Each item should STAND ALONE — someone reading just that item should understand it without having read the book
 - Capture diverse content types: key concepts, memorable stories, powerful metaphors, character insights, practical lessons, notable quotes, thematic observations
 - Preserve the author's distinctive language when it captures something uniquely well
@@ -125,7 +127,8 @@ FIVE DECLARATION STYLES (use the style that best fits each insight):
 CRITICAL RULES:
 - STANDALONE RULE: Each declaration must make complete sense on its own, without having read the book. Someone reading just the declaration should understand what it means and why it matters.
 - HONESTY TEST: "If someone who knows me well read this, would they see it as honest, or as performance?" Prefer honest aspiration over performative confidence.
-- Extract 3-10 declarations depending on content richness
+- COHESION RULE: One declaration per genuine value or insight. Don't create multiple declarations about slightly different angles of the same idea — find the single best expression.
+- Extract 2-6 declarations depending on content richness
 - Each declaration should connect to a genuine value or insight from the content
 - Include an optional value_name (1-3 words) that names the underlying value: e.g., "Patience", "Courage Under Pressure", "Active Listening"
 - Use DIFFERENT styles across your extractions — don't default to just one style
@@ -145,7 +148,8 @@ const COMBINED_SECTION_PROMPT = `You are an expert at extracting the essential c
 
 === TASK 1: SUMMARIES ===
 Extract the key concepts, stories, metaphors, lessons, and insights that capture the essence of this content.
-- Extract 5-20 items depending on content richness
+- COHESION RULE: Group related ideas into a single item. A multi-step process, a complete story arc, or a cluster of related points from the same concept should be ONE item, not split across several. Prefer fewer, richer items over more granular ones.
+- Use section length as a rough guide: ~1 item per 2,000-3,000 characters of input. A short section should produce 2-5 items, a long one 8-15. Exceed this for genuinely dense content, but never pad with thin extractions to fill a quota.
 - Each item should STAND ALONE — someone reading just that item should understand it without having read the book
 - Capture diverse content types: key concepts, memorable stories, powerful metaphors, character insights, practical lessons, notable quotes, thematic observations
 - Preserve the author's distinctive language when it captures something uniquely well
@@ -157,7 +161,8 @@ Extract the key concepts, stories, metaphors, lessons, and insights that capture
 
 === TASK 2: FRAMEWORK PRINCIPLES ===
 Extract the key principles, mental models, and actionable frameworks.
-- Extract 5-25 principles depending on content richness (more for richer content with multiple processes or techniques, fewer for shorter or thematic sections)
+- COHESION RULE: A named process, technique, or system is ONE principle — never split its steps across multiple principles. Related concepts from the same framework belong together. Prefer fewer, complete principles over many fragments.
+- Use section length as a rough guide: ~1 principle per 2,000-3,000 characters of input. A short section may produce 2-5 principles, a long one 8-15. Exceed this for genuinely dense content with many distinct techniques, but never pad.
 - Default principle length: 1-3 complete sentences. Never cut off mid-thought.
 - EXCEPTION — Processes, systems, and step-by-step methods: extract as structured principles with numbered steps (3-8 sentences)
 - NEVER skip a named process, technique, step sequence, or method. If the content describes a specific procedure with steps (e.g., "The Rule of 3," "The 5-Step Correction Process," "How to disagree appropriately"), extract the COMPLETE process with all steps. These are often the most valuable content in the source material.
@@ -176,7 +181,8 @@ FIVE DECLARATION STYLES (use the style that best fits each insight):
 3. "claiming_stepping_into" — Identity claim: "I am someone who..." / "I am stepping into..."
 4. "learning_striving" — Growth posture: "I am learning to..." / "I strive to..."
 5. "resolute_unashamed" — Bold commitment: "I will not apologize for..." / "I refuse to..."
-- Extract 3-10 declarations depending on content richness
+- COHESION RULE: One declaration per genuine value or insight. Don't create multiple declarations about slightly different angles of the same idea — find the single best expression.
+- Extract 2-6 declarations depending on content richness
 - STANDALONE RULE: Each declaration must make complete sense on its own
 - HONESTY TEST: Prefer honest aspiration over performative confidence
 - Include an optional value_name (1-3 words) that names the underlying value
