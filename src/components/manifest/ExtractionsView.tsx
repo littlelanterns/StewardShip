@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { ChevronLeft, Heart, Download, FileText, FileCode, ChevronDown, ChevronRight, Trash2, Anchor, Compass, RefreshCw, Sparkles, LayoutList, BookOpen } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ChevronLeft, Heart, Download, FileText, FileCode, ChevronDown, ChevronRight, Trash2, Anchor, Compass, RefreshCw, Sparkles, LayoutList, BookOpen, StickyNote } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../contexts/AuthContext';
 import type { ManifestItem, ManifestSummary, ManifestDeclaration, ManifestActionStep, AIFrameworkPrinciple, BookGenre } from '../../lib/types';
 import { DECLARATION_STYLE_LABELS, ACTION_STEP_CONTENT_TYPE_LABELS } from '../../lib/types';
 import type { ActionStepContentType } from '../../lib/types';
-import { exportExtractionsMd, exportExtractionsTxt, exportExtractionsDocx } from '../../lib/exportExtractions';
+import { exportExtractionsMd, exportExtractionsTxt, exportExtractionsDocx, exportNotesMd, exportNotesTxt, exportNotesDocx } from '../../lib/exportExtractions';
 import type { BookExtractionGroup } from '../../lib/exportExtractions';
 import { Button } from '../shared';
 import './ExtractionsView.css';
@@ -13,12 +14,12 @@ import './ExtractionTabs.css';
 
 interface ExtractionsViewProps {
   items: ManifestItem[];
-  onBack: () => void;
+  onBack?: () => void;
 }
 
 type TabType = 'summary' | 'frameworks' | 'action_steps' | 'mast_content';
 type FilterMode = 'all' | 'hearted';
-type ViewMode = 'tabs' | 'chapters';
+type ViewMode = 'tabs' | 'chapters' | 'notes';
 
 interface BookExtractions {
   bookId: string;
@@ -49,7 +50,9 @@ function groupBySection<T extends { section_title: string | null; section_index?
 }
 
 export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
+  const navigate = useNavigate();
   const { user } = useAuthContext();
+  const handleBack = onBack || (() => navigate('/manifest'));
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<TabType>('summary');
   const [filterMode, setFilterMode] = useState<FilterMode>('all');
@@ -63,6 +66,10 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
   const [confirmReRun, setConfirmReRun] = useState<string | null>(null); // bookId or null
   const [sendingToMast, setSendingToMast] = useState<Set<string>>(new Set());
   const [sendingToCompass, setSendingToCompass] = useState<Set<string>>(new Set());
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState('');
+  const [notingId, setNotingId] = useState<string | null>(null);
+  const [noteDraft, setNoteDraft] = useState('');
 
   const extractedItems = useMemo(
     () => items.filter((i) =>
@@ -391,6 +398,60 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
     }
   }, [user, bookData]);
 
+  // --- Inline Edit ---
+  const startEditing = useCallback((id: string, text: string) => {
+    setEditingId(id);
+    setEditingText(text);
+  }, []);
+
+  const handleSaveEdit = useCallback(async (table: string, id: string, field: string) => {
+    if (!user || !editingText.trim()) { setEditingId(null); return; }
+    await supabase.from(table).update({ [field]: editingText.trim() }).eq('id', id).eq('user_id', user.id);
+    setBookData((prev) => {
+      const next = new Map(prev);
+      for (const [bookId, book] of next) {
+        const updated = { ...book };
+        updated.summaries = book.summaries.map((s) => s.id === id ? { ...s, [field]: editingText.trim() } : s);
+        updated.principles = book.principles.map((p) => p.id === id ? { ...p, [field]: editingText.trim() } : p);
+        updated.actionSteps = book.actionSteps.map((a) => a.id === id ? { ...a, [field]: editingText.trim() } : a);
+        updated.declarations = book.declarations.map((d) => d.id === id ? { ...d, [field]: editingText.trim() } : d);
+        next.set(bookId, updated);
+      }
+      return next;
+    });
+    setEditingId(null);
+  }, [user, editingText]);
+
+  const cancelEditing = useCallback(() => {
+    setEditingId(null);
+    setEditingText('');
+  }, []);
+
+  // --- User Notes ---
+  const startNoting = useCallback((id: string, note: string | null) => {
+    setNotingId(id);
+    setNoteDraft(note || '');
+  }, []);
+
+  const handleSaveNote = useCallback(async (table: string, id: string) => {
+    if (!user) { setNotingId(null); return; }
+    const noteVal = noteDraft.trim() || null;
+    await supabase.from(table).update({ user_note: noteVal }).eq('id', id).eq('user_id', user.id);
+    setBookData((prev) => {
+      const next = new Map(prev);
+      for (const [bookId, book] of next) {
+        const updated = { ...book };
+        updated.summaries = book.summaries.map((s) => s.id === id ? { ...s, user_note: noteVal } : s);
+        updated.principles = book.principles.map((p) => p.id === id ? { ...p, user_note: noteVal } : p);
+        updated.actionSteps = book.actionSteps.map((a) => a.id === id ? { ...a, user_note: noteVal } : a);
+        updated.declarations = book.declarations.map((d) => d.id === id ? { ...d, user_note: noteVal } : d);
+        next.set(bookId, updated);
+      }
+      return next;
+    });
+    setNotingId(null);
+  }, [user, noteDraft]);
+
   // --- Go Deeper ---
   const handleGoDeeper = useCallback(async (
     bookId: string,
@@ -559,14 +620,18 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
 
   // --- Counts ---
   const totalCounts = useMemo(() => {
-    let summaries = 0, frameworks = 0, declarations = 0, actionSteps = 0;
+    let summaries = 0, frameworks = 0, declarations = 0, actionSteps = 0, notes = 0;
     for (const d of selectedData) {
       summaries += d.summaries.length;
       frameworks += d.principles.length;
       declarations += d.declarations.length;
       actionSteps += d.actionSteps.length;
+      notes += d.summaries.filter((s) => s.user_note).length;
+      notes += d.principles.filter((p) => p.user_note).length;
+      notes += d.declarations.filter((dc) => dc.user_note).length;
+      notes += d.actionSteps.filter((a) => a.user_note).length;
     }
-    return { summaries, frameworks, declarations, actionSteps };
+    return { summaries, frameworks, declarations, actionSteps, notes };
   }, [selectedData]);
 
   // --- Export ---
@@ -588,6 +653,14 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
   const handleExportMd = useCallback(() => exportExtractionsMd(exportGroups, singleBookTitle), [exportGroups, singleBookTitle]);
   const handleExportTxt = useCallback(() => exportExtractionsTxt(exportGroups, singleBookTitle), [exportGroups, singleBookTitle]);
   const handleExportDocx = useCallback(async () => exportExtractionsDocx(exportGroups, singleBookTitle), [exportGroups, singleBookTitle]);
+
+  const notesTitle = useMemo(() => {
+    if (exportGroups.length === 1) return `${exportGroups[0].bookTitle} - My Notes`;
+    return undefined;
+  }, [exportGroups]);
+  const handleExportNotesMd = useCallback(() => exportNotesMd(exportGroups, notesTitle), [exportGroups, notesTitle]);
+  const handleExportNotesTxt = useCallback(() => exportNotesTxt(exportGroups, notesTitle), [exportGroups, notesTitle]);
+  const handleExportNotesDocx = useCallback(async () => exportNotesDocx(exportGroups, notesTitle), [exportGroups, notesTitle]);
 
   // --- Render helpers ---
 
@@ -644,10 +717,21 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
                   {items.map((item) => (
                     <div key={item.id} className={`extraction-item${item.is_from_go_deeper ? ' extraction-item--deeper' : ''}${deletingIds.has(item.id) ? ' extraction-item--deleting' : ''}`}>
                       <div className="extraction-item__type-badge">{item.content_type.replace(/_/g, ' ')}</div>
-                      <p className="extraction-item__text">
-                        {item.is_from_go_deeper && <Sparkles size={12} className="extraction-item__deeper-icon" />}
-                        {item.text}
-                      </p>
+                      {editingId === item.id ? (
+                        <textarea
+                          className="extraction-item__edit-textarea"
+                          value={editingText}
+                          onChange={(e) => setEditingText(e.target.value)}
+                          onBlur={() => handleSaveEdit('manifest_summaries', item.id, 'text')}
+                          onKeyDown={(e) => { if (e.key === 'Escape') cancelEditing(); }}
+                          autoFocus
+                        />
+                      ) : (
+                        <p className="extraction-item__text extraction-item__text--editable" onClick={() => startEditing(item.id, item.text)}>
+                          {item.is_from_go_deeper && <Sparkles size={12} className="extraction-item__deeper-icon" />}
+                          {item.text}
+                        </p>
+                      )}
                       <div className="extraction-item__actions">
                         <button
                           type="button"
@@ -657,10 +741,36 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
                         >
                           <Heart size={14} fill={item.is_hearted ? 'currentColor' : 'none'} />
                         </button>
+                        <button
+                          type="button"
+                          className={`extraction-item__note-btn${item.user_note ? ' extraction-item__note-btn--active' : ''}`}
+                          onClick={() => notingId === item.id ? handleSaveNote('manifest_summaries', item.id) : startNoting(item.id, item.user_note)}
+                          title={item.user_note ? 'Edit note' : 'Add note'}
+                        >
+                          <StickyNote size={14} />
+                        </button>
                         <button type="button" className="extraction-item__delete" onClick={() => handleDeleteItem('manifest_summaries', item.id)} title="Delete">
                           <Trash2 size={14} />
                         </button>
                       </div>
+
+                      {notingId === item.id ? (
+                        <textarea
+                          className="extraction-item__note-textarea"
+                          value={noteDraft}
+                          onChange={(e) => setNoteDraft(e.target.value)}
+                          onBlur={() => handleSaveNote('manifest_summaries', item.id)}
+                          onKeyDown={(e) => { if (e.key === 'Escape') setNotingId(null); }}
+                          autoFocus
+                          rows={2}
+                          placeholder="Add a note..."
+                        />
+                      ) : item.user_note ? (
+                        <div className="extraction-item__note" onClick={() => startNoting(item.id, item.user_note)}>
+                          <span className="extraction-item__note-label">NOTE</span>
+                          {item.user_note}
+                        </div>
+                      ) : null}
                     </div>
                   ))}
 
@@ -720,10 +830,21 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
                 <div className="extraction-tab__section-items">
                   {items.map((item) => (
                     <div key={item.id} className={`extraction-item${item.is_from_go_deeper ? ' extraction-item--deeper' : ''}${deletingIds.has(item.id) ? ' extraction-item--deleting' : ''}`}>
-                      <p className="extraction-item__text">
-                        {item.is_from_go_deeper && <Sparkles size={12} className="extraction-item__deeper-icon" />}
-                        {item.text}
-                      </p>
+                      {editingId === item.id ? (
+                        <textarea
+                          className="extraction-item__edit-textarea"
+                          value={editingText}
+                          onChange={(e) => setEditingText(e.target.value)}
+                          onBlur={() => handleSaveEdit('ai_framework_principles', item.id, 'text')}
+                          onKeyDown={(e) => { if (e.key === 'Escape') cancelEditing(); }}
+                          autoFocus
+                        />
+                      ) : (
+                        <p className="extraction-item__text extraction-item__text--editable" onClick={() => startEditing(item.id, item.text)}>
+                          {item.is_from_go_deeper && <Sparkles size={12} className="extraction-item__deeper-icon" />}
+                          {item.text}
+                        </p>
+                      )}
                       <div className="extraction-item__actions">
                         <button
                           type="button"
@@ -732,10 +853,36 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
                         >
                           <Heart size={14} fill={item.is_hearted ? 'currentColor' : 'none'} />
                         </button>
+                        <button
+                          type="button"
+                          className={`extraction-item__note-btn${item.user_note ? ' extraction-item__note-btn--active' : ''}`}
+                          onClick={() => notingId === item.id ? handleSaveNote('ai_framework_principles', item.id) : startNoting(item.id, item.user_note)}
+                          title={item.user_note ? 'Edit note' : 'Add note'}
+                        >
+                          <StickyNote size={14} />
+                        </button>
                         <button type="button" className="extraction-item__delete" onClick={() => handleDeleteItem('ai_framework_principles', item.id)}>
                           <Trash2 size={14} />
                         </button>
                       </div>
+
+                      {notingId === item.id ? (
+                        <textarea
+                          className="extraction-item__note-textarea"
+                          value={noteDraft}
+                          onChange={(e) => setNoteDraft(e.target.value)}
+                          onBlur={() => handleSaveNote('ai_framework_principles', item.id)}
+                          onKeyDown={(e) => { if (e.key === 'Escape') setNotingId(null); }}
+                          autoFocus
+                          rows={2}
+                          placeholder="Add a note..."
+                        />
+                      ) : item.user_note ? (
+                        <div className="extraction-item__note" onClick={() => startNoting(item.id, item.user_note)}>
+                          <span className="extraction-item__note-label">NOTE</span>
+                          {item.user_note}
+                        </div>
+                      ) : null}
                     </div>
                   ))}
                 </div>
@@ -802,10 +949,21 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
                       <div className="extraction-item__type-badge">
                         {ACTION_STEP_CONTENT_TYPE_LABELS[item.content_type as ActionStepContentType] || item.content_type.replace(/_/g, ' ')}
                       </div>
-                      <p className="extraction-item__text">
-                        {item.is_from_go_deeper && <Sparkles size={12} className="extraction-item__deeper-icon" />}
-                        {item.text}
-                      </p>
+                      {editingId === item.id ? (
+                        <textarea
+                          className="extraction-item__edit-textarea"
+                          value={editingText}
+                          onChange={(e) => setEditingText(e.target.value)}
+                          onBlur={() => handleSaveEdit('manifest_action_steps', item.id, 'text')}
+                          onKeyDown={(e) => { if (e.key === 'Escape') cancelEditing(); }}
+                          autoFocus
+                        />
+                      ) : (
+                        <p className="extraction-item__text extraction-item__text--editable" onClick={() => startEditing(item.id, item.text)}>
+                          {item.is_from_go_deeper && <Sparkles size={12} className="extraction-item__deeper-icon" />}
+                          {item.text}
+                        </p>
+                      )}
                       <div className="extraction-item__actions">
                         <button
                           type="button"
@@ -814,6 +972,14 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
                           title={item.is_hearted ? 'Remove heart' : 'Heart this'}
                         >
                           <Heart size={14} fill={item.is_hearted ? 'currentColor' : 'none'} />
+                        </button>
+                        <button
+                          type="button"
+                          className={`extraction-item__note-btn${item.user_note ? ' extraction-item__note-btn--active' : ''}`}
+                          onClick={() => notingId === item.id ? handleSaveNote('manifest_action_steps', item.id) : startNoting(item.id, item.user_note)}
+                          title={item.user_note ? 'Edit note' : 'Add note'}
+                        >
+                          <StickyNote size={14} />
                         </button>
                         {item.sent_to_compass ? (
                           <span className="extraction-item__compass-sent">In Compass</span>
@@ -833,6 +999,24 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
                           <Trash2 size={14} />
                         </button>
                       </div>
+
+                      {notingId === item.id ? (
+                        <textarea
+                          className="extraction-item__note-textarea"
+                          value={noteDraft}
+                          onChange={(e) => setNoteDraft(e.target.value)}
+                          onBlur={() => handleSaveNote('manifest_action_steps', item.id)}
+                          onKeyDown={(e) => { if (e.key === 'Escape') setNotingId(null); }}
+                          autoFocus
+                          rows={2}
+                          placeholder="Add a note..."
+                        />
+                      ) : item.user_note ? (
+                        <div className="extraction-item__note" onClick={() => startNoting(item.id, item.user_note)}>
+                          <span className="extraction-item__note-label">NOTE</span>
+                          {item.user_note}
+                        </div>
+                      ) : null}
                     </div>
                   ))}
 
@@ -915,10 +1099,21 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
                         {item.value_name && <span className="extraction-item__value-name">{item.value_name}</span>}
                         <span className="extraction-item__style-label">{DECLARATION_STYLE_LABELS[item.declaration_style]}</span>
                       </div>
-                      <p className="extraction-item__text extraction-item__text--declaration">
-                        {item.is_from_go_deeper && <Sparkles size={12} className="extraction-item__deeper-icon" />}
-                        &ldquo;{item.declaration_text}&rdquo;
-                      </p>
+                      {editingId === item.id ? (
+                        <textarea
+                          className="extraction-item__edit-textarea"
+                          value={editingText}
+                          onChange={(e) => setEditingText(e.target.value)}
+                          onBlur={() => handleSaveEdit('manifest_declarations', item.id, 'declaration_text')}
+                          onKeyDown={(e) => { if (e.key === 'Escape') cancelEditing(); }}
+                          autoFocus
+                        />
+                      ) : (
+                        <p className="extraction-item__text extraction-item__text--declaration extraction-item__text--editable" onClick={() => startEditing(item.id, item.declaration_text)}>
+                          {item.is_from_go_deeper && <Sparkles size={12} className="extraction-item__deeper-icon" />}
+                          &ldquo;{item.declaration_text}&rdquo;
+                        </p>
+                      )}
                       <div className="extraction-item__actions">
                         <button
                           type="button"
@@ -926,6 +1121,14 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
                           onClick={() => handleHeartDeclaration(item.id, item.is_hearted)}
                         >
                           <Heart size={14} fill={item.is_hearted ? 'currentColor' : 'none'} />
+                        </button>
+                        <button
+                          type="button"
+                          className={`extraction-item__note-btn${item.user_note ? ' extraction-item__note-btn--active' : ''}`}
+                          onClick={() => notingId === item.id ? handleSaveNote('manifest_declarations', item.id) : startNoting(item.id, item.user_note)}
+                          title={item.user_note ? 'Edit note' : 'Add note'}
+                        >
+                          <StickyNote size={14} />
                         </button>
                         {item.sent_to_mast ? (
                           <span className="extraction-item__mast-sent">In Mast</span>
@@ -945,6 +1148,24 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
                           <Trash2 size={14} />
                         </button>
                       </div>
+
+                      {notingId === item.id ? (
+                        <textarea
+                          className="extraction-item__note-textarea"
+                          value={noteDraft}
+                          onChange={(e) => setNoteDraft(e.target.value)}
+                          onBlur={() => handleSaveNote('manifest_declarations', item.id)}
+                          onKeyDown={(e) => { if (e.key === 'Escape') setNotingId(null); }}
+                          autoFocus
+                          rows={2}
+                          placeholder="Add a note..."
+                        />
+                      ) : item.user_note ? (
+                        <div className="extraction-item__note" onClick={() => startNoting(item.id, item.user_note)}>
+                          <span className="extraction-item__note-label">NOTE</span>
+                          {item.user_note}
+                        </div>
+                      ) : null}
                     </div>
                   ))}
 
@@ -974,9 +1195,9 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
   return (
     <div className="extractions-view">
       <div className="extractions-view__header">
-        <button type="button" className="extractions-view__back" onClick={onBack}>
+        <button type="button" className="extractions-view__back" onClick={handleBack}>
           <ChevronLeft size={16} />
-          Back
+          Back to Library
         </button>
         <h2 className="extractions-view__title">Extractions</h2>
       </div>
@@ -1019,7 +1240,7 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
                 </button>
               </div>
 
-              {/* Tabs + View Toggle */}
+              {/* Tabs + Controls */}
               <div className="extractions-view__tabs-row">
                 <div className="extractions-view__tabs">
                   <button
@@ -1041,51 +1262,139 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
                     className={`extractions-view__tab${activeTab === 'action_steps' ? ' extractions-view__tab--active' : ''}`}
                     onClick={() => setActiveTab('action_steps')}
                   >
-                    Action Steps {totalCounts.actionSteps > 0 && <span className="extractions-view__tab-count">{totalCounts.actionSteps}</span>}
+                    Steps {totalCounts.actionSteps > 0 && <span className="extractions-view__tab-count">{totalCounts.actionSteps}</span>}
                   </button>
                   <button
                     type="button"
                     className={`extractions-view__tab${activeTab === 'mast_content' ? ' extractions-view__tab--active' : ''}`}
                     onClick={() => setActiveTab('mast_content')}
                   >
-                    Mast Content {totalCounts.declarations > 0 && <span className="extractions-view__tab-count">{totalCounts.declarations}</span>}
+                    Mast {totalCounts.declarations > 0 && <span className="extractions-view__tab-count">{totalCounts.declarations}</span>}
                   </button>
                 </div>
-                <div className="extraction-tabs__view-toggle">
-                  <button
-                    type="button"
-                    className={`extraction-tabs__view-btn${viewMode === 'tabs' ? ' extraction-tabs__view-btn--active' : ''}`}
-                    onClick={() => setViewMode('tabs')}
-                    title="View by tab"
-                  >
-                    <LayoutList size={14} />
-                  </button>
-                  <button
-                    type="button"
-                    className={`extraction-tabs__view-btn${viewMode === 'chapters' ? ' extraction-tabs__view-btn--active' : ''}`}
-                    onClick={() => setViewMode('chapters')}
-                    title="View by chapter"
-                  >
-                    <BookOpen size={14} />
-                  </button>
-                </div>
-              </div>
 
-              {/* Filter toggle */}
-              <div className="extraction-tabs__filter">
-                <button
-                  type="button"
-                  className={`extraction-tabs__filter-btn${filterMode === 'hearted' ? ' extraction-tabs__filter-btn--active' : ''}`}
-                  onClick={() => setFilterMode((m) => m === 'hearted' ? 'all' : 'hearted')}
-                >
-                  <Heart size={12} fill={filterMode === 'hearted' ? 'currentColor' : 'none'} />
-                  {filterMode === 'hearted' ? 'Hearted' : 'All'}
-                </button>
+                <div className="extractions-view__controls-row">
+                  <button
+                    type="button"
+                    className={`extraction-tabs__filter-btn${filterMode === 'hearted' ? ' extraction-tabs__filter-btn--active' : ''}`}
+                    onClick={() => setFilterMode((m) => m === 'hearted' ? 'all' : 'hearted')}
+                  >
+                    <Heart size={12} fill={filterMode === 'hearted' ? 'currentColor' : 'none'} />
+                    {filterMode === 'hearted' ? 'Hearted' : 'All'}
+                  </button>
+                  <div className="extraction-tabs__view-toggle">
+                    <button
+                      type="button"
+                      className={`extraction-tabs__view-btn${viewMode === 'tabs' ? ' extraction-tabs__view-btn--active' : ''}`}
+                      onClick={() => setViewMode('tabs')}
+                      title="View by tab"
+                    >
+                      <LayoutList size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      className={`extraction-tabs__view-btn${viewMode === 'chapters' ? ' extraction-tabs__view-btn--active' : ''}`}
+                      onClick={() => setViewMode('chapters')}
+                      title="View by chapter"
+                    >
+                      <BookOpen size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      className={`extraction-tabs__view-btn${viewMode === 'notes' ? ' extraction-tabs__view-btn--active' : ''}`}
+                      onClick={() => setViewMode('notes')}
+                      title={`My notes${totalCounts.notes > 0 ? ` (${totalCounts.notes})` : ''}`}
+                    >
+                      <StickyNote size={14} />
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {/* Content */}
               {loading ? (
                 <div className="extractions-view__loading">Loading extractions...</div>
+              ) : viewMode === 'notes' ? (
+                /* --- Notes View: only items with user_note --- */
+                <div className="extractions-view__content">
+                  {totalCounts.notes > 0 && (
+                    <div className="extractions-view__export-row">
+                      <span className="extractions-view__export-label">Export Notes:</span>
+                      <button type="button" className="extractions-view__export-btn" onClick={handleExportNotesMd}>
+                        <FileCode size={12} /> .md
+                      </button>
+                      <button type="button" className="extractions-view__export-btn" onClick={handleExportNotesDocx}>
+                        <FileText size={12} /> .docx
+                      </button>
+                      <button type="button" className="extractions-view__export-btn" onClick={handleExportNotesTxt}>
+                        <Download size={12} /> .txt
+                      </button>
+                    </div>
+                  )}
+                  {totalCounts.notes === 0 ? (
+                    <div className="extractions-view__tab-empty">No notes yet. Add notes to extraction items using the sticky note button.</div>
+                  ) : selectedData.map((group) => {
+                    const noted = [
+                      ...group.summaries.filter((s) => s.user_note).map((s) => ({ id: s.id, type: 'summary' as const, text: s.text, note: s.user_note!, badge: s.content_type.replace(/_/g, ' '), section: s.section_title, table: 'manifest_summaries' })),
+                      ...group.principles.filter((p) => p.user_note).map((p) => ({ id: p.id, type: 'framework' as const, text: p.text, note: p.user_note!, badge: 'framework', section: p.section_title, table: 'ai_framework_principles' })),
+                      ...group.actionSteps.filter((a) => a.user_note).map((a) => ({ id: a.id, type: 'action_step' as const, text: a.text, note: a.user_note!, badge: ACTION_STEP_CONTENT_TYPE_LABELS[a.content_type as ActionStepContentType] || a.content_type.replace(/_/g, ' '), section: a.section_title, table: 'manifest_action_steps' })),
+                      ...group.declarations.filter((d) => d.user_note).map((d) => ({ id: d.id, type: 'declaration' as const, text: d.declaration_text, note: d.user_note!, badge: DECLARATION_STYLE_LABELS[d.declaration_style], section: d.section_title, table: 'manifest_declarations' })),
+                    ];
+                    if (noted.length === 0) return null;
+
+                    // Group by section
+                    const sectionMap = new Map<string, typeof noted>();
+                    for (const item of noted) {
+                      const key = item.section || '__all__';
+                      if (!sectionMap.has(key)) sectionMap.set(key, []);
+                      sectionMap.get(key)!.push(item);
+                    }
+
+                    return (
+                      <div key={group.bookId} className="extractions-view__book-section">
+                        <button type="button" className="extractions-view__book-heading" onClick={() => toggleBook(group.bookId)}>
+                          {collapsedBooks.has(group.bookId) ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+                          <span>{group.bookTitle}</span>
+                          <span className="extractions-view__tab-count">{noted.length}</span>
+                        </button>
+
+                        {!collapsedBooks.has(group.bookId) && Array.from(sectionMap.entries()).map(([sectionKey, items]) => {
+                          const label = sectionKey === '__all__' ? null : sectionKey;
+                          return (
+                            <div key={sectionKey}>
+                              {label && <h5 className="chapter-view__type-heading" style={{ marginTop: 'var(--spacing-sm)' }}>{label}</h5>}
+                              {items.map((item) => (
+                                <div key={item.id} className={`extraction-item${item.type === 'declaration' ? ' extraction-item--declaration' : ''}`}>
+                                  <div className="extraction-item__type-badge">{item.badge}</div>
+                                  <p className={`extraction-item__text${item.type === 'declaration' ? ' extraction-item__text--declaration' : ''}`}>
+                                    {item.type === 'declaration' ? `\u201C${item.text}\u201D` : item.text}
+                                  </p>
+                                  {notingId === item.id ? (
+                                    <textarea
+                                      className="extraction-item__note-textarea"
+                                      value={noteDraft}
+                                      onChange={(e) => setNoteDraft(e.target.value)}
+                                      onBlur={() => handleSaveNote(item.table, item.id)}
+                                      onKeyDown={(e) => { if (e.key === 'Escape') setNotingId(null); }}
+                                      autoFocus
+                                      rows={2}
+                                      placeholder="Add a note..."
+                                    />
+                                  ) : (
+                                    <div className="extraction-item__note" onClick={() => startNoting(item.id, item.note)}>
+                                      <span className="extraction-item__note-label">NOTE</span>
+                                      {item.note}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </div>
               ) : viewMode === 'chapters' ? (
                 <div className="extractions-view__content">
                   {selectedData.map((group) => {
@@ -1144,10 +1453,26 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
                                     <div className="chapter-view__type-group">
                                       <h5 className="chapter-view__type-heading">Summary</h5>
                                       {secSummaries.map((s) => (
-                                        <div key={s.id} className={`extraction-item${s.is_from_go_deeper ? ' extraction-item--deeper' : ''}`}>
+                                        <div key={s.id} className={`extraction-item${s.is_from_go_deeper ? ' extraction-item--deeper' : ''}${deletingIds.has(s.id) ? ' extraction-item--deleting' : ''}`}>
                                           <div className="extraction-item__type-badge">{s.content_type.replace(/_/g, ' ')}</div>
-                                          <p className="extraction-item__text">{s.text}</p>
-                                          {s.is_hearted && <Heart size={12} className="chapter-view__heart-indicator" fill="currentColor" />}
+                                          {editingId === s.id ? (
+                                            <textarea
+                                              className="extraction-item__edit-textarea"
+                                              value={editingText}
+                                              onChange={(e) => setEditingText(e.target.value)}
+                                              onBlur={() => handleSaveEdit('manifest_summaries', s.id, 'text')}
+                                              onKeyDown={(e) => { if (e.key === 'Escape') cancelEditing(); }}
+                                              autoFocus
+                                            />
+                                          ) : (
+                                            <p className="extraction-item__text extraction-item__text--editable" onClick={() => startEditing(s.id, s.text)}>{s.text}</p>
+                                          )}
+                                          <div className="extraction-item__actions">
+                                            <button type="button" className={`extraction-item__heart${s.is_hearted ? ' extraction-item__heart--active' : ''}`} onClick={() => handleHeartSummary(s.id, s.is_hearted)}>
+                                              <Heart size={14} fill={s.is_hearted ? 'currentColor' : 'none'} />
+                                            </button>
+                                            <button type="button" className="extraction-item__delete" onClick={() => handleDeleteItem('manifest_summaries', s.id)}><Trash2 size={14} /></button>
+                                          </div>
                                         </div>
                                       ))}
                                     </div>
@@ -1156,9 +1481,25 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
                                     <div className="chapter-view__type-group">
                                       <h5 className="chapter-view__type-heading">Frameworks</h5>
                                       {secPrinciples.map((p) => (
-                                        <div key={p.id} className={`extraction-item${p.is_from_go_deeper ? ' extraction-item--deeper' : ''}`}>
-                                          <p className="extraction-item__text">{p.text}</p>
-                                          {p.is_hearted && <Heart size={12} className="chapter-view__heart-indicator" fill="currentColor" />}
+                                        <div key={p.id} className={`extraction-item${p.is_from_go_deeper ? ' extraction-item--deeper' : ''}${deletingIds.has(p.id) ? ' extraction-item--deleting' : ''}`}>
+                                          {editingId === p.id ? (
+                                            <textarea
+                                              className="extraction-item__edit-textarea"
+                                              value={editingText}
+                                              onChange={(e) => setEditingText(e.target.value)}
+                                              onBlur={() => handleSaveEdit('ai_framework_principles', p.id, 'text')}
+                                              onKeyDown={(e) => { if (e.key === 'Escape') cancelEditing(); }}
+                                              autoFocus
+                                            />
+                                          ) : (
+                                            <p className="extraction-item__text extraction-item__text--editable" onClick={() => startEditing(p.id, p.text)}>{p.text}</p>
+                                          )}
+                                          <div className="extraction-item__actions">
+                                            <button type="button" className={`extraction-item__heart${p.is_hearted ? ' extraction-item__heart--active' : ''}`} onClick={() => handleHeartPrinciple(p.id, p.is_hearted)}>
+                                              <Heart size={14} fill={p.is_hearted ? 'currentColor' : 'none'} />
+                                            </button>
+                                            <button type="button" className="extraction-item__delete" onClick={() => handleDeleteItem('ai_framework_principles', p.id)}><Trash2 size={14} /></button>
+                                          </div>
                                         </div>
                                       ))}
                                     </div>
@@ -1167,12 +1508,35 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
                                     <div className="chapter-view__type-group">
                                       <h5 className="chapter-view__type-heading">Action Steps</h5>
                                       {secActions.map((a) => (
-                                        <div key={a.id} className={`extraction-item${a.is_from_go_deeper ? ' extraction-item--deeper' : ''}`}>
+                                        <div key={a.id} className={`extraction-item${a.is_from_go_deeper ? ' extraction-item--deeper' : ''}${deletingIds.has(a.id) ? ' extraction-item--deleting' : ''}`}>
                                           <div className="extraction-item__type-badge">
                                             {ACTION_STEP_CONTENT_TYPE_LABELS[a.content_type as ActionStepContentType] || a.content_type.replace(/_/g, ' ')}
                                           </div>
-                                          <p className="extraction-item__text">{a.text}</p>
-                                          {a.is_hearted && <Heart size={12} className="chapter-view__heart-indicator" fill="currentColor" />}
+                                          {editingId === a.id ? (
+                                            <textarea
+                                              className="extraction-item__edit-textarea"
+                                              value={editingText}
+                                              onChange={(e) => setEditingText(e.target.value)}
+                                              onBlur={() => handleSaveEdit('manifest_action_steps', a.id, 'text')}
+                                              onKeyDown={(e) => { if (e.key === 'Escape') cancelEditing(); }}
+                                              autoFocus
+                                            />
+                                          ) : (
+                                            <p className="extraction-item__text extraction-item__text--editable" onClick={() => startEditing(a.id, a.text)}>{a.text}</p>
+                                          )}
+                                          <div className="extraction-item__actions">
+                                            <button type="button" className={`extraction-item__heart${a.is_hearted ? ' extraction-item__heart--active' : ''}`} onClick={() => handleHeartActionStep(a.id, a.is_hearted)}>
+                                              <Heart size={14} fill={a.is_hearted ? 'currentColor' : 'none'} />
+                                            </button>
+                                            {a.sent_to_compass ? (
+                                              <span className="extraction-item__compass-sent">In Compass</span>
+                                            ) : (
+                                              <button type="button" className="extraction-item__send-compass" onClick={() => handleSendToCompass(a.id)} disabled={sendingToCompass.has(a.id)}>
+                                                <Compass size={14} /> {sendingToCompass.has(a.id) ? '...' : 'Compass'}
+                                              </button>
+                                            )}
+                                            <button type="button" className="extraction-item__delete" onClick={() => handleDeleteItem('manifest_action_steps', a.id)}><Trash2 size={14} /></button>
+                                          </div>
                                         </div>
                                       ))}
                                     </div>
@@ -1181,13 +1545,36 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
                                     <div className="chapter-view__type-group">
                                       <h5 className="chapter-view__type-heading">Mast Content</h5>
                                       {secDeclarations.map((d) => (
-                                        <div key={d.id} className={`extraction-item extraction-item--declaration${d.is_from_go_deeper ? ' extraction-item--deeper' : ''}`}>
+                                        <div key={d.id} className={`extraction-item extraction-item--declaration${d.is_from_go_deeper ? ' extraction-item--deeper' : ''}${deletingIds.has(d.id) ? ' extraction-item--deleting' : ''}`}>
                                           <div className="extraction-item__declaration-meta">
                                             {d.value_name && <span className="extraction-item__value-name">{d.value_name}</span>}
                                             <span className="extraction-item__style-label">{DECLARATION_STYLE_LABELS[d.declaration_style]}</span>
                                           </div>
-                                          <p className="extraction-item__text extraction-item__text--declaration">&ldquo;{d.declaration_text}&rdquo;</p>
-                                          {d.is_hearted && <Heart size={12} className="chapter-view__heart-indicator" fill="currentColor" />}
+                                          {editingId === d.id ? (
+                                            <textarea
+                                              className="extraction-item__edit-textarea"
+                                              value={editingText}
+                                              onChange={(e) => setEditingText(e.target.value)}
+                                              onBlur={() => handleSaveEdit('manifest_declarations', d.id, 'declaration_text')}
+                                              onKeyDown={(e) => { if (e.key === 'Escape') cancelEditing(); }}
+                                              autoFocus
+                                            />
+                                          ) : (
+                                            <p className="extraction-item__text extraction-item__text--declaration extraction-item__text--editable" onClick={() => startEditing(d.id, d.declaration_text)}>&ldquo;{d.declaration_text}&rdquo;</p>
+                                          )}
+                                          <div className="extraction-item__actions">
+                                            <button type="button" className={`extraction-item__heart${d.is_hearted ? ' extraction-item__heart--active' : ''}`} onClick={() => handleHeartDeclaration(d.id, d.is_hearted)}>
+                                              <Heart size={14} fill={d.is_hearted ? 'currentColor' : 'none'} />
+                                            </button>
+                                            {d.sent_to_mast ? (
+                                              <span className="extraction-item__mast-sent">In Mast</span>
+                                            ) : (
+                                              <button type="button" className="extraction-item__send-mast" onClick={() => handleSendToMast(d.id)} disabled={sendingToMast.has(d.id)}>
+                                                <Anchor size={14} /> {sendingToMast.has(d.id) ? '...' : 'Mast'}
+                                              </button>
+                                            )}
+                                            <button type="button" className="extraction-item__delete" onClick={() => handleDeleteItem('manifest_declarations', d.id)}><Trash2 size={14} /></button>
+                                          </div>
                                         </div>
                                       ))}
                                     </div>

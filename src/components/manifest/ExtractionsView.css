@@ -79,8 +79,15 @@
 /* Export row */
 .extractions-view__export-row {
   display: flex;
+  align-items: center;
   gap: var(--spacing-sm);
   flex-wrap: wrap;
+}
+
+.extractions-view__export-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
 }
 
 .extractions-view__export-btn {
@@ -104,17 +111,30 @@
 /* Tabs row — tabs + view toggle */
 .extractions-view__tabs-row {
   display: flex;
-  align-items: flex-end;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+/* Controls row — filter + view toggle */
+.extractions-view__controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: var(--spacing-sm);
 }
 
 /* Tabs */
 .extractions-view__tabs {
   display: flex;
-  gap: 2px;
+  gap: 0;
   border-bottom: 2px solid var(--color-bg-secondary);
-  flex: 1;
-  min-width: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.extractions-view__tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .extractions-view__tab {
@@ -130,6 +150,8 @@
   font-size: var(--font-size-sm);
   font-weight: 600;
   cursor: pointer;
+  flex-shrink: 0;
+  white-space: nowrap;
   transition: color var(--transition-fast), border-color var(--transition-fast);
 }
 

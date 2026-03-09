@@ -1130,6 +1130,51 @@ export function useManifestExtraction() {
     }
   }, [user]);
 
+  // --- User notes on extraction items ---
+  const updateSummaryNote = useCallback(async (summaryId: string, note: string | null) => {
+    if (!user) return;
+    setSummaries((prev) => prev.map((s) => s.id === summaryId ? { ...s, user_note: note } : s));
+    const { error: updateErr } = await supabase
+      .from('manifest_summaries')
+      .update({ user_note: note })
+      .eq('id', summaryId)
+      .eq('user_id', user.id);
+    if (updateErr) setError(updateErr.message);
+  }, [user]);
+
+  const updateDeclarationNote = useCallback(async (declId: string, note: string | null) => {
+    if (!user) return;
+    setDeclarations((prev) => prev.map((d) => d.id === declId ? { ...d, user_note: note } : d));
+    const { error: updateErr } = await supabase
+      .from('manifest_declarations')
+      .update({ user_note: note })
+      .eq('id', declId)
+      .eq('user_id', user.id);
+    if (updateErr) setError(updateErr.message);
+  }, [user]);
+
+  const updateActionStepNote = useCallback(async (stepId: string, note: string | null) => {
+    if (!user) return;
+    setActionSteps((prev) => prev.map((a) => a.id === stepId ? { ...a, user_note: note } : a));
+    const { error: updateErr } = await supabase
+      .from('manifest_action_steps')
+      .update({ user_note: note })
+      .eq('id', stepId)
+      .eq('user_id', user.id);
+    if (updateErr) setError(updateErr.message);
+  }, [user]);
+
+  const updatePrincipleNote = useCallback(async (principleId: string, note: string | null) => {
+    if (!user) return;
+    // Note: principles are managed through useFrameworks, but we can update note directly
+    const { error: updateErr } = await supabase
+      .from('ai_framework_principles')
+      .update({ user_note: note })
+      .eq('id', principleId)
+      .eq('user_id', user.id);
+    if (updateErr) setError(updateErr.message);
+  }, [user]);
+
   return {
     // State
     summaries,
@@ -1179,6 +1224,11 @@ export function useManifestExtraction() {
     // Framework principle heart/delete
     togglePrincipleHeart,
     deletePrinciple,
+    // User notes
+    updateSummaryNote,
+    updateDeclarationNote,
+    updateActionStepNote,
+    updatePrincipleNote,
     // Clear all
     clearExtractions,
     resetAllExtractions,

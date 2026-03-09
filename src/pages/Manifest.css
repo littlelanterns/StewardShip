@@ -26,6 +26,40 @@
   color: var(--color-slate-gray);
 }
 
+/* Header controls */
+.manifest-page__header-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-shrink: 0;
+}
+
+.manifest-page__select-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px var(--spacing-sm);
+  border: 1px solid var(--color-slate-gray);
+  border-radius: var(--radius-md);
+  background: var(--color-white);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.manifest-page__select-btn:hover {
+  border-color: var(--color-mid-teal);
+  color: var(--color-mid-teal);
+}
+
+.manifest-page__select-btn--active {
+  background: var(--color-mid-teal);
+  border-color: var(--color-mid-teal);
+  color: var(--color-white);
+}
+
 /* Layout toggle */
 .manifest-page__layout-toggle {
   display: flex;
@@ -586,4 +620,186 @@
 @keyframes admin-spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+/* Select mode toolbar */
+.manifest-page__select-toolbar {
+  position: sticky;
+  bottom: calc(var(--nav-height) + var(--spacing-sm));
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-bg-nav);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+
+@media (min-width: 768px) {
+  .manifest-page__select-toolbar {
+    bottom: var(--spacing-md);
+  }
+}
+
+.manifest-page__select-count {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-cream);
+  white-space: nowrap;
+}
+
+.manifest-page__select-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: var(--spacing-xs) var(--spacing-md);
+  border: 1px solid var(--color-cognac);
+  border-radius: var(--radius-md);
+  background: var(--color-cognac);
+  color: var(--color-white);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--transition-fast);
+}
+
+.manifest-page__select-action:hover {
+  background: var(--color-deep-brown);
+  border-color: var(--color-deep-brown);
+}
+
+.manifest-page__select-cancel {
+  padding: var(--spacing-xs) var(--spacing-md);
+  border: 1px solid var(--color-slate-gray);
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--color-cream);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--transition-fast);
+  margin-left: auto;
+}
+
+.manifest-page__select-cancel:hover {
+  border-color: var(--color-cream);
+}
+
+/* Folder picker */
+.manifest-page__folder-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.manifest-page__folder-picker {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 201;
+  background: var(--color-bg-card);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding: var(--spacing-lg);
+  max-height: 60vh;
+  overflow-y: auto;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
+}
+
+@media (min-width: 768px) {
+  .manifest-page__folder-picker {
+    bottom: auto;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    max-width: 400px;
+    border-radius: var(--radius-lg);
+    max-height: 70vh;
+  }
+}
+
+.manifest-page__folder-picker-title {
+  margin: 0 0 var(--spacing-md);
+  font-family: var(--font-heading);
+  font-size: var(--font-size-lg);
+  color: var(--color-text-primary);
+}
+
+.manifest-page__folder-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: var(--spacing-md);
+}
+
+.manifest-page__folder-option {
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: none;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.manifest-page__folder-option:hover:not(:disabled) {
+  background: var(--color-bg-secondary);
+}
+
+.manifest-page__folder-option:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.manifest-page__folder-new {
+  display: flex;
+  gap: var(--spacing-sm);
+  border-top: 1px solid var(--color-bg-secondary);
+  padding-top: var(--spacing-md);
+}
+
+.manifest-page__folder-input {
+  flex: 1;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--color-slate-gray);
+  border-radius: var(--radius-md);
+  background: var(--color-white);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+}
+
+.manifest-page__folder-input::placeholder {
+  color: var(--color-slate-gray);
+}
+
+.manifest-page__folder-create {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--color-mid-teal);
+  border-radius: var(--radius-md);
+  background: var(--color-mid-teal);
+  color: var(--color-white);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--transition-fast);
+}
+
+.manifest-page__folder-create:hover:not(:disabled) {
+  background: var(--color-dark-teal);
+  border-color: var(--color-dark-teal);
+}
+
+.manifest-page__folder-create:disabled {
+  opacity: 0.5;
+  cursor: default;
 }

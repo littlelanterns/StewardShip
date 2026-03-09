@@ -1,21 +1,19 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Upload, StickyNote, MessageSquare, Loader, List, LayoutGrid, Heart, Layers, Trash2 } from 'lucide-react';
+
+import { Upload, MessageSquare, Loader, List, LayoutGrid, Trash2, CheckSquare, FolderInput, X, Plus } from 'lucide-react';
 import { usePageContext } from '../hooks/usePageContext';
 import { useAuthContext } from '../contexts/AuthContext';
 import { useManifest } from '../hooks/useManifest';
 import { useFrameworks } from '../hooks/useFrameworks';
 import { useManifestExtraction } from '../hooks/useManifestExtraction';
 import { useBookDiscussions } from '../hooks/useBookDiscussions';
-import type { ManifestItem, ManifestFileType, ManifestUsageDesignation, BookGenre, DiscussionType, DiscussionAudience } from '../lib/types';
+import type { ManifestItem, BookGenre, DiscussionType, DiscussionAudience } from '../lib/types';
 import { ManifestItemCard } from '../components/manifest/ManifestItemCard';
 import { ManifestItemDetail } from '../components/manifest/ManifestItemDetail';
 import { ManifestFilterBar } from '../components/manifest/ManifestFilterBar';
 import { UploadFlow } from '../components/manifest/UploadFlow';
-import { TextNoteModal } from '../components/manifest/TextNoteModal';
 import { BookDiscussionModal } from '../components/manifest/BookDiscussionModal';
 import { BookSelector } from '../components/manifest/BookSelector';
-import { HeartedItemsView } from '../components/manifest/HeartedItemsView';
-import { ExtractionsView } from '../components/manifest/ExtractionsView';
 import { AdminBookManager } from '../components/manifest/AdminBookManager';
 import { CollapsibleGroup } from '../components/shared/CollapsibleGroup';
 import { FloatingActionButton } from '../components/shared/FloatingActionButton';
@@ -23,7 +21,7 @@ import { Button, EmptyState, LoadingSpinner, FeatureGuide } from '../components/
 import { FEATURE_GUIDES } from '../lib/featureGuides';
 import './Manifest.css';
 
-type ViewMode = 'list' | 'detail' | 'upload' | 'extractions' | 'hearted';
+type ViewMode = 'list' | 'detail' | 'upload';
 type LibraryLayout = 'compact' | 'grid';
 type SortOption = 'newest' | 'oldest' | 'name_asc' | 'name_desc' | 'has_extractions';
 
@@ -43,13 +41,13 @@ export default function Manifest() {
     loading,
     fetchItems,
     uploadFile,
-    createTextNote,
     updateItem,
     reprocessItem,
     archiveItem,
     deleteItem,
     pollProcessingStatus,
     getUniqueTags,
+    getUniqueFolders,
     fetchItemDetail,
     checkDuplicate,
     enrichItem,
@@ -67,7 +65,6 @@ export default function Manifest() {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [libraryLayout, setLibraryLayout] = useState<LibraryLayout>('compact');
   const [selectedItem, setSelectedItem] = useState<ManifestItem | null>(null);
-  const [showTextNoteModal, setShowTextNoteModal] = useState(false);
   const [fabExpanded, setFabExpanded] = useState(false);
 
   // Discussion state
@@ -85,9 +82,48 @@ export default function Manifest() {
     deleteDiscussion,
   } = useBookDiscussions();
 
+  // Select mode (for folder assignment)
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showFolderPicker, setShowFolderPicker] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [movingToFolder, setMovingToFolder] = useState(false);
+
+  const toggleSelectMode = useCallback(() => {
+    setSelectMode((prev) => {
+      if (prev) setSelectedIds(new Set());
+      return !prev;
+    });
+  }, []);
+
+  const toggleSelectItem = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const handleMoveToFolder = useCallback(async (folder: string) => {
+    setMovingToFolder(true);
+    try {
+      await Promise.all(
+        [...selectedIds].map((id) => updateItem(id, { folder_group: folder })),
+      );
+      setSelectedIds(new Set());
+      setSelectMode(false);
+      setShowFolderPicker(false);
+      setNewFolderName('');
+      fetchItems();
+    } finally {
+      setMovingToFolder(false);
+    }
+  }, [selectedIds, updateItem, fetchItems]);
+
+  const existingFolders = useMemo(() => getUniqueFolders(), [getUniqueFolders]);
+
   // Filters & sort
-  const [typeFilter, setTypeFilter] = useState<ManifestFileType | 'all'>('all');
-  const [usageFilter, setUsageFilter] = useState<ManifestUsageDesignation | 'all'>('all');
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [sortOption, setSortOption] = useState<SortOption>('newest');
 
@@ -111,7 +147,14 @@ export default function Manifest() {
     const detail = await fetchItemDetail(item.id);
     setSelectedItem(detail || item);
     setViewMode('detail');
-  }, [fetchItemDetail]);
+    // Always re-fetch extraction data when opening detail view
+    // so edits made on Extractions/Favorites pages are visible
+    if (detail?.processing_status === 'completed' || item.processing_status === 'completed') {
+      extraction.fetchSummaries(item.id);
+      extraction.fetchDeclarations(item.id);
+      extraction.fetchActionSteps(item.id);
+    }
+  }, [fetchItemDetail, extraction]);
 
   const handleBack = useCallback(() => {
     setSelectedItem(null);
@@ -127,17 +170,6 @@ export default function Manifest() {
     }
     return item;
   }, [uploadFile, pollProcessingStatus]);
-
-  const handleTextNote = useCallback(async (title: string, content: string) => {
-    const item = await createTextNote(title, content);
-    if (item) {
-      pollProcessingStatus(item.id);
-      autoIntakeItem(item.id).catch((err) =>
-        console.error('Text note auto-intake failed:', err),
-      );
-    }
-    return item;
-  }, [createTextNote, pollProcessingStatus, autoIntakeItem]);
 
   const handleDiscussBooks = useCallback(() => {
     setFabExpanded(false);
@@ -318,13 +350,9 @@ export default function Manifest() {
 
   // Filtering
   const filteredItems = useMemo(() => {
-    return items.filter((item) => {
-      if (typeFilter !== 'all' && item.file_type !== typeFilter) return false;
-      if (usageFilter !== 'all' && !item.usage_designations.includes(usageFilter)) return false;
-      if (tagFilter && !item.tags.includes(tagFilter)) return false;
-      return true;
-    });
-  }, [items, typeFilter, usageFilter, tagFilter]);
+    if (!tagFilter) return items;
+    return items.filter((item) => item.tags.includes(tagFilter));
+  }, [items, tagFilter]);
 
   const hasCompletedItems = items.some((i) => i.processing_status === 'completed');
   const hasExtractedItems = items.some((i) => i.extraction_status === 'completed');
@@ -398,45 +426,6 @@ export default function Manifest() {
     );
   }
 
-  // Extractions view
-  if (viewMode === 'extractions') {
-    return (
-      <div className="page manifest-page">
-        <ExtractionsView items={items} onBack={handleBack} />
-        {discussionModal && (
-          <BookDiscussionModal
-            bookTitles={discussionModal.bookTitles}
-            manifestItemIds={discussionModal.manifestItemIds}
-            discussionType={discussionModal.discussionType}
-            initialAudience={discussionModal.audience}
-            existingDiscussionId={discussionModal.existingDiscussionId}
-            onClose={handleDiscussionClosed}
-          />
-        )}
-      </div>
-    );
-  }
-
-  // Hearted items view
-  if (viewMode === 'hearted') {
-    return (
-      <div className="page manifest-page">
-        <HeartedItemsView onBack={handleBack} />
-        {/* Modals rendered outside conditional */}
-        {discussionModal && (
-          <BookDiscussionModal
-            bookTitles={discussionModal.bookTitles}
-            manifestItemIds={discussionModal.manifestItemIds}
-            discussionType={discussionModal.discussionType}
-            initialAudience={discussionModal.audience}
-            existingDiscussionId={discussionModal.existingDiscussionId}
-            onClose={handleDiscussionClosed}
-          />
-        )}
-      </div>
-    );
-  }
-
   // Detail view
   if (viewMode === 'detail' && currentSelectedItem) {
     return (
@@ -485,6 +474,11 @@ export default function Manifest() {
           onSendActionStepToCompass={extraction.sendActionStepToCompass}
           onActionStepGoDeeper={handleActionStepGoDeeper}
           onActionStepReRun={handleActionStepReRun}
+          // Notes
+          onUpdateSummaryNote={extraction.updateSummaryNote}
+          onUpdatePrincipleNote={extraction.updatePrincipleNote}
+          onUpdateActionStepNote={extraction.updateActionStepNote}
+          onUpdateDeclarationNote={extraction.updateDeclarationNote}
           // Section discovery props
           onDiscoverSections={handleDiscoverSections}
           onExtractAllSections={handleExtractAllSections}
@@ -528,23 +522,34 @@ export default function Manifest() {
             </p>
           </div>
           {items.length > 0 && (
-            <div className="manifest-page__layout-toggle">
+            <div className="manifest-page__header-controls">
               <button
                 type="button"
-                className={`manifest-page__layout-btn${libraryLayout === 'compact' ? ' manifest-page__layout-btn--active' : ''}`}
-                onClick={() => setLibraryLayout('compact')}
-                title="List view"
+                className={`manifest-page__select-btn${selectMode ? ' manifest-page__select-btn--active' : ''}`}
+                onClick={toggleSelectMode}
+                title={selectMode ? 'Cancel selection' : 'Select books to organize'}
               >
-                <List size={18} />
+                {selectMode ? <X size={16} /> : <CheckSquare size={16} />}
+                {selectMode ? 'Cancel' : 'Select'}
               </button>
-              <button
-                type="button"
-                className={`manifest-page__layout-btn${libraryLayout === 'grid' ? ' manifest-page__layout-btn--active' : ''}`}
-                onClick={() => setLibraryLayout('grid')}
-                title="Card view"
-              >
-                <LayoutGrid size={18} />
-              </button>
+              <div className="manifest-page__layout-toggle">
+                <button
+                  type="button"
+                  className={`manifest-page__layout-btn${libraryLayout === 'compact' ? ' manifest-page__layout-btn--active' : ''}`}
+                  onClick={() => setLibraryLayout('compact')}
+                  title="List view"
+                >
+                  <List size={18} />
+                </button>
+                <button
+                  type="button"
+                  className={`manifest-page__layout-btn${libraryLayout === 'grid' ? ' manifest-page__layout-btn--active' : ''}`}
+                  onClick={() => setLibraryLayout('grid')}
+                  title="Card view"
+                >
+                  <LayoutGrid size={18} />
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -553,64 +558,28 @@ export default function Manifest() {
       <FeatureGuide {...FEATURE_GUIDES.manifest} />
 
       {/* Action buttons */}
-      <div className="manifest-page__actions">
-        <button
-          type="button"
-          className="manifest-page__action-btn manifest-page__action-btn--primary"
-          onClick={() => setViewMode('upload')}
-        >
-          <Upload size={16} />
-          Upload Files
-        </button>
-        <button
-          type="button"
-          className="manifest-page__action-btn"
-          onClick={() => setShowTextNoteModal(true)}
-        >
-          <StickyNote size={16} />
-          Add Note
-        </button>
-        {hasCompletedItems && (
+      {items.length > 0 && (
+        <div className="manifest-page__actions">
           <button
             type="button"
-            className="manifest-page__action-btn"
-            onClick={handleDiscussBooks}
+            className="manifest-page__action-btn manifest-page__action-btn--primary"
+            onClick={() => setViewMode('upload')}
           >
-            <MessageSquare size={16} />
-            Discuss Books
+            <Upload size={16} />
+            Upload
           </button>
-        )}
-        {hasCompletedItems && (
-          <button
-            type="button"
-            className="manifest-page__action-btn"
-            onClick={() => setViewMode('hearted')}
-          >
-            <Heart size={16} />
-            My Hearted Items
-          </button>
-        )}
-        {hasExtractedItems && (
-          <button
-            type="button"
-            className="manifest-page__action-btn"
-            onClick={() => setViewMode('extractions')}
-          >
-            <Layers size={16} />
-            Extractions
-          </button>
-        )}
-        {hasExtractedItems && (
-          <button
-            type="button"
-            className="manifest-page__action-btn manifest-page__action-btn--danger"
-            onClick={() => setShowFreshStart(true)}
-          >
-            <Trash2 size={16} />
-            Fresh Start
-          </button>
-        )}
-      </div>
+          {hasCompletedItems && (
+            <button
+              type="button"
+              className="manifest-page__action-btn"
+              onClick={handleDiscussBooks}
+            >
+              <MessageSquare size={16} />
+              Discuss Books
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Fresh Start confirmation */}
       {showFreshStart && (
@@ -657,12 +626,8 @@ export default function Manifest() {
       {items.length > 0 && (
         <>
           <ManifestFilterBar
-            typeFilter={typeFilter}
-            usageFilter={usageFilter}
             tagFilter={tagFilter}
             uniqueTags={uniqueTags}
-            onTypeChange={setTypeFilter}
-            onUsageChange={setUsageFilter}
             onTagChange={setTagFilter}
           />
           <div className="manifest-page__sort-bar">
@@ -698,13 +663,26 @@ export default function Manifest() {
         ) : libraryLayout === 'compact' ? (
           <div className="manifest-page__compact-list">
             {sortedItems.map((item) => (
-              <ManifestItemCard key={item.id} item={item} onClick={handleSelectItem} compact />
+              <ManifestItemCard
+                key={item.id}
+                item={item}
+                onClick={selectMode ? () => toggleSelectItem(item.id) : handleSelectItem}
+                compact
+                selectable={selectMode}
+                selected={selectedIds.has(item.id)}
+              />
             ))}
           </div>
         ) : folderGroups.length === 1 ? (
           <div className="manifest-page__item-list">
             {folderGroups[0][1].map((item) => (
-              <ManifestItemCard key={item.id} item={item} onClick={handleSelectItem} />
+              <ManifestItemCard
+                key={item.id}
+                item={item}
+                onClick={selectMode ? () => toggleSelectItem(item.id) : handleSelectItem}
+                selectable={selectMode}
+                selected={selectedIds.has(item.id)}
+              />
             ))}
           </div>
         ) : (
@@ -717,7 +695,13 @@ export default function Manifest() {
             >
               <div className="manifest-page__item-list">
                 {folderItems.map((item) => (
-                  <ManifestItemCard key={item.id} item={item} onClick={handleSelectItem} />
+                  <ManifestItemCard
+                    key={item.id}
+                    item={item}
+                    onClick={selectMode ? () => toggleSelectItem(item.id) : handleSelectItem}
+                    selectable={selectMode}
+                    selected={selectedIds.has(item.id)}
+                  />
                 ))}
               </div>
             </CollapsibleGroup>
@@ -765,6 +749,84 @@ export default function Manifest() {
         </CollapsibleGroup>
       )}
 
+      {/* Select mode toolbar */}
+      {selectMode && selectedIds.size > 0 && (
+        <div className="manifest-page__select-toolbar">
+          <span className="manifest-page__select-count">
+            {selectedIds.size} selected
+          </span>
+          <button
+            type="button"
+            className="manifest-page__select-action"
+            onClick={() => setShowFolderPicker(true)}
+          >
+            <FolderInput size={16} />
+            Move to Folder
+          </button>
+          <button
+            type="button"
+            className="manifest-page__select-cancel"
+            onClick={toggleSelectMode}
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+
+      {/* Folder picker modal */}
+      {showFolderPicker && (
+        <>
+          <div className="manifest-page__folder-backdrop" onClick={() => { setShowFolderPicker(false); setNewFolderName(''); }} />
+          <div className="manifest-page__folder-picker">
+            <h3 className="manifest-page__folder-picker-title">Move to Folder</h3>
+            <div className="manifest-page__folder-list">
+              {existingFolders.filter((f) => f !== 'Uncategorized').map((folder) => (
+                <button
+                  key={folder}
+                  type="button"
+                  className="manifest-page__folder-option"
+                  onClick={() => handleMoveToFolder(folder)}
+                  disabled={movingToFolder}
+                >
+                  {folder}
+                </button>
+              ))}
+              <button
+                type="button"
+                className="manifest-page__folder-option"
+                onClick={() => handleMoveToFolder('Uncategorized')}
+                disabled={movingToFolder}
+              >
+                Uncategorized
+              </button>
+            </div>
+            <div className="manifest-page__folder-new">
+              <input
+                type="text"
+                className="manifest-page__folder-input"
+                placeholder="New folder name..."
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && newFolderName.trim()) {
+                    handleMoveToFolder(newFolderName.trim());
+                  }
+                }}
+              />
+              <button
+                type="button"
+                className="manifest-page__folder-create"
+                onClick={() => newFolderName.trim() && handleMoveToFolder(newFolderName.trim())}
+                disabled={!newFolderName.trim() || movingToFolder}
+              >
+                <Plus size={16} />
+                Create
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* FAB */}
       <div className="manifest-page__fab-area">
         {fabExpanded && (
@@ -776,27 +838,21 @@ export default function Manifest() {
             >
               Upload Files
             </button>
-            <button
-              type="button"
-              className="manifest-page__fab-option"
-              onClick={() => { setFabExpanded(false); setShowTextNoteModal(true); }}
-            >
-              Add Text Note
-            </button>
+            {hasExtractedItems && (
+              <button
+                type="button"
+                className="manifest-page__fab-option manifest-page__fab-option--danger"
+                onClick={() => { setFabExpanded(false); setShowFreshStart(true); }}
+              >
+                Fresh Start
+              </button>
+            )}
           </div>
         )}
         <FloatingActionButton onClick={() => setFabExpanded(!fabExpanded)}>
           {fabExpanded ? 'Close' : '+'}
         </FloatingActionButton>
       </div>
-
-      {/* Text Note Modal */}
-      {showTextNoteModal && (
-        <TextNoteModal
-          onSave={handleTextNote}
-          onClose={() => setShowTextNoteModal(false)}
-        />
-      )}
 
       {/* Book Selector Modal */}
       {showBookSelector && (

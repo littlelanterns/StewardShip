@@ -40,7 +40,7 @@ Daily Rhythms section:
 
 Resources section:
 - Safe Harbor — A supportive AI mode for processing stress, overwhelm, or difficult emotions. The AI focuses on validation first, frameworks second, action third. Accessible from the Safe Harbor page or by telling the Helm you're struggling.
-- Manifest — Your personal knowledge base. Upload books, articles, notes (PDF, EPUB, DOCX, TXT, MD). The system chunks and embeds content for AI retrieval. When you discuss topics at the Helm, relevant passages from your uploads are automatically surfaced. Use "Discuss This" for deep item exploration or "Ask Your Library" for cross-source queries.
+- Library — Your personal knowledge base with three sections: Manifest (book management and uploads), Extractions (browse all extracted content across books), and Favorites (your hearted highlights). Upload books, articles, notes (PDF, EPUB, DOCX, TXT, MD). The system chunks and embeds content for AI retrieval.
 
 Settings (bottom of menu):
 - Account: Display name, email, password, gender, relationship status, appearance/theme switching.
@@ -61,7 +61,7 @@ COMMON QUESTIONS:
 - "Can I use the app without AI?" — Yes. Tasks, journaling, principles, tracking, planning, and people management all work without AI. The Helm conversations and guided processes need an AI API key.
 - "How do I add my spouse?" — Go to More menu > First Mate. Follow the setup flow. (Only appears if your relationship status is married or dating — set this in Settings > Account.)
 - "What's the difference between Compass and Rigging?" — Compass is for individual tasks and daily to-dos. Rigging is for larger projects with milestones over time. Rigging milestones can be broken into Compass tasks via Task Breaker.
-- "How do I upload a book?" — Go to More menu > Manifest, tap + to upload. Supports PDF, EPUB, DOCX, TXT, and MD files.
+- "How do I upload a book?" — Go to Library > Manifest, tap + to upload. Supports PDF, EPUB, DOCX, TXT, and MD files.
 - "What's the difference between Journal, Helm, and Unload the Hold?" — The Journal is for journaling and capturing thoughts. The Helm is for AI conversations about anything. Unload the Hold is specifically for brain dumps — pour everything out, then the AI sorts it into actionable categories.
 - "How do all these features connect?" — Your Mast (principles) informs every AI conversation. Your Keel (self-knowledge) personalizes advice. Tasks live in Compass, plans in Rigging. The Wheel tracks deep change. The Journal captures everything. Charts visualize progress. The Helm ties it all together through conversation.
 - "What should I do first?" — Start with the Mast — write a few guiding principles. Then try adding some tasks to the Compass. Journal in the Journal. The features build on each other over time.

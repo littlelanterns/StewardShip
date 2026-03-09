@@ -23,6 +23,8 @@ import Crew from './pages/Crew';
 import Victories from './pages/Victories';
 import SafeHarbor from './pages/SafeHarbor';
 import Manifest from './pages/Manifest';
+import Extractions from './pages/Extractions';
+import Favorites from './pages/Favorites';
 import Settings from './pages/Settings';
 import Meetings from './pages/Meetings';
 import Lists from './pages/Lists';
@@ -80,6 +82,8 @@ export default function App() {
               <Route path="victories" element={<Victories />} />
               <Route path="safe-harbor" element={<SafeHarbor />} />
               <Route path="manifest" element={<Manifest />} />
+              <Route path="library/extractions" element={<Extractions />} />
+              <Route path="library/favorites" element={<Favorites />} />
               <Route path="settings" element={<Settings />} />
               <Route path="meetings" element={<Meetings />} />
               <Route path="lists" element={<Lists />} />

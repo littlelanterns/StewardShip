@@ -1420,6 +1420,7 @@ export interface AIFrameworkPrinciple {
   is_hearted: boolean;
   is_deleted: boolean;
   is_from_go_deeper: boolean;
+  user_note: string | null;
   archived_at: string | null;
   created_at: string;
   updated_at: string;
@@ -1447,6 +1448,7 @@ export interface ManifestSummary {
   is_hearted: boolean;
   is_deleted: boolean;
   is_from_go_deeper: boolean;
+  user_note: string | null;
   created_at: string;
 }
 
@@ -1466,6 +1468,7 @@ export interface ManifestDeclaration {
   mast_entry_id: string | null;
   sort_order: number;
   is_from_go_deeper: boolean;
+  user_note: string | null;
   created_at: string;
 }
 
@@ -1503,6 +1506,7 @@ export interface ManifestActionStep {
   is_hearted: boolean;
   is_deleted: boolean;
   is_from_go_deeper: boolean;
+  user_note: string | null;
   sent_to_compass: boolean;
   compass_task_id: string | null;
   created_at: string;

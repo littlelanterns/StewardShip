@@ -212,3 +212,22 @@
   flex-shrink: 0;
   color: var(--color-slate-gray);
 }
+
+/* Select mode */
+.manifest-card__checkbox,
+.manifest-row__checkbox {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  accent-color: var(--color-mid-teal);
+  cursor: pointer;
+}
+
+.manifest-card--selected {
+  border-left-color: var(--color-cognac);
+  background: var(--color-warm-sand);
+}
+
+.manifest-row--selected {
+  background: var(--color-warm-sand);
+}

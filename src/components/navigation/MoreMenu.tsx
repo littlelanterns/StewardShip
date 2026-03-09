@@ -24,6 +24,8 @@ import {
   Clock,
   Lightbulb,
   Info,
+  MessageCircle,
+  Layers,
 } from 'lucide-react';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useHelmContext } from '../../contexts/HelmContext';
@@ -45,7 +47,7 @@ function getShowDescs(): boolean {
 
 export default function MoreMenu({ open, onClose }: MoreMenuProps) {
   const { profile } = useAuthContext();
-  const { startGuidedConversation } = useHelmContext();
+  const { startGuidedConversation, toggleDrawer } = useHelmContext();
   const { openHatch } = useHatchContext();
   const showFirstMate = profile?.relationship_status && profile.relationship_status !== 'single';
   const [showDescs, setShowDescs] = useState(getShowDescs);
@@ -68,6 +70,11 @@ export default function MoreMenu({ open, onClose }: MoreMenuProps) {
   const handleOpenHatch = () => {
     onClose();
     openHatch();
+  };
+
+  const handleOpenHelm = () => {
+    onClose();
+    toggleDrawer();
   };
 
   const d = showDescs;
@@ -270,6 +277,38 @@ export default function MoreMenu({ open, onClose }: MoreMenuProps) {
             </li>
           </ul>
 
+          {/* Library */}
+          <div className="more-menu__section-label">Library</div>
+          <ul className="more-menu__group">
+            <li>
+              <NavLink to="/manifest" className="more-menu__link" onClick={onClose}>
+                <Archive size={20} strokeWidth={1.5} />
+                <div className="more-menu__link-text">
+                  <span>Manifest</span>
+                  {d && <span className="more-menu__desc">Upload and manage books</span>}
+                </div>
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/library/extractions" className="more-menu__link" onClick={onClose}>
+                <Layers size={20} strokeWidth={1.5} />
+                <div className="more-menu__link-text">
+                  <span>Extractions</span>
+                  {d && <span className="more-menu__desc">Insights, frameworks, and action steps</span>}
+                </div>
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/library/favorites" className="more-menu__link" onClick={onClose}>
+                <Heart size={20} strokeWidth={1.5} />
+                <div className="more-menu__link-text">
+                  <span>Favorites</span>
+                  {d && <span className="more-menu__desc">Your hearted items across all books</span>}
+                </div>
+              </NavLink>
+            </li>
+          </ul>
+
           {/* Resources */}
           <div className="more-menu__section-label">Resources</div>
           <ul className="more-menu__group">
@@ -292,13 +331,17 @@ export default function MoreMenu({ open, onClose }: MoreMenuProps) {
               </NavLink>
             </li>
             <li>
-              <NavLink to="/manifest" className="more-menu__link" onClick={onClose}>
-                <Archive size={20} strokeWidth={1.5} />
+              <button
+                type="button"
+                className="more-menu__link more-menu__link--button"
+                onClick={handleOpenHelm}
+              >
+                <MessageCircle size={20} strokeWidth={1.5} />
                 <div className="more-menu__link-text">
-                  <span>Manifest</span>
-                  {d && <span className="more-menu__desc">Knowledge library for AI reference</span>}
+                  <span>Helm</span>
+                  {d && <span className="more-menu__desc">AI conversation partner</span>}
                 </div>
-              </NavLink>
+              </button>
             </li>
             <li>
               <NavLink to="/reports" className="more-menu__link" onClick={onClose}>

@@ -114,7 +114,19 @@ export const FEATURE_GUIDES: Record<string, FeatureGuideContent> = {
     featureKey: 'manifest',
     title: "The Manifest \u2014 Your Knowledge Base",
     description: "Upload books, articles, notes, and documents. The AI processes and indexes them so it can draw on your personal library during conversations. Extract frameworks to teach the AI new principles.",
-    tips: ["Supported formats: PDF, EPUB, DOCX, TXT, MD", "Use 'Ask Your Library' to search across everything you've uploaded"],
+    tips: ["Supported formats: PDF, EPUB, DOCX, TXT, MD", "Use Select mode to organize books into folders"],
+  },
+  extractions: {
+    featureKey: 'extractions',
+    title: "Extractions \u2014 Your Curated Insights",
+    description: "Browse all extracted content across your books in one place. View summaries, frameworks, action steps, and declarations by tab or by chapter. Heart your favorites, edit inline, and send items to the Compass or Mast.",
+    tips: ["Switch between tab view and chapter view with the toggle buttons", "Use the heart filter to see only your curated highlights"],
+  },
+  favorites: {
+    featureKey: 'favorites',
+    title: "Favorites \u2014 Your Best Finds",
+    description: "Everything you've hearted across all your books, gathered in one place. Export your curated collection or take action on individual items.",
+    tips: ["Unheart an item to remove it from this view", "Export your favorites as .md, .docx, or .txt"],
   },
   meetings: {
     featureKey: 'meetings',

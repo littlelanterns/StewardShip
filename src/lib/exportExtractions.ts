@@ -67,6 +67,24 @@ function actionStepLabel(type: string): string {
   return ACTION_STEP_CONTENT_TYPE_LABELS[type as ActionStepContentType] || type.replace(/_/g, ' ').toUpperCase();
 }
 
+/** Format user note for markdown export */
+function mdNote(note: string | null | undefined): string {
+  if (!note) return '';
+  return `\n  > **Note:** ${cleanText(note)}\n`;
+}
+
+/** Format user note for plain text export */
+function txtNote(note: string | null | undefined): string {
+  if (!note) return '';
+  return `  [Note] ${cleanText(note)}\n`;
+}
+
+/** Format user note for docx export */
+function docxNoteParagraph(note: string | null | undefined): string {
+  if (!note) return '';
+  return `<w:p><w:pPr><w:spacing w:after="60"/><w:ind w:left="360"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="A46A3C"/><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr><w:t xml:space="preserve">Note: </w:t></w:r><w:r><w:rPr><w:color w:val="666666"/><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr><w:t xml:space="preserve">${escapeXml(cleanText(note))}</w:t></w:r></w:p>`;
+}
+
 // --- Group summaries/declarations by section_title ---
 
 interface SectionGroup<T> {
@@ -115,6 +133,8 @@ function buildBookMarkdown(group: BookExtractionGroup, headingLevel: '#' | '##')
       for (const s of section.items) {
         const heartPrefix = s.is_hearted ? '\u2764\uFE0F ' : '';
         lines.push(`${heartPrefix}**${contentTypeLabel(s.content_type)}** \u2014 ${cleanText(s.text)}`, '');
+        const note = mdNote(s.user_note);
+        if (note) lines.push(note);
       }
     }
   }
@@ -130,6 +150,8 @@ function buildBookMarkdown(group: BookExtractionGroup, headingLevel: '#' | '##')
       for (const p of withoutSection) {
         const heartPrefix = p.is_hearted ? '\u2764\uFE0F ' : '';
         lines.push(`- ${heartPrefix}${cleanText(p.text)}`);
+        const note = mdNote(p.user_note);
+        if (note) lines.push(note);
       }
       lines.push('');
     }
@@ -145,6 +167,8 @@ function buildBookMarkdown(group: BookExtractionGroup, headingLevel: '#' | '##')
         for (const p of items) {
           const heartPrefix = p.is_hearted ? '\u2764\uFE0F ' : '';
           lines.push(`- ${heartPrefix}${cleanText(p.text)}`);
+          const note = mdNote(p.user_note);
+          if (note) lines.push(note);
         }
         lines.push('');
       }
@@ -162,6 +186,8 @@ function buildBookMarkdown(group: BookExtractionGroup, headingLevel: '#' | '##')
       for (const a of section.items) {
         const heartPrefix = a.is_hearted ? '\u2764\uFE0F ' : '';
         lines.push(`${heartPrefix}**${actionStepLabel(a.content_type)}** \u2014 ${cleanText(a.text)}`, '');
+        const note = mdNote(a.user_note);
+        if (note) lines.push(note);
       }
     }
   }
@@ -179,6 +205,8 @@ function buildBookMarkdown(group: BookExtractionGroup, headingLevel: '#' | '##')
         const valuePart = d.value_name ? `**${d.value_name}** ` : '';
         const stylePart = `*${styleLabel(d.declaration_style)}*`;
         lines.push(`${heartPrefix}${valuePart}${stylePart} \u2014 ${cleanText(d.declaration_text)}`, '');
+        const note = mdNote(d.user_note);
+        if (note) lines.push(note);
       }
     }
   }
@@ -231,7 +259,10 @@ function buildBookTxt(group: BookExtractionGroup, isTopLevel: boolean): string[]
       }
       for (const s of section.items) {
         const heartPrefix = s.is_hearted ? '[hearted] ' : '';
-        lines.push(`${heartPrefix}${contentTypeLabel(s.content_type)}: ${cleanText(s.text)}`, '');
+        lines.push(`${heartPrefix}${contentTypeLabel(s.content_type)}: ${cleanText(s.text)}`);
+        const note = txtNote(s.user_note);
+        if (note) lines.push(note);
+        lines.push('');
       }
     }
   }
@@ -245,7 +276,10 @@ function buildBookTxt(group: BookExtractionGroup, isTopLevel: boolean): string[]
     if (withoutSection.length > 0) {
       for (const p of withoutSection) {
         const heartPrefix = p.is_hearted ? '[hearted] ' : '';
-        lines.push(`${heartPrefix}${cleanText(p.text)}`, '');
+        lines.push(`${heartPrefix}${cleanText(p.text)}`);
+        const note = txtNote(p.user_note);
+        if (note) lines.push(note);
+        lines.push('');
       }
     }
     if (withSection.length > 0) {
@@ -259,7 +293,10 @@ function buildBookTxt(group: BookExtractionGroup, isTopLevel: boolean): string[]
         lines.push(`--- ${t} ---`, '');
         for (const p of items) {
           const heartPrefix = p.is_hearted ? '[hearted] ' : '';
-          lines.push(`${heartPrefix}${cleanText(p.text)}`, '');
+          lines.push(`${heartPrefix}${cleanText(p.text)}`);
+          const note = txtNote(p.user_note);
+          if (note) lines.push(note);
+          lines.push('');
         }
       }
     }
@@ -275,7 +312,10 @@ function buildBookTxt(group: BookExtractionGroup, isTopLevel: boolean): string[]
       }
       for (const a of section.items) {
         const heartPrefix = a.is_hearted ? '[hearted] ' : '';
-        lines.push(`${heartPrefix}${actionStepLabel(a.content_type)}: ${cleanText(a.text)}`, '');
+        lines.push(`${heartPrefix}${actionStepLabel(a.content_type)}: ${cleanText(a.text)}`);
+        const note = txtNote(a.user_note);
+        if (note) lines.push(note);
+        lines.push('');
       }
     }
   }
@@ -292,7 +332,10 @@ function buildBookTxt(group: BookExtractionGroup, isTopLevel: boolean): string[]
         const heartPrefix = d.is_hearted ? '[hearted] ' : '';
         const valuePart = d.value_name ? `${d.value_name} — ` : '';
         const stylePart = `(${styleLabel(d.declaration_style)})`;
-        lines.push(`${heartPrefix}${valuePart}${stylePart} ${cleanText(d.declaration_text)}`, '');
+        lines.push(`${heartPrefix}${valuePart}${stylePart} ${cleanText(d.declaration_text)}`);
+        const note = txtNote(d.user_note);
+        if (note) lines.push(note);
+        lines.push('');
       }
     }
   }
@@ -355,6 +398,8 @@ function buildDocxParagraphs(groups: BookExtractionGroup[], isMultiBook: boolean
             `${heartPrefix}${contentTypeLabel(s.content_type)}`,
             cleanText(s.text),
           ));
+          const note = docxNoteParagraph(s.user_note);
+          if (note) paras.push(note);
         }
         paras.push(docxSpacer());
       }
@@ -369,6 +414,8 @@ function buildDocxParagraphs(groups: BookExtractionGroup[], isMultiBook: boolean
       for (const p of withoutSection) {
         const heartPrefix = p.is_hearted ? '\u2764\uFE0F ' : '';
         paras.push(docxParagraph(`${heartPrefix}${cleanText(p.text)}`));
+        const note = docxNoteParagraph(p.user_note);
+        if (note) paras.push(note);
       }
       if (withSection.length > 0) {
         const sectionMap = new Map<string, typeof withSection>();
@@ -382,6 +429,8 @@ function buildDocxParagraphs(groups: BookExtractionGroup[], isMultiBook: boolean
           for (const p of items) {
             const heartPrefix = p.is_hearted ? '\u2764\uFE0F ' : '';
             paras.push(docxParagraph(`${heartPrefix}${cleanText(p.text)}`));
+            const note = docxNoteParagraph(p.user_note);
+            if (note) paras.push(note);
           }
         }
       }
@@ -402,6 +451,8 @@ function buildDocxParagraphs(groups: BookExtractionGroup[], isMultiBook: boolean
             `${heartPrefix}${actionStepLabel(a.content_type)}`,
             cleanText(a.text),
           ));
+          const note = docxNoteParagraph(a.user_note);
+          if (note) paras.push(note);
         }
         paras.push(docxSpacer());
       }
@@ -423,6 +474,8 @@ function buildDocxParagraphs(groups: BookExtractionGroup[], isMultiBook: boolean
             styleLabel(d.declaration_style),
             cleanText(d.declaration_text),
           ));
+          const note = docxNoteParagraph(d.user_note);
+          if (note) paras.push(note);
         }
         paras.push(docxSpacer());
       }
@@ -572,4 +625,229 @@ export function exportHeartedTxt(groups: BookExtractionGroup[]): void {
 
 export async function exportHeartedDocx(groups: BookExtractionGroup[]): Promise<void> {
   await exportExtractionsDocx(groups, `My Hearted Items - ${today()}`);
+}
+
+// ============================================================
+//  NOTES EXPORTS — items with user notes only, note-prominent
+// ============================================================
+
+interface NotedItem {
+  type: 'summary' | 'framework' | 'action_step' | 'declaration';
+  text: string;
+  note: string;
+  badge: string;
+  sectionTitle: string | null;
+  sectionIndex: number;
+}
+
+function collectNotedItems(group: BookExtractionGroup): NotedItem[] {
+  const items: NotedItem[] = [];
+  for (const s of group.summaries) {
+    if (s.user_note) items.push({ type: 'summary', text: s.text, note: s.user_note, badge: contentTypeLabel(s.content_type), sectionTitle: s.section_title, sectionIndex: s.section_index });
+  }
+  for (const p of group.principles) {
+    if (p.user_note) items.push({ type: 'framework', text: p.text, note: p.user_note, badge: 'Framework', sectionTitle: p.section_title, sectionIndex: (p as { section_index?: number }).section_index ?? 0 });
+  }
+  if (group.actionSteps) {
+    for (const a of group.actionSteps) {
+      if (a.user_note) items.push({ type: 'action_step', text: a.text, note: a.user_note, badge: actionStepLabel(a.content_type), sectionTitle: a.section_title, sectionIndex: a.section_index });
+    }
+  }
+  for (const d of group.declarations) {
+    if (d.user_note) items.push({ type: 'declaration', text: d.declaration_text, note: d.user_note, badge: styleLabel(d.declaration_style), sectionTitle: d.section_title, sectionIndex: d.section_index });
+  }
+  return items;
+}
+
+function groupNotedBySection(items: NotedItem[]): Array<{ title: string | null; items: NotedItem[] }> {
+  const map = new Map<string, NotedItem[]>();
+  for (const item of items) {
+    const key = item.sectionTitle || '__full__';
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(item);
+  }
+  return Array.from(map.entries())
+    .sort((a, b) => (a[1][0]?.sectionIndex ?? 0) - (b[1][0]?.sectionIndex ?? 0))
+    .map(([key, items]) => ({ title: key === '__full__' ? null : key, items }));
+}
+
+// --- Notes Markdown ---
+
+function buildNotesMd(group: BookExtractionGroup, headingLevel: '#' | '##'): string[] {
+  const noted = collectNotedItems(group);
+  if (noted.length === 0) return [];
+  const sub = headingLevel === '#' ? '##' : '###';
+  const lines: string[] = [];
+  const sections = groupNotedBySection(noted);
+  for (const section of sections) {
+    if (section.title) lines.push(`${sub} ${section.title}`, '');
+    for (const item of section.items) {
+      const prefix = item.type === 'declaration' ? `*${item.badge}*` : `**${item.badge}**`;
+      const text = item.type === 'declaration' ? `\u201C${cleanText(item.text)}\u201D` : cleanText(item.text);
+      lines.push(`${prefix} \u2014 ${text}`, '');
+      lines.push(`> **My Note:** ${cleanText(item.note)}`, '');
+    }
+  }
+  return lines;
+}
+
+export function exportNotesMd(groups: BookExtractionGroup[], title?: string): void {
+  const filtered = groups.filter((g) => collectNotedItems(g).length > 0);
+  if (filtered.length === 0) return;
+  const isSingle = filtered.length === 1;
+  const docTitle = title || (isSingle ? `${filtered[0].bookTitle} - My Notes` : 'My Notes');
+  const lines: string[] = [`# ${docTitle}`, '', `*Exported: ${today()}*`, '', '---', ''];
+  for (const group of filtered) {
+    if (!isSingle) lines.push(`## ${group.bookTitle}`, '');
+    lines.push(...buildNotesMd(group, isSingle ? '#' : '##'));
+    if (!isSingle) lines.push('---', '');
+  }
+  const blob = new Blob([lines.join('\n')], { type: 'text/markdown;charset=utf-8' });
+  triggerDownload(blob, `${toFilename(docTitle)}.md`);
+}
+
+// --- Notes Plain Text ---
+
+function buildNotesTxt(group: BookExtractionGroup): string[] {
+  const noted = collectNotedItems(group);
+  if (noted.length === 0) return [];
+  const lines: string[] = [];
+  const sections = groupNotedBySection(noted);
+  for (const section of sections) {
+    if (section.title) lines.push(`--- ${section.title} ---`, '');
+    for (const item of section.items) {
+      const text = item.type === 'declaration' ? `"${cleanText(item.text)}"` : cleanText(item.text);
+      lines.push(`${item.badge}: ${text}`);
+      lines.push(`  >> ${cleanText(item.note)}`, '');
+    }
+  }
+  return lines;
+}
+
+export function exportNotesTxt(groups: BookExtractionGroup[], title?: string): void {
+  const filtered = groups.filter((g) => collectNotedItems(g).length > 0);
+  if (filtered.length === 0) return;
+  const isSingle = filtered.length === 1;
+  const docTitle = title || (isSingle ? `${filtered[0].bookTitle} - My Notes` : 'My Notes');
+  const lines: string[] = [docTitle.toUpperCase(), `Exported: ${today()}`, '', '========================================', ''];
+  for (const group of filtered) {
+    if (!isSingle) lines.push(`== ${group.bookTitle.toUpperCase()} ==`, '');
+    lines.push(...buildNotesTxt(group));
+    if (!isSingle) lines.push('========================================', '');
+  }
+  const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+  triggerDownload(blob, `${toFilename(docTitle)}.txt`);
+}
+
+// --- Notes DOCX ---
+
+function buildNotesDocxParagraphs(groups: BookExtractionGroup[], isMultiBook: boolean): string {
+  const paras: string[] = [];
+  for (const group of groups) {
+    const noted = collectNotedItems(group);
+    if (noted.length === 0) continue;
+    if (isMultiBook) paras.push(docxHeading(group.bookTitle, 'Heading1'));
+    const h2 = isMultiBook ? 'Heading2' : 'Heading1';
+    const sections = groupNotedBySection(noted);
+    for (const section of sections) {
+      if (section.title) paras.push(docxHeading(section.title, h2));
+      for (const item of section.items) {
+        const text = item.type === 'declaration' ? `\u201C${cleanText(item.text)}\u201D` : cleanText(item.text);
+        paras.push(docxBoldPrefixParagraph(item.badge, text));
+        // Note styled prominently with cognac color
+        paras.push(`<w:p><w:pPr><w:spacing w:after="80"/><w:ind w:left="240"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="A46A3C"/><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr><w:t xml:space="preserve">My Note: </w:t></w:r><w:r><w:rPr><w:color w:val="333333"/><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr><w:t xml:space="preserve">${escapeXml(cleanText(item.note))}</w:t></w:r></w:p>`);
+        paras.push(docxSpacer());
+      }
+    }
+  }
+  return paras.join('\n');
+}
+
+export async function exportNotesDocx(groups: BookExtractionGroup[], title?: string): Promise<void> {
+  const filtered = groups.filter((g) => collectNotedItems(g).length > 0);
+  if (filtered.length === 0) return;
+  const isSingle = filtered.length === 1;
+  const docTitle = title || (isSingle ? `${filtered[0].bookTitle} - My Notes` : 'My Notes');
+
+  const bodyContent = buildNotesDocxParagraphs(filtered, !isSingle);
+
+  const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+  mc:Ignorable="w14">
+  <w:body>
+    <w:p>
+      <w:pPr><w:pStyle w:val="Title"/><w:spacing w:after="60"/></w:pPr>
+      <w:r><w:rPr><w:color w:val="2D5A5A"/><w:sz w:val="44"/><w:szCs w:val="44"/></w:rPr><w:t>${escapeXml(docTitle)}</w:t></w:r>
+    </w:p>
+    <w:p>
+      <w:pPr><w:spacing w:after="200"/></w:pPr>
+      <w:r><w:rPr><w:color w:val="666666"/><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr><w:t xml:space="preserve">Exported: ${today()}</w:t></w:r>
+    </w:p>
+    ${bodyContent}
+    <w:sectPr>
+      <w:pgSz w:w="12240" w:h="15840"/>
+      <w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/>
+    </w:sectPr>
+  </w:body>
+</w:document>`;
+
+  const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:style w:type="paragraph" w:styleId="Normal">
+    <w:name w:val="Normal"/>
+    <w:rPr><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr>
+  </w:style>
+  <w:style w:type="paragraph" w:styleId="Title">
+    <w:name w:val="Title"/>
+    <w:basedOn w:val="Normal"/>
+    <w:rPr><w:b/><w:color w:val="2D5A5A"/><w:sz w:val="44"/><w:szCs w:val="44"/></w:rPr>
+  </w:style>
+  <w:style w:type="paragraph" w:styleId="Heading1">
+    <w:name w:val="heading 1"/>
+    <w:basedOn w:val="Normal"/>
+    <w:rPr><w:b/><w:color w:val="2D5A5A"/><w:sz w:val="36"/><w:szCs w:val="36"/></w:rPr>
+  </w:style>
+  <w:style w:type="paragraph" w:styleId="Heading2">
+    <w:name w:val="heading 2"/>
+    <w:basedOn w:val="Normal"/>
+    <w:rPr><w:b/><w:color w:val="2D5A5A"/><w:sz w:val="28"/><w:szCs w:val="28"/></w:rPr>
+  </w:style>
+  <w:style w:type="paragraph" w:styleId="Heading3">
+    <w:name w:val="heading 3"/>
+    <w:basedOn w:val="Normal"/>
+    <w:rPr><w:b/><w:color w:val="3B6E67"/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr>
+  </w:style>
+</w:styles>`;
+
+  const contentTypesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+  <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
+</Types>`;
+
+  const rootRelsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`;
+
+  const docRelsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`;
+
+  const zip = new JSZip();
+  zip.file('[Content_Types].xml', contentTypesXml);
+  zip.file('_rels/.rels', rootRelsXml);
+  zip.file('word/document.xml', documentXml);
+  zip.file('word/styles.xml', stylesXml);
+  zip.file('word/_rels/document.xml.rels', docRelsXml);
+
+  const blob = await zip.generateAsync({
+    type: 'blob',
+    mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  });
+  triggerDownload(blob, `${toFilename(docTitle)}.docx`);
 }

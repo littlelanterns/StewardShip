@@ -8,6 +8,8 @@ interface ManifestItemCardProps {
   item: ManifestItem;
   onClick: (item: ManifestItem) => void;
   compact?: boolean;
+  selectable?: boolean;
+  selected?: boolean;
 }
 
 const FILE_TYPE_ICONS = {
@@ -34,7 +36,7 @@ function getRelativeDate(dateStr: string): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-export function ManifestItemCard({ item, onClick, compact }: ManifestItemCardProps) {
+export function ManifestItemCard({ item, onClick, compact, selectable, selected }: ManifestItemCardProps) {
   const Icon = FILE_TYPE_ICONS[item.file_type] || FileText;
   const isPending = item.processing_status === 'pending';
   const isProcessing = item.processing_status === 'processing';
@@ -46,9 +48,18 @@ export function ManifestItemCard({ item, onClick, compact }: ManifestItemCardPro
     return (
       <button
         type="button"
-        className="manifest-row"
+        className={`manifest-row${selected ? ' manifest-row--selected' : ''}`}
         onClick={() => onClick(item)}
       >
+        {selectable && (
+          <input
+            type="checkbox"
+            className="manifest-row__checkbox"
+            checked={selected || false}
+            readOnly
+            tabIndex={-1}
+          />
+        )}
         <div className="manifest-row__icon">
           <Icon size={16} />
         </div>
@@ -78,9 +89,18 @@ export function ManifestItemCard({ item, onClick, compact }: ManifestItemCardPro
   }
 
   return (
-    <Card className="manifest-card" onClick={() => onClick(item)}>
+    <Card className={`manifest-card${selected ? ' manifest-card--selected' : ''}`} onClick={() => onClick(item)}>
       <div className="manifest-card__content">
         <div className="manifest-card__top">
+          {selectable && (
+            <input
+              type="checkbox"
+              className="manifest-card__checkbox"
+              checked={selected || false}
+              readOnly
+              tabIndex={-1}
+            />
+          )}
           <div className="manifest-card__icon-wrap">
             <Icon size={20} className="manifest-card__icon" />
           </div>

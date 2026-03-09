@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   Compass,
@@ -26,7 +26,10 @@ import {
   Settings,
   Clock,
   ChevronDown,
+  ChevronRight,
   Lightbulb,
+  Library,
+  Layers,
 } from 'lucide-react';
 import { useHelm } from '../../contexts/HelmContext';
 import { useHatchContext } from '../../contexts/HatchContext';
@@ -37,8 +40,11 @@ export default function Sidebar() {
   const { toggleDrawer, drawerState, startGuidedConversation } = useHelm();
   const { toggleHatch, isOpen: hatchOpen } = useHatchContext();
   const { profile } = useAuthContext();
+  const location = useLocation();
   const showFirstMate = profile?.relationship_status && profile.relationship_status !== 'single';
+  const isLibraryActive = location.pathname === '/manifest' || location.pathname.startsWith('/library/');
 
+  const [libraryExpanded, setLibraryExpanded] = useState(isLibraryActive);
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(() => {
     try {
       const saved = localStorage.getItem('sidebar-collapsed-sections');
@@ -89,15 +95,40 @@ export default function Sidebar() {
           <li>
             <button
               type="button"
-              className={`sidebar__link sidebar__link--button ${
-                drawerState !== 'closed' ? 'sidebar__link--active' : ''
-              }`}
-              onClick={toggleDrawer}
-              title="AI conversation partner — talk through goals, get coaching, process decisions"
+              className={`sidebar__link sidebar__link--button sidebar__submenu-parent ${isLibraryActive ? 'sidebar__link--active' : ''}`}
+              onClick={() => setLibraryExpanded(!libraryExpanded)}
+              title="Your knowledge library — books, extractions, and favorites"
             >
-              <MessageCircle size={18} strokeWidth={1.5} />
-              <span>Helm</span>
+              <Library size={18} strokeWidth={1.5} />
+              <span>Library</span>
+              {libraryExpanded ? (
+                <ChevronDown size={14} className="sidebar__submenu-chevron" />
+              ) : (
+                <ChevronRight size={14} className="sidebar__submenu-chevron" />
+              )}
             </button>
+            {libraryExpanded && (
+              <ul className="sidebar__submenu">
+                <li>
+                  <NavLink to="/manifest" className="sidebar__link sidebar__link--sub" title="Upload and manage your books, articles, and documents">
+                    <Archive size={16} strokeWidth={1.5} />
+                    <span>Manifest</span>
+                  </NavLink>
+                </li>
+                <li>
+                  <NavLink to="/library/extractions" className="sidebar__link sidebar__link--sub" title="Browse extracted insights, frameworks, action steps, and declarations across all books">
+                    <Layers size={16} strokeWidth={1.5} />
+                    <span>Extractions</span>
+                  </NavLink>
+                </li>
+                <li>
+                  <NavLink to="/library/favorites" className="sidebar__link sidebar__link--sub" title="Your hearted items from across all books">
+                    <Heart size={16} strokeWidth={1.5} />
+                    <span>Favorites</span>
+                  </NavLink>
+                </li>
+              </ul>
+            )}
           </li>
         </ul>
 
@@ -329,10 +360,17 @@ export default function Sidebar() {
               </NavLink>
             </li>
             <li>
-              <NavLink to="/manifest" className="sidebar__link" title="Your knowledge library — upload PDFs, books, and documents. AI references them in conversations">
-                <Archive size={18} strokeWidth={1.5} />
-                <span>Manifest</span>
-              </NavLink>
+              <button
+                type="button"
+                className={`sidebar__link sidebar__link--button ${
+                  drawerState !== 'closed' ? 'sidebar__link--active' : ''
+                }`}
+                onClick={toggleDrawer}
+                title="AI conversation partner — talk through goals, get coaching, process decisions"
+              >
+                <MessageCircle size={18} strokeWidth={1.5} />
+                <span>Helm</span>
+              </button>
             </li>
             <li>
               <NavLink to="/reports" className="sidebar__link" title="Generate progress reports — tasks, victories, journal activity, and growth trends by period">

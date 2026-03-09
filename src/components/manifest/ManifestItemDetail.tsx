@@ -64,6 +64,11 @@ interface ManifestItemDetailProps {
   onSendActionStepToCompass: (id: string) => void;
   onActionStepGoDeeper: (sectionTitle: string | undefined, existingItems: string[], sectionIndex?: number) => void;
   onActionStepReRun: (sectionTitle?: string) => void;
+  // Notes
+  onUpdateSummaryNote?: (id: string, note: string | null) => void;
+  onUpdatePrincipleNote?: (id: string, note: string | null) => void;
+  onUpdateActionStepNote?: (id: string, note: string | null) => void;
+  onUpdateDeclarationNote?: (id: string, note: string | null) => void;
   // Discussion
   onOpenDiscussion?: (type: DiscussionType) => void;
 }
@@ -133,6 +138,10 @@ export function ManifestItemDetail({
   onSendActionStepToCompass,
   onActionStepGoDeeper,
   onActionStepReRun,
+  onUpdateSummaryNote,
+  onUpdatePrincipleNote,
+  onUpdateActionStepNote,
+  onUpdateDeclarationNote,
   onOpenDiscussion,
 }: ManifestItemDetailProps) {
   const [editingTitle, setEditingTitle] = useState(false);
@@ -663,6 +672,10 @@ export function ManifestItemDetail({
             onSendActionStepToCompass={onSendActionStepToCompass}
             onActionStepGoDeeper={onActionStepGoDeeper}
             onActionStepReRun={onActionStepReRun}
+            onUpdateSummaryNote={onUpdateSummaryNote || (() => {})}
+            onUpdatePrincipleNote={onUpdatePrincipleNote || (() => {})}
+            onUpdateActionStepNote={onUpdateActionStepNote || (() => {})}
+            onUpdateDeclarationNote={onUpdateDeclarationNote || (() => {})}
             extractionProgress={extractionProgress}
           />
         </section>

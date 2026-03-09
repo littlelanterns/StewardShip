@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { Heart, Trash2, ChevronDown, ChevronRight, Anchor, Compass, RefreshCw, Sparkles, LayoutList, BookOpen } from 'lucide-react';
+import { Heart, Trash2, ChevronDown, ChevronRight, Anchor, Compass, RefreshCw, Sparkles, LayoutList, BookOpen, StickyNote } from 'lucide-react';
 import type {
   ManifestSummary,
   ManifestDeclaration,
@@ -32,6 +32,7 @@ interface SummaryTabProps {
   onToggleHeart: (id: string) => void;
   onDelete: (id: string) => void;
   onUpdateText: (id: string, text: string) => void;
+  onUpdateNote: (id: string, note: string | null) => void;
   onGoDeeper: (sectionTitle: string | undefined, existingItems: string[], sectionIndex?: number) => void;
   onReRun: (sectionTitle?: string) => void;
   filterMode: FilterMode;
@@ -44,6 +45,7 @@ function SummaryTab({
   onToggleHeart,
   onDelete,
   onUpdateText,
+  onUpdateNote,
   onGoDeeper,
   onReRun,
   filterMode,
@@ -52,6 +54,8 @@ function SummaryTab({
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState('');
+  const [notingId, setNotingId] = useState<string | null>(null);
+  const [noteDraft, setNoteDraft] = useState('');
   const [confirmReRun, setConfirmReRun] = useState(false);
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
 
@@ -101,6 +105,18 @@ function SummaryTab({
       onUpdateText(editingId, editDraft.trim());
     }
     setEditingId(null);
+  };
+
+  const startNote = (item: ManifestSummary) => {
+    setNotingId(item.id);
+    setNoteDraft(item.user_note || '');
+  };
+
+  const saveNote = () => {
+    if (notingId) {
+      onUpdateNote(notingId, noteDraft.trim() || null);
+    }
+    setNotingId(null);
   };
 
   if (extractingTab === 'summary' && visible.length === 0) {
@@ -202,6 +218,14 @@ function SummaryTab({
                       </button>
                       <button
                         type="button"
+                        className={`extraction-item__note-btn${item.user_note ? ' extraction-item__note-btn--active' : ''}`}
+                        onClick={() => notingId === item.id ? saveNote() : startNote(item)}
+                        title={item.user_note ? 'Edit note' : 'Add note'}
+                      >
+                        <StickyNote size={14} />
+                      </button>
+                      <button
+                        type="button"
                         className="extraction-item__delete"
                         onClick={() => handleAnimatedDelete(item.id)}
                         title="Delete"
@@ -209,6 +233,26 @@ function SummaryTab({
                         <Trash2 size={14} />
                       </button>
                     </div>
+
+                    {notingId === item.id ? (
+                      <textarea
+                        className="extraction-item__note-textarea"
+                        value={noteDraft}
+                        onChange={(e) => setNoteDraft(e.target.value)}
+                        onBlur={saveNote}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Escape') setNotingId(null);
+                        }}
+                        autoFocus
+                        rows={2}
+                        placeholder="Add a note..."
+                      />
+                    ) : item.user_note ? (
+                      <div className="extraction-item__note" onClick={() => startNote(item)}>
+                        <span className="extraction-item__note-label">NOTE</span>
+                        {item.user_note}
+                      </div>
+                    ) : null}
                   </div>
                 ))}
 
@@ -240,6 +284,7 @@ interface FrameworksTabProps {
   extractingTab: string | null;
   onToggleHeart: (id: string) => void;
   onDelete: (id: string) => void;
+  onUpdateNote: (id: string, note: string | null) => void;
   filterMode: FilterMode;
   hasFramework: boolean;
 }
@@ -249,10 +294,13 @@ function FrameworksTab({
   extractingTab,
   onToggleHeart,
   onDelete,
+  onUpdateNote,
   filterMode,
   hasFramework,
 }: FrameworksTabProps) {
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+  const [notingId, setNotingId] = useState<string | null>(null);
+  const [noteDraft, setNoteDraft] = useState('');
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
 
   const handleAnimatedDelete = useCallback((id: string) => {
@@ -285,6 +333,18 @@ function FrameworksTab({
       next.has(key) ? next.delete(key) : next.add(key);
       return next;
     });
+  };
+
+  const startNote = (item: AIFrameworkPrinciple) => {
+    setNotingId(item.id);
+    setNoteDraft(item.user_note || '');
+  };
+
+  const saveNote = () => {
+    if (notingId) {
+      onUpdateNote(notingId, noteDraft.trim() || null);
+    }
+    setNotingId(null);
   };
 
   if (extractingTab === 'framework' && visible.length === 0) {
@@ -352,10 +412,38 @@ function FrameworksTab({
                       >
                         <Heart size={14} fill={item.is_hearted ? 'currentColor' : 'none'} />
                       </button>
+                      <button
+                        type="button"
+                        className={`extraction-item__note-btn${item.user_note ? ' extraction-item__note-btn--active' : ''}`}
+                        onClick={() => notingId === item.id ? saveNote() : startNote(item)}
+                        title={item.user_note ? 'Edit note' : 'Add note'}
+                      >
+                        <StickyNote size={14} />
+                      </button>
                       <button type="button" className="extraction-item__delete" onClick={() => handleAnimatedDelete(item.id)}>
                         <Trash2 size={14} />
                       </button>
                     </div>
+
+                    {notingId === item.id ? (
+                      <textarea
+                        className="extraction-item__note-textarea"
+                        value={noteDraft}
+                        onChange={(e) => setNoteDraft(e.target.value)}
+                        onBlur={saveNote}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Escape') setNotingId(null);
+                        }}
+                        autoFocus
+                        rows={2}
+                        placeholder="Add a note..."
+                      />
+                    ) : item.user_note ? (
+                      <div className="extraction-item__note" onClick={() => startNote(item)}>
+                        <span className="extraction-item__note-label">NOTE</span>
+                        {item.user_note}
+                      </div>
+                    ) : null}
                   </div>
                 ))}
               </div>
@@ -377,6 +465,7 @@ interface ActionStepsTabProps {
   onToggleHeart: (id: string) => void;
   onDelete: (id: string) => void;
   onUpdateText: (id: string, text: string) => void;
+  onUpdateNote: (id: string, note: string | null) => void;
   onSendToCompass: (id: string) => void;
   onGoDeeper: (sectionTitle: string | undefined, existingItems: string[], sectionIndex?: number) => void;
   onReRun: (sectionTitle?: string) => void;
@@ -390,6 +479,7 @@ function ActionStepsTab({
   onToggleHeart,
   onDelete,
   onUpdateText,
+  onUpdateNote,
   onSendToCompass,
   onGoDeeper,
   onReRun,
@@ -399,6 +489,8 @@ function ActionStepsTab({
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState('');
+  const [notingId, setNotingId] = useState<string | null>(null);
+  const [noteDraft, setNoteDraft] = useState('');
   const [confirmReRun, setConfirmReRun] = useState(false);
   const [sendingToCompass, setSendingToCompass] = useState<Set<string>>(new Set());
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
@@ -449,6 +541,18 @@ function ActionStepsTab({
       onUpdateText(editingId, editDraft.trim());
     }
     setEditingId(null);
+  };
+
+  const startNote = (item: ManifestActionStep) => {
+    setNotingId(item.id);
+    setNoteDraft(item.user_note || '');
+  };
+
+  const saveNote = () => {
+    if (notingId) {
+      onUpdateNote(notingId, noteDraft.trim() || null);
+    }
+    setNotingId(null);
   };
 
   const handleSendToCompass = useCallback(async (id: string) => {
@@ -560,6 +664,14 @@ function ActionStepsTab({
                       >
                         <Heart size={14} fill={item.is_hearted ? 'currentColor' : 'none'} />
                       </button>
+                      <button
+                        type="button"
+                        className={`extraction-item__note-btn${item.user_note ? ' extraction-item__note-btn--active' : ''}`}
+                        onClick={() => notingId === item.id ? saveNote() : startNote(item)}
+                        title={item.user_note ? 'Edit note' : 'Add note'}
+                      >
+                        <StickyNote size={14} />
+                      </button>
 
                       {item.sent_to_compass ? (
                         <span className="extraction-item__compass-sent">In Compass</span>
@@ -580,6 +692,26 @@ function ActionStepsTab({
                         <Trash2 size={14} />
                       </button>
                     </div>
+
+                    {notingId === item.id ? (
+                      <textarea
+                        className="extraction-item__note-textarea"
+                        value={noteDraft}
+                        onChange={(e) => setNoteDraft(e.target.value)}
+                        onBlur={saveNote}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Escape') setNotingId(null);
+                        }}
+                        autoFocus
+                        rows={2}
+                        placeholder="Add a note..."
+                      />
+                    ) : item.user_note ? (
+                      <div className="extraction-item__note" onClick={() => startNote(item)}>
+                        <span className="extraction-item__note-label">NOTE</span>
+                        {item.user_note}
+                      </div>
+                    ) : null}
                   </div>
                 ))}
 
@@ -614,6 +746,7 @@ interface MastContentTabProps {
   onToggleHeart: (id: string) => void;
   onDelete: (id: string) => void;
   onUpdate: (id: string, updates: Partial<Pick<ManifestDeclaration, 'declaration_text' | 'value_name' | 'declaration_style'>>) => void;
+  onUpdateNote: (id: string, note: string | null) => void;
   onSendToMast: (id: string) => void;
   onGoDeeper: (sectionTitle: string | undefined, existingItems: string[], sectionIndex?: number) => void;
   onReRun: (sectionTitle?: string) => void;
@@ -627,6 +760,7 @@ function MastContentTab({
   onToggleHeart,
   onDelete,
   onUpdate,
+  onUpdateNote,
   onSendToMast,
   onGoDeeper,
   onReRun,
@@ -636,6 +770,8 @@ function MastContentTab({
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState('');
+  const [notingId, setNotingId] = useState<string | null>(null);
+  const [noteDraft, setNoteDraft] = useState('');
   const [confirmReRun, setConfirmReRun] = useState(false);
   const [sendingToMast, setSendingToMast] = useState<Set<string>>(new Set());
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
@@ -686,6 +822,18 @@ function MastContentTab({
       onUpdate(editingId, { declaration_text: editDraft.trim() });
     }
     setEditingId(null);
+  };
+
+  const startNote = (item: ManifestDeclaration) => {
+    setNotingId(item.id);
+    setNoteDraft(item.user_note || '');
+  };
+
+  const saveNote = () => {
+    if (notingId) {
+      onUpdateNote(notingId, noteDraft.trim() || null);
+    }
+    setNotingId(null);
   };
 
   const handleSendToMast = useCallback(async (id: string) => {
@@ -801,6 +949,14 @@ function MastContentTab({
                       >
                         <Heart size={14} fill={item.is_hearted ? 'currentColor' : 'none'} />
                       </button>
+                      <button
+                        type="button"
+                        className={`extraction-item__note-btn${item.user_note ? ' extraction-item__note-btn--active' : ''}`}
+                        onClick={() => notingId === item.id ? saveNote() : startNote(item)}
+                        title={item.user_note ? 'Edit note' : 'Add note'}
+                      >
+                        <StickyNote size={14} />
+                      </button>
 
                       {item.sent_to_mast ? (
                         <span className="extraction-item__mast-sent">In Mast</span>
@@ -821,6 +977,26 @@ function MastContentTab({
                         <Trash2 size={14} />
                       </button>
                     </div>
+
+                    {notingId === item.id ? (
+                      <textarea
+                        className="extraction-item__note-textarea"
+                        value={noteDraft}
+                        onChange={(e) => setNoteDraft(e.target.value)}
+                        onBlur={saveNote}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Escape') setNotingId(null);
+                        }}
+                        autoFocus
+                        rows={2}
+                        placeholder="Add a note..."
+                      />
+                    ) : item.user_note ? (
+                      <div className="extraction-item__note" onClick={() => startNote(item)}>
+                        <span className="extraction-item__note-label">NOTE</span>
+                        {item.user_note}
+                      </div>
+                    ) : null}
                   </div>
                 ))}
 
@@ -861,15 +1037,18 @@ interface ExtractionTabsProps {
   onToggleSummaryHeart: (id: string) => void;
   onDeleteSummary: (id: string) => void;
   onUpdateSummaryText: (id: string, text: string) => void;
+  onUpdateSummaryNote: (id: string, note: string | null) => void;
   onSummaryGoDeeper: (sectionTitle: string | undefined, existingItems: string[], sectionIndex?: number) => void;
   onSummaryReRun: (sectionTitle?: string) => void;
   // Framework actions
   onTogglePrincipleHeart: (id: string) => void;
   onDeletePrinciple: (id: string) => void;
+  onUpdatePrincipleNote: (id: string, note: string | null) => void;
   // Action Step actions
   onToggleActionStepHeart: (id: string) => void;
   onDeleteActionStep: (id: string) => void;
   onUpdateActionStepText: (id: string, text: string) => void;
+  onUpdateActionStepNote: (id: string, note: string | null) => void;
   onSendActionStepToCompass: (id: string) => void;
   onActionStepGoDeeper: (sectionTitle: string | undefined, existingItems: string[], sectionIndex?: number) => void;
   onActionStepReRun: (sectionTitle?: string) => void;
@@ -877,6 +1056,7 @@ interface ExtractionTabsProps {
   onToggleDeclarationHeart: (id: string) => void;
   onDeleteDeclaration: (id: string) => void;
   onUpdateDeclaration: (id: string, updates: Partial<Pick<ManifestDeclaration, 'declaration_text' | 'value_name' | 'declaration_style'>>) => void;
+  onUpdateDeclarationNote: (id: string, note: string | null) => void;
   onSendDeclarationToMast: (id: string) => void;
   onDeclarationGoDeeper: (sectionTitle: string | undefined, existingItems: string[], sectionIndex?: number) => void;
   onDeclarationReRun: (sectionTitle?: string) => void;
@@ -895,19 +1075,23 @@ export function ExtractionTabs({
   onToggleSummaryHeart,
   onDeleteSummary,
   onUpdateSummaryText,
+  onUpdateSummaryNote,
   onSummaryGoDeeper,
   onSummaryReRun,
   onTogglePrincipleHeart,
   onDeletePrinciple,
+  onUpdatePrincipleNote,
   onToggleActionStepHeart,
   onDeleteActionStep,
   onUpdateActionStepText,
+  onUpdateActionStepNote,
   onSendActionStepToCompass,
   onActionStepGoDeeper,
   onActionStepReRun,
   onToggleDeclarationHeart,
   onDeleteDeclaration,
   onUpdateDeclaration,
+  onUpdateDeclarationNote,
   onSendDeclarationToMast,
   onDeclarationGoDeeper,
   onDeclarationReRun,
@@ -944,14 +1128,14 @@ export function ExtractionTabs({
           className={`extraction-tabs__tab${activeTab === 'action_steps' ? ' extraction-tabs__tab--active' : ''}`}
           onClick={() => setActiveTab('action_steps')}
         >
-          Action Steps {actionStepCount > 0 && <span className="extraction-tabs__tab-count">{actionStepCount}</span>}
+          Steps {actionStepCount > 0 && <span className="extraction-tabs__tab-count">{actionStepCount}</span>}
         </button>
         <button
           type="button"
           className={`extraction-tabs__tab${activeTab === 'mast_content' ? ' extraction-tabs__tab--active' : ''}`}
           onClick={() => setActiveTab('mast_content')}
         >
-          Mast Content {declarationCount > 0 && <span className="extraction-tabs__tab-count">{declarationCount}</span>}
+          Mast {declarationCount > 0 && <span className="extraction-tabs__tab-count">{declarationCount}</span>}
         </button>
       </div>
 
@@ -998,6 +1182,7 @@ export function ExtractionTabs({
                 onToggleHeart={onToggleSummaryHeart}
                 onDelete={onDeleteSummary}
                 onUpdateText={onUpdateSummaryText}
+                onUpdateNote={onUpdateSummaryNote}
                 onGoDeeper={onSummaryGoDeeper}
                 onReRun={onSummaryReRun}
                 filterMode={filterMode}
@@ -1010,6 +1195,7 @@ export function ExtractionTabs({
                 extractingTab={extractingTab}
                 onToggleHeart={onTogglePrincipleHeart}
                 onDelete={onDeletePrinciple}
+                onUpdateNote={onUpdatePrincipleNote}
                 filterMode={filterMode}
                 hasFramework={hasFramework}
               />
@@ -1023,6 +1209,7 @@ export function ExtractionTabs({
                 onToggleHeart={onToggleActionStepHeart}
                 onDelete={onDeleteActionStep}
                 onUpdateText={onUpdateActionStepText}
+                onUpdateNote={onUpdateActionStepNote}
                 onSendToCompass={onSendActionStepToCompass}
                 onGoDeeper={onActionStepGoDeeper}
                 onReRun={onActionStepReRun}
@@ -1039,6 +1226,7 @@ export function ExtractionTabs({
                 onToggleHeart={onToggleDeclarationHeart}
                 onDelete={onDeleteDeclaration}
                 onUpdate={onUpdateDeclaration}
+                onUpdateNote={onUpdateDeclarationNote}
                 onSendToMast={onSendDeclarationToMast}
                 onGoDeeper={onDeclarationGoDeeper}
                 onReRun={onDeclarationReRun}
@@ -1054,6 +1242,12 @@ export function ExtractionTabs({
             actionSteps={actionSteps}
             declarations={declarations}
             filterMode={filterMode}
+            onUpdateNote={(id, note, type) => {
+              if (type === 'summary') onUpdateSummaryNote(id, note);
+              else if (type === 'principle') onUpdatePrincipleNote(id, note);
+              else if (type === 'action_step') onUpdateActionStepNote(id, note);
+              else if (type === 'declaration') onUpdateDeclarationNote(id, note);
+            }}
           />
         )}
       </div>
@@ -1069,10 +1263,14 @@ interface ChapterViewProps {
   actionSteps: ManifestActionStep[];
   declarations: ManifestDeclaration[];
   filterMode: FilterMode;
+  onUpdateNote: (id: string, note: string | null, type: 'summary' | 'declaration' | 'action_step' | 'principle') => void;
 }
 
-function ChapterView({ summaries, principles, actionSteps, declarations, filterMode }: ChapterViewProps) {
+function ChapterView({ summaries, principles, actionSteps, declarations, filterMode, onUpdateNote }: ChapterViewProps) {
   const [collapsedChapters, setCollapsedChapters] = useState<Set<string>>(new Set());
+  const [notingId, setNotingId] = useState<string | null>(null);
+  const [noteDraft, setNoteDraft] = useState('');
+  const [notingType, setNotingType] = useState<'summary' | 'declaration' | 'action_step' | 'principle'>('summary');
 
   // Collect all unique section titles and their indexes across all data
   const chapters = useMemo(() => {
@@ -1107,6 +1305,19 @@ function ChapterView({ summaries, principles, actionSteps, declarations, filterM
       next.has(key) ? next.delete(key) : next.add(key);
       return next;
     });
+  };
+
+  const startNote = (id: string, currentNote: string | null, type: 'summary' | 'declaration' | 'action_step' | 'principle') => {
+    setNotingId(id);
+    setNoteDraft(currentNote || '');
+    setNotingType(type);
+  };
+
+  const saveNote = () => {
+    if (notingId) {
+      onUpdateNote(notingId, noteDraft.trim() || null, notingType);
+    }
+    setNotingId(null);
   };
 
   if (chapters.length === 0) {
@@ -1156,7 +1367,36 @@ function ChapterView({ summaries, principles, actionSteps, declarations, filterM
                           {item.is_from_go_deeper && <Sparkles size={12} className="extraction-item__deeper-icon" />}
                           {item.text}
                         </p>
-                        {item.is_hearted && <Heart size={12} className="chapter-view__hearted-icon" fill="currentColor" />}
+                        <div className="extraction-item__actions">
+                          {item.is_hearted && <Heart size={12} className="chapter-view__hearted-icon" fill="currentColor" />}
+                          <button
+                            type="button"
+                            className={`extraction-item__note-btn${item.user_note ? ' extraction-item__note-btn--active' : ''}`}
+                            onClick={() => notingId === item.id ? saveNote() : startNote(item.id, item.user_note, 'summary')}
+                            title={item.user_note ? 'Edit note' : 'Add note'}
+                          >
+                            <StickyNote size={14} />
+                          </button>
+                        </div>
+                        {notingId === item.id ? (
+                          <textarea
+                            className="extraction-item__note-textarea"
+                            value={noteDraft}
+                            onChange={(e) => setNoteDraft(e.target.value)}
+                            onBlur={saveNote}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Escape') setNotingId(null);
+                            }}
+                            autoFocus
+                            rows={2}
+                            placeholder="Add a note..."
+                          />
+                        ) : item.user_note ? (
+                          <div className="extraction-item__note" onClick={() => startNote(item.id, item.user_note, 'summary')}>
+                            <span className="extraction-item__note-label">NOTE</span>
+                            {item.user_note}
+                          </div>
+                        ) : null}
                       </div>
                     ))}
                   </div>
@@ -1171,7 +1411,36 @@ function ChapterView({ summaries, principles, actionSteps, declarations, filterM
                           {item.is_from_go_deeper && <Sparkles size={12} className="extraction-item__deeper-icon" />}
                           {item.text}
                         </p>
-                        {item.is_hearted && <Heart size={12} className="chapter-view__hearted-icon" fill="currentColor" />}
+                        <div className="extraction-item__actions">
+                          {item.is_hearted && <Heart size={12} className="chapter-view__hearted-icon" fill="currentColor" />}
+                          <button
+                            type="button"
+                            className={`extraction-item__note-btn${item.user_note ? ' extraction-item__note-btn--active' : ''}`}
+                            onClick={() => notingId === item.id ? saveNote() : startNote(item.id, item.user_note, 'principle')}
+                            title={item.user_note ? 'Edit note' : 'Add note'}
+                          >
+                            <StickyNote size={14} />
+                          </button>
+                        </div>
+                        {notingId === item.id ? (
+                          <textarea
+                            className="extraction-item__note-textarea"
+                            value={noteDraft}
+                            onChange={(e) => setNoteDraft(e.target.value)}
+                            onBlur={saveNote}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Escape') setNotingId(null);
+                            }}
+                            autoFocus
+                            rows={2}
+                            placeholder="Add a note..."
+                          />
+                        ) : item.user_note ? (
+                          <div className="extraction-item__note" onClick={() => startNote(item.id, item.user_note, 'principle')}>
+                            <span className="extraction-item__note-label">NOTE</span>
+                            {item.user_note}
+                          </div>
+                        ) : null}
                       </div>
                     ))}
                   </div>
@@ -1189,7 +1458,36 @@ function ChapterView({ summaries, principles, actionSteps, declarations, filterM
                           {item.is_from_go_deeper && <Sparkles size={12} className="extraction-item__deeper-icon" />}
                           {item.text}
                         </p>
-                        {item.is_hearted && <Heart size={12} className="chapter-view__hearted-icon" fill="currentColor" />}
+                        <div className="extraction-item__actions">
+                          {item.is_hearted && <Heart size={12} className="chapter-view__hearted-icon" fill="currentColor" />}
+                          <button
+                            type="button"
+                            className={`extraction-item__note-btn${item.user_note ? ' extraction-item__note-btn--active' : ''}`}
+                            onClick={() => notingId === item.id ? saveNote() : startNote(item.id, item.user_note, 'action_step')}
+                            title={item.user_note ? 'Edit note' : 'Add note'}
+                          >
+                            <StickyNote size={14} />
+                          </button>
+                        </div>
+                        {notingId === item.id ? (
+                          <textarea
+                            className="extraction-item__note-textarea"
+                            value={noteDraft}
+                            onChange={(e) => setNoteDraft(e.target.value)}
+                            onBlur={saveNote}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Escape') setNotingId(null);
+                            }}
+                            autoFocus
+                            rows={2}
+                            placeholder="Add a note..."
+                          />
+                        ) : item.user_note ? (
+                          <div className="extraction-item__note" onClick={() => startNote(item.id, item.user_note, 'action_step')}>
+                            <span className="extraction-item__note-label">NOTE</span>
+                            {item.user_note}
+                          </div>
+                        ) : null}
                       </div>
                     ))}
                   </div>
@@ -1208,7 +1506,36 @@ function ChapterView({ summaries, principles, actionSteps, declarations, filterM
                           {item.is_from_go_deeper && <Sparkles size={12} className="extraction-item__deeper-icon" />}
                           &ldquo;{item.declaration_text}&rdquo;
                         </p>
-                        {item.is_hearted && <Heart size={12} className="chapter-view__hearted-icon" fill="currentColor" />}
+                        <div className="extraction-item__actions">
+                          {item.is_hearted && <Heart size={12} className="chapter-view__hearted-icon" fill="currentColor" />}
+                          <button
+                            type="button"
+                            className={`extraction-item__note-btn${item.user_note ? ' extraction-item__note-btn--active' : ''}`}
+                            onClick={() => notingId === item.id ? saveNote() : startNote(item.id, item.user_note, 'declaration')}
+                            title={item.user_note ? 'Edit note' : 'Add note'}
+                          >
+                            <StickyNote size={14} />
+                          </button>
+                        </div>
+                        {notingId === item.id ? (
+                          <textarea
+                            className="extraction-item__note-textarea"
+                            value={noteDraft}
+                            onChange={(e) => setNoteDraft(e.target.value)}
+                            onBlur={saveNote}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Escape') setNotingId(null);
+                            }}
+                            autoFocus
+                            rows={2}
+                            placeholder="Add a note..."
+                          />
+                        ) : item.user_note ? (
+                          <div className="extraction-item__note" onClick={() => startNote(item.id, item.user_note, 'declaration')}>
+                            <span className="extraction-item__note-label">NOTE</span>
+                            {item.user_note}
+                          </div>
+                        ) : null}
                       </div>
                     ))}
                   </div>
