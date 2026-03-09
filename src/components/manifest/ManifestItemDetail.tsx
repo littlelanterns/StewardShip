@@ -1,8 +1,9 @@
 import { useState, useCallback, useEffect } from 'react';
-import { ChevronLeft, FileText, FileCode, Mic, Image, StickyNote, RefreshCw, BookOpen, Wand2, MessageSquare, Target, HelpCircle, CheckSquare, BarChart3 } from 'lucide-react';
+import { ChevronLeft, FileText, FileCode, Mic, Image, StickyNote, RefreshCw, BookOpen, Wand2, MessageSquare, Target, HelpCircle, CheckSquare, BarChart3, Users } from 'lucide-react';
 import type { ManifestItem, ManifestSummary, ManifestDeclaration, AIFrameworkPrinciple, BookGenre, DiscussionType } from '../../lib/types';
 import { MANIFEST_FILE_TYPE_LABELS, MANIFEST_STATUS_LABELS } from '../../lib/types';
 import type { SectionInfo } from '../../hooks/useManifestExtraction';
+import { supabase } from '../../lib/supabase';
 import { Button, LoadingSpinner } from '../shared';
 import { GenrePicker } from './GenrePicker';
 import { ExtractionTabs } from './ExtractionTabs';
@@ -136,6 +137,9 @@ export function ManifestItemDetail({
   const [extractionPhase, setExtractionPhase] = useState<ExtractionPhase>('idle');
   const [confirmClear, setConfirmClear] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [pushing, setPushing] = useState(false);
+  const [pushDone, setPushDone] = useState(false);
+  const [confirmPush, setConfirmPush] = useState(false);
 
   const Icon = FILE_TYPE_ICONS[item.file_type] || FileText;
   const isProcessed = item.processing_status === 'completed';
@@ -257,6 +261,27 @@ export function ManifestItemDetail({
     setExtractionPhase('idle');
     setDiscoveryError(null);
   }, [item.id, onClearExtractions]);
+
+  const handlePushToFamily = useCallback(async () => {
+    setPushing(true);
+    setConfirmPush(false);
+    try {
+      const { error: invokeErr } = await supabase.functions.invoke('manifest-clone', {
+        body: {
+          manifest_item_id: item.id,
+          clone_extractions: true,
+          force_update: true,
+        },
+      });
+      if (invokeErr) throw invokeErr;
+      setPushDone(true);
+      setTimeout(() => setPushDone(false), 3000);
+    } catch (err) {
+      console.error('Push to family failed:', err);
+    } finally {
+      setPushing(false);
+    }
+  }, [item.id]);
 
   return (
     <div className="manifest-detail">
@@ -689,6 +714,28 @@ export function ManifestItemDetail({
       {/* Actions */}
       <section className="manifest-detail__section">
         <div className="manifest-detail__actions">
+          {item.source_manifest_item_id === null && item.extraction_status === 'completed' && item.processing_status === 'completed' && (
+            <>
+              {!confirmPush ? (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => setConfirmPush(true)}
+                  disabled={pushing}
+                >
+                  <Users size={14} />
+                  {pushing ? 'Pushing updates...' : pushDone ? 'Updates pushed!' : 'Push Updates to Family'}
+                </Button>
+              ) : (
+                <div className="manifest-detail__delete-confirm">
+                  <span>Update extractions for all family members? Their hearted items will be preserved.</span>
+                  <Button size="sm" variant="secondary" onClick={() => setConfirmPush(false)}>Cancel</Button>
+                  <Button size="sm" onClick={handlePushToFamily}>Push Updates</Button>
+                </div>
+              )}
+            </>
+          )}
+
           {(item.processing_status === 'completed' || item.processing_status === 'failed') && (
             <Button
               size="sm"

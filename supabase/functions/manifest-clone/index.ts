@@ -36,7 +36,7 @@ serve(async (req: Request) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { manifest_item_id, clone_extractions } = await req.json();
+    const { manifest_item_id, clone_extractions, force_update } = await req.json();
 
     if (!manifest_item_id) {
       return new Response(
@@ -208,11 +208,206 @@ serve(async (req: Request) => {
             .limit(1);
 
           if (existingSummaries && existingSummaries.length > 0) {
-            console.log(`[manifest-clone] User ${targetUserId} already has extractions, skipping`);
+            if (!force_update) {
+              console.log(`[manifest-clone] User ${targetUserId} already has extractions, skipping (no force_update)`);
+              continue;
+            }
+
+            // --- Curation-aware merge ---
+            console.log(`[manifest-clone] Force updating extractions for user ${targetUserId}`);
+
+            // --- Summaries merge ---
+            const { data: targetSummaries } = await supabase
+              .from('manifest_summaries')
+              .select('id, text, section_title, section_index, is_hearted, is_deleted')
+              .eq('manifest_item_id', clonedItemId)
+              .eq('user_id', targetUserId);
+
+            const heartedSummaries = (targetSummaries || []).filter((s: Record<string, unknown>) => s.is_hearted);
+            const heartedSummaryKeys = new Set(
+              heartedSummaries.map((s: Record<string, unknown>) => `${s.text}||${s.section_title}||${s.section_index}`),
+            );
+
+            // Delete neutral items (not hearted, not deleted)
+            await supabase
+              .from('manifest_summaries')
+              .delete()
+              .eq('manifest_item_id', clonedItemId)
+              .eq('user_id', targetUserId)
+              .eq('is_hearted', false)
+              .eq('is_deleted', false);
+
+            // Insert source summaries that don't duplicate hearted items
+            const newSummaries = sourceSummaries
+              .filter((s: Record<string, unknown>) =>
+                !heartedSummaryKeys.has(`${s.text}||${s.section_title}||${s.section_index}`),
+              )
+              .map((s: Record<string, unknown>) => ({
+                user_id: targetUserId,
+                manifest_item_id: clonedItemId,
+                section_title: s.section_title,
+                section_index: s.section_index,
+                content_type: s.content_type,
+                text: s.text,
+                sort_order: s.sort_order,
+                is_hearted: false,
+                is_deleted: false,
+                is_from_go_deeper: s.is_from_go_deeper || false,
+              }));
+
+            if (newSummaries.length > 0) {
+              await supabase.from('manifest_summaries').insert(newSummaries);
+            }
+
+            // --- Declarations merge ---
+            const { data: targetDeclarations } = await supabase
+              .from('manifest_declarations')
+              .select('id, declaration_text, section_title, section_index, is_hearted, is_deleted, sent_to_mast, mast_entry_id')
+              .eq('manifest_item_id', clonedItemId)
+              .eq('user_id', targetUserId);
+
+            const heartedDeclarations = (targetDeclarations || []).filter((d: Record<string, unknown>) => d.is_hearted);
+            const heartedDeclKeys = new Set(
+              heartedDeclarations.map((d: Record<string, unknown>) => `${d.declaration_text}||${d.section_title}||${d.section_index}`),
+            );
+
+            // Delete neutral declarations
+            await supabase
+              .from('manifest_declarations')
+              .delete()
+              .eq('manifest_item_id', clonedItemId)
+              .eq('user_id', targetUserId)
+              .eq('is_hearted', false)
+              .eq('is_deleted', false);
+
+            // Insert source declarations that don't duplicate hearted items
+            const newDeclarations = sourceDeclarations
+              .filter((d: Record<string, unknown>) =>
+                !heartedDeclKeys.has(`${d.declaration_text}||${d.section_title}||${d.section_index}`),
+              )
+              .map((d: Record<string, unknown>) => ({
+                user_id: targetUserId,
+                manifest_item_id: clonedItemId,
+                section_title: d.section_title,
+                section_index: d.section_index,
+                value_name: d.value_name,
+                declaration_text: d.declaration_text,
+                declaration_style: d.declaration_style,
+                sort_order: d.sort_order,
+                is_hearted: false,
+                is_deleted: false,
+                is_from_go_deeper: d.is_from_go_deeper || false,
+                sent_to_mast: false,
+              }));
+
+            if (newDeclarations.length > 0) {
+              await supabase.from('manifest_declarations').insert(newDeclarations);
+            }
+
+            // --- Frameworks merge ---
+            const { data: targetFw } = await supabase
+              .from('ai_frameworks')
+              .select('id, is_active')
+              .eq('manifest_item_id', clonedItemId)
+              .eq('user_id', targetUserId)
+              .is('archived_at', null)
+              .maybeSingle();
+
+            for (const fw of sourceFrameworks) {
+              const sourcePrinciples = (fw as Record<string, unknown>).ai_framework_principles as Array<Record<string, unknown>> || [];
+
+              if (targetFw) {
+                // Update framework name, preserve is_active
+                await supabase
+                  .from('ai_frameworks')
+                  .update({ name: fw.name })
+                  .eq('id', targetFw.id);
+
+                // Get existing principles
+                const { data: targetPrinciples } = await supabase
+                  .from('ai_framework_principles')
+                  .select('id, text, section_title, is_hearted, is_deleted')
+                  .eq('framework_id', targetFw.id)
+                  .eq('user_id', targetUserId);
+
+                const heartedPrinciples = (targetPrinciples || []).filter((p: Record<string, unknown>) => p.is_hearted);
+                const heartedPrincipleKeys = new Set(
+                  heartedPrinciples.map((p: Record<string, unknown>) => `${p.text}||${p.section_title}`),
+                );
+
+                // Delete neutral principles
+                await supabase
+                  .from('ai_framework_principles')
+                  .delete()
+                  .eq('framework_id', targetFw.id)
+                  .eq('user_id', targetUserId)
+                  .eq('is_hearted', false)
+                  .eq('is_deleted', false);
+
+                // Insert non-duplicate source principles
+                const newPrinciples = sourcePrinciples
+                  .filter((p: Record<string, unknown>) =>
+                    !heartedPrincipleKeys.has(`${p.text}||${p.section_title}`),
+                  )
+                  .map((p: Record<string, unknown>) => ({
+                    user_id: targetUserId,
+                    framework_id: targetFw.id,
+                    text: p.text,
+                    sort_order: p.sort_order,
+                    section_title: p.section_title || null,
+                    is_hearted: false,
+                    is_deleted: false,
+                    is_from_go_deeper: p.is_from_go_deeper || false,
+                  }));
+
+                if (newPrinciples.length > 0) {
+                  await supabase.from('ai_framework_principles').insert(newPrinciples);
+                }
+              } else {
+                // No existing framework — create fresh
+                const { data: newFw } = await supabase
+                  .from('ai_frameworks')
+                  .insert({
+                    user_id: targetUserId,
+                    manifest_item_id: clonedItemId,
+                    name: fw.name,
+                    is_active: true,
+                  })
+                  .select('id')
+                  .single();
+
+                if (newFw && sourcePrinciples.length > 0) {
+                  const principleRecords = sourcePrinciples.map((p: Record<string, unknown>) => ({
+                    user_id: targetUserId,
+                    framework_id: newFw.id,
+                    text: p.text,
+                    sort_order: p.sort_order,
+                    section_title: p.section_title || null,
+                    is_hearted: false,
+                    is_deleted: false,
+                    is_from_go_deeper: p.is_from_go_deeper || false,
+                  }));
+                  await supabase.from('ai_framework_principles').insert(principleRecords);
+                }
+              }
+            }
+
+            // Update cloned item metadata (extraction_status, genres, ai_summary, toc)
+            await supabase
+              .from('manifest_items')
+              .update({
+                extraction_status: 'completed',
+                genres: originalItem.genres || [],
+                ai_summary: originalItem.ai_summary,
+                toc: originalItem.toc,
+              })
+              .eq('id', clonedItemId);
+
+            extractionsCopied++;
             continue;
           }
 
-          // Clone summaries
+          // Clone summaries (fresh — no existing extractions)
           if (sourceSummaries.length > 0) {
             const summaryRecords = sourceSummaries.map((s: Record<string, unknown>) => ({
               user_id: targetUserId,
