@@ -12,12 +12,12 @@ function buildGenreContext(genres: string[]): string {
 
   const genreGuidance: Record<string, string> = {
     non_fiction: 'This is non-fiction. Focus on key concepts, frameworks, actionable insights, and mental models the author teaches.',
-    fiction: 'This is fiction. Focus on character development, thematic insights, narrative arcs, allegorical meaning, and lessons embedded in the story.',
+    fiction: 'This is fiction. Focus on character development, thematic insights, narrative arcs, allegorical meaning, lessons embedded in the story, and memorable quotes — lines of dialogue or narration that capture something profound, beautiful, or true. Fiction often carries its deepest wisdom in its most quotable lines.',
     biography_memoir: 'This is biography/memoir. Focus on pivotal life moments, character-defining decisions, relationship lessons, and wisdom earned through experience.',
     scriptures_sacred: 'This is scripture or sacred text. Focus on spiritual principles, doctrinal points, devotional insights, promises, and commandments. Treat the text with reverence.',
     workbook: 'This is a workbook or practical guide. Focus on exercises, self-assessment frameworks, action steps, and structured processes the reader is meant to apply.',
     poetry_essays: 'This is poetry or essay collection. Focus on imagery, emotional resonance, philosophical insights, and the distinctive voice/perspective of the author.',
-    allegory_parable: 'This is allegory or parable. Focus on the symbolic meanings beneath the surface narrative, moral lessons, and teaching metaphors that illuminate truth.',
+    allegory_parable: 'This is allegory or parable. Focus on the symbolic meanings beneath the surface narrative, moral lessons, teaching metaphors that illuminate truth, and memorable quotes — lines that distill the allegory\'s deeper meaning into words worth remembering.',
     devotional_spiritual_memoir: 'This is devotional or spiritual memoir. Focus on the spiritual growth journey, faith formation moments, personal revelation, and the intersection of lived experience with divine purpose.',
   };
 
@@ -97,6 +97,7 @@ Rules:
 - Preserve the author's distinctive language when it captures something uniquely well
 - For stories and examples, capture enough context to understand the point (2-4 sentences)
 - For concepts and principles, be precise and complete (1-3 sentences)
+- For quotes: extract the EXACT words from the text — do not paraphrase. Include the speaker or context in a brief note (e.g., "Aslan says: '...'"). Prioritize lines that are profound, beautiful, moving, or capture deep truth. These are lines someone would want to highlight and return to.
 - Label each item with its content_type so the user can see what kind of content it is
 - Do NOT extract trivial filler content — each item should be genuinely worth remembering
 
@@ -107,7 +108,7 @@ Return ONLY a JSON object:
     { "content_type": "story", "text": "Brief but complete retelling of the key story and its lesson...", "sort_order": 1 },
     { "content_type": "metaphor", "text": "The author's metaphor and what it illuminates...", "sort_order": 2 },
     { "content_type": "lesson", "text": "A practical lesson drawn from the content...", "sort_order": 3 },
-    { "content_type": "quote", "text": "A notable quote from the text...", "sort_order": 4 },
+    { "content_type": "quote", "text": "\"Exact quote from the text.\" — Speaker or context", "sort_order": 4 },
     { "content_type": "insight", "text": "A deeper insight or observation...", "sort_order": 5 }
   ]
 }
@@ -155,6 +156,7 @@ Extract the key concepts, stories, metaphors, lessons, and insights that capture
 - Preserve the author's distinctive language when it captures something uniquely well
 - For stories and examples, capture enough context to understand the point (2-4 sentences)
 - For concepts and principles, be precise and complete (1-3 sentences)
+- For quotes: extract the EXACT words from the text — do not paraphrase. Include the speaker or context briefly (e.g., "Aslan says: '...'"). Prioritize lines that are profound, beautiful, moving, or capture deep truth.
 - Label each item with its content_type
 - Do NOT extract trivial filler content
 - Valid content_type values: "key_concept", "story", "metaphor", "lesson", "quote", "insight", "theme", "character_insight", "exercise", "principle"
