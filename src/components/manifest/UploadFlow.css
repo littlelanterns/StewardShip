@@ -209,6 +209,121 @@
   color: var(--color-cognac);
 }
 
+.upload-flow__queue-skipped {
+  color: var(--color-slate-gray);
+}
+
+/* Duplicate warning banner */
+.upload-flow__dup-banner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: color-mix(in srgb, var(--color-cognac) 8%, var(--color-bg-secondary));
+  border: 1px solid color-mix(in srgb, var(--color-cognac) 25%, transparent);
+  border-radius: var(--radius-md);
+}
+
+.upload-flow__dup-banner-text {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+}
+
+.upload-flow__dup-banner-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  background: none;
+  border: 1px solid var(--color-slate-gray);
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.upload-flow__dup-banner-btn:hover {
+  border-color: var(--color-mid-teal);
+  background: var(--color-bg-secondary);
+}
+
+/* Duplicate queue item highlight */
+.upload-flow__queue-item--duplicate {
+  border-left-color: var(--color-cognac);
+  background: color-mix(in srgb, var(--color-cognac) 5%, var(--color-bg-secondary));
+}
+
+.upload-flow__queue-item--skipped {
+  opacity: 0.5;
+}
+
+/* Per-file duplicate action buttons */
+.upload-flow__dup-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.upload-flow__dup-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: none;
+  border: 1px solid var(--color-slate-gray);
+  border-radius: var(--radius-sm);
+  padding: 2px 8px;
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  color: var(--color-text-primary);
+}
+
+.upload-flow__dup-btn:hover {
+  background: var(--color-bg-secondary);
+}
+.upload-flow__dup-btn--skip:hover {
+  border-color: var(--color-slate-gray);
+}
+.upload-flow__dup-btn--replace:hover {
+  border-color: var(--color-cognac);
+  color: var(--color-cognac);
+}
+.upload-flow__dup-btn--reprocess:hover {
+  border-color: var(--color-mid-teal);
+  color: var(--color-mid-teal);
+}
+
+/* Action label shown after choosing */
+.upload-flow__queue-action-label {
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+}
+.upload-flow__queue-action-label--skip {
+  color: var(--color-slate-gray);
+}
+.upload-flow__queue-action-label--replace {
+  color: var(--color-cognac);
+}
+.upload-flow__queue-action-label--reprocess {
+  color: var(--color-mid-teal);
+}
+
+/* Change decision link */
+.upload-flow__dup-change {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-mid-teal);
+  cursor: pointer;
+  text-decoration: underline;
+}
+.upload-flow__dup-change:hover {
+  color: var(--color-dark-teal);
+}
+
 .upload-flow__actions {
   display: flex;
   gap: var(--spacing-sm);

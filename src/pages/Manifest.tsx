@@ -420,6 +420,8 @@ export default function Manifest() {
           onUpload={handleUpload}
           onCheckDuplicate={checkDuplicate}
           onAutoIntake={autoIntakeItem}
+          onArchiveItem={archiveItem}
+          onReprocessItem={reprocessItem}
           onClose={handleBack}
         />
       </div>
