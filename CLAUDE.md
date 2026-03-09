@@ -997,34 +997,38 @@ Six guided conversation modes accessible from the First Mate page, each opening 
 - **EPUB extraction:** ZIP → OPF spine order → XHTML content → stripped HTML. Preserves chapter ordering. Uses fflate for Deno-compatible unzipping.
 - **DOCX extraction:** ZIP → word/document.xml → w:t text runs. Preserves paragraph structure.
 - **Genre system (PRD-24):** 8 genres stored as `manifest_items.genres` TEXT[]: non_fiction, fiction, biography_memoir, scriptures_sacred, workbook, poetry_essays, allegory_parable, devotional_spiritual_memoir. Multi-select. Genre context guides extraction prompts for richer, format-appropriate results.
-- **Extraction pipeline (PRD-24):** Single "Extract" action per book. Section discovery (Haiku analyzes document structure) → section checklist → per-section extraction (Sonnet) producing three tabs:
+- **Extraction pipeline (PRD-24+):** Single "Extract" action per book. Section discovery (Haiku analyzes document structure) → section checklist → per-section extraction (Sonnet) producing four tabs:
   - **Summary tab:** Key concepts, stories, metaphors, lessons, quotes, insights, themes, character insights, exercises, principles. Stored in `manifest_summaries`.
   - **Frameworks tab:** Actionable principles. Stored in `ai_framework_principles` (with `section_title` for chapter grouping).
+  - **Action Steps tab:** Exercises, practices, habits, reflection prompts, conversation starters, projects, daily/weekly actions. Stored in `manifest_action_steps`. Can be sent to Compass as tasks via `sent_to_compass` + `compass_task_id`.
   - **Mast Content tab:** Honest commitment declarations in 5 styles. Stored in `manifest_declarations`.
   - All content sub-nested under chapter/section headings from discovery.
 - **Heart-based curation:** Three states on all extracted items: hearted, neutral, deleted. Independent from routing. `is_hearted` and `is_deleted` boolean columns. Aggregated hearted items view across all books, exportable as .md/.docx/.txt.
 - **Declaration philosophy:** Five styles (Choosing & Committing, Recognizing & Awakening, Claiming & Stepping Into, Learning & Striving, Resolute & Unashamed). Declarations stand alone. Optional `value_name`. Honesty test applied during extraction.
 - **Go Deeper:** Per chapter, per tab. Appends non-duplicate content (existing items passed to AI to avoid repetition). Items marked `is_from_go_deeper = true` with cognac left border + sparkle icon.
 - **Re-run:** Per tab, replaces all content with fresh extraction after confirmation.
-- **Inline editing:** All extracted text is inline-editable. Click text → textarea → save on blur, Escape cancels.
+- **Inline editing:** All extracted text is inline-editable. Click text → textarea → save on blur, Escape cancels. Plus optional personal `user_note` on each item for annotations and reflections.
+- **Extraction views:** Three view modes in ExtractionsView: tabs (by content type), chapters (grouped by section_title), notes (user-annotated items only). See `docs/REFACTOR-Extraction-Items.md` for the ideal shared-component architecture.
 - **Usage designations:** DEPRECATED (PRD-24). Column retained on `manifest_items` but nothing reads it. Replaced by genre-based extraction.
 - **Keel extraction:** Removed from Manifest (PRD-24). Keel entries are managed directly on the Keel page.
 - **Helm context change (PRD-24):** RAG search removed from Helm for general conversations. Books serve Helm through extracted/applied/hearted content based on `user_settings.book_knowledge_access` setting ('hearted_only', 'all_extracted', 'framework_only', 'none'). RAG kept only for `manifest_discuss` mode.
 - **Apply section (PRD-24):** Five action buttons on book detail: Discuss Book, Generate Goals (→ Rigging), Generate Questions (→ Lists), Generate Tasks (→ Compass), Generate Tracker (post-MVP). All open BookDiscussionModal with type-specific AI steering.
 - **Book Discussions (PRD-24):** Dedicated modal on Manifest page. Own tables (`book_discussions`, `book_discussion_messages`). Single-book: warm acknowledgment, user leads. Multi-book: AI opens with cross-book synthesis. Audience selector (personal, family, teen, spouse, children). Copy to clipboard. Discussion archive on Manifest page.
 - **ai_frameworks:** Extracted principles loaded alongside Mast in every AI interaction when framework is active. User controls which frameworks are active.
+- **Book cloning:** When a book is shared to another user, a new `manifest_items` record is created with `source_manifest_item_id` pointing to the original. Cloned items do NOT duplicate chunks — `match_manifest_chunks` retrieves chunks from the source item. User data (extractions, hearts, notes) is per-user and independent from the source.
 - **Auto-organization:** AI suggests tags and folder groupings on upload via `manifest-intake` Edge Function (uses Haiku). User can override.
 - **Processing pipeline:** Upload → storage → background chunking → embedding → indexed. Real-time stage updates via `processing_detail` column. User sees status indicators but doesn't wait.
 - **Folder groupings:** AI-assigned or user-overridden. Collapsible sections on main page. Items belong to one folder and multiple tags.
 - **Duplicate detection:** Warns on same filename + approximate size. Doesn't block — user decides.
-- **Eight Manifest Edge Functions:** `manifest-process`, `manifest-embed`, `manifest-intake`, `manifest-extract` (refactored PRD-24: genre-aware summary/framework/declaration extraction with section support), `manifest-enrich`, `manifest-tag-framework`, `manifest-discuss` (PRD-24: book discussion AI with per-book context and audience adaptation).
+- **Eight Manifest Edge Functions:** `manifest-process`, `manifest-embed`, `manifest-intake`, `manifest-extract` (refactored PRD-24+: genre-aware summary/framework/action_steps/declaration extraction with section support), `manifest-enrich`, `manifest-tag-framework`, `manifest-discuss` (PRD-24: book discussion AI with per-book context and audience adaptation).
 - **"About This Book" enrichment:** `manifest-enrich` (Haiku) generates `ai_summary`. TOC extracted during `manifest-process`. Both displayed in ManifestItemDetail. Regenerate on demand.
 - **Cross-feature file routing:** Large files from First Mate/Crew (>~3000 tokens) route to Manifest RAG pipeline with `is_rag_indexed` flag.
 - **Manifest-to-Mast:** Declarations can be sent to Mast via "Send to Mast" button. Tracked via `sent_to_mast` and `mast_entry_id` on `manifest_declarations`.
 - **Content sources for Reveille:** Manifest is one of three sources for morning/evening readings (alongside Mast and Journal). AI selects, attributes source.
 - **Framework tags:** `ai_frameworks.tags` TEXT[] column. Auto-generated by `manifest-tag-framework` (Haiku) after `saveFramework`. User-editable. "Tag All" backfill button. Tags displayed on cards in FrameworkManager and Browse Frameworks.
 - **Browse Frameworks:** Tag-filtered accordion view of all framework principles. Read-only; "Edit Framework" links to FrameworkPrinciples. Export uses `exportAggregatedAs*` from `exportFramework.ts`.
-- **Extraction exports:** `src/lib/exportExtractions.ts` — centralized export for per-book and aggregated hearted items. Proper document structure with chapter headings, content type labels (KEY CONCEPT, STORY, etc.), declaration styles in italics, hearted indicators. Three formats: .md, .txt, .docx (OOXML via JSZip).
+- **Extraction exports:** `src/lib/exportExtractions.ts` — centralized export for per-book and aggregated hearted items, plus notes-only export. Proper document structure with chapter headings, content type labels (KEY CONCEPT, STORY, etc.), declaration styles in italics, hearted indicators, user notes. Three formats: .md, .txt, .docx (OOXML via JSZip).
+- **Manifest-to-Compass:** Action steps can be sent to Compass as tasks via "Send to Compass" button. Tracked via `sent_to_compass` and `compass_task_id` on `manifest_action_steps`.
 
 ### Rigging Conventions
 - **Rigging is the planning tool** for goals, projects, and aspirations bigger than a single task. Plans are created conversationally at The Helm (`guided_mode = 'rigging'`) and managed from the Rigging page.

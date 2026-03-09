@@ -1471,8 +1471,18 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
                                             <button type="button" className={`extraction-item__heart${s.is_hearted ? ' extraction-item__heart--active' : ''}`} onClick={() => handleHeartSummary(s.id, s.is_hearted)}>
                                               <Heart size={14} fill={s.is_hearted ? 'currentColor' : 'none'} />
                                             </button>
+                                            <button type="button"
+                                              className={`extraction-item__note-btn${s.user_note ? ' extraction-item__note-btn--active' : ''}`}
+                                              onClick={() => notingId === s.id ? handleSaveNote('manifest_summaries', s.id) : startNoting(s.id, s.user_note)}
+                                              title={s.user_note ? 'Edit note' : 'Add note'}
+                                            ><StickyNote size={14} /></button>
                                             <button type="button" className="extraction-item__delete" onClick={() => handleDeleteItem('manifest_summaries', s.id)}><Trash2 size={14} /></button>
                                           </div>
+                                          {notingId === s.id ? (
+                                            <textarea className="extraction-item__note-textarea" value={noteDraft} onChange={(e) => setNoteDraft(e.target.value)} onBlur={() => handleSaveNote('manifest_summaries', s.id)} onKeyDown={(e) => { if (e.key === 'Escape') setNotingId(null); }} autoFocus rows={2} placeholder="Add a note..." />
+                                          ) : s.user_note ? (
+                                            <div className="extraction-item__note" onClick={() => startNoting(s.id, s.user_note)}><span className="extraction-item__note-label">NOTE</span>{s.user_note}</div>
+                                          ) : null}
                                         </div>
                                       ))}
                                     </div>
@@ -1498,8 +1508,18 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
                                             <button type="button" className={`extraction-item__heart${p.is_hearted ? ' extraction-item__heart--active' : ''}`} onClick={() => handleHeartPrinciple(p.id, p.is_hearted)}>
                                               <Heart size={14} fill={p.is_hearted ? 'currentColor' : 'none'} />
                                             </button>
+                                            <button type="button"
+                                              className={`extraction-item__note-btn${p.user_note ? ' extraction-item__note-btn--active' : ''}`}
+                                              onClick={() => notingId === p.id ? handleSaveNote('ai_framework_principles', p.id) : startNoting(p.id, p.user_note)}
+                                              title={p.user_note ? 'Edit note' : 'Add note'}
+                                            ><StickyNote size={14} /></button>
                                             <button type="button" className="extraction-item__delete" onClick={() => handleDeleteItem('ai_framework_principles', p.id)}><Trash2 size={14} /></button>
                                           </div>
+                                          {notingId === p.id ? (
+                                            <textarea className="extraction-item__note-textarea" value={noteDraft} onChange={(e) => setNoteDraft(e.target.value)} onBlur={() => handleSaveNote('ai_framework_principles', p.id)} onKeyDown={(e) => { if (e.key === 'Escape') setNotingId(null); }} autoFocus rows={2} placeholder="Add a note..." />
+                                          ) : p.user_note ? (
+                                            <div className="extraction-item__note" onClick={() => startNoting(p.id, p.user_note)}><span className="extraction-item__note-label">NOTE</span>{p.user_note}</div>
+                                          ) : null}
                                         </div>
                                       ))}
                                     </div>
@@ -1528,6 +1548,11 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
                                             <button type="button" className={`extraction-item__heart${a.is_hearted ? ' extraction-item__heart--active' : ''}`} onClick={() => handleHeartActionStep(a.id, a.is_hearted)}>
                                               <Heart size={14} fill={a.is_hearted ? 'currentColor' : 'none'} />
                                             </button>
+                                            <button type="button"
+                                              className={`extraction-item__note-btn${a.user_note ? ' extraction-item__note-btn--active' : ''}`}
+                                              onClick={() => notingId === a.id ? handleSaveNote('manifest_action_steps', a.id) : startNoting(a.id, a.user_note)}
+                                              title={a.user_note ? 'Edit note' : 'Add note'}
+                                            ><StickyNote size={14} /></button>
                                             {a.sent_to_compass ? (
                                               <span className="extraction-item__compass-sent">In Compass</span>
                                             ) : (
@@ -1537,6 +1562,11 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
                                             )}
                                             <button type="button" className="extraction-item__delete" onClick={() => handleDeleteItem('manifest_action_steps', a.id)}><Trash2 size={14} /></button>
                                           </div>
+                                          {notingId === a.id ? (
+                                            <textarea className="extraction-item__note-textarea" value={noteDraft} onChange={(e) => setNoteDraft(e.target.value)} onBlur={() => handleSaveNote('manifest_action_steps', a.id)} onKeyDown={(e) => { if (e.key === 'Escape') setNotingId(null); }} autoFocus rows={2} placeholder="Add a note..." />
+                                          ) : a.user_note ? (
+                                            <div className="extraction-item__note" onClick={() => startNoting(a.id, a.user_note)}><span className="extraction-item__note-label">NOTE</span>{a.user_note}</div>
+                                          ) : null}
                                         </div>
                                       ))}
                                     </div>
@@ -1566,6 +1596,11 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
                                             <button type="button" className={`extraction-item__heart${d.is_hearted ? ' extraction-item__heart--active' : ''}`} onClick={() => handleHeartDeclaration(d.id, d.is_hearted)}>
                                               <Heart size={14} fill={d.is_hearted ? 'currentColor' : 'none'} />
                                             </button>
+                                            <button type="button"
+                                              className={`extraction-item__note-btn${d.user_note ? ' extraction-item__note-btn--active' : ''}`}
+                                              onClick={() => notingId === d.id ? handleSaveNote('manifest_declarations', d.id) : startNoting(d.id, d.user_note)}
+                                              title={d.user_note ? 'Edit note' : 'Add note'}
+                                            ><StickyNote size={14} /></button>
                                             {d.sent_to_mast ? (
                                               <span className="extraction-item__mast-sent">In Mast</span>
                                             ) : (
@@ -1575,6 +1610,11 @@ export function ExtractionsView({ items, onBack }: ExtractionsViewProps) {
                                             )}
                                             <button type="button" className="extraction-item__delete" onClick={() => handleDeleteItem('manifest_declarations', d.id)}><Trash2 size={14} /></button>
                                           </div>
+                                          {notingId === d.id ? (
+                                            <textarea className="extraction-item__note-textarea" value={noteDraft} onChange={(e) => setNoteDraft(e.target.value)} onBlur={() => handleSaveNote('manifest_declarations', d.id)} onKeyDown={(e) => { if (e.key === 'Escape') setNotingId(null); }} autoFocus rows={2} placeholder="Add a note..." />
+                                          ) : d.user_note ? (
+                                            <div className="extraction-item__note" onClick={() => startNoting(d.id, d.user_note)}><span className="extraction-item__note-label">NOTE</span>{d.user_note}</div>
+                                          ) : null}
                                         </div>
                                       ))}
                                     </div>

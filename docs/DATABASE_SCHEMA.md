@@ -813,6 +813,7 @@ Metadata for each uploaded file, transcript, or text note in the Manifest.
 | intake_completed | BOOLEAN | false | NOT NULL | Whether user has completed intake flow |
 | ai_summary | TEXT | null | NULL | AI-generated 2-4 sentence summary. Generated at intake or on demand via manifest-enrich. |
 | toc | JSONB | null | NULL | Table of contents: [{title, level}]. Extracted from EPUB NCX/nav, PDF outline, DOCX headings, or MD headings. Null when no TOC available. |
+| source_manifest_item_id | UUID | null | NULL | FK → manifest_items. Points to the original item when this is a clone. Cloned items share chunks from the source via `match_manifest_chunks`. |
 | archived_at | TIMESTAMPTZ | null | NULL | Soft delete |
 | created_at | TIMESTAMPTZ | now() | NOT NULL | |
 | updated_at | TIMESTAMPTZ | now() | NOT NULL | Auto-trigger |
@@ -929,6 +930,7 @@ Individual extracted principles per framework. Loaded into AI system prompt when
 | is_hearted | BOOLEAN | false | NOT NULL | User-favorited for aggregated hearted items view |
 | is_deleted | BOOLEAN | false | NOT NULL | Soft delete (hidden from UI but retained) |
 | is_from_go_deeper | BOOLEAN | false | NOT NULL | Whether extracted via "Go Deeper" re-extraction |
+| user_note | TEXT | null | NULL | User's personal annotation on this item |
 | archived_at | TIMESTAMPTZ | null | NULL | Soft delete |
 | created_at | TIMESTAMPTZ | now() | NOT NULL | |
 | updated_at | TIMESTAMPTZ | now() | NOT NULL | Auto-trigger |
@@ -1848,6 +1850,7 @@ Extracted summary items (key concepts, stories, metaphors, lessons, etc.) from M
 | is_hearted | BOOLEAN | false | NOT NULL | User-favorited |
 | is_deleted | BOOLEAN | false | NOT NULL | Soft delete |
 | is_from_go_deeper | BOOLEAN | false | NOT NULL | From "Go Deeper" re-extraction |
+| user_note | TEXT | null | NULL | User's personal annotation on this item |
 | created_at | TIMESTAMPTZ | now() | NOT NULL | |
 
 **RLS:** Users CRUD own summaries only.
@@ -1877,11 +1880,41 @@ Extracted mast content declarations (honest commitment statements) from Manifest
 | mast_entry_id | UUID | null | NULL | FK → mast_entries (if sent) |
 | sort_order | INTEGER | 0 | NOT NULL | Order within section |
 | is_from_go_deeper | BOOLEAN | false | NOT NULL | From "Go Deeper" re-extraction |
+| user_note | TEXT | null | NULL | User's personal annotation on this item |
 | created_at | TIMESTAMPTZ | now() | NOT NULL | |
 
 **RLS:** Users CRUD own declarations only.
 **Indexes:**
 - `user_id, manifest_item_id, is_deleted` (declarations for a book)
+- `user_id, is_hearted, is_deleted` (hearted items view)
+
+---
+
+#### `manifest_action_steps`
+
+Extracted actionable steps (exercises, practices, habits, prompts, projects) from Manifest books. Can be sent to Compass as tasks.
+
+| Column | Type | Default | Nullable | Notes |
+|--------|------|---------|----------|-------|
+| id | UUID | gen_random_uuid() | NOT NULL | PK |
+| user_id | UUID | | NOT NULL | FK → auth.users |
+| manifest_item_id | UUID | | NOT NULL | FK → manifest_items |
+| section_title | TEXT | null | NULL | Chapter/section title |
+| section_index | INTEGER | 0 | NOT NULL | 0-based section ordering |
+| content_type | TEXT | | NOT NULL | Enum: 'exercise', 'practice', 'habit', 'reflection_prompt', 'conversation_starter', 'project', 'daily_action', 'weekly_practice' |
+| text | TEXT | | NOT NULL | The extracted action step |
+| sort_order | INTEGER | 0 | NOT NULL | Order within section |
+| is_hearted | BOOLEAN | false | NOT NULL | User-favorited |
+| is_deleted | BOOLEAN | false | NOT NULL | Soft delete |
+| is_from_go_deeper | BOOLEAN | false | NOT NULL | From "Go Deeper" re-extraction |
+| sent_to_compass | BOOLEAN | false | NOT NULL | Whether sent to Compass as a task |
+| compass_task_id | UUID | null | NULL | FK → compass_tasks (if sent) |
+| user_note | TEXT | null | NULL | User's personal annotation on this item |
+| created_at | TIMESTAMPTZ | now() | NOT NULL | |
+
+**RLS:** Users CRUD own action steps only.
+**Indexes:**
+- `manifest_item_id, section_index, sort_order` (action steps for a book, ordered)
 - `user_id, is_hearted, is_deleted` (hearted items view)
 
 ---
