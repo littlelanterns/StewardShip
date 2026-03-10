@@ -360,11 +360,13 @@ export function useManifest() {
         // Auto-split very large books into parts (fire-and-forget)
         if (status === 'completed') {
           // Check if item qualifies: not a part, not already split, text > threshold
-          supabase
-            .from('manifest_items')
-            .select('text_content, parent_manifest_item_id, part_count')
-            .eq('id', itemId)
-            .single()
+          Promise.resolve(
+            supabase
+              .from('manifest_items')
+              .select('text_content, parent_manifest_item_id, part_count')
+              .eq('id', itemId)
+              .single(),
+          )
             .then(({ data: sizeCheck }) => {
               if (
                 sizeCheck?.text_content &&
@@ -373,8 +375,9 @@ export function useManifest() {
                 !sizeCheck.part_count
               ) {
                 console.log(`[auto-split] Item ${itemId} qualifies (${sizeCheck.text_content.length} chars). Triggering split...`);
-                supabase.functions
-                  .invoke('manifest-split', { body: { manifest_item_id: itemId } })
+                Promise.resolve(
+                  supabase.functions.invoke('manifest-split', { body: { manifest_item_id: itemId } }),
+                )
                   .then(({ data: splitData }) => {
                     if (splitData?.parts_created > 0) {
                       setItems((prev) =>
