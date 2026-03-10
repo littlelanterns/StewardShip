@@ -7,6 +7,7 @@ const ALL_GENRES: BookGenre[] = [
   'biography_memoir',
   'scriptures_sacred',
   'workbook',
+  'textbook',
   'poetry_essays',
   'allegory_parable',
   'devotional_spiritual_memoir',
