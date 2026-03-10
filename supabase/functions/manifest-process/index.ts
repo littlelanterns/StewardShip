@@ -304,8 +304,22 @@ serve(async (req: Request) => {
     // 4. Chunk the text and filter out garbage
     await setDetail('Chunking content...');
     const rawChunks = chunkText(fullText);
-    const chunks = rawChunks.filter((c) => isQualityChunk(c.text));
+    let chunks = rawChunks.filter((c) => isQualityChunk(c.text));
     console.log(`Chunking: ${rawChunks.length} raw → ${chunks.length} quality chunks (filtered ${rawChunks.length - chunks.length})`);
+
+    // Cap chunks for very large books to stay within Edge Function timeout
+    const MAX_CHUNKS = 1500;
+    if (chunks.length > MAX_CHUNKS) {
+      console.log(`Capping ${chunks.length} chunks to ${MAX_CHUNKS} (evenly sampled)`);
+      const step = chunks.length / MAX_CHUNKS;
+      const sampled: typeof chunks = [];
+      for (let s = 0; s < MAX_CHUNKS; s++) {
+        sampled.push(chunks[Math.floor(s * step)]);
+      }
+      // Re-index so chunk_index is sequential
+      chunks = sampled.map((c, idx) => ({ ...c, index: idx }));
+    }
+
     await setDetail(`Chunked into ${chunks.length} segments`);
 
     if (chunks.length === 0) {
@@ -332,8 +346,8 @@ serve(async (req: Request) => {
       );
     }
 
-    // Batch embed (OpenAI supports up to 2048 inputs per request)
-    const BATCH_SIZE = 100;
+    // Batch embed (OpenAI supports up to 2048 inputs per request, use 500 to reduce round-trips)
+    const BATCH_SIZE = 500;
     const totalBatches = Math.ceil(chunks.length / BATCH_SIZE);
     const allChunkRecords: Array<{
       user_id: string;
@@ -399,7 +413,7 @@ serve(async (req: Request) => {
 
     // 7. Insert chunks in batches
     await setDetail('Saving to database...');
-    const INSERT_BATCH = 50;
+    const INSERT_BATCH = 200;
     for (let i = 0; i < allChunkRecords.length; i += INSERT_BATCH) {
       const batch = allChunkRecords.slice(i, i + INSERT_BATCH);
       const { error: insertErr } = await supabase
