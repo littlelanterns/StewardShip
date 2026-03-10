@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Heart, Download, FileText, FileCode, ChevronDown, ChevronRight, Trash2, Anchor, Compass, RefreshCw, Sparkles, LayoutList, BookOpen, StickyNote } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -172,6 +172,32 @@ export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsVie
       setBookData(new Map());
     }
   }, [selectedIds, fetchExtractions]);
+
+  // Default all chapter sections to collapsed when book data loads
+  const evInitRef = useRef(false);
+  useEffect(() => {
+    if (evInitRef.current || bookData.size === 0) return;
+    const keys: string[] = [];
+    for (const [bookId, book] of bookData) {
+      const tabTypes = ['summary', 'frameworks', 'action_steps', 'mast_content'] as const;
+      for (const tab of tabTypes) {
+        const items = tab === 'summary' ? book.summaries
+          : tab === 'frameworks' ? book.principles
+          : tab === 'action_steps' ? book.actionSteps
+          : book.declarations;
+        const sectionKeys = new Set(items.map((i: { section_title: string | null }) => i.section_title || (tab === 'frameworks' ? '__general__' : '__full_book__')));
+        if (sectionKeys.size > 1) {
+          for (const sk of sectionKeys) {
+            keys.push(`${bookId}-${tab}-${sk}`);
+          }
+        }
+      }
+    }
+    if (keys.length > 0) {
+      evInitRef.current = true;
+      setCollapsedSections(new Set(keys));
+    }
+  }, [bookData]);
 
   const handleToggle = useCallback((id: string) => {
     setSelectedIds((prev) => {

@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { Heart, Trash2, ChevronDown, ChevronRight, Anchor, Compass, RefreshCw, Sparkles, LayoutList, BookOpen, StickyNote } from 'lucide-react';
 import type {
   ManifestSummary,
@@ -86,6 +86,15 @@ function SummaryTab({
       return aIdx - bIdx;
     });
   }, [visible]);
+
+  // Default chapters to collapsed when there are multiple sections
+  const summaryInitRef = useRef(false);
+  useEffect(() => {
+    if (!summaryInitRef.current && sections.length > 1) {
+      summaryInitRef.current = true;
+      setCollapsedSections(new Set(sections.map(([key]) => key)));
+    }
+  }, [sections]);
 
   const toggleSection = (key: string) => {
     setCollapsedSections((prev) => {
@@ -327,6 +336,15 @@ function FrameworksTab({
     return Array.from(map.entries());
   }, [visible]);
 
+  // Default chapters to collapsed when there are multiple sections
+  const fwInitRef = useRef(false);
+  useEffect(() => {
+    if (!fwInitRef.current && sections.length > 1) {
+      fwInitRef.current = true;
+      setCollapsedSections(new Set(sections.map(([key]) => key)));
+    }
+  }, [sections]);
+
   const toggleSection = (key: string) => {
     setCollapsedSections((prev) => {
       const next = new Set(prev);
@@ -522,6 +540,15 @@ function ActionStepsTab({
       return aIdx - bIdx;
     });
   }, [visible]);
+
+  // Default chapters to collapsed when there are multiple sections
+  const asInitRef = useRef(false);
+  useEffect(() => {
+    if (!asInitRef.current && sections.length > 1) {
+      asInitRef.current = true;
+      setCollapsedSections(new Set(sections.map(([key]) => key)));
+    }
+  }, [sections]);
 
   const toggleSection = (key: string) => {
     setCollapsedSections((prev) => {
@@ -803,6 +830,15 @@ function MastContentTab({
       return aIdx - bIdx;
     });
   }, [visible]);
+
+  // Default chapters to collapsed when there are multiple sections
+  const mastInitRef = useRef(false);
+  useEffect(() => {
+    if (!mastInitRef.current && sections.length > 1) {
+      mastInitRef.current = true;
+      setCollapsedSections(new Set(sections.map(([key]) => key)));
+    }
+  }, [sections]);
 
   const toggleSection = (key: string) => {
     setCollapsedSections((prev) => {

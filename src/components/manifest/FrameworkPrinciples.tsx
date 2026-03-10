@@ -89,6 +89,15 @@ function PrinciplesList({
     return groups;
   }, [principles, hasSections]);
 
+  // Default chapters to collapsed when there are multiple sections
+  const fpInitRef = useRef(false);
+  useEffect(() => {
+    if (!fpInitRef.current && sectionGroups && sectionGroups.length > 1) {
+      fpInitRef.current = true;
+      setCollapsedSections(new Set(sectionGroups.map((g) => g.title)));
+    }
+  }, [sectionGroups]);
+
   const renderPrincipleRow = (principle: EditablePrinciple, index: number) => (
     <div key={index} className={`framework-principles__item${!principle.is_included ? ' seasonal-focus--excluded' : ''}`}>
       <input
