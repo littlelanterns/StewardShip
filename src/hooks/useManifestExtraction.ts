@@ -225,6 +225,10 @@ export function useManifestExtraction() {
     }
   }, []);
 
+  const updateSectionTitle = useCallback((index: number, newTitle: string) => {
+    setSections((prev) => prev.map((s, i) => i === index ? { ...s, title: newTitle } : s));
+  }, []);
+
   const getSectionOffsets = useCallback((sectionTitle: string): { start: number; end: number; index: number } | null => {
     const match = sections.find((s) => {
       const clean = s.title.replace(/^\[NON-CONTENT\]\s*/i, '');
@@ -1187,6 +1191,7 @@ export function useManifestExtraction() {
     sections,
     selectedSectionIndices,
     setSelectedSectionIndices,
+    updateSectionTitle,
     discoveringSections,
     extractionProgress,
     // Fetch

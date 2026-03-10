@@ -535,6 +535,7 @@ export default function Manifest() {
           sections={extraction.sections}
           selectedSectionIndices={extraction.selectedSectionIndices}
           onSetSelectedSectionIndices={extraction.setSelectedSectionIndices}
+          onUpdateSectionTitle={extraction.updateSectionTitle}
           discoveringSections={extraction.discoveringSections}
           extractionProgress={extraction.extractionProgress}
           onClearExtractions={async (itemId: string) => {

@@ -43,6 +43,7 @@ interface ManifestItemDetailProps {
   sections: SectionInfo[];
   selectedSectionIndices: number[];
   onSetSelectedSectionIndices: (indices: number[]) => void;
+  onUpdateSectionTitle?: (index: number, title: string) => void;
   discoveringSections: boolean;
   extractionProgress: { current: number; total: number; currentType: 'summary' | 'framework' | 'mast_content' | 'action_steps' } | null;
   onClearExtractions: (itemId: string) => Promise<void>;
@@ -121,6 +122,7 @@ export function ManifestItemDetail({
   sections,
   selectedSectionIndices,
   onSetSelectedSectionIndices,
+  onUpdateSectionTitle,
   discoveringSections,
   extractionProgress,
   onClearExtractions,
@@ -250,6 +252,8 @@ export function ManifestItemDetail({
   }, [item.id, onUpdateGenres]);
 
   const [discoveryError, setDiscoveryError] = useState<string | null>(null);
+  const [editingSectionIndex, setEditingSectionIndex] = useState<number | null>(null);
+  const [sectionTitleDraft, setSectionTitleDraft] = useState('');
 
   const handleExtract = useCallback(async () => {
     if (selectedGenres.length === 0) {
@@ -638,6 +642,7 @@ export function ManifestItemDetail({
                   const isNonContent = section.title.startsWith('[NON-CONTENT]');
                   const displayTitle = section.title.replace(/^\[NON-CONTENT\]\s*/i, '');
                   const wordEstimate = Math.round((section.end_char - section.start_char) / 5);
+                  const isEditingThis = editingSectionIndex === i;
                   return (
                     <label
                       key={i}
@@ -649,7 +654,39 @@ export function ManifestItemDetail({
                         onChange={() => handleToggleSection(i)}
                       />
                       <div className="manifest-detail__section-item-info">
-                        <span className="manifest-detail__section-item-title">{displayTitle}</span>
+                        {isEditingThis ? (
+                          <input
+                            type="text"
+                            className="manifest-detail__section-title-input"
+                            value={sectionTitleDraft}
+                            onChange={(e) => setSectionTitleDraft(e.target.value)}
+                            onBlur={() => {
+                              if (sectionTitleDraft.trim() && onUpdateSectionTitle) {
+                                const prefix = isNonContent ? '[NON-CONTENT] ' : '';
+                                onUpdateSectionTitle(i, prefix + sectionTitleDraft.trim());
+                              }
+                              setEditingSectionIndex(null);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                              if (e.key === 'Escape') setEditingSectionIndex(null);
+                            }}
+                            onClick={(e) => e.preventDefault()}
+                            autoFocus
+                          />
+                        ) : (
+                          <span
+                            className="manifest-detail__section-item-title manifest-detail__section-item-title--editable"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setSectionTitleDraft(displayTitle);
+                              setEditingSectionIndex(i);
+                            }}
+                            title="Click to edit title"
+                          >
+                            {displayTitle}
+                          </span>
+                        )}
                         <span className="manifest-detail__section-item-desc">{section.description}</span>
                         <span className="manifest-detail__section-item-size">~{wordEstimate.toLocaleString()} words</span>
                       </div>
