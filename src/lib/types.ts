@@ -67,6 +67,7 @@ export interface UserSettings {
   manifest_group_mode: 'by_folder' | 'all_books';
   manifest_sort: 'newest' | 'oldest' | 'name_asc' | 'name_desc' | 'has_extractions';
   manifest_layout: 'compact' | 'grid';
+  tag_usage_counts: Record<string, number>;
   created_at: string;
   updated_at: string;
 }

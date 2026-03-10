@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Heart, Download, FileText, FileCode, ChevronDown, ChevronRight, Trash2, Anchor, Compass, RefreshCw, Sparkles, LayoutList, BookOpen, StickyNote, Search } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../contexts/AuthContext';
+import { useTagUsage } from '../../hooks/useTagUsage';
 import type { ManifestItem, ManifestSummary, ManifestDeclaration, ManifestActionStep, AIFrameworkPrinciple, BookGenre } from '../../lib/types';
 import { DECLARATION_STYLE_LABELS, ACTION_STEP_CONTENT_TYPE_LABELS } from '../../lib/types';
 import type { ActionStepContentType } from '../../lib/types';
 import { exportExtractionsMd, exportExtractionsTxt, exportExtractionsDocx, exportNotesMd, exportNotesTxt, exportNotesDocx, exportHeartedMd, exportHeartedTxt, exportHeartedDocx } from '../../lib/exportExtractions';
 import type { BookExtractionGroup } from '../../lib/exportExtractions';
-import { Button } from '../shared';
+import { Button, TagPills } from '../shared';
 import './ExtractionsView.css';
 import './ExtractionTabs.css';
 
@@ -75,9 +76,8 @@ export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsVie
   const [activeTags, setActiveTags] = useState<Set<string>>(new Set());
   const [bookSearch, setBookSearch] = useState('');
   const [activeBookTags, setActiveBookTags] = useState<Set<string>>(new Set());
-  const [bookTagsExpanded, setBookTagsExpanded] = useState(false);
-  const [bookTagSort, setBookTagSort] = useState<'usage' | 'alpha'>('usage');
   const [booksExpanded, setBooksExpanded] = useState(true);
+  const { counts: tagUsageCounts, recordTagClick } = useTagUsage();
 
   const extractedItems = useMemo(
     () => items.filter((i) =>
@@ -101,15 +101,24 @@ export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsVie
     return Object.entries(counts);
   }, [extractedItems]);
 
-  const sortedBookTags = useMemo(() => {
-    const sorted = [...bookTagData];
-    if (bookTagSort === 'alpha') {
-      sorted.sort((a, b) => a[0].localeCompare(b[0]));
-    } else {
-      sorted.sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
-    }
-    return sorted;
-  }, [bookTagData, bookTagSort]);
+  // Tag toggle helpers with usage tracking
+  const handleBookTagToggle = useCallback((tag: string) => {
+    recordTagClick(tag);
+    setActiveBookTags((prev) => {
+      const next = new Set(prev);
+      next.has(tag) ? next.delete(tag) : next.add(tag);
+      return next;
+    });
+  }, [recordTagClick]);
+
+  const handleFrameworkTagToggle = useCallback((tag: string) => {
+    recordTagClick(tag);
+    setActiveTags((prev) => {
+      const next = new Set(prev);
+      next.has(tag) ? next.delete(tag) : next.add(tag);
+      return next;
+    });
+  }, [recordTagClick]);
 
   // Filter books by search + active book tags
   const filteredBooks = useMemo(() => {
@@ -1387,68 +1396,15 @@ export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsVie
             )}
             {booksExpanded && (
               <>
-                {sortedBookTags.length > 0 && (
-                  <div className="extractions-view__book-tags-section">
-                    <button
-                      type="button"
-                      className="extractions-view__book-tags-toggle"
-                      onClick={() => setBookTagsExpanded((v) => !v)}
-                    >
-                      {bookTagsExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-                      <span>Filter by tag ({sortedBookTags.length})</span>
-                      {activeBookTags.size > 0 && (
-                        <span className="extractions-view__book-tags-active">{activeBookTags.size} active</span>
-                      )}
-                    </button>
-                    {bookTagsExpanded && (
-                      <>
-                        <div className="extractions-view__book-tags-controls">
-                          <button
-                            type="button"
-                            className={`extractions-view__sort-btn${bookTagSort === 'usage' ? ' extractions-view__sort-btn--active' : ''}`}
-                            onClick={() => setBookTagSort('usage')}
-                          >
-                            Popular
-                          </button>
-                          <button
-                            type="button"
-                            className={`extractions-view__sort-btn${bookTagSort === 'alpha' ? ' extractions-view__sort-btn--active' : ''}`}
-                            onClick={() => setBookTagSort('alpha')}
-                          >
-                            A-Z
-                          </button>
-                          {activeBookTags.size > 0 && (
-                            <button
-                              type="button"
-                              className="extractions-view__sort-btn"
-                              onClick={() => setActiveBookTags(new Set())}
-                            >
-                              Clear
-                            </button>
-                          )}
-                        </div>
-                        <div className="extractions-view__book-tags">
-                          {sortedBookTags.map(([tag, count]) => (
-                            <button
-                              key={tag}
-                              type="button"
-                              className={`extractions-view__book-tag${activeBookTags.has(tag) ? ' extractions-view__book-tag--active' : ''}`}
-                              onClick={() => {
-                                setActiveBookTags((prev) => {
-                                  const next = new Set(prev);
-                                  next.has(tag) ? next.delete(tag) : next.add(tag);
-                                  return next;
-                                });
-                              }}
-                            >
-                              {tag.replace(/_/g, ' ')} <span className="extractions-view__book-tag-count">{count}</span>
-                            </button>
-                          ))}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
+                <TagPills
+                  tags={bookTagData}
+                  activeTags={activeBookTags}
+                  onToggle={handleBookTagToggle}
+                  onClear={() => setActiveBookTags(new Set())}
+                  usageCounts={tagUsageCounts}
+                  collapsible
+                  label="Filter by tag"
+                />
                 <div className="extractions-view__book-list">
                   {filteredBooks.map((item) => (
                     <label key={item.id} className="extractions-view__book-item">
@@ -1470,31 +1426,16 @@ export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsVie
 
           {/* Framework tag filter bar */}
           {allTags.length > 0 && (
-            <div className="extractions-view__tag-bar">
-              <button
-                type="button"
-                className={`extractions-view__tag-chip${activeTags.size === 0 ? ' extractions-view__tag-chip--active' : ''}`}
-                onClick={() => setActiveTags(new Set())}
-              >
-                All
-              </button>
-              {allTags.map((tag) => (
-                <button
-                  key={tag}
-                  type="button"
-                  className={`extractions-view__tag-chip${activeTags.has(tag) ? ' extractions-view__tag-chip--active' : ''}`}
-                  onClick={() => {
-                    setActiveTags((prev) => {
-                      const next = new Set(prev);
-                      next.has(tag) ? next.delete(tag) : next.add(tag);
-                      return next;
-                    });
-                  }}
-                >
-                  {tag}
-                </button>
-              ))}
-            </div>
+            <TagPills
+              tags={allTags.map((t) => [t, 0] as [string, number])}
+              activeTags={activeTags}
+              onToggle={handleFrameworkTagToggle}
+              onClear={() => setActiveTags(new Set())}
+              usageCounts={tagUsageCounts}
+              horizontal
+              showAllButton
+              showCounts={false}
+            />
           )}
 
           {selectedIds.size > 0 && (

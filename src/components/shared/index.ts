@@ -14,3 +14,5 @@ export { VoiceRecordButton } from './VoiceRecordButton';
 export { FeatureGuide } from './FeatureGuide';
 export { SparkleOverlay } from './SparkleOverlay';
 export { CompletionNotePrompt } from './CompletionNotePrompt';
+export { TagPills } from './TagPills';
+export type { TagPillsProps } from './TagPills';

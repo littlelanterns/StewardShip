@@ -11,14 +11,14 @@ import type { ManifestItem, BookGenre, DiscussionType, DiscussionAudience } from
 import { supabase } from '../lib/supabase';
 import { ManifestItemCard } from '../components/manifest/ManifestItemCard';
 import { ManifestItemDetail } from '../components/manifest/ManifestItemDetail';
-import { ManifestFilterBar } from '../components/manifest/ManifestFilterBar';
+import { useTagUsage } from '../hooks/useTagUsage';
 import { UploadFlow } from '../components/manifest/UploadFlow';
 import { BookDiscussionModal } from '../components/manifest/BookDiscussionModal';
 import { BookSelector } from '../components/manifest/BookSelector';
 import { AdminBookManager } from '../components/manifest/AdminBookManager';
 import { CollapsibleGroup } from '../components/shared/CollapsibleGroup';
 import { FloatingActionButton } from '../components/shared/FloatingActionButton';
-import { Button, EmptyState, LoadingSpinner, FeatureGuide } from '../components/shared';
+import { Button, EmptyState, LoadingSpinner, FeatureGuide, TagPills } from '../components/shared';
 import { FEATURE_GUIDES } from '../lib/featureGuides';
 import './Manifest.css';
 
@@ -135,8 +135,9 @@ export default function Manifest() {
   const existingFolders = useMemo(() => getUniqueFolders(), [getUniqueFolders]);
 
   // Filters & sort
-  const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const [activeManifestTags, setActiveManifestTags] = useState<Set<string>>(new Set());
   const [sortOption, setSortOption] = useState<SortOption>('newest');
+  const { counts: tagUsageCounts, recordTagClick } = useTagUsage();
 
   // Persist a single preference to user_settings (fire-and-forget)
   const persistPreference = useCallback((key: string, value: string) => {
@@ -457,15 +458,17 @@ export default function Manifest() {
   // Filtering
   const filteredItems = useMemo(() => {
     let result = items;
-    if (tagFilter) {
-      result = result.filter((item) => item.tags.includes(tagFilter));
+    if (activeManifestTags.size > 0) {
+      result = result.filter((item) =>
+        Array.from(activeManifestTags).some((tag) => item.tags.includes(tag))
+      );
     }
     if (titleSearch.trim()) {
       const q = titleSearch.trim().toLowerCase();
       result = result.filter((item) => item.title.toLowerCase().includes(q));
     }
     return result;
-  }, [items, tagFilter, titleSearch]);
+  }, [items, activeManifestTags, titleSearch]);
 
   const hasCompletedItems = items.some((i) => i.processing_status === 'completed');
   const hasExtractedItems = items.some((i) => i.extraction_status === 'completed');
@@ -513,7 +516,15 @@ export default function Manifest() {
     return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
   }, [sortedItems]);
 
-  const uniqueTags = useMemo(() => getUniqueTags(), [getUniqueTags]);
+  const tagData = useMemo((): Array<[string, number]> => {
+    const counts: Record<string, number> = {};
+    for (const item of items) {
+      for (const tag of item.tags || []) {
+        counts[tag] = (counts[tag] || 0) + 1;
+      }
+    }
+    return Object.entries(counts);
+  }, [items]);
 
   // Keep selectedItem in sync with items array
   const currentSelectedItem = useMemo(
@@ -764,10 +775,21 @@ export default function Manifest() {
       {/* Filter bar + sort */}
       {items.length > 0 && (
         <>
-          <ManifestFilterBar
-            tagFilter={tagFilter}
-            uniqueTags={uniqueTags}
-            onTagChange={setTagFilter}
+          <TagPills
+            tags={tagData}
+            activeTags={activeManifestTags}
+            onToggle={(tag) => {
+              recordTagClick(tag);
+              setActiveManifestTags((prev) => {
+                const next = new Set(prev);
+                next.has(tag) ? next.delete(tag) : next.add(tag);
+                return next;
+              });
+            }}
+            onClear={() => setActiveManifestTags(new Set())}
+            usageCounts={tagUsageCounts}
+            horizontal
+            showAllButton
           />
           <div className="manifest-page__search-bar">
             <Search size={14} className="manifest-page__search-icon" />
