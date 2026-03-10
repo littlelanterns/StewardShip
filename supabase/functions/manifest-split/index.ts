@@ -117,7 +117,7 @@ serve(async (req) => {
 
     // Build sampled text for AI analysis (same pattern as section discovery)
     let discoveryText = textContent;
-    const MAX_DISCOVERY_CHARS = 780_000;
+    const MAX_DISCOVERY_CHARS = 600_000;
     if (discoveryText.length > MAX_DISCOVERY_CHARS) {
       const sampleSize = 15_000;
       const numSamples = Math.floor(MAX_DISCOVERY_CHARS / sampleSize);

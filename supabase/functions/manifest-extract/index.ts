@@ -498,9 +498,9 @@ serve(async (req: Request) => {
     // --- Section Discovery (Haiku — cheap structural classification) ---
     if (extraction_type === 'discover_sections') {
       // Haiku 4.5 context = 200K tokens. Reserve ~5K for system prompt + response.
-      // ~195K usable tokens × ~4 chars/token = ~780K chars.
-      // Send the full text whenever possible; only sample for very large documents.
-      const MAX_DISCOVERY_CHARS = 780_000;
+      // Real-world token:char ratio varies (3.5-4.2 chars/token depending on content).
+      // Use conservative 600K chars (~150-170K tokens) to stay safely within limits.
+      const MAX_DISCOVERY_CHARS = 600_000;
       let discoveryText = item.text_content;
       console.log(`[manifest-extract] discover_sections: doc length=${discoveryText.length} chars`);
       if (discoveryText.length > MAX_DISCOVERY_CHARS) {
@@ -522,25 +522,31 @@ serve(async (req: Request) => {
         console.log(`[manifest-extract] discover_sections: sampled ${numSamples} windows (${discoveryText.length} chars) from ${item.text_content.length} char doc`);
       }
 
+      const discoveryPayload = JSON.stringify({
+        model: 'anthropic/claude-haiku-4.5',
+        max_tokens: 2048,
+        messages: [
+          { role: 'system', content: SECTION_DISCOVERY_PROMPT },
+          { role: 'user', content: `Document (${item.text_content.length} characters total):\n\n${discoveryText}` },
+        ],
+      });
+      console.log(`[manifest-extract] discover_sections: sending ${discoveryPayload.length} byte payload (${discoveryText.length} chars of text)`);
+
       const response = await fetchWithRetry('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: openRouterHeaders,
-        body: JSON.stringify({
-          model: 'anthropic/claude-haiku-4.5',
-          max_tokens: 4096,
-          messages: [
-            { role: 'system', content: SECTION_DISCOVERY_PROMPT },
-            { role: 'user', content: `Document (${item.text_content.length} characters total):\n\n${discoveryText}` },
-          ],
-        }),
+        body: discoveryPayload,
       });
 
       if (!response.ok) {
         const errBody = await response.text();
         console.error('[manifest-extract] discover_sections AI error:', response.status, errBody.substring(0, 800));
+        // Return 200 with error field so Supabase client doesn't swallow the details
+        let detail = '';
+        try { detail = JSON.parse(errBody)?.error?.message || errBody.substring(0, 300); } catch { detail = errBody.substring(0, 300); }
         return new Response(
-          JSON.stringify({ error: `Section discovery failed (AI ${response.status}): ${errBody.substring(0, 200)}` }),
-          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+          JSON.stringify({ error: `Section discovery failed (AI ${response.status}): ${detail}` }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         );
       }
 
