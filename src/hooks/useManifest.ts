@@ -289,12 +289,16 @@ export function useManifest() {
   }, []);
 
   // Poll processing status for an item until it completes or fails
-  const pollProcessingStatus = useCallback((itemId: string) => {
+  const pollProcessingStatus = useCallback((itemId: string, force?: boolean) => {
     if (!user) return;
 
-    // Clear any existing poll for this specific item
+    // Skip if already polling this item (unless forced, e.g. after upload)
     const existing = pollIntervalsRef.current.get(itemId);
+    if (existing && !force) return;
     if (existing) clearInterval(existing);
+
+    let errorCount = 0;
+    const MAX_POLL_ERRORS = 5; // Stop polling after 5 consecutive failures
 
     const interval = setInterval(async () => {
       const { data, error: pollErr } = await supabase
@@ -305,10 +309,16 @@ export function useManifest() {
         .single();
 
       if (pollErr || !data) {
-        const iv = pollIntervalsRef.current.get(itemId);
-        if (iv) { clearInterval(iv); pollIntervalsRef.current.delete(itemId); }
+        errorCount++;
+        if (errorCount >= MAX_POLL_ERRORS) {
+          console.warn(`[manifest-poll] Stopping poll for ${itemId} after ${MAX_POLL_ERRORS} consecutive errors`);
+          const iv = pollIntervalsRef.current.get(itemId);
+          if (iv) { clearInterval(iv); pollIntervalsRef.current.delete(itemId); }
+        }
         return;
       }
+
+      errorCount = 0; // Reset on success
 
       const status = data.processing_status;
 

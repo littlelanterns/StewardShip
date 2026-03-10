@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 
 import { Upload, MessageSquare, Loader, List, LayoutGrid, CheckSquare, FolderInput, X, Plus, Folder, Trash2, Search } from 'lucide-react';
 import { usePageContext } from '../hooks/usePageContext';
@@ -189,15 +189,21 @@ export default function Manifest() {
     fetchDiscussions();
   }, [fetchItems, fetchFrameworks, fetchDiscussions]);
 
-  // Poll for processing items
+  // Poll for processing items — use ref to avoid feedback loop
+  // (pollProcessingStatus calls setItems → items change → effect re-fires)
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
+
   useEffect(() => {
-    const processingItems = items.filter(
+    const processingItems = itemsRef.current.filter(
       (i) => i.processing_status === 'pending' || i.processing_status === 'processing',
     );
     processingItems.forEach((item) => {
       pollProcessingStatus(item.id);
     });
-  }, [items, pollProcessingStatus]);
+    // Only run on mount and when pollProcessingStatus identity changes (user change)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pollProcessingStatus]);
 
   const handleSelectItem = useCallback(async (item: ManifestItem) => {
     const detail = await fetchItemDetail(item.id);
@@ -265,7 +271,7 @@ export default function Manifest() {
   const handleUpload = useCallback(async (file: File) => {
     const item = await uploadFile(file);
     if (item) {
-      pollProcessingStatus(item.id);
+      pollProcessingStatus(item.id, true);
     }
     return item;
   }, [uploadFile, pollProcessingStatus]);
