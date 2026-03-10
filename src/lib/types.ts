@@ -1324,6 +1324,7 @@ export type BookGenre =
   | 'biography_memoir'
   | 'scriptures_sacred'
   | 'workbook'
+  | 'textbook'
   | 'poetry_essays'
   | 'allegory_parable'
   | 'devotional_spiritual_memoir';
@@ -1346,6 +1347,7 @@ export const BOOK_GENRE_LABELS: Record<BookGenre, string> = {
   biography_memoir: 'Biography / Memoir',
   scriptures_sacred: 'Scriptures / Sacred',
   workbook: 'Workbook',
+  textbook: 'Textbook / Educational',
   poetry_essays: 'Poetry / Essays',
   allegory_parable: 'Allegory / Parable',
   devotional_spiritual_memoir: 'Devotional / Spiritual Memoir',

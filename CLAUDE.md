@@ -996,7 +996,7 @@ Six guided conversation modes accessible from the First Mate page, each opening 
 - **Supported formats:** PDF, EPUB (best for books — Kindle converts via Calibre), DOCX, TXT, MD (direct text read), text notes (typed directly), images (AI vision extraction).
 - **EPUB extraction:** ZIP → OPF spine order → XHTML content → stripped HTML. Preserves chapter ordering. Uses fflate for Deno-compatible unzipping.
 - **DOCX extraction:** ZIP → word/document.xml → w:t text runs. Preserves paragraph structure.
-- **Genre system (PRD-24):** 8 genres stored as `manifest_items.genres` TEXT[]: non_fiction, fiction, biography_memoir, scriptures_sacred, workbook, poetry_essays, allegory_parable, devotional_spiritual_memoir. Multi-select. Genre context guides extraction prompts for richer, format-appropriate results.
+- **Genre system (PRD-24):** 9 genres stored as `manifest_items.genres` TEXT[]: non_fiction, fiction, biography_memoir, scriptures_sacred, workbook, textbook, poetry_essays, allegory_parable, devotional_spiritual_memoir. Multi-select. Genre context guides extraction prompts for richer, format-appropriate results.
 - **Extraction pipeline (PRD-24+):** Single "Extract" action per book. Section discovery (Haiku analyzes document structure) → section checklist → per-section extraction (Sonnet) producing four tabs:
   - **Summary tab:** Key concepts, stories, metaphors, lessons, quotes, insights, themes, character insights, exercises, principles. Stored in `manifest_summaries`.
   - **Frameworks tab:** Actionable principles. Stored in `ai_framework_principles` (with `section_title` for chapter grouping).
