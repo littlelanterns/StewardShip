@@ -72,8 +72,11 @@ export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsVie
   const [editingText, setEditingText] = useState('');
   const [notingId, setNotingId] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState('');
-  const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [activeTags, setActiveTags] = useState<Set<string>>(new Set());
   const [bookSearch, setBookSearch] = useState('');
+  const [activeBookTags, setActiveBookTags] = useState<Set<string>>(new Set());
+  const [bookTagsExpanded, setBookTagsExpanded] = useState(false);
+  const [bookTagSort, setBookTagSort] = useState<'usage' | 'alpha'>('usage');
 
   const extractedItems = useMemo(
     () => items.filter((i) =>
@@ -86,28 +89,44 @@ export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsVie
 
   // No auto-select: books start unchecked so user picks what they want
 
-  // Filter books by search term
-  const filteredBooks = useMemo(() => {
-    if (!bookSearch.trim()) return extractedItems;
-    const q = bookSearch.toLowerCase();
-    return extractedItems.filter((i) =>
-      i.title.toLowerCase().includes(q) ||
-      (i.tags || []).some((t) => t.toLowerCase().includes(q))
-    );
-  }, [extractedItems, bookSearch]);
-
-  // Unique book-level tags for filtering
-  const bookTags = useMemo(() => {
+  // Unique book-level tags with counts for filtering
+  const bookTagData = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const item of extractedItems) {
       for (const tag of (item.tags || [])) {
         counts[tag] = (counts[tag] || 0) + 1;
       }
     }
-    return Object.entries(counts)
-      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-      .map(([tag]) => tag);
+    return Object.entries(counts);
   }, [extractedItems]);
+
+  const sortedBookTags = useMemo(() => {
+    const sorted = [...bookTagData];
+    if (bookTagSort === 'alpha') {
+      sorted.sort((a, b) => a[0].localeCompare(b[0]));
+    } else {
+      sorted.sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+    }
+    return sorted;
+  }, [bookTagData, bookTagSort]);
+
+  // Filter books by search + active book tags
+  const filteredBooks = useMemo(() => {
+    let result = extractedItems;
+    if (bookSearch.trim()) {
+      const q = bookSearch.toLowerCase();
+      result = result.filter((i) =>
+        i.title.toLowerCase().includes(q) ||
+        (i.tags || []).some((t) => t.toLowerCase().includes(q))
+      );
+    }
+    if (activeBookTags.size > 0) {
+      result = result.filter((i) =>
+        Array.from(activeBookTags).some((tag) => (i.tags || []).includes(tag))
+      );
+    }
+    return result;
+  }, [extractedItems, bookSearch, activeBookTags]);
 
   // Fetch extractions for selected books (with fixed sort order)
   const fetchExtractions = useCallback(async (ids: string[]) => {
@@ -712,13 +731,13 @@ export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsVie
       );
     }
 
-    // Filter by active tag (books whose frameworks include the tag)
-    if (activeTag) {
-      data = data.filter((d) => d.frameworkTags.includes(activeTag));
+    // Filter by active tags (books whose frameworks include any selected tag)
+    if (activeTags.size > 0) {
+      data = data.filter((d) => Array.from(activeTags).some((t) => d.frameworkTags.includes(t)));
     }
 
     return data;
-  }, [favoritesMode, activeTag, selectedData]);
+  }, [favoritesMode, activeTags, selectedData]);
 
   // Counts that reflect what's actually displayed (respects filter mode + tag)
   const displayCounts = useMemo(() => {
@@ -1355,22 +1374,66 @@ export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsVie
                 />
               </div>
             )}
-            {bookTags.length > 0 && (
-              <div className="extractions-view__book-tags">
-                {bookTags.slice(0, 12).map((tag) => (
-                  <button
-                    key={tag}
-                    type="button"
-                    className="extractions-view__book-tag"
-                    onClick={() => {
-                      // Select all books that have this tag
-                      const matching = extractedItems.filter((i) => (i.tags || []).includes(tag));
-                      setSelectedIds(new Set(matching.map((i) => i.id)));
-                    }}
-                  >
-                    {tag.replace(/_/g, ' ')}
-                  </button>
-                ))}
+            {sortedBookTags.length > 0 && (
+              <div className="extractions-view__book-tags-section">
+                <button
+                  type="button"
+                  className="extractions-view__book-tags-toggle"
+                  onClick={() => setBookTagsExpanded((v) => !v)}
+                >
+                  {bookTagsExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                  <span>Filter by tag ({sortedBookTags.length})</span>
+                  {activeBookTags.size > 0 && (
+                    <span className="extractions-view__book-tags-active">{activeBookTags.size} active</span>
+                  )}
+                </button>
+                {bookTagsExpanded && (
+                  <>
+                    <div className="extractions-view__book-tags-controls">
+                      <button
+                        type="button"
+                        className={`extractions-view__sort-btn${bookTagSort === 'usage' ? ' extractions-view__sort-btn--active' : ''}`}
+                        onClick={() => setBookTagSort('usage')}
+                      >
+                        Popular
+                      </button>
+                      <button
+                        type="button"
+                        className={`extractions-view__sort-btn${bookTagSort === 'alpha' ? ' extractions-view__sort-btn--active' : ''}`}
+                        onClick={() => setBookTagSort('alpha')}
+                      >
+                        A-Z
+                      </button>
+                      {activeBookTags.size > 0 && (
+                        <button
+                          type="button"
+                          className="extractions-view__sort-btn"
+                          onClick={() => setActiveBookTags(new Set())}
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                    <div className="extractions-view__book-tags">
+                      {sortedBookTags.map(([tag, count]) => (
+                        <button
+                          key={tag}
+                          type="button"
+                          className={`extractions-view__book-tag${activeBookTags.has(tag) ? ' extractions-view__book-tag--active' : ''}`}
+                          onClick={() => {
+                            setActiveBookTags((prev) => {
+                              const next = new Set(prev);
+                              next.has(tag) ? next.delete(tag) : next.add(tag);
+                              return next;
+                            });
+                          }}
+                        >
+                          {tag.replace(/_/g, ' ')} <span className="extractions-view__book-tag-count">{count}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             )}
             <div className="extractions-view__book-list">
@@ -1390,13 +1453,13 @@ export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsVie
             </div>
           </div>
 
-          {/* Tag filter bar */}
+          {/* Framework tag filter bar */}
           {allTags.length > 0 && (
             <div className="extractions-view__tag-bar">
               <button
                 type="button"
-                className={`extractions-view__tag-chip${activeTag === null ? ' extractions-view__tag-chip--active' : ''}`}
-                onClick={() => setActiveTag(null)}
+                className={`extractions-view__tag-chip${activeTags.size === 0 ? ' extractions-view__tag-chip--active' : ''}`}
+                onClick={() => setActiveTags(new Set())}
               >
                 All
               </button>
@@ -1404,8 +1467,14 @@ export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsVie
                 <button
                   key={tag}
                   type="button"
-                  className={`extractions-view__tag-chip${activeTag === tag ? ' extractions-view__tag-chip--active' : ''}`}
-                  onClick={() => setActiveTag(tag)}
+                  className={`extractions-view__tag-chip${activeTags.has(tag) ? ' extractions-view__tag-chip--active' : ''}`}
+                  onClick={() => {
+                    setActiveTags((prev) => {
+                      const next = new Set(prev);
+                      next.has(tag) ? next.delete(tag) : next.add(tag);
+                      return next;
+                    });
+                  }}
                 >
                   {tag}
                 </button>
