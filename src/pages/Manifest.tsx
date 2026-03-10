@@ -48,7 +48,6 @@ export default function Manifest() {
     archiveItem,
     deleteItem,
     pollProcessingStatus,
-    getUniqueTags,
     getUniqueFolders,
     fetchItemDetail,
     checkDuplicate,
