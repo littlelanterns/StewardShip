@@ -788,8 +788,8 @@ export default function Manifest() {
             }}
             onClear={() => setActiveManifestTags(new Set())}
             usageCounts={tagUsageCounts}
-            horizontal
-            showAllButton
+            collapsible
+            label="Filter by tag"
           />
           <div className="manifest-page__search-bar">
             <Search size={14} className="manifest-page__search-icon" />
