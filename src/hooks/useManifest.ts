@@ -652,7 +652,41 @@ export function useManifest() {
         .invoke('manifest-process', {
           body: { manifest_item_id: item.id, user_id: user.id },
         })
-        .catch((err) => console.error('[queue] Processing trigger failed:', err));
+        .then(({ error: invokeErr }) => {
+          if (invokeErr) {
+            console.error(`[queue] manifest-process failed for "${item.title}":`, invokeErr);
+            // Mark as failed so the queue doesn't retry infinitely
+            supabase
+              .from('manifest_items')
+              .update({ processing_status: 'failed', processing_detail: `Edge Function error: ${invokeErr.message || 'unknown'}` })
+              .eq('id', item.id)
+              .then(() => {
+                setItems((prev) =>
+                  prev.map((i) =>
+                    i.id === item.id
+                      ? { ...i, processing_status: 'failed' as const, processing_detail: `Edge Function error: ${invokeErr.message || 'unknown'}` }
+                      : i,
+                  ),
+                );
+              });
+          }
+        })
+        .catch((err) => {
+          console.error(`[queue] manifest-process invoke error for "${item.title}":`, err);
+          supabase
+            .from('manifest_items')
+            .update({ processing_status: 'failed', processing_detail: `Invoke error: ${(err as Error).message}` })
+            .eq('id', item.id)
+            .then(() => {
+              setItems((prev) =>
+                prev.map((i) =>
+                  i.id === item.id
+                    ? { ...i, processing_status: 'failed' as const, processing_detail: `Invoke error: ${(err as Error).message}` }
+                    : i,
+                ),
+              );
+            });
+        });
       pollProcessingStatus(item.id, true);
     }
   }, [items, user, pollProcessingStatus]);
@@ -673,22 +707,25 @@ export function useManifest() {
 
     if (stuckItems.length > 0) {
       console.log(`[queue] Found ${stuckItems.length} stuck items, resetting to pending`);
-      for (const item of stuckItems) {
-        supabase
-          .from('manifest_items')
-          .update({ processing_status: 'pending', processing_detail: null })
-          .eq('id', item.id)
-          .eq('user_id', user.id)
-          .then(() => {
-            setItems((prev) =>
-              prev.map((i) =>
-                i.id === item.id
-                  ? { ...i, processing_status: 'pending' as const, processing_detail: null }
-                  : i,
-              ),
-            );
-          });
-      }
+      const stuckIds = stuckItems.map((i) => i.id);
+
+      // Batch DB update — single query for all stuck items
+      supabase
+        .from('manifest_items')
+        .update({ processing_status: 'pending', processing_detail: null })
+        .in('id', stuckIds)
+        .eq('user_id', user.id)
+        .then(() => {
+          // Single state update for all stuck items
+          const stuckIdSet = new Set(stuckIds);
+          setItems((prev) =>
+            prev.map((i) =>
+              stuckIdSet.has(i.id)
+                ? { ...i, processing_status: 'pending' as const, processing_detail: null }
+                : i,
+            ),
+          );
+        });
     }
   }, [items, user, loading]);
 
