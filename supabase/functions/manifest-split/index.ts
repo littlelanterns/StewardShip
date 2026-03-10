@@ -120,10 +120,11 @@ serve(async (req) => {
     const MAX_DISCOVERY_CHARS = 600_000;
     if (discoveryText.length > MAX_DISCOVERY_CHARS) {
       const sampleSize = 15_000;
-      const numSamples = Math.floor(MAX_DISCOVERY_CHARS / sampleSize);
-      const step = Math.floor(discoveryText.length / numSamples);
+      const totalSamples = Math.floor(MAX_DISCOVERY_CHARS / sampleSize);
+      const numMiddleSamples = totalSamples - 1; // reserve 1 for the tail
+      const step = Math.floor(discoveryText.length / numMiddleSamples);
       const samples: string[] = [];
-      for (let i = 0; i < numSamples; i++) {
+      for (let i = 0; i < numMiddleSamples; i++) {
         const start = i * step;
         const end = Math.min(start + sampleSize, discoveryText.length);
         samples.push(
@@ -131,8 +132,17 @@ serve(async (req) => {
           + discoveryText.substring(start, end),
         );
       }
+      // Always include the tail so the last chapter(s) are visible
+      const tailStart = Math.max(0, discoveryText.length - sampleSize);
+      const lastMiddleEnd = (numMiddleSamples - 1) * step + sampleSize;
+      if (tailStart > lastMiddleEnd - sampleSize / 2) {
+        samples.push(
+          `[POSITION: chars ${tailStart}-${discoveryText.length} of ${discoveryText.length} — DOCUMENT END]\n`
+          + discoveryText.substring(tailStart),
+        );
+      }
       discoveryText = samples.join('\n\n---\n\n');
-      console.log(`[manifest-split] Sampled ${numSamples} windows (${discoveryText.length} chars) from ${textContent.length} char doc`);
+      console.log(`[manifest-split] Sampled ${samples.length} windows (${discoveryText.length} chars) from ${textContent.length} char doc`);
     }
 
     // Get API key

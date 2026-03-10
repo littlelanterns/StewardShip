@@ -505,12 +505,13 @@ serve(async (req: Request) => {
       console.log(`[manifest-extract] discover_sections: doc length=${discoveryText.length} chars`);
       if (discoveryText.length > MAX_DISCOVERY_CHARS) {
         // Take evenly-spaced samples across the full document to capture all chapter headings.
-        // Each sample is a window of text; windows are spaced to cover the entire document.
+        // Reserve one sample slot for the document tail to ensure we never miss final chapters.
         const sampleSize = 15_000;    // chars per sample window
-        const numSamples = Math.floor(MAX_DISCOVERY_CHARS / sampleSize); // ~40 samples
-        const step = Math.floor(discoveryText.length / numSamples);
+        const totalSamples = Math.floor(MAX_DISCOVERY_CHARS / sampleSize); // ~40 samples
+        const numMiddleSamples = totalSamples - 1; // reserve 1 for the tail
+        const step = Math.floor(discoveryText.length / numMiddleSamples);
         const samples: string[] = [];
-        for (let i = 0; i < numSamples; i++) {
+        for (let i = 0; i < numMiddleSamples; i++) {
           const start = i * step;
           const end = Math.min(start + sampleSize, discoveryText.length);
           samples.push(
@@ -518,8 +519,18 @@ serve(async (req: Request) => {
             + discoveryText.substring(start, end)
           );
         }
+        // Always include the tail of the document so the last chapter(s) are visible
+        const tailStart = Math.max(0, discoveryText.length - sampleSize);
+        // Only add tail if it doesn't overlap significantly with the last middle sample
+        const lastMiddleEnd = (numMiddleSamples - 1) * step + sampleSize;
+        if (tailStart > lastMiddleEnd - sampleSize / 2) {
+          samples.push(
+            `[POSITION: chars ${tailStart}-${discoveryText.length} of ${discoveryText.length} — DOCUMENT END]\n`
+            + discoveryText.substring(tailStart)
+          );
+        }
         discoveryText = samples.join('\n\n---\n\n');
-        console.log(`[manifest-extract] discover_sections: sampled ${numSamples} windows (${discoveryText.length} chars) from ${item.text_content.length} char doc`);
+        console.log(`[manifest-extract] discover_sections: sampled ${samples.length} windows (${discoveryText.length} chars) from ${item.text_content.length} char doc`);
       }
 
       const discoveryPayload = JSON.stringify({
