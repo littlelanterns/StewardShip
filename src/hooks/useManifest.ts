@@ -10,12 +10,19 @@ export interface IntakeSuggestions {
   suggested_usage: ManifestUsageDesignation;
 }
 
+// Max concurrent manifest-process Edge Functions. Prevents overwhelming OpenAI + Supabase.
+const MAX_CONCURRENT_PROCESSING = 3;
+
 export function useManifest() {
   const { user } = useAuthContext();
   const [items, setItems] = useState<ManifestItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pollIntervalsRef = useRef<Map<string, ReturnType<typeof setInterval>>>(new Map());
+  // Refs for functions called inside poll intervals (avoid stale closures)
+  const runIntakeRef = useRef<(id: string) => Promise<IntakeSuggestions | null>>(async () => null);
+  const applyIntakeRef = useRef<(id: string, intake: { tags: string[]; folder_group: string; usage_designations: ManifestUsageDesignation[] }) => Promise<boolean>>(async () => false);
+  const updateItemRef = useRef<(id: string, updates: Record<string, unknown>) => Promise<boolean>>(async () => false);
 
   // Fetch all active manifest items
   const fetchItems = useCallback(async () => {
@@ -102,14 +109,7 @@ export function useManifest() {
       return null;
     }
 
-    // 4. Trigger processing (fire and forget)
-    supabase.functions
-      .invoke('manifest-process', {
-        body: { manifest_item_id: item.id, user_id: user.id },
-      })
-      .catch((err) => console.error('Processing trigger failed:', err));
-
-    // 5. Add to local state
+    // 4. Add to local state — queue manager useEffect will trigger processing
     setItems((prev) => [item as ManifestItem, ...prev]);
     return item as ManifestItem;
   }, [user]);
@@ -143,13 +143,7 @@ export function useManifest() {
       return null;
     }
 
-    // Trigger processing
-    supabase.functions
-      .invoke('manifest-process', {
-        body: { manifest_item_id: item.id, user_id: user.id },
-      })
-      .catch((err) => console.error('Processing trigger failed:', err));
-
+    // Add to local state — queue manager useEffect will trigger processing
     setItems((prev) => [item as ManifestItem, ...prev]);
     return item as ManifestItem;
   }, [user]);
@@ -195,17 +189,12 @@ export function useManifest() {
       return false;
     }
 
+    // Reset to pending — queue manager useEffect will trigger processing
     setItems((prev) =>
       prev.map((item) =>
         item.id === id ? { ...item, processing_status: 'pending' as const, chunk_count: 0 } : item,
       ),
     );
-
-    supabase.functions
-      .invoke('manifest-process', {
-        body: { manifest_item_id: id, user_id: user.id },
-      })
-      .catch((err) => console.error('Reprocess trigger failed:', err));
 
     return true;
   }, [user]);
@@ -303,7 +292,7 @@ export function useManifest() {
     const interval = setInterval(async () => {
       const { data, error: pollErr } = await supabase
         .from('manifest_items')
-        .select('processing_status, processing_detail, chunk_count, ai_summary, toc')
+        .select('processing_status, processing_detail, chunk_count, ai_summary, toc, intake_completed')
         .eq('id', itemId)
         .eq('user_id', user.id)
         .single();
@@ -401,6 +390,27 @@ export function useManifest() {
             })
             .catch(() => {});
         }
+
+        // Auto-intake if not already done (fire-and-forget, uses refs to avoid stale closures)
+        if (status === 'completed' && !data.intake_completed) {
+          setTimeout(async () => {
+            try {
+              const suggestions = await runIntakeRef.current(itemId);
+              if (suggestions) {
+                await applyIntakeRef.current(itemId, {
+                  tags: suggestions.suggested_tags,
+                  folder_group: suggestions.suggested_folder,
+                  usage_designations: [suggestions.suggested_usage],
+                });
+              } else {
+                await updateItemRef.current(itemId, { intake_completed: true });
+              }
+            } catch (err) {
+              console.error('[queue] Auto-intake failed (non-fatal):', err);
+              await updateItemRef.current(itemId, { intake_completed: true }).catch(() => {});
+            }
+          }, 1500);
+        }
       }
     }, 3000);
 
@@ -461,50 +471,12 @@ export function useManifest() {
     });
   }, [updateItem]);
 
-  // Used by bulk upload for hands-off processing. Fire-and-forget — runs in background.
-  const autoIntakeItem = useCallback(async (itemId: string): Promise<boolean> => {
-    if (!user) return false;
-
-    // Poll DB directly until processing completes (max 5 minutes)
-    const MAX_ATTEMPTS = 100;
-    const POLL_MS = 3000;
-
-    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-      await new Promise((resolve) => setTimeout(resolve, POLL_MS));
-
-      const { data } = await supabase
-        .from('manifest_items')
-        .select('processing_status')
-        .eq('id', itemId)
-        .eq('user_id', user.id)
-        .single();
-
-      if (!data) return false;
-      if (data.processing_status === 'failed') return false;
-      if (data.processing_status === 'completed') break;
-      if (attempt === MAX_ATTEMPTS - 1) return false; // timeout
-    }
-
-    // Run AI intake
-    try {
-      const suggestions = await runIntake(itemId);
-      if (suggestions) {
-        await applyIntake(itemId, {
-          tags: suggestions.suggested_tags,
-          folder_group: suggestions.suggested_folder,
-          usage_designations: [suggestions.suggested_usage],
-        });
-      } else {
-        // Intake failed but mark complete so item isn't stuck
-        await updateItem(itemId, { intake_completed: true });
-      }
-      return true;
-    } catch (err) {
-      console.error('Auto-intake failed (non-fatal):', err);
-      await updateItem(itemId, { intake_completed: true });
-      return false;
-    }
-  }, [user, runIntake, applyIntake, updateItem]);
+  // Auto-intake is now handled by pollProcessingStatus on completion.
+  // This function is kept for UploadFlow compatibility — returns immediately.
+  const autoIntakeItem = useCallback(async (_itemId: string): Promise<boolean> => {
+    // Queue manager + poll handler take care of processing and intake automatically
+    return true;
+  }, []);
 
   // Get all unique tags across all items
   const getUniqueTags = useCallback((): string[] => {
@@ -634,6 +606,105 @@ export function useManifest() {
     console.log('[backfill] Done.');
   }, [user, cloneToAllUsers]);
 
+  // --- Ref syncing for functions called inside poll intervals ---
+  useEffect(() => { runIntakeRef.current = runIntake; }, [runIntake]);
+  useEffect(() => { applyIntakeRef.current = applyIntake; }, [applyIntake]);
+  useEffect(() => { updateItemRef.current = updateItem as (id: string, updates: Record<string, unknown>) => Promise<boolean>; }, [updateItem]);
+
+  // --- Queue Manager: auto-process pending items up to MAX_CONCURRENT ---
+  // Fires whenever items state changes. Early-exits are cheap (just array filter).
+  useEffect(() => {
+    if (!user) return;
+
+    // Count actively processing items
+    const processingCount = items.filter((i) => i.processing_status === 'processing').length;
+    if (processingCount >= MAX_CONCURRENT_PROCESSING) return;
+
+    // Find pending items eligible for processing (have a file or are text notes)
+    const pendingItems = items
+      .filter((i) =>
+        i.processing_status === 'pending' &&
+        (i.storage_path || i.file_type === 'text_note'),
+      )
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+    if (pendingItems.length === 0) return;
+
+    const slotsAvailable = MAX_CONCURRENT_PROCESSING - processingCount;
+    const toProcess = pendingItems.slice(0, slotsAvailable);
+    const toProcessIds = new Set(toProcess.map((i) => i.id));
+
+    console.log(`[queue] Starting ${toProcess.length} items (${processingCount} active, ${pendingItems.length} pending, ${slotsAvailable} slots)`);
+
+    // Optimistically mark as processing
+    setItems((prev) =>
+      prev.map((i) =>
+        toProcessIds.has(i.id)
+          ? { ...i, processing_status: 'processing' as const }
+          : i,
+      ),
+    );
+
+    // Fire off processing and start polling for each
+    for (const item of toProcess) {
+      console.log(`[queue] Processing: "${item.title}" (${item.id})`);
+      supabase.functions
+        .invoke('manifest-process', {
+          body: { manifest_item_id: item.id, user_id: user.id },
+        })
+        .catch((err) => console.error('[queue] Processing trigger failed:', err));
+      pollProcessingStatus(item.id, true);
+    }
+  }, [items, user, pollProcessingStatus]);
+
+  // --- Stuck detection: reset items stuck in 'processing' for >15 min on page load ---
+  const stuckCheckDoneRef = useRef(false);
+  useEffect(() => {
+    if (!user || loading || stuckCheckDoneRef.current) return;
+    if (items.length === 0) return;
+    stuckCheckDoneRef.current = true;
+
+    const stuckItems = items.filter((i) => {
+      if (i.processing_status !== 'processing') return false;
+      const updated = new Date(i.updated_at).getTime();
+      const now = Date.now();
+      return now - updated > 15 * 60 * 1000; // 15 minutes
+    });
+
+    if (stuckItems.length > 0) {
+      console.log(`[queue] Found ${stuckItems.length} stuck items, resetting to pending`);
+      for (const item of stuckItems) {
+        supabase
+          .from('manifest_items')
+          .update({ processing_status: 'pending', processing_detail: null })
+          .eq('id', item.id)
+          .eq('user_id', user.id)
+          .then(() => {
+            setItems((prev) =>
+              prev.map((i) =>
+                i.id === item.id
+                  ? { ...i, processing_status: 'pending' as const, processing_detail: null }
+                  : i,
+              ),
+            );
+          });
+      }
+    }
+  }, [items, user, loading]);
+
+  // Get queue position for a pending item (1-based, null if not pending)
+  const getQueuePosition = useCallback((itemId: string): number | null => {
+    const pendingItems = items
+      .filter((i) =>
+        i.processing_status === 'pending' &&
+        (i.storage_path || i.file_type === 'text_note'),
+      )
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+    const index = pendingItems.findIndex((i) => i.id === itemId);
+    return index >= 0 ? index + 1 : null;
+  }, [items]);
+
   // Cleanup all polls on unmount
   useEffect(() => {
     return () => {
@@ -665,5 +736,6 @@ export function useManifest() {
     autoIntakeItem,
     cloneToAllUsers,
     backfillCloneAll,
+    getQueuePosition,
   };
 }

@@ -4,6 +4,8 @@ import type { ManifestItem } from '../../lib/types';
 import { Button } from '../shared';
 import './UploadFlow.css';
 
+const MAX_CONCURRENT_PROCESSING = 3;
+
 interface UploadFlowProps {
   onUpload: (file: File) => Promise<ManifestItem | null>;
   onCheckDuplicate: (fileName: string, fileSize: number) => ManifestItem | null;
@@ -279,7 +281,7 @@ export function UploadFlow({ onUpload, onCheckDuplicate, onAutoIntake, onArchive
               : `${uploadedCount} uploaded, ${failedCount} failed${skippedCount > 0 ? `, ${skippedCount} skipped` : ''}`}
           </p>
           <p className="upload-flow__summary-note">
-            Files are now processing in the background. You can navigate away.
+            Files are queued for processing ({MAX_CONCURRENT_PROCESSING} at a time). You can navigate away.
           </p>
         </div>
       )}

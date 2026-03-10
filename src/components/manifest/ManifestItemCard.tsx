@@ -10,6 +10,7 @@ interface ManifestItemCardProps {
   compact?: boolean;
   selectable?: boolean;
   selected?: boolean;
+  queuePosition?: number | null;
 }
 
 const FILE_TYPE_ICONS = {
@@ -36,7 +37,7 @@ function getRelativeDate(dateStr: string): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-export function ManifestItemCard({ item, onClick, compact, selectable, selected }: ManifestItemCardProps) {
+export function ManifestItemCard({ item, onClick, compact, selectable, selected, queuePosition }: ManifestItemCardProps) {
   const Icon = FILE_TYPE_ICONS[item.file_type] || FileText;
   const isPending = item.processing_status === 'pending';
   const isProcessing = item.processing_status === 'processing';
@@ -65,10 +66,15 @@ export function ManifestItemCard({ item, onClick, compact, selectable, selected 
         </div>
         <span className="manifest-row__title">{item.title}</span>
         <div className="manifest-row__status">
-          {isInProgress && (
+          {isProcessing && (
             <span className="manifest-row__badge manifest-row__badge--processing">
               <Loader size={12} className="manifest-card__spinner" />
               Processing
+            </span>
+          )}
+          {isPending && (
+            <span className="manifest-row__badge manifest-row__badge--processing">
+              Queued{queuePosition ? ` #${queuePosition}` : ''}
             </span>
           )}
           {isFailed && (
@@ -111,15 +117,24 @@ export function ManifestItemCard({ item, onClick, compact, selectable, selected 
           </div>
           <div className="manifest-card__info">
             <p className="manifest-card__title">{item.title}</p>
-            {isInProgress ? (
+            {isPending ? (
+              <span className="manifest-card__processing-msg">
+                Queued{queuePosition ? ` (#${queuePosition})` : ''}
+              </span>
+            ) : isProcessing ? (
               <span className="manifest-card__processing-msg">{item.processing_detail || 'Processing...'}</span>
             ) : (
               <span className="manifest-card__date">{getRelativeDate(item.created_at)}</span>
             )}
           </div>
-          {isInProgress && (
+          {isProcessing && (
             <div className="manifest-card__status manifest-card__status--processing">
               <Loader size={14} className="manifest-card__spinner" />
+            </div>
+          )}
+          {isPending && (
+            <div className="manifest-card__status manifest-card__status--pending">
+              <span style={{ fontSize: '12px', color: 'var(--color-slate-gray)' }}>Queued</span>
             </div>
           )}
           {isFailed && (

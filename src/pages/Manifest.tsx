@@ -55,6 +55,7 @@ export default function Manifest() {
     enrichItem,
     autoIntakeItem,
     fetchParts,
+    getQueuePosition,
   } = useManifest();
 
   const {
@@ -840,6 +841,7 @@ export default function Manifest() {
                 compact={libraryLayout === 'compact'}
                 selectable={selectMode}
                 selected={selectedIds.has(item.id)}
+                queuePosition={item.processing_status === 'pending' ? getQueuePosition(item.id) : null}
               />
             ))}
           </div>
@@ -870,6 +872,7 @@ export default function Manifest() {
                     compact={libraryLayout === 'compact'}
                     selectable={selectMode}
                     selected={selectedIds.has(item.id)}
+                    queuePosition={item.processing_status === 'pending' ? getQueuePosition(item.id) : null}
                   />
                 ))}
               </div>

@@ -567,14 +567,20 @@ serve(async (req: Request) => {
       console.log('[manifest-extract] discover_sections raw response length:', content.length);
 
       const { parsed, error: parseErr } = safeParseJSON(content);
-      if (!parsed || !Array.isArray(parsed)) {
+      // Unwrap if AI returned { sections: [...] } instead of bare array
+      let sectionsRaw = parsed;
+      if (parsed && !Array.isArray(parsed) && Array.isArray((parsed as Record<string, unknown>).sections)) {
+        console.log('[manifest-extract] discover_sections: unwrapping { sections: [...] } wrapper');
+        sectionsRaw = (parsed as Record<string, unknown>).sections;
+      }
+      if (!sectionsRaw || !Array.isArray(sectionsRaw)) {
         console.error('[manifest-extract] discover_sections parse failed:', parseErr, 'raw:', content.substring(0, 500));
         return new Response(
           JSON.stringify({ error: parseErr || 'Failed to parse section discovery result' }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         );
       }
-      let sections = parsed as Array<Record<string, unknown>>;
+      let sections = sectionsRaw as Array<Record<string, unknown>>;
       const docLength = item.text_content.length;
 
       // Validate: force full coverage with no gaps
