@@ -1329,6 +1329,15 @@ function ChapterView({ summaries, principles, actionSteps, declarations, filterM
       .map(([key]) => key);
   }, [summaries, principles, actionSteps, declarations, filterMode]);
 
+  // Default chapters to collapsed when there are multiple
+  const cvInitRef = useRef(false);
+  useEffect(() => {
+    if (!cvInitRef.current && chapters.length > 1) {
+      cvInitRef.current = true;
+      setCollapsedChapters(new Set(chapters));
+    }
+  }, [chapters]);
+
   const filterItems = <T extends { is_deleted?: boolean; is_hearted?: boolean }>(items: T[]): T[] => {
     let filtered = items.filter((i) => !i.is_deleted);
     if (filterMode === 'hearted') filtered = filtered.filter((i) => i.is_hearted);

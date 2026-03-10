@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Heart, Download, FileText, FileCode, ChevronDown, ChevronRight, Trash2, Anchor, Compass, RefreshCw, Sparkles, LayoutList, BookOpen, StickyNote } from 'lucide-react';
+import { ChevronLeft, Heart, Download, FileText, FileCode, ChevronDown, ChevronRight, Trash2, Anchor, Compass, RefreshCw, Sparkles, LayoutList, BookOpen, StickyNote, Search } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../contexts/AuthContext';
 import type { ManifestItem, ManifestSummary, ManifestDeclaration, ManifestActionStep, AIFrameworkPrinciple, BookGenre } from '../../lib/types';
@@ -73,6 +73,7 @@ export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsVie
   const [notingId, setNotingId] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState('');
   const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [bookSearch, setBookSearch] = useState('');
 
   const extractedItems = useMemo(
     () => items.filter((i) =>
@@ -83,12 +84,30 @@ export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsVie
     [items],
   );
 
-  // Auto-select: all books by default
-  useEffect(() => {
-    if (extractedItems.length > 0 && selectedIds.size === 0) {
-      setSelectedIds(new Set(extractedItems.map((i) => i.id)));
+  // No auto-select: books start unchecked so user picks what they want
+
+  // Filter books by search term
+  const filteredBooks = useMemo(() => {
+    if (!bookSearch.trim()) return extractedItems;
+    const q = bookSearch.toLowerCase();
+    return extractedItems.filter((i) =>
+      i.title.toLowerCase().includes(q) ||
+      (i.tags || []).some((t) => t.toLowerCase().includes(q))
+    );
+  }, [extractedItems, bookSearch]);
+
+  // Unique book-level tags for filtering
+  const bookTags = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const item of extractedItems) {
+      for (const tag of (item.tags || [])) {
+        counts[tag] = (counts[tag] || 0) + 1;
+      }
     }
-  }, [extractedItems]); // eslint-disable-line react-hooks/exhaustive-deps
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([tag]) => tag);
+  }, [extractedItems]);
 
   // Fetch extractions for selected books (with fixed sort order)
   const fetchExtractions = useCallback(async (ids: string[]) => {
@@ -174,27 +193,41 @@ export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsVie
   }, [selectedIds, fetchExtractions]);
 
   // Default all chapter sections to collapsed when book data loads
-  const evInitRef = useRef(false);
+  // Re-runs whenever books change; merges new collapsed keys with existing state
+  // so manually expanded sections stay expanded
+  const prevBookIdsRef = useRef<string>('');
   useEffect(() => {
-    if (evInitRef.current || bookData.size === 0) return;
+    if (bookData.size === 0) return;
+    const currentBookIds = Array.from(bookData.keys()).sort().join(',');
+    if (currentBookIds === prevBookIdsRef.current) return;
+    prevBookIdsRef.current = currentBookIds;
+
     const keys: string[] = [];
     for (const [bookId, book] of bookData) {
-      const tabTypes = ['summary', 'frameworks', 'action_steps', 'mast_content'] as const;
-      for (const tab of tabTypes) {
-        const items = tab === 'summary' ? book.summaries
-          : tab === 'frameworks' ? book.principles
-          : tab === 'action_steps' ? book.actionSteps
-          : book.declarations;
-        const sectionKeys = new Set(items.map((i: { section_title: string | null }) => i.section_title || (tab === 'frameworks' ? '__general__' : '__full_book__')));
-        if (sectionKeys.size > 1) {
-          for (const sk of sectionKeys) {
+      const allSectionKeys = new Set<string>();
+      for (const s of book.summaries) allSectionKeys.add(s.section_title || '__full_book__');
+      for (const p of book.principles) allSectionKeys.add(p.section_title || '__general__');
+      for (const a of book.actionSteps) allSectionKeys.add(a.section_title || '__full_book__');
+      for (const d of book.declarations) allSectionKeys.add(d.section_title || '__full_book__');
+
+      if (allSectionKeys.size > 1) {
+        const tabTypes = ['summary', 'frameworks', 'action_steps', 'mast_content'] as const;
+        for (const tab of tabTypes) {
+          const items = tab === 'summary' ? book.summaries
+            : tab === 'frameworks' ? book.principles
+            : tab === 'action_steps' ? book.actionSteps
+            : book.declarations;
+          const tabSectionKeys = new Set(items.map((i: { section_title: string | null }) => i.section_title || (tab === 'frameworks' ? '__general__' : '__full_book__')));
+          for (const sk of tabSectionKeys) {
             keys.push(`${bookId}-${tab}-${sk}`);
           }
+        }
+        for (const sk of allSectionKeys) {
+          keys.push(`${bookId}-ch-${sk}`);
         }
       }
     }
     if (keys.length > 0) {
-      evInitRef.current = true;
       setCollapsedSections(new Set(keys));
     }
   }, [bookData]);
@@ -1295,19 +1328,66 @@ export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsVie
         <>
           {/* Book selector */}
           <div className="extractions-view__books">
-            <div className="extractions-view__books-label">
-              Select books ({selectedIds.size} of {extractedItems.length})
+            <div className="extractions-view__books-header">
+              <div className="extractions-view__books-label">
+                Select books ({selectedIds.size} of {extractedItems.length})
+              </div>
+              <div className="extractions-view__books-actions">
+                <button type="button" className="extractions-view__select-btn" onClick={() => {
+                  setSelectedIds(new Set(filteredBooks.map((i) => i.id)));
+                }}>
+                  Select All
+                </button>
+                <button type="button" className="extractions-view__select-btn" onClick={() => setSelectedIds(new Set())}>
+                  Clear
+                </button>
+              </div>
             </div>
-            {extractedItems.map((item) => (
-              <label key={item.id} className="extractions-view__book-item">
+            {extractedItems.length > 4 && (
+              <div className="extractions-view__search">
+                <Search size={14} />
                 <input
-                  type="checkbox"
-                  checked={selectedIds.has(item.id)}
-                  onChange={() => handleToggle(item.id)}
+                  type="text"
+                  className="extractions-view__search-input"
+                  placeholder="Search books..."
+                  value={bookSearch}
+                  onChange={(e) => setBookSearch(e.target.value)}
                 />
-                <span className="extractions-view__book-title">{item.title}</span>
-              </label>
-            ))}
+              </div>
+            )}
+            {bookTags.length > 0 && (
+              <div className="extractions-view__book-tags">
+                {bookTags.slice(0, 12).map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    className="extractions-view__book-tag"
+                    onClick={() => {
+                      // Select all books that have this tag
+                      const matching = extractedItems.filter((i) => (i.tags || []).includes(tag));
+                      setSelectedIds(new Set(matching.map((i) => i.id)));
+                    }}
+                  >
+                    {tag.replace(/_/g, ' ')}
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="extractions-view__book-list">
+              {filteredBooks.map((item) => (
+                <label key={item.id} className="extractions-view__book-item">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(item.id)}
+                    onChange={() => handleToggle(item.id)}
+                  />
+                  <span className="extractions-view__book-title">{item.title}</span>
+                </label>
+              ))}
+              {filteredBooks.length === 0 && bookSearch && (
+                <div className="extractions-view__no-match">No books match "{bookSearch}"</div>
+              )}
+            </div>
           </div>
 
           {/* Tag filter bar */}

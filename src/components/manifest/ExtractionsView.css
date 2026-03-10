@@ -46,11 +46,87 @@
   border-radius: var(--radius-md);
 }
 
+.extractions-view__books-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-xs);
+}
+
 .extractions-view__books-label {
   font-size: var(--font-size-sm);
   font-weight: 600;
   color: var(--color-text-secondary);
+}
+
+.extractions-view__books-actions {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+.extractions-view__select-btn {
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border: 1px solid var(--color-slate-gray);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-slate-gray);
+  cursor: pointer;
+}
+
+.extractions-view__select-btn:hover {
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+}
+
+.extractions-view__search {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: 4px 8px;
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
   margin-bottom: var(--spacing-xs);
+}
+
+.extractions-view__search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  outline: none;
+}
+
+.extractions-view__book-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: var(--spacing-xs);
+}
+
+.extractions-view__book-tag {
+  font-size: 0.65rem;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--color-mid-teal);
+  color: var(--color-white);
+  border: none;
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+.extractions-view__book-tag:hover {
+  opacity: 1;
+}
+
+.extractions-view__book-list {
+  max-height: 240px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .extractions-view__book-item {
@@ -74,6 +150,14 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.extractions-view__no-match {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  padding: var(--spacing-sm);
+  text-align: center;
+  font-style: italic;
 }
 
 /* Export row */
