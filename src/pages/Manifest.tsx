@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 
-import { Upload, MessageSquare, Loader, List, LayoutGrid, CheckSquare, FolderInput, X, Plus } from 'lucide-react';
+import { Upload, MessageSquare, Loader, List, LayoutGrid, CheckSquare, FolderInput, X, Plus, Folder, Trash2, Search } from 'lucide-react';
 import { usePageContext } from '../hooks/usePageContext';
 import { useAuthContext } from '../contexts/AuthContext';
 import { useManifest } from '../hooks/useManifest';
@@ -8,6 +8,7 @@ import { useFrameworks } from '../hooks/useFrameworks';
 import { useManifestExtraction } from '../hooks/useManifestExtraction';
 import { useBookDiscussions } from '../hooks/useBookDiscussions';
 import type { ManifestItem, BookGenre, DiscussionType, DiscussionAudience } from '../lib/types';
+import { supabase } from '../lib/supabase';
 import { ManifestItemCard } from '../components/manifest/ManifestItemCard';
 import { ManifestItemDetail } from '../components/manifest/ManifestItemDetail';
 import { ManifestFilterBar } from '../components/manifest/ManifestFilterBar';
@@ -24,6 +25,7 @@ import './Manifest.css';
 type ViewMode = 'list' | 'detail' | 'upload';
 type LibraryLayout = 'compact' | 'grid';
 type SortOption = 'newest' | 'oldest' | 'name_asc' | 'name_desc' | 'has_extractions';
+type GroupMode = 'by_folder' | 'all_books';
 
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: 'newest', label: 'Newest' },
@@ -65,8 +67,11 @@ export default function Manifest() {
 
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [libraryLayout, setLibraryLayout] = useState<LibraryLayout>('compact');
+  const [groupMode, setGroupMode] = useState<GroupMode>('by_folder');
   const [selectedItem, setSelectedItem] = useState<ManifestItem | null>(null);
   const [fabExpanded, setFabExpanded] = useState(false);
+  const [titleSearch, setTitleSearch] = useState('');
+  const [folderToDelete, setFolderToDelete] = useState<string | null>(null);
 
   // Parent/child parts state for split books
   const [parentItem, setParentItem] = useState<ManifestItem | null>(null);
@@ -131,6 +136,52 @@ export default function Manifest() {
   // Filters & sort
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [sortOption, setSortOption] = useState<SortOption>('newest');
+
+  // Persist a single preference to user_settings (fire-and-forget)
+  const persistPreference = useCallback((key: string, value: string) => {
+    if (!user) return;
+    supabase.from('user_settings').update({ [key]: value }).eq('user_id', user.id).then();
+  }, [user]);
+
+  // Load persisted preferences on mount
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('user_settings')
+      .select('manifest_group_mode, manifest_sort, manifest_layout')
+      .eq('user_id', user.id)
+      .single()
+      .then(({ data }) => {
+        if (!data) return;
+        if (data.manifest_group_mode) setGroupMode(data.manifest_group_mode as GroupMode);
+        if (data.manifest_sort) setSortOption(data.manifest_sort as SortOption);
+        if (data.manifest_layout) setLibraryLayout(data.manifest_layout as LibraryLayout);
+      });
+  }, [user]);
+
+  const handleSetGroupMode = useCallback((mode: GroupMode) => {
+    setGroupMode(mode);
+    persistPreference('manifest_group_mode', mode);
+  }, [persistPreference]);
+
+  const handleSetSortOption = useCallback((opt: SortOption) => {
+    setSortOption(opt);
+    persistPreference('manifest_sort', opt);
+  }, [persistPreference]);
+
+  const handleSetLibraryLayout = useCallback((layout: LibraryLayout) => {
+    setLibraryLayout(layout);
+    persistPreference('manifest_layout', layout);
+  }, [persistPreference]);
+
+  // Delete folder — move all books to Uncategorized
+  const handleDeleteFolder = useCallback(async (folder: string) => {
+    const folderItemIds = items.filter((i) => i.folder_group === folder).map((i) => i.id);
+    if (folderItemIds.length === 0) return;
+    await Promise.all(folderItemIds.map((id) => updateItem(id, { folder_group: 'Uncategorized' })));
+    setFolderToDelete(null);
+    fetchItems();
+  }, [items, updateItem, fetchItems]);
 
   useEffect(() => {
     fetchItems();
@@ -398,9 +449,16 @@ export default function Manifest() {
 
   // Filtering
   const filteredItems = useMemo(() => {
-    if (!tagFilter) return items;
-    return items.filter((item) => item.tags.includes(tagFilter));
-  }, [items, tagFilter]);
+    let result = items;
+    if (tagFilter) {
+      result = result.filter((item) => item.tags.includes(tagFilter));
+    }
+    if (titleSearch.trim()) {
+      const q = titleSearch.trim().toLowerCase();
+      result = result.filter((item) => item.title.toLowerCase().includes(q));
+    }
+    return result;
+  }, [items, tagFilter, titleSearch]);
 
   const hasCompletedItems = items.some((i) => i.processing_status === 'completed');
   const hasExtractedItems = items.some((i) => i.extraction_status === 'completed');
@@ -591,17 +649,35 @@ export default function Manifest() {
               <div className="manifest-page__layout-toggle">
                 <button
                   type="button"
+                  className={`manifest-page__layout-btn${groupMode === 'by_folder' ? ' manifest-page__layout-btn--active' : ''}`}
+                  onClick={() => handleSetGroupMode('by_folder')}
+                  title="Group by folder"
+                >
+                  <Folder size={18} />
+                </button>
+                <button
+                  type="button"
+                  className={`manifest-page__layout-btn${groupMode === 'all_books' ? ' manifest-page__layout-btn--active' : ''}`}
+                  onClick={() => handleSetGroupMode('all_books')}
+                  title="All books"
+                >
+                  <List size={18} />
+                </button>
+              </div>
+              <div className="manifest-page__layout-toggle">
+                <button
+                  type="button"
                   className={`manifest-page__layout-btn${libraryLayout === 'compact' ? ' manifest-page__layout-btn--active' : ''}`}
-                  onClick={() => setLibraryLayout('compact')}
-                  title="List view"
+                  onClick={() => handleSetLibraryLayout('compact')}
+                  title="Compact list"
                 >
                   <List size={18} />
                 </button>
                 <button
                   type="button"
                   className={`manifest-page__layout-btn${libraryLayout === 'grid' ? ' manifest-page__layout-btn--active' : ''}`}
-                  onClick={() => setLibraryLayout('grid')}
-                  title="Card view"
+                  onClick={() => handleSetLibraryLayout('grid')}
+                  title="Card grid"
                 >
                   <LayoutGrid size={18} />
                 </button>
@@ -686,6 +762,25 @@ export default function Manifest() {
             uniqueTags={uniqueTags}
             onTagChange={setTagFilter}
           />
+          <div className="manifest-page__search-bar">
+            <Search size={14} className="manifest-page__search-icon" />
+            <input
+              type="text"
+              className="manifest-page__search-input"
+              placeholder="Search by title or author..."
+              value={titleSearch}
+              onChange={(e) => setTitleSearch(e.target.value)}
+            />
+            {titleSearch && (
+              <button
+                type="button"
+                className="manifest-page__search-clear"
+                onClick={() => setTitleSearch('')}
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
           <div className="manifest-page__sort-bar">
             <span className="manifest-page__sort-label">Sort:</span>
             {SORT_OPTIONS.map((opt) => (
@@ -693,13 +788,26 @@ export default function Manifest() {
                 key={opt.value}
                 type="button"
                 className={`manifest-page__sort-btn${sortOption === opt.value ? ' manifest-page__sort-btn--active' : ''}`}
-                onClick={() => setSortOption(opt.value)}
+                onClick={() => handleSetSortOption(opt.value)}
               >
                 {opt.label}
               </button>
             ))}
           </div>
         </>
+      )}
+
+      {/* Folder delete confirmation */}
+      {folderToDelete && (
+        <div className="manifest-page__folder-delete-confirm">
+          <p className="manifest-page__folder-delete-text">
+            Remove folder &ldquo;{folderToDelete}&rdquo;? Books will move to Uncategorized.
+          </p>
+          <div className="manifest-page__folder-delete-actions">
+            <Button variant="secondary" onClick={() => setFolderToDelete(null)}>Cancel</Button>
+            <Button onClick={() => handleDeleteFolder(folderToDelete)}>Remove Folder</Button>
+          </div>
+        </div>
       )}
 
       {/* Content */}
@@ -716,9 +824,9 @@ export default function Manifest() {
             heading="No matching items"
             message="Try adjusting your filters to see more items."
           />
-        ) : folderGroups.length === 1 ? (
+        ) : groupMode === 'all_books' || folderGroups.length === 1 ? (
           <div className={libraryLayout === 'compact' ? 'manifest-page__compact-list' : 'manifest-page__item-list'}>
-            {folderGroups[0][1].map((item) => (
+            {sortedItems.map((item) => (
               <ManifestItemCard
                 key={item.id}
                 item={item}
@@ -736,6 +844,16 @@ export default function Manifest() {
               label={folder}
               count={folderItems.length}
               defaultExpanded
+              headerAction={folder !== 'Uncategorized' ? (
+                <button
+                  type="button"
+                  className="manifest-page__folder-delete-btn"
+                  onClick={() => setFolderToDelete(folder)}
+                  title={`Remove folder "${folder}"`}
+                >
+                  <Trash2 size={14} />
+                </button>
+              ) : undefined}
             >
               <div className={libraryLayout === 'compact' ? 'manifest-page__compact-list' : 'manifest-page__item-list'}>
                 {folderItems.map((item) => (

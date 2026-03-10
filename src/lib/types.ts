@@ -64,6 +64,9 @@ export interface UserSettings {
   google_calendar_token: string | null;
   hatch_drawer_open: boolean;
   book_knowledge_access: 'hearted_only' | 'all_extracted' | 'frameworks_only' | 'none';
+  manifest_group_mode: 'by_folder' | 'all_books';
+  manifest_sort: 'newest' | 'oldest' | 'name_asc' | 'name_desc' | 'has_extractions';
+  manifest_layout: 'compact' | 'grid';
   created_at: string;
   updated_at: string;
 }

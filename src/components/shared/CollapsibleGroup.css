@@ -2,6 +2,12 @@
   margin-bottom: var(--spacing-md);
 }
 
+.collapsible-group__header-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
 .collapsible-group__header {
   display: flex;
   align-items: center;
@@ -12,8 +18,12 @@
   min-height: var(--touch-target-min);
   border: none;
   background: none;
-  width: 100%;
+  flex: 1;
   text-align: left;
+}
+
+.collapsible-group__action {
+  flex-shrink: 0;
 }
 
 .collapsible-group__chevron {

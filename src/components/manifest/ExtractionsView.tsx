@@ -83,14 +83,10 @@ export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsVie
     [items],
   );
 
-  // Auto-select: all books in favorites mode, first book in regular mode
+  // Auto-select: all books by default
   useEffect(() => {
     if (extractedItems.length > 0 && selectedIds.size === 0) {
-      if (favoritesMode) {
-        setSelectedIds(new Set(extractedItems.map((i) => i.id)));
-      } else {
-        setSelectedIds(new Set([extractedItems[0].id]));
-      }
+      setSelectedIds(new Set(extractedItems.map((i) => i.id)));
     }
   }, [extractedItems]); // eslint-disable-line react-hooks/exhaustive-deps
 

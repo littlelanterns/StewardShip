@@ -158,6 +158,96 @@
   to { transform: rotate(360deg); }
 }
 
+/* Title search */
+.manifest-page__search-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-slate-gray);
+  border-radius: var(--radius-md);
+  background: var(--color-white);
+  margin-bottom: var(--spacing-sm);
+}
+
+.manifest-page__search-icon {
+  color: var(--color-slate-gray);
+  flex-shrink: 0;
+}
+
+.manifest-page__search-input {
+  flex: 1;
+  border: none;
+  background: none;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  outline: none;
+  min-width: 0;
+}
+
+.manifest-page__search-input::placeholder {
+  color: var(--color-slate-gray);
+}
+
+.manifest-page__search-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: none;
+  color: var(--color-slate-gray);
+  cursor: pointer;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.manifest-page__search-clear:hover {
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+}
+
+/* Folder delete */
+.manifest-page__folder-delete-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  color: var(--color-slate-gray);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+}
+
+.manifest-page__folder-delete-btn:hover {
+  background: var(--color-bg-secondary);
+  color: var(--color-cognac);
+}
+
+.manifest-page__folder-delete-confirm {
+  padding: var(--spacing-md);
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-cognac);
+  margin-bottom: var(--spacing-md);
+}
+
+.manifest-page__folder-delete-text {
+  margin: 0 0 var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+}
+
+.manifest-page__folder-delete-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  justify-content: flex-end;
+}
+
 /* Sort bar */
 .manifest-page__sort-bar {
   display: flex;
