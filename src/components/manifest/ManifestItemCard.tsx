@@ -79,8 +79,13 @@ export function ManifestItemCard({ item, onClick, compact, selectable, selected 
               Extracted
             </span>
           )}
-          {isCompleted && item.extraction_status !== 'completed' && (
+          {isCompleted && item.extraction_status !== 'completed' && !item.part_count && (
             <span className="manifest-row__badge manifest-row__badge--ready">Ready</span>
+          )}
+          {item.part_count && item.part_count > 0 && (
+            <span className="manifest-row__badge manifest-row__badge--parts">
+              {item.part_count} Parts
+            </span>
           )}
         </div>
         <ChevronRight size={16} className="manifest-row__chevron" />
@@ -134,7 +139,11 @@ export function ManifestItemCard({ item, onClick, compact, selectable, selected 
         )}
 
         <div className="manifest-card__meta">
-          {item.extraction_status === 'completed' ? (
+          {item.part_count && item.part_count > 0 ? (
+            <span className="manifest-card__badge manifest-card__badge--parts">
+              {item.part_count} Parts
+            </span>
+          ) : item.extraction_status === 'completed' ? (
             <span className="manifest-card__badge manifest-card__badge--extracted">
               Extracted
             </span>

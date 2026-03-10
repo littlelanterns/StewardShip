@@ -25,9 +25,10 @@ export function useManifest() {
     try {
       const { data, error: fetchErr } = await supabase
         .from('manifest_items')
-        .select('id, user_id, title, file_type, file_name, storage_path, file_size_bytes, usage_designations, tags, folder_group, processing_status, processing_detail, chunk_count, intake_completed, ai_summary, extraction_status, genres, source_manifest_item_id, archived_at, created_at, updated_at')
+        .select('id, user_id, title, file_type, file_name, storage_path, file_size_bytes, usage_designations, tags, folder_group, processing_status, processing_detail, chunk_count, intake_completed, ai_summary, extraction_status, genres, source_manifest_item_id, parent_manifest_item_id, part_number, part_count, archived_at, created_at, updated_at')
         .eq('user_id', user.id)
         .is('archived_at', null)
+        .is('parent_manifest_item_id', null)
         .order('folder_group')
         .order('created_at', { ascending: false });
 
@@ -209,14 +210,16 @@ export function useManifest() {
     return true;
   }, [user]);
 
-  // Soft-delete (archive)
+  // Soft-delete (archive) — also archives child parts if this is a split parent
   const archiveItem = useCallback(async (id: string): Promise<boolean> => {
     if (!user) return false;
     setError(null);
 
+    const now = new Date().toISOString();
+
     const { error: archiveErr } = await supabase
       .from('manifest_items')
-      .update({ archived_at: new Date().toISOString() })
+      .update({ archived_at: now })
       .eq('id', id)
       .eq('user_id', user.id);
 
@@ -224,6 +227,13 @@ export function useManifest() {
       setError(archiveErr.message);
       return false;
     }
+
+    // Cascade archive to child parts
+    await supabase
+      .from('manifest_items')
+      .update({ archived_at: now })
+      .eq('parent_manifest_item_id', id)
+      .eq('user_id', user.id);
 
     setItems((prev) => prev.filter((item) => item.id !== id));
     return true;
@@ -345,6 +355,41 @@ export function useManifest() {
               }
             })
             .catch((err) => console.error('Auto-enrich failed (non-fatal):', err));
+        }
+
+        // Auto-split very large books into parts (fire-and-forget)
+        if (status === 'completed') {
+          // Check if item qualifies: not a part, not already split, text > threshold
+          supabase
+            .from('manifest_items')
+            .select('text_content, parent_manifest_item_id, part_count')
+            .eq('id', itemId)
+            .single()
+            .then(({ data: sizeCheck }) => {
+              if (
+                sizeCheck?.text_content &&
+                sizeCheck.text_content.length > 780_000 &&
+                !sizeCheck.parent_manifest_item_id &&
+                !sizeCheck.part_count
+              ) {
+                console.log(`[auto-split] Item ${itemId} qualifies (${sizeCheck.text_content.length} chars). Triggering split...`);
+                supabase.functions
+                  .invoke('manifest-split', { body: { manifest_item_id: itemId } })
+                  .then(({ data: splitData }) => {
+                    if (splitData?.parts_created > 0) {
+                      setItems((prev) =>
+                        prev.map((item) =>
+                          item.id === itemId ? { ...item, part_count: splitData.parts_created } : item,
+                        ),
+                      );
+                      // Poll each new part's processing
+                      splitData.part_ids?.forEach((partId: string) => pollProcessingStatus(partId));
+                    }
+                  })
+                  .catch((err: unknown) => console.error('Auto-split failed (non-fatal):', err));
+              }
+            })
+            .catch(() => {});
         }
       }
     }, 3000);
@@ -482,6 +527,21 @@ export function useManifest() {
     return data as ManifestItem;
   }, [user]);
 
+  // Fetch child parts for a split book, ordered by part_number
+  const fetchParts = useCallback(async (parentItemId: string): Promise<ManifestItem[]> => {
+    if (!user) return [];
+    const { data, error: fetchErr } = await supabase
+      .from('manifest_items')
+      .select('id, user_id, title, file_type, file_name, storage_path, file_size_bytes, usage_designations, tags, folder_group, processing_status, processing_detail, chunk_count, intake_completed, ai_summary, extraction_status, genres, source_manifest_item_id, parent_manifest_item_id, part_number, part_count, archived_at, created_at, updated_at')
+      .eq('parent_manifest_item_id', parentItemId)
+      .eq('user_id', user.id)
+      .is('archived_at', null)
+      .order('part_number');
+
+    if (fetchErr) return [];
+    return (data as ManifestItem[]) || [];
+  }, [user]);
+
   // Generate AI summary (and optionally regenerate tags) for a manifest item
   const enrichItem = useCallback(async (
     itemId: string,
@@ -589,6 +649,7 @@ export function useManifest() {
     getUniqueTags,
     getUniqueFolders,
     fetchItemDetail,
+    fetchParts,
     checkDuplicate,
     enrichItem,
     autoIntakeItem,

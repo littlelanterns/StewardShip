@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { ChevronLeft, FileText, FileCode, Mic, Image, StickyNote, RefreshCw, BookOpen, Wand2, MessageSquare, Target, HelpCircle, CheckSquare, BarChart3, Users } from 'lucide-react';
+import { ChevronLeft, FileText, FileCode, Mic, Image, StickyNote, RefreshCw, BookOpen, Wand2, MessageSquare, Target, HelpCircle, CheckSquare, BarChart3, Users, ChevronRight } from 'lucide-react';
 import type { ManifestItem, ManifestSummary, ManifestDeclaration, ManifestActionStep, AIFrameworkPrinciple, BookGenre, DiscussionType } from '../../lib/types';
 import { MANIFEST_FILE_TYPE_LABELS, MANIFEST_STATUS_LABELS } from '../../lib/types';
 import type { SectionInfo } from '../../hooks/useManifestExtraction';
@@ -19,6 +19,11 @@ interface ManifestItemDetailProps {
   onArchive: (id: string) => Promise<boolean>;
   onDelete: (id: string) => Promise<boolean>;
   onEnrichItem?: (itemId: string, regenerateTags?: boolean) => Promise<{ summary: string; tags?: string[] } | null>;
+  // Parts (split books)
+  childParts?: ManifestItem[];
+  parentItem?: ManifestItem | null;
+  onSelectPart?: (part: ManifestItem) => void;
+  onBackToParent?: () => void;
   // Extraction
   summaries: ManifestSummary[];
   declarations: ManifestDeclaration[];
@@ -143,6 +148,10 @@ export function ManifestItemDetail({
   onUpdateActionStepNote,
   onUpdateDeclarationNote,
   onOpenDiscussion,
+  childParts,
+  parentItem,
+  onSelectPart,
+  onBackToParent,
 }: ManifestItemDetailProps) {
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(item.title);
@@ -170,6 +179,8 @@ export function ManifestItemDetail({
   const Icon = FILE_TYPE_ICONS[item.file_type] || FileText;
   const isProcessed = item.processing_status === 'completed';
   const hasExtraction = item.extraction_status !== 'none' || summaries.length > 0 || declarations.length > 0 || actionSteps.length > 0 || principles.length > 0;
+  const isParentWithParts = (item.part_count ?? 0) > 0;
+  const isPart = !!item.parent_manifest_item_id;
 
   // Fetch existing extractions on mount
   useEffect(() => {
@@ -312,9 +323,9 @@ export function ManifestItemDetail({
 
   return (
     <div className="manifest-detail">
-      <button type="button" className="manifest-detail__back" onClick={onBack}>
+      <button type="button" className="manifest-detail__back" onClick={isPart && onBackToParent ? onBackToParent : onBack}>
         <ChevronLeft size={16} />
-        Back
+        {isPart && parentItem ? `Back to ${parentItem.title}` : 'Back'}
       </button>
 
       {/* Header */}
@@ -505,8 +516,54 @@ export function ManifestItemDetail({
         </section>
       )}
 
+      {/* Parts Section — shown for parent items that have been split */}
+      {isParentWithParts && childParts && childParts.length > 0 && (
+        <section className="manifest-detail__section">
+          <h3 className="manifest-detail__section-title">Parts ({childParts.length})</h3>
+          <p className="manifest-detail__parts-info">
+            This book has been split into {childParts.length} parts for extraction. Select a part to view or extract.
+          </p>
+          <div className="manifest-detail__parts-list">
+            {childParts.map((part) => {
+              const partProcessing = part.processing_status === 'pending' || part.processing_status === 'processing';
+              const partFailed = part.processing_status === 'failed';
+              const partExtracted = part.extraction_status === 'completed';
+              return (
+                <button
+                  key={part.id}
+                  type="button"
+                  className="manifest-detail__part-card"
+                  onClick={() => onSelectPart?.(part)}
+                >
+                  <div className="manifest-detail__part-info">
+                    <span className="manifest-detail__part-title">
+                      {part.part_number ? `Part ${part.part_number}: ` : ''}
+                      {part.title.replace(`${item.title} — `, '')}
+                    </span>
+                    {part.chunk_count > 0 && (
+                      <span className="manifest-detail__part-meta">
+                        {part.chunk_count} chunks indexed
+                      </span>
+                    )}
+                  </div>
+                  <div className="manifest-detail__part-status">
+                    {partProcessing && <span className="manifest-detail__part-badge manifest-detail__part-badge--processing">Processing</span>}
+                    {partFailed && <span className="manifest-detail__part-badge manifest-detail__part-badge--failed">Failed</span>}
+                    {partExtracted && <span className="manifest-detail__part-badge manifest-detail__part-badge--extracted">Extracted</span>}
+                    {part.processing_status === 'completed' && !partExtracted && (
+                      <span className="manifest-detail__part-badge manifest-detail__part-badge--ready">Ready</span>
+                    )}
+                  </div>
+                  <ChevronRight size={16} className="manifest-detail__part-chevron" />
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       {/* Extract Section — genre picker + section discovery + extract */}
-      {isProcessed && (
+      {isProcessed && !isParentWithParts && (
         <section className="manifest-detail__section">
           <div className="manifest-detail__section-header">
             <h3 className="manifest-detail__section-title">Extract</h3>
@@ -641,8 +698,8 @@ export function ManifestItemDetail({
         </section>
       )}
 
-      {/* Extraction Tabs — shown when extractions exist or extracting */}
-      {isProcessed && (hasExtraction || extracting) && (
+      {/* Extraction Tabs — shown when extractions exist or extracting (not for parents with parts) */}
+      {isProcessed && !isParentWithParts && (hasExtraction || extracting) && (
         <section className="manifest-detail__section">
           <ExtractionTabs
             manifestItemId={item.id}
@@ -681,8 +738,8 @@ export function ManifestItemDetail({
         </section>
       )}
 
-      {/* Apply Section — shown when extractions exist */}
-      {isProcessed && hasExtraction && !extracting && (
+      {/* Apply Section — shown when extractions exist (not for parents with parts) */}
+      {isProcessed && !isParentWithParts && hasExtraction && !extracting && (
         <section className="manifest-detail__section">
           <div className="apply-section">
             <h3 className="apply-section__title">Apply This</h3>
@@ -737,8 +794,8 @@ export function ManifestItemDetail({
         </section>
       )}
 
-      {/* Floating Discuss Button — shown when extractions exist */}
-      {isProcessed && hasExtraction && !extracting && onOpenDiscussion && (
+      {/* Floating Discuss Button — shown when extractions exist (not for parents with parts) */}
+      {isProcessed && !isParentWithParts && hasExtraction && !extracting && onOpenDiscussion && (
         <button
           type="button"
           className="manifest-detail__discuss-fab"

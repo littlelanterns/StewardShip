@@ -1379,6 +1379,9 @@ export interface ManifestItem {
   genres: BookGenre[];
   extraction_status: ManifestExtractionStatus;
   source_manifest_item_id: string | null;
+  parent_manifest_item_id: string | null;
+  part_number: number | null;
+  part_count: number | null;
   archived_at: string | null;
   created_at: string;
   updated_at: string;

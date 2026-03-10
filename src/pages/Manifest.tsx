@@ -52,6 +52,7 @@ export default function Manifest() {
     checkDuplicate,
     enrichItem,
     autoIntakeItem,
+    fetchParts,
   } = useManifest();
 
   const {
@@ -66,6 +67,10 @@ export default function Manifest() {
   const [libraryLayout, setLibraryLayout] = useState<LibraryLayout>('compact');
   const [selectedItem, setSelectedItem] = useState<ManifestItem | null>(null);
   const [fabExpanded, setFabExpanded] = useState(false);
+
+  // Parent/child parts state for split books
+  const [parentItem, setParentItem] = useState<ManifestItem | null>(null);
+  const [childParts, setChildParts] = useState<ManifestItem[]>([]);
 
   // Discussion state
   const [showBookSelector, setShowBookSelector] = useState(false);
@@ -145,8 +150,21 @@ export default function Manifest() {
 
   const handleSelectItem = useCallback(async (item: ManifestItem) => {
     const detail = await fetchItemDetail(item.id);
-    setSelectedItem(detail || item);
+    const resolvedItem = detail || item;
+    setSelectedItem(resolvedItem);
     setViewMode('detail');
+    // Fetch child parts if this is a parent with parts
+    if ((resolvedItem.part_count ?? 0) > 0) {
+      const parts = await fetchParts(resolvedItem.id);
+      setChildParts(parts);
+      setParentItem(null); // This IS the parent
+    } else if (resolvedItem.parent_manifest_item_id) {
+      // This is a part — keep parent reference
+      // parentItem should already be set from onSelectPart
+    } else {
+      setChildParts([]);
+      setParentItem(null);
+    }
     // Always re-fetch extraction data when opening detail view
     // so edits made on Extractions/Favorites pages are visible
     if (detail?.processing_status === 'completed' || item.processing_status === 'completed') {
@@ -154,13 +172,43 @@ export default function Manifest() {
       extraction.fetchDeclarations(item.id);
       extraction.fetchActionSteps(item.id);
     }
-  }, [fetchItemDetail, extraction]);
+  }, [fetchItemDetail, extraction, fetchParts]);
 
   const handleBack = useCallback(() => {
     setSelectedItem(null);
+    setParentItem(null);
+    setChildParts([]);
     setViewMode('list');
     fetchItems();
   }, [fetchItems]);
+
+  const handleSelectPart = useCallback(async (part: ManifestItem) => {
+    // Save current item as parent before navigating to the part
+    if (selectedItem) {
+      setParentItem(selectedItem);
+    }
+    const detail = await fetchItemDetail(part.id);
+    setSelectedItem(detail || part);
+    // Fetch extractions for the part
+    if (detail?.processing_status === 'completed' || part.processing_status === 'completed') {
+      extraction.fetchSummaries(part.id);
+      extraction.fetchDeclarations(part.id);
+      extraction.fetchActionSteps(part.id);
+    }
+  }, [selectedItem, fetchItemDetail, extraction]);
+
+  const handleBackToParent = useCallback(async () => {
+    if (!parentItem) return;
+    const detail = await fetchItemDetail(parentItem.id);
+    const resolvedParent = detail || parentItem;
+    setSelectedItem(resolvedParent);
+    setParentItem(null);
+    // Re-fetch parts
+    if ((resolvedParent.part_count ?? 0) > 0) {
+      const parts = await fetchParts(resolvedParent.id);
+      setChildParts(parts);
+    }
+  }, [parentItem, fetchItemDetail, fetchParts]);
 
 
   const handleUpload = useCallback(async (file: File) => {
@@ -495,6 +543,11 @@ export default function Manifest() {
           }}
           // Discussion
           onOpenDiscussion={handleOpenDiscussionFromDetail}
+          // Parts (split books)
+          childParts={childParts}
+          parentItem={parentItem}
+          onSelectPart={handleSelectPart}
+          onBackToParent={handleBackToParent}
         />
         {/* Discussion modal rendered outside conditional content */}
         {discussionModal && (
