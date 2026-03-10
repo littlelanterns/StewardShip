@@ -278,7 +278,7 @@ CRITICAL RULES:
 - Sections must cover the ENTIRE document with NO GAPS. Every character must belong to a section.
 - Section boundaries must be contiguous: section 1 ends where section 2 begins, section 2 ends where section 3 begins, etc.
 - The first section must start at character 0. The last section must end at the final character of the document.
-- Identify 3-30 sections depending on document length and structure
+- Identify as many sections as the document naturally has. A 50-chapter book should have ~50 sections. Never merge distinct chapters together to reduce the count.
 - Always prefer individual chapters over grouped/meta sections. If the text references "Chapters X-Y" as a group (e.g., a book's structural overview like "Trunk Section (Chapters 7-15)"), still split into individual chapters. The meta-grouping title can be noted in the section description but each chapter should be its own section.
 - If the document has individually titled chapters, each chapter should be its own section, even if the book groups them into parts or sections.
 - Use chapter headings if they exist in the text
@@ -535,7 +535,7 @@ serve(async (req: Request) => {
 
       const discoveryPayload = JSON.stringify({
         model: 'anthropic/claude-haiku-4.5',
-        max_tokens: 2048,
+        max_tokens: 8192,
         messages: [
           { role: 'system', content: SECTION_DISCOVERY_PROMPT },
           { role: 'user', content: `Document (${item.text_content.length} characters total):\n\n${discoveryText}` },

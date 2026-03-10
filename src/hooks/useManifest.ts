@@ -332,10 +332,7 @@ export function useManifest() {
         const iv = pollIntervalsRef.current.get(itemId);
         if (iv) { clearInterval(iv); pollIntervalsRef.current.delete(itemId); }
 
-        // Auto-clone to all other users (fire-and-forget, no extractions yet)
-        if (status === 'completed') {
-          cloneToAllUsers(itemId, false).catch(() => {});
-        }
+        // Clone is now manual — use "Push to Family" on ManifestItemDetail after reviewing extractions
 
         // Auto-enrich newly completed items that have no summary yet (fire-and-forget)
         if (status === 'completed' && !data.ai_summary) {
