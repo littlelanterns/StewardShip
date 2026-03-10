@@ -43,7 +43,6 @@ export function ManifestItemCard({ item, onClick, compact, selectable, selected,
   const isProcessing = item.processing_status === 'processing';
   const isFailed = item.processing_status === 'failed';
   const isCompleted = item.processing_status === 'completed';
-  const isInProgress = isPending || isProcessing;
 
   if (compact) {
     return (
