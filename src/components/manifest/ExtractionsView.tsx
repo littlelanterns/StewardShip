@@ -77,6 +77,7 @@ export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsVie
   const [activeBookTags, setActiveBookTags] = useState<Set<string>>(new Set());
   const [bookTagsExpanded, setBookTagsExpanded] = useState(false);
   const [bookTagSort, setBookTagSort] = useState<'usage' | 'alpha'>('usage');
+  const [booksExpanded, setBooksExpanded] = useState(true);
 
   const extractedItems = useMemo(
     () => items.filter((i) =>
@@ -1347,22 +1348,32 @@ export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsVie
         <>
           {/* Book selector */}
           <div className="extractions-view__books">
-            <div className="extractions-view__books-header">
-              <div className="extractions-view__books-label">
-                Select books ({selectedIds.size} of {extractedItems.length})
-              </div>
+            <button
+              type="button"
+              className="extractions-view__books-toggle"
+              onClick={() => setBooksExpanded((v) => !v)}
+            >
+              {booksExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              <span className="extractions-view__books-label">
+                Select books{selectedIds.size > 0 ? ` (${selectedIds.size} of ${extractedItems.length})` : ` (${extractedItems.length} available)`}
+              </span>
               <div className="extractions-view__books-actions">
-                <button type="button" className="extractions-view__select-btn" onClick={() => {
+                <span className="extractions-view__select-btn" onClick={(e) => {
+                  e.stopPropagation();
                   setSelectedIds(new Set(filteredBooks.map((i) => i.id)));
+                  setBooksExpanded(false);
                 }}>
                   Select All
-                </button>
-                <button type="button" className="extractions-view__select-btn" onClick={() => setSelectedIds(new Set())}>
+                </span>
+                <span className="extractions-view__select-btn" onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedIds(new Set());
+                }}>
                   Clear
-                </button>
+                </span>
               </div>
-            </div>
-            {extractedItems.length > 4 && (
+            </button>
+            {booksExpanded && extractedItems.length > 4 && (
               <div className="extractions-view__search">
                 <Search size={14} />
                 <input
@@ -1374,83 +1385,87 @@ export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsVie
                 />
               </div>
             )}
-            {sortedBookTags.length > 0 && (
-              <div className="extractions-view__book-tags-section">
-                <button
-                  type="button"
-                  className="extractions-view__book-tags-toggle"
-                  onClick={() => setBookTagsExpanded((v) => !v)}
-                >
-                  {bookTagsExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-                  <span>Filter by tag ({sortedBookTags.length})</span>
-                  {activeBookTags.size > 0 && (
-                    <span className="extractions-view__book-tags-active">{activeBookTags.size} active</span>
-                  )}
-                </button>
-                {bookTagsExpanded && (
-                  <>
-                    <div className="extractions-view__book-tags-controls">
-                      <button
-                        type="button"
-                        className={`extractions-view__sort-btn${bookTagSort === 'usage' ? ' extractions-view__sort-btn--active' : ''}`}
-                        onClick={() => setBookTagSort('usage')}
-                      >
-                        Popular
-                      </button>
-                      <button
-                        type="button"
-                        className={`extractions-view__sort-btn${bookTagSort === 'alpha' ? ' extractions-view__sort-btn--active' : ''}`}
-                        onClick={() => setBookTagSort('alpha')}
-                      >
-                        A-Z
-                      </button>
+            {booksExpanded && (
+              <>
+                {sortedBookTags.length > 0 && (
+                  <div className="extractions-view__book-tags-section">
+                    <button
+                      type="button"
+                      className="extractions-view__book-tags-toggle"
+                      onClick={() => setBookTagsExpanded((v) => !v)}
+                    >
+                      {bookTagsExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                      <span>Filter by tag ({sortedBookTags.length})</span>
                       {activeBookTags.size > 0 && (
-                        <button
-                          type="button"
-                          className="extractions-view__sort-btn"
-                          onClick={() => setActiveBookTags(new Set())}
-                        >
-                          Clear
-                        </button>
+                        <span className="extractions-view__book-tags-active">{activeBookTags.size} active</span>
                       )}
-                    </div>
-                    <div className="extractions-view__book-tags">
-                      {sortedBookTags.map(([tag, count]) => (
-                        <button
-                          key={tag}
-                          type="button"
-                          className={`extractions-view__book-tag${activeBookTags.has(tag) ? ' extractions-view__book-tag--active' : ''}`}
-                          onClick={() => {
-                            setActiveBookTags((prev) => {
-                              const next = new Set(prev);
-                              next.has(tag) ? next.delete(tag) : next.add(tag);
-                              return next;
-                            });
-                          }}
-                        >
-                          {tag.replace(/_/g, ' ')} <span className="extractions-view__book-tag-count">{count}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </>
+                    </button>
+                    {bookTagsExpanded && (
+                      <>
+                        <div className="extractions-view__book-tags-controls">
+                          <button
+                            type="button"
+                            className={`extractions-view__sort-btn${bookTagSort === 'usage' ? ' extractions-view__sort-btn--active' : ''}`}
+                            onClick={() => setBookTagSort('usage')}
+                          >
+                            Popular
+                          </button>
+                          <button
+                            type="button"
+                            className={`extractions-view__sort-btn${bookTagSort === 'alpha' ? ' extractions-view__sort-btn--active' : ''}`}
+                            onClick={() => setBookTagSort('alpha')}
+                          >
+                            A-Z
+                          </button>
+                          {activeBookTags.size > 0 && (
+                            <button
+                              type="button"
+                              className="extractions-view__sort-btn"
+                              onClick={() => setActiveBookTags(new Set())}
+                            >
+                              Clear
+                            </button>
+                          )}
+                        </div>
+                        <div className="extractions-view__book-tags">
+                          {sortedBookTags.map(([tag, count]) => (
+                            <button
+                              key={tag}
+                              type="button"
+                              className={`extractions-view__book-tag${activeBookTags.has(tag) ? ' extractions-view__book-tag--active' : ''}`}
+                              onClick={() => {
+                                setActiveBookTags((prev) => {
+                                  const next = new Set(prev);
+                                  next.has(tag) ? next.delete(tag) : next.add(tag);
+                                  return next;
+                                });
+                              }}
+                            >
+                              {tag.replace(/_/g, ' ')} <span className="extractions-view__book-tag-count">{count}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
                 )}
-              </div>
+                <div className="extractions-view__book-list">
+                  {filteredBooks.map((item) => (
+                    <label key={item.id} className="extractions-view__book-item">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(item.id)}
+                        onChange={() => handleToggle(item.id)}
+                      />
+                      <span className="extractions-view__book-title">{item.title}</span>
+                    </label>
+                  ))}
+                  {filteredBooks.length === 0 && bookSearch && (
+                    <div className="extractions-view__no-match">No books match "{bookSearch}"</div>
+                  )}
+                </div>
+              </>
             )}
-            <div className="extractions-view__book-list">
-              {filteredBooks.map((item) => (
-                <label key={item.id} className="extractions-view__book-item">
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.has(item.id)}
-                    onChange={() => handleToggle(item.id)}
-                  />
-                  <span className="extractions-view__book-title">{item.title}</span>
-                </label>
-              ))}
-              {filteredBooks.length === 0 && bookSearch && (
-                <div className="extractions-view__no-match">No books match "{bookSearch}"</div>
-              )}
-            </div>
           </div>
 
           {/* Framework tag filter bar */}
