@@ -79,12 +79,12 @@ export function ManifestItemCard({ item, onClick, compact, selectable, selected,
           {isFailed && (
             <span className="manifest-row__badge manifest-row__badge--failed">Failed</span>
           )}
-          {isCompleted && item.extraction_status === 'completed' && (
+          {isCompleted && (item.extraction_status === 'completed' || item.extraction_status === 'failed') && (
             <span className="manifest-row__badge manifest-row__badge--extracted">
               Extracted
             </span>
           )}
-          {isCompleted && item.extraction_status !== 'completed' && !item.part_count && (
+          {isCompleted && item.extraction_status !== 'completed' && item.extraction_status !== 'failed' && !item.part_count && (
             <span className="manifest-row__badge manifest-row__badge--ready">Ready</span>
           )}
           {item.part_count && item.part_count > 0 && (
@@ -157,7 +157,7 @@ export function ManifestItemCard({ item, onClick, compact, selectable, selected,
             <span className="manifest-card__badge manifest-card__badge--parts">
               {item.part_count} Parts
             </span>
-          ) : item.extraction_status === 'completed' ? (
+          ) : (item.extraction_status === 'completed' || item.extraction_status === 'failed') ? (
             <span className="manifest-card__badge manifest-card__badge--extracted">
               Extracted
             </span>

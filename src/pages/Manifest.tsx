@@ -470,7 +470,7 @@ export default function Manifest() {
   }, [items, activeManifestTags, titleSearch]);
 
   const hasCompletedItems = items.some((i) => i.processing_status === 'completed');
-  const hasExtractedItems = items.some((i) => i.extraction_status === 'completed');
+  const hasExtractedItems = items.some((i) => i.extraction_status === 'completed' || i.extraction_status === 'failed');
   const processingItems = items.filter(
     (i) => i.processing_status === 'pending' || i.processing_status === 'processing',
   );
@@ -492,8 +492,8 @@ export default function Manifest() {
         case 'name_desc':
           return b.title.localeCompare(a.title);
         case 'has_extractions': {
-          const aExtracted = a.extraction_status === 'completed' ? 0 : 1;
-          const bExtracted = b.extraction_status === 'completed' ? 0 : 1;
+          const aExtracted = (a.extraction_status === 'completed' || a.extraction_status === 'failed') ? 0 : 1;
+          const bExtracted = (b.extraction_status === 'completed' || b.extraction_status === 'failed') ? 0 : 1;
           if (aExtracted !== bExtracted) return aExtracted - bExtracted;
           return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
         }
