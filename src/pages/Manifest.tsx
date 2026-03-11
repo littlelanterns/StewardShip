@@ -653,6 +653,13 @@ export default function Manifest() {
           onProcessParts={(parentId, parts) => {
             processChildParts(parentId, parts, setChildParts);
           }}
+          // Multi-part extraction
+          onDiscoverSectionsRaw={extraction.discoverSectionsRaw}
+          onExtractSectionsForPart={extraction.extractSectionsForPart}
+          onSaveFrameworkForPart={async (partId, frameworkName, principles) => {
+            await saveFramework(partId, frameworkName, principles, true, true);
+            fetchFrameworks();
+          }}
         />
         {/* Discussion modal rendered outside conditional content */}
         {discussionModal && (

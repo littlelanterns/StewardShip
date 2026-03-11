@@ -25,6 +25,21 @@ interface ManifestItemDetailProps {
   onSelectPart?: (part: ManifestItem) => void;
   onBackToParent?: () => void;
   onProcessParts?: (parentId: string, parts: ManifestItem[]) => void;
+  // Multi-part extraction
+  onDiscoverSectionsRaw?: (itemId: string) => Promise<SectionInfo[] | null>;
+  onExtractSectionsForPart?: (
+    itemId: string,
+    genres: BookGenre[],
+    partSections: SectionInfo[],
+    sectionIndices: number[],
+    onFrameworkResult?: (result: unknown, sectionTitle: string, sectionIndex: number) => Promise<void>,
+    onProgress?: (current: number, total: number) => void,
+  ) => Promise<boolean>;
+  onSaveFrameworkForPart?: (
+    partId: string,
+    frameworkName: string,
+    principles: Array<{ text: string; sort_order: number; section_title?: string }>,
+  ) => Promise<void>;
   // Extraction
   summaries: ManifestSummary[];
   declarations: ManifestDeclaration[];
@@ -160,6 +175,9 @@ export function ManifestItemDetail({
   onSelectPart,
   onBackToParent,
   onProcessParts,
+  onDiscoverSectionsRaw,
+  onExtractSectionsForPart,
+  onSaveFrameworkForPart,
 }: ManifestItemDetailProps) {
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(item.title);
@@ -183,6 +201,16 @@ export function ManifestItemDetail({
   const [pushing, setPushing] = useState(false);
   const [pushDone, setPushDone] = useState(false);
   const [confirmPush, setConfirmPush] = useState(false);
+
+  // Multi-part extraction state
+  type MultiPartPhase = 'idle' | 'discovering' | 'selecting' | 'extracting';
+  const [multiPartPhase, setMultiPartPhase] = useState<MultiPartPhase>('idle');
+  const [multiPartData, setMultiPartData] = useState<Array<{
+    part: ManifestItem;
+    sections: SectionInfo[];
+    selectedIndices: number[];
+  }>>([]);
+  const [multiPartProgress, setMultiPartProgress] = useState<string>('');
 
   const Icon = FILE_TYPE_ICONS[item.file_type] || FileText;
   const isProcessed = item.processing_status === 'completed';
@@ -336,6 +364,110 @@ export function ManifestItemDetail({
       onSetSelectedSectionIndices(sections.map((_, i) => i));
     }
   }, [selectedSectionIndices.length, sections, onSetSelectedSectionIndices]);
+
+  // --- Multi-part extraction handlers ---
+
+  const handleExtractAllParts = useCallback(async () => {
+    if (!childParts || childParts.length === 0 || !onDiscoverSectionsRaw || !onExtractSectionsForPart) return;
+    if (selectedGenres.length === 0) {
+      setShowGenrePicker(true);
+      return;
+    }
+
+    // Only extract parts that are processed
+    const processedParts = childParts.filter((p) => p.processing_status === 'completed');
+    if (processedParts.length === 0) return;
+
+    // Phase 1: Discover sections for all parts
+    setMultiPartPhase('discovering');
+    const discovered: typeof multiPartData = [];
+
+    for (let i = 0; i < processedParts.length; i++) {
+      const part = processedParts[i];
+      setMultiPartProgress(`Analyzing Part ${i + 1} of ${processedParts.length}...`);
+      const sections = await onDiscoverSectionsRaw(part.id);
+      if (sections && sections.length > 0) {
+        const contentIndices = sections
+          .map((s, idx) => ({ s, idx }))
+          .filter(({ s }) => !s.title.startsWith('[NON-CONTENT]'))
+          .map(({ idx }) => idx);
+        discovered.push({ part, sections, selectedIndices: contentIndices });
+      }
+    }
+
+    if (discovered.length === 0) {
+      setMultiPartPhase('idle');
+      setMultiPartProgress('');
+      return;
+    }
+
+    setMultiPartData(discovered);
+    setMultiPartPhase('selecting');
+    setMultiPartProgress('');
+  }, [childParts, selectedGenres, onDiscoverSectionsRaw, onExtractSectionsForPart, multiPartData]);
+
+  const handleMultiPartToggleSection = useCallback((partIndex: number, sectionIndex: number) => {
+    setMultiPartData((prev) => prev.map((d, i) => {
+      if (i !== partIndex) return d;
+      const has = d.selectedIndices.includes(sectionIndex);
+      return {
+        ...d,
+        selectedIndices: has
+          ? d.selectedIndices.filter((idx) => idx !== sectionIndex)
+          : [...d.selectedIndices, sectionIndex].sort((a, b) => a - b),
+      };
+    }));
+  }, []);
+
+  const handleMultiPartTogglePart = useCallback((partIndex: number) => {
+    setMultiPartData((prev) => prev.map((d, i) => {
+      if (i !== partIndex) return d;
+      const allSelected = d.selectedIndices.length === d.sections.length;
+      return { ...d, selectedIndices: allSelected ? [] : d.sections.map((_, idx) => idx) };
+    }));
+  }, []);
+
+  const handleMultiPartExtract = useCallback(async () => {
+    if (!onExtractSectionsForPart) return;
+    setMultiPartPhase('extracting');
+
+    for (let pi = 0; pi < multiPartData.length; pi++) {
+      const { part, sections: partSections, selectedIndices } = multiPartData[pi];
+      if (selectedIndices.length === 0) continue;
+
+      await onExtractSectionsForPart(
+        part.id,
+        selectedGenres,
+        partSections,
+        selectedIndices,
+        onSaveFrameworkForPart
+          ? async (result: unknown, sectionTitle: string, _sectionIndex: number) => {
+              const r = result as { framework_name?: string; principles?: Array<{ text: string; sort_order: number }> };
+              if (r?.framework_name && r.principles?.length) {
+                const principles = r.principles.map((p, idx) => ({
+                  text: p.text,
+                  sort_order: idx,
+                  section_title: sectionTitle,
+                }));
+                await onSaveFrameworkForPart(part.id, r.framework_name, principles);
+              }
+            }
+          : undefined,
+        (current, total) => {
+          setMultiPartProgress(`Part ${pi + 1} of ${multiPartData.length} — Section ${current + 1} of ${total}`);
+        },
+      );
+    }
+
+    setMultiPartPhase('idle');
+    setMultiPartData([]);
+    setMultiPartProgress('');
+  }, [multiPartData, selectedGenres, onExtractSectionsForPart, onSaveFrameworkForPart]);
+
+  const multiPartTotalSelected = useMemo(
+    () => multiPartData.reduce((sum, d) => sum + d.selectedIndices.length, 0),
+    [multiPartData],
+  );
 
   const handleClearExtractions = useCallback(async () => {
     setClearing(true);
@@ -632,6 +764,99 @@ export function ManifestItemDetail({
           </section>
         );
       })()}
+
+      {/* Multi-part Extraction — shown on parent items with processed parts */}
+      {isParentWithParts && childParts && childParts.some((p) => p.processing_status === 'completed') && onDiscoverSectionsRaw && onExtractSectionsForPart && (
+        <section className="manifest-detail__section">
+          <div className="manifest-detail__section-header">
+            <h3 className="manifest-detail__section-title">Extract All Parts</h3>
+          </div>
+
+          {/* Genre picker */}
+          {(selectedGenres.length > 0 || showGenrePicker) && multiPartPhase !== 'selecting' && (
+            <GenrePicker
+              selected={selectedGenres}
+              onChange={handleGenreChange}
+              disabled={multiPartPhase !== 'idle'}
+            />
+          )}
+
+          {/* Idle — show extract button */}
+          {multiPartPhase === 'idle' && (
+            <Button onClick={handleExtractAllParts}>
+              <Wand2 size={14} />
+              {selectedGenres.length === 0 ? 'Select Genres & Extract All Parts' : 'Extract All Parts'}
+            </Button>
+          )}
+
+          {/* Discovering — show progress */}
+          {multiPartPhase === 'discovering' && (
+            <div className="manifest-detail__discovering">
+              <LoadingSpinner />
+              <p>{multiPartProgress}</p>
+            </div>
+          )}
+
+          {/* Selecting — combined section checklist grouped by part */}
+          {multiPartPhase === 'selecting' && multiPartData.length > 0 && (
+            <div className="manifest-detail__section-checklist">
+              {multiPartData.map((partData, pi) => (
+                <div key={partData.part.id} className="manifest-detail__multipart-group">
+                  <div className="manifest-detail__multipart-header">
+                    <strong>
+                      {partData.part.part_number ? `Part ${partData.part.part_number}` : partData.part.title.replace(`${item.title} — `, '')}
+                    </strong>
+                    <span className="manifest-detail__section-count">
+                      {partData.selectedIndices.length}/{partData.sections.length}
+                    </span>
+                    <button
+                      type="button"
+                      className="manifest-detail__section-toggle"
+                      onClick={() => handleMultiPartTogglePart(pi)}
+                    >
+                      {partData.selectedIndices.length === partData.sections.length ? 'Deselect' : 'Select All'}
+                    </button>
+                  </div>
+                  <div className="manifest-detail__section-list">
+                    {partData.sections.map((section, si) => {
+                      const isNonContent = section.title.startsWith('[NON-CONTENT]');
+                      const displayTitle = section.title.replace(/^\[NON-CONTENT\]\s*/i, '');
+                      return (
+                        <label
+                          key={si}
+                          className={`manifest-detail__section-item${isNonContent ? ' manifest-detail__section-item--non-content' : ''}`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={partData.selectedIndices.includes(si)}
+                            onChange={() => handleMultiPartToggleSection(pi, si)}
+                          />
+                          <span className="manifest-detail__section-item-title">{displayTitle}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+
+              <div className="manifest-detail__section-actions">
+                <Button variant="secondary" onClick={() => { setMultiPartPhase('idle'); setMultiPartData([]); }}>Cancel</Button>
+                <Button onClick={handleMultiPartExtract} disabled={multiPartTotalSelected === 0}>
+                  Extract {multiPartTotalSelected} Section{multiPartTotalSelected !== 1 ? 's' : ''} across {multiPartData.filter((d) => d.selectedIndices.length > 0).length} Part{multiPartData.filter((d) => d.selectedIndices.length > 0).length !== 1 ? 's' : ''}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Extracting — show progress */}
+          {multiPartPhase === 'extracting' && (
+            <div className="manifest-detail__extracting-status">
+              <RefreshCw size={14} className="manifest-detail__spin" />
+              {multiPartProgress || 'Extracting...'}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Extract Section — genre picker + section discovery + extract */}
       {isProcessed && !isParentWithParts && (

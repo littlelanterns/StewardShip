@@ -677,6 +677,81 @@ export function useManifestExtraction() {
     }
   }, [user, failedSections, callExtract, saveSummaryResults, saveDeclarationResults, saveActionStepResults, fetchSummaries, fetchDeclarations, fetchActionSteps]);
 
+  // --- Multi-part helpers: stateless versions for orchestrating across parts ---
+
+  // Discover sections without setting hook state (for multi-part flow)
+  const discoverSectionsRaw = useCallback(async (
+    manifestItemId: string,
+  ): Promise<SectionInfo[] | null> => {
+    try {
+      const { data, error: invokeErr } = await supabase.functions.invoke('manifest-extract', {
+        body: { manifest_item_id: manifestItemId, extraction_type: 'discover_sections' },
+      });
+      if (invokeErr || data?.error) return null;
+      return data.sections || [];
+    } catch {
+      return null;
+    }
+  }, []);
+
+  // Extract sections for a specific part using provided section data (doesn't use hook state)
+  const extractSectionsForPart = useCallback(async (
+    manifestItemId: string,
+    genres: BookGenre[],
+    partSections: SectionInfo[],
+    sectionIndices: number[],
+    onFrameworkResult?: (result: FrameworkExtractionResult, sectionTitle: string, sectionIndex: number) => Promise<void>,
+    onProgress?: (current: number, total: number) => void,
+  ): Promise<boolean> => {
+    if (!user || sectionIndices.length === 0) return true;
+
+    await updateExtractionStatus(manifestItemId, 'extracting');
+
+    try {
+      for (let i = 0; i < sectionIndices.length; i++) {
+        if (i > 0) await new Promise((r) => setTimeout(r, 1500));
+
+        const secIdx = sectionIndices[i];
+        const section = partSections[secIdx];
+        const cleanTitle = section.title.replace(/^\[NON-CONTENT\]\s*/i, '');
+
+        onProgress?.(i, sectionIndices.length);
+
+        try {
+          const rawResult = await callExtract(manifestItemId, 'combined_section', genres, {
+            sectionTitle: cleanTitle,
+            sectionStart: section.start_char,
+            sectionEnd: section.end_char,
+          });
+
+          const combined = rawResult as CombinedSectionResult;
+
+          if (combined?.summaries?.length) {
+            await saveSummaryResults(manifestItemId, combined.summaries, cleanTitle, secIdx);
+          }
+          if (combined?.framework && onFrameworkResult) {
+            await onFrameworkResult(combined.framework, cleanTitle, secIdx);
+          }
+          if (combined?.action_steps?.length) {
+            await saveActionStepResults(manifestItemId, combined.action_steps, cleanTitle, secIdx);
+          }
+          if (combined?.declarations?.length) {
+            await saveDeclarationResults(manifestItemId, combined.declarations, cleanTitle, secIdx);
+          }
+        } catch (err) {
+          console.error(`[extractSectionsForPart] Failed for "${cleanTitle}":`, err);
+        }
+      }
+
+      await updateExtractionStatus(manifestItemId, 'completed');
+      return true;
+    } catch (err) {
+      console.error('[extractSectionsForPart] Fatal error:', err);
+      await updateExtractionStatus(manifestItemId, 'failed');
+      return false;
+    }
+  }, [user, callExtract, saveSummaryResults, saveDeclarationResults, saveActionStepResults, updateExtractionStatus]);
+
   // --- Go Deeper: extract additional content for a specific tab/section ---
 
   const goDeeper = useCallback(async (
@@ -1274,6 +1349,8 @@ export function useManifestExtraction() {
     goDeeper,
     reRunTab,
     retrySection,
+    discoverSectionsRaw,
+    extractSectionsForPart,
     getSectionOffsets,
     // Genres & Status
     updateGenres,
