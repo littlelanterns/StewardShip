@@ -316,8 +316,8 @@ serve(async (req: Request) => {
     let chunks = rawChunks.filter((c) => isQualityChunk(c.text));
     console.log(`Chunking: ${rawChunks.length} raw → ${chunks.length} quality chunks (filtered ${rawChunks.length - chunks.length})`);
 
-    // Cap chunks for very large books to stay within Edge Function timeout
-    const MAX_CHUNKS = 1500;
+    // Cap chunks for very large books to stay within Edge Function memory/timeout
+    const MAX_CHUNKS = 500;
     if (chunks.length > MAX_CHUNKS) {
       console.log(`Capping ${chunks.length} chunks to ${MAX_CHUNKS} (evenly sampled)`);
       const step = chunks.length / MAX_CHUNKS;
@@ -355,22 +355,26 @@ serve(async (req: Request) => {
       );
     }
 
-    // Batch embed (OpenAI supports up to 2048 inputs per request, use 500 to reduce round-trips)
-    const BATCH_SIZE = 500;
+    // Release text extraction memory before starting embeddings
+    fullText = '';
+
+    // Delete any existing chunks FIRST (in case of re-processing)
+    await supabase
+      .from('manifest_chunks')
+      .delete()
+      .eq('manifest_item_id', manifest_item_id);
+
+    // Embed and insert batch-by-batch to keep peak memory low.
+    // Each batch: embed → build records → insert → release.
+    // Smaller batches (100) use less memory than accumulating 500+ embeddings.
+    const BATCH_SIZE = 100;
     const totalBatches = Math.ceil(chunks.length / BATCH_SIZE);
-    const allChunkRecords: Array<{
-      user_id: string;
-      manifest_item_id: string;
-      chunk_index: number;
-      chunk_text: string;
-      token_count: number;
-      embedding: number[];
-      metadata: Record<string, unknown>;
-    }> = [];
+    let totalChunksInserted = 0;
+    let totalTokens = 0;
 
     for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
       const batchNum = Math.floor(i / BATCH_SIZE) + 1;
-      await setDetail(`Generating embeddings (batch ${batchNum} of ${totalBatches})...`);
+      await setDetail(`Embedding & saving (batch ${batchNum} of ${totalBatches})...`);
       const batch = chunks.slice(i, i + BATCH_SIZE);
       const texts = batch.map((c) => c.text);
 
@@ -389,57 +393,56 @@ serve(async (req: Request) => {
       if (!embResponse.ok) {
         const errBody = await embResponse.text();
         console.error('Embedding batch failed:', errBody);
+        // Partial progress is still saved — don't delete what we've inserted
         await supabase
           .from('manifest_items')
-          .update({ processing_status: 'failed' })
+          .update({
+            processing_status: totalChunksInserted > 0 ? 'completed' : 'failed',
+            chunk_count: totalChunksInserted,
+            processing_detail: totalChunksInserted > 0
+              ? `Partial: ${totalChunksInserted} of ${chunks.length} chunks (embedding failed at batch ${batchNum})`
+              : null,
+          })
           .eq('id', manifest_item_id);
         return new Response(
-          JSON.stringify({ error: `Embedding failed: ${errBody}` }),
+          JSON.stringify({ error: `Embedding failed at batch ${batchNum}: ${errBody}`, partial_chunks: totalChunksInserted }),
           { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         );
       }
 
       const embData = await embResponse.json();
 
-      for (let j = 0; j < batch.length; j++) {
-        allChunkRecords.push({
-          user_id: userId,
-          manifest_item_id,
-          chunk_index: batch[j].index,
-          chunk_text: batch[j].text,
-          token_count: batch[j].tokenCount,
-          embedding: embData.data[j].embedding,
-          metadata: {},
-        });
-      }
-    }
+      // Build records for this batch only
+      const batchRecords = batch.map((chunk, j) => ({
+        user_id: userId,
+        manifest_item_id,
+        chunk_index: chunk.index,
+        chunk_text: chunk.text,
+        token_count: chunk.tokenCount,
+        embedding: embData.data[j].embedding,
+        metadata: {},
+      }));
 
-    // 6. Delete any existing chunks (in case of re-processing)
-    await supabase
-      .from('manifest_chunks')
-      .delete()
-      .eq('manifest_item_id', manifest_item_id);
-
-    // 7. Insert chunks in batches
-    await setDetail('Saving to database...');
-    const INSERT_BATCH = 200;
-    for (let i = 0; i < allChunkRecords.length; i += INSERT_BATCH) {
-      const batch = allChunkRecords.slice(i, i + INSERT_BATCH);
+      // Insert immediately — don't accumulate
       const { error: insertErr } = await supabase
         .from('manifest_chunks')
-        .insert(batch);
+        .insert(batchRecords);
 
       if (insertErr) {
-        console.error('Chunk insert failed:', insertErr);
+        console.error(`Chunk insert failed (batch ${batchNum}):`, insertErr);
+      } else {
+        totalChunksInserted += batchRecords.length;
+        totalTokens += batchRecords.reduce((sum, c) => sum + c.token_count, 0);
       }
+      // batchRecords and embData go out of scope → GC can reclaim
     }
 
-    // 8. Update manifest item status (clear processing_detail on completion)
+    // 6. Update manifest item status (clear processing_detail on completion)
     await supabase
       .from('manifest_items')
       .update({
         processing_status: 'completed',
-        chunk_count: allChunkRecords.length,
+        chunk_count: totalChunksInserted,
         processing_detail: null,
       })
       .eq('id', manifest_item_id);
@@ -447,8 +450,8 @@ serve(async (req: Request) => {
     return new Response(
       JSON.stringify({
         success: true,
-        chunks_created: allChunkRecords.length,
-        total_tokens: allChunkRecords.reduce((sum, c) => sum + c.token_count, 0),
+        chunks_created: totalChunksInserted,
+        total_tokens: totalTokens,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
