@@ -744,3 +744,49 @@
 .manifest-detail__discuss-fab:hover {
   background: var(--color-dark-teal);
 }
+
+/* Failed sections banner */
+.manifest-detail__failed-sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background: var(--color-warm-sand);
+  border: 1px solid var(--color-cognac);
+  border-radius: var(--radius-md);
+}
+
+.manifest-detail__failed-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  color: var(--color-cognac);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.manifest-detail__failed-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.manifest-detail__failed-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: var(--color-cream);
+  border-radius: var(--radius-sm);
+}
+
+.manifest-detail__failed-title {
+  font-size: var(--font-size-sm);
+  color: var(--color-navy);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

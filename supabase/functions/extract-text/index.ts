@@ -179,7 +179,13 @@ async function extractViaVision(file: File): Promise<string | null> {
 
 async function extractTextFromDOCX(bytes: Uint8Array): Promise<string> {
   const { unzipSync } = await import('https://esm.sh/fflate@0.8.2');
-  const files = unzipSync(bytes);
+  // Only decompress XML files — skip embedded images, fonts, media
+  const files = unzipSync(bytes, {
+    filter(file) {
+      const name = file.name.toLowerCase();
+      return name.endsWith('.xml') || name.endsWith('.rels');
+    },
+  });
 
   const documentXml = files['word/document.xml'];
   if (!documentXml) {

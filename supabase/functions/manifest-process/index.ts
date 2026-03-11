@@ -183,17 +183,22 @@ serve(async (req: Request) => {
 
         await setDetail('Extracting text from EPUB...');
         const arrayBuffer = await fileData.arrayBuffer();
-        fullText = await extractTextFromEPUB(new Uint8Array(arrayBuffer));
+
+        // Unzip ONCE with a content-only filter (skip images, fonts, media, CSS).
+        // Prevents memory exhaustion on large EPUBs with map images, illustrations, etc.
+        const epubFiles = await unzipEPUBContentOnly(new Uint8Array(arrayBuffer));
+
+        fullText = extractTextFromEPUBFiles(epubFiles);
 
         await supabase
           .from('manifest_items')
           .update({ text_content: fullText })
           .eq('id', manifest_item_id);
 
-        // TOC extraction (non-fatal)
+        // TOC extraction (non-fatal) — reuses already-unzipped files
         try {
           await setDetail('Extracting table of contents...');
-          const toc = await extractTOCFromEPUB(new Uint8Array(arrayBuffer));
+          const toc = extractTOCFromEPUBFiles(epubFiles);
           if (toc && toc.length > 0) {
             await supabase.from('manifest_items').update({ toc }).eq('id', manifest_item_id);
           }
@@ -226,17 +231,21 @@ serve(async (req: Request) => {
 
         await setDetail('Extracting text from DOCX...');
         const arrayBuffer = await fileData.arrayBuffer();
-        fullText = await extractTextFromDOCX(new Uint8Array(arrayBuffer));
+
+        // Unzip ONCE with content-only filter (skip embedded images, media, etc.)
+        const docxFiles = await unzipDOCXContentOnly(new Uint8Array(arrayBuffer));
+
+        fullText = extractTextFromDOCXFiles(docxFiles);
 
         await supabase
           .from('manifest_items')
           .update({ text_content: fullText })
           .eq('id', manifest_item_id);
 
-        // TOC extraction (non-fatal)
+        // TOC extraction (non-fatal) — reuses already-unzipped files
         try {
           await setDetail('Extracting table of contents...');
-          const toc = await extractTOCFromDOCX(new Uint8Array(arrayBuffer));
+          const toc = extractTOCFromDOCXFiles(docxFiles);
           if (toc && toc.length > 0) {
             await supabase.from('manifest_items').update({ toc }).eq('id', manifest_item_id);
           }
@@ -542,14 +551,53 @@ function chunkText(
 }
 
 /**
- * Extract text from EPUB files.
- * EPUBs are ZIP archives containing XHTML content files.
+ * Unzip an EPUB file, filtering out binary assets (images, fonts, media, CSS).
+ * Only decompresses text/XML content files to minimize memory usage.
+ * A large EPUB with illustrations/maps can have 50-100MB of decompressed binary data;
+ * this filter keeps only the ~1-5MB of text content we actually need.
+ */
+async function unzipEPUBContentOnly(bytes: Uint8Array): Promise<Record<string, Uint8Array>> {
+  const { unzipSync } = await import('https://esm.sh/fflate@0.8.2');
+
+  // Content extensions we need for text extraction and TOC
+  const CONTENT_EXTENSIONS = [
+    '.xml', '.xhtml', '.html', '.htm', '.opf', '.ncx',
+  ];
+  // Binary extensions to skip (images, fonts, media, styles)
+  const SKIP_EXTENSIONS = [
+    '.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp', '.bmp', '.tiff', '.ico',
+    '.ttf', '.otf', '.woff', '.woff2', '.eot',
+    '.css', '.js',
+    '.mp3', '.mp4', '.ogg', '.wav', '.m4a',
+    '.pdf',
+  ];
+
+  const files = unzipSync(bytes, {
+    filter(file) {
+      const name = file.name.toLowerCase();
+      // Always include META-INF for container.xml
+      if (name.startsWith('meta-inf/')) return true;
+      // Skip known binary extensions
+      if (SKIP_EXTENSIONS.some((ext) => name.endsWith(ext))) return false;
+      // Include known content extensions
+      if (CONTENT_EXTENSIONS.some((ext) => name.endsWith(ext))) return true;
+      // Skip directories
+      if (name.endsWith('/')) return false;
+      // Default: skip unknown files (likely binary assets)
+      return false;
+    },
+  });
+
+  const totalFiles = Object.keys(files).length;
+  console.log(`[EPUB] Unzipped ${totalFiles} content files (filtered binary assets)`);
+  return files;
+}
+
+/**
+ * Extract text from pre-unzipped EPUB files.
  * Reads the OPF manifest/spine to extract content in reading order.
  */
-async function extractTextFromEPUB(bytes: Uint8Array): Promise<string> {
-  const { unzipSync } = await import('https://esm.sh/fflate@0.8.2');
-  const files = unzipSync(bytes);
-
+function extractTextFromEPUBFiles(files: Record<string, Uint8Array>): string {
   // Find the container.xml to locate the OPF file
   const containerBytes = files['META-INF/container.xml'];
   if (!containerBytes) {
@@ -632,14 +680,32 @@ async function extractTextFromEPUB(bytes: Uint8Array): Promise<string> {
 }
 
 /**
- * Extract text from DOCX files.
- * DOCX files are ZIP archives. Main content is in word/document.xml.
- * Extracts text from <w:t> tags (Word text runs), preserving paragraph structure.
+ * Unzip a DOCX file, filtering out embedded images, media, and other binary assets.
+ * Only decompresses XML content files needed for text and TOC extraction.
  */
-async function extractTextFromDOCX(bytes: Uint8Array): Promise<string> {
+async function unzipDOCXContentOnly(bytes: Uint8Array): Promise<Record<string, Uint8Array>> {
   const { unzipSync } = await import('https://esm.sh/fflate@0.8.2');
-  const files = unzipSync(bytes);
 
+  const files = unzipSync(bytes, {
+    filter(file) {
+      const name = file.name.toLowerCase();
+      // We only need XML files from the word/ directory + [Content_Types].xml
+      if (name.endsWith('.xml') || name.endsWith('.rels')) return true;
+      // Skip everything else (images, fonts, media, etc.)
+      return false;
+    },
+  });
+
+  const totalFiles = Object.keys(files).length;
+  console.log(`[DOCX] Unzipped ${totalFiles} content files (filtered binary assets)`);
+  return files;
+}
+
+/**
+ * Extract text from pre-unzipped DOCX files.
+ * Reads word/document.xml and extracts text from <w:t> tags, preserving paragraph structure.
+ */
+function extractTextFromDOCXFiles(files: Record<string, Uint8Array>): string {
   const documentXml = files['word/document.xml'];
   if (!documentXml) {
     throw new Error('Invalid DOCX: no word/document.xml found');
@@ -768,15 +834,12 @@ async function extractViaVision(
 // --- TOC Extraction Functions ---
 
 /**
- * Extract table of contents from an EPUB file.
+ * Extract table of contents from pre-unzipped EPUB files.
  * Tries EPUB3 nav document first, falls back to EPUB2 NCX.
  * Returns null if no TOC can be extracted.
  */
-async function extractTOCFromEPUB(bytes: Uint8Array): Promise<TocEntry[] | null> {
+function extractTOCFromEPUBFiles(files: Record<string, Uint8Array>): TocEntry[] | null {
   try {
-    const { unzipSync } = await import('https://esm.sh/fflate@0.8.2');
-    const files = unzipSync(bytes);
-
     const containerBytes = files['META-INF/container.xml'];
     if (!containerBytes) return null;
 
@@ -901,15 +964,12 @@ function flattenOutline(
 }
 
 /**
- * Extract headings from a DOCX file as a pseudo-TOC.
+ * Extract headings from pre-unzipped DOCX files as a pseudo-TOC.
  * Looks for paragraphs with Heading1-Heading3 styles in word/document.xml.
  * Returns null if no headings found.
  */
-async function extractTOCFromDOCX(bytes: Uint8Array): Promise<TocEntry[] | null> {
+function extractTOCFromDOCXFiles(files: Record<string, Uint8Array>): TocEntry[] | null {
   try {
-    const { unzipSync } = await import('https://esm.sh/fflate@0.8.2');
-    const files = unzipSync(bytes);
-
     const documentXml = files['word/document.xml'];
     if (!documentXml) return null;
 

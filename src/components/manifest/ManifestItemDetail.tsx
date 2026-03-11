@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { ChevronLeft, FileText, FileCode, Mic, Image, StickyNote, RefreshCw, BookOpen, Wand2, MessageSquare, Target, HelpCircle, CheckSquare, BarChart3, Users, ChevronRight } from 'lucide-react';
+import { ChevronLeft, FileText, FileCode, Mic, Image, StickyNote, RefreshCw, BookOpen, Wand2, MessageSquare, Target, HelpCircle, CheckSquare, BarChart3, Users, ChevronRight, AlertTriangle } from 'lucide-react';
 import type { ManifestItem, ManifestSummary, ManifestDeclaration, ManifestActionStep, AIFrameworkPrinciple, BookGenre, DiscussionType } from '../../lib/types';
 import { MANIFEST_FILE_TYPE_LABELS, MANIFEST_STATUS_LABELS } from '../../lib/types';
 import type { SectionInfo } from '../../hooks/useManifestExtraction';
@@ -46,6 +46,8 @@ interface ManifestItemDetailProps {
   onUpdateSectionTitle?: (index: number, title: string) => void;
   discoveringSections: boolean;
   extractionProgress: { current: number; total: number; currentType: 'summary' | 'framework' | 'mast_content' | 'action_steps' } | null;
+  failedSections: Array<{ sectionIndex: number; title: string; retrying?: boolean }>;
+  onRetrySection: (sectionIndex: number) => Promise<boolean>;
   onClearExtractions: (itemId: string) => Promise<void>;
   // Summary actions
   onToggleSummaryHeart: (id: string) => void;
@@ -125,6 +127,8 @@ export function ManifestItemDetail({
   onUpdateSectionTitle,
   discoveringSections,
   extractionProgress,
+  failedSections,
+  onRetrySection,
   onClearExtractions,
   onToggleSummaryHeart,
   onDeleteSummary,
@@ -731,6 +735,49 @@ export function ManifestItemDetail({
                 </div>
               )}
             </div>
+          )}
+        </section>
+      )}
+
+      {/* Failed sections banner — shown after extraction completes with partial failures */}
+      {isProcessed && !isParentWithParts && failedSections.length > 0 && !extracting && extractionPhase === 'idle' && (
+        <section className="manifest-detail__failed-sections">
+          <div className="manifest-detail__failed-header">
+            <AlertTriangle size={16} />
+            <span>{failedSections.length} section{failedSections.length !== 1 ? 's' : ''} failed to extract</span>
+          </div>
+          <div className="manifest-detail__failed-list">
+            {failedSections.map((fs) => (
+              <div key={fs.sectionIndex} className="manifest-detail__failed-item">
+                <span className="manifest-detail__failed-title">{fs.title}</span>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => onRetrySection(fs.sectionIndex)}
+                  disabled={fs.retrying}
+                >
+                  {fs.retrying ? (
+                    <><RefreshCw size={12} className="manifest-detail__spin" /> Retrying...</>
+                  ) : (
+                    <><RefreshCw size={12} /> Retry</>
+                  )}
+                </Button>
+              </div>
+            ))}
+          </div>
+          {failedSections.length > 1 && (
+            <Button
+              size="sm"
+              onClick={async () => {
+                for (const fs of failedSections) {
+                  await onRetrySection(fs.sectionIndex);
+                }
+              }}
+              disabled={failedSections.some((f) => f.retrying)}
+            >
+              <RefreshCw size={12} />
+              Retry All Failed
+            </Button>
           )}
         </section>
       )}

@@ -613,6 +613,31 @@ export default function Manifest() {
           onUpdateSectionTitle={extraction.updateSectionTitle}
           discoveringSections={extraction.discoveringSections}
           extractionProgress={extraction.extractionProgress}
+          failedSections={extraction.failedSections}
+          onRetrySection={async (sectionIndex: number) => {
+            if (!selectedItem) return false;
+            const success = await extraction.retrySection(
+              selectedItem.id,
+              selectedItem.genres || [],
+              sectionIndex,
+              async (result, sectionTitle, _secIdx) => {
+                if (result && result.framework_name && result.principles?.length > 0) {
+                  const principles = result.principles.map((p: { text: string; sort_order: number }, idx: number) => ({
+                    text: p.text,
+                    sort_order: idx,
+                    section_title: sectionTitle,
+                  }));
+                  // Always append — framework already exists from initial extraction
+                  await saveFramework(selectedItem.id, result.framework_name, principles, true, true);
+                }
+              },
+            );
+            if (success) {
+              fetchFrameworks();
+              await refreshAfterExtraction(selectedItem.id);
+            }
+            return success;
+          }}
           onClearExtractions={async (itemId: string) => {
             await extraction.clearExtractions(itemId);
             fetchFrameworks();

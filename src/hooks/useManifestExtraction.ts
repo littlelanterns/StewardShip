@@ -61,6 +61,14 @@ export function useManifestExtraction() {
     currentType: 'summary' | 'framework' | 'mast_content' | 'action_steps';
   } | null>(null);
 
+  // Failed sections tracking — sections that errored during extraction
+  const [failedSections, setFailedSections] = useState<Array<{
+    sectionIndex: number;
+    title: string;
+    section: SectionInfo;
+    retrying?: boolean;
+  }>>([]);
+
   // --- Fetch existing extracted items for an item ---
 
   const fetchSummaries = useCallback(async (manifestItemId: string) => {
@@ -536,7 +544,7 @@ export function useManifestExtraction() {
 
     try {
       await updateExtractionStatus(manifestItemId, 'extracting');
-      let allOk = true;
+      const failed: Array<{ sectionIndex: number; title: string; section: SectionInfo }> = [];
 
       for (let i = 0; i < sectionIndices.length; i++) {
         // Throttle between sections to avoid OpenRouter rate limits
@@ -585,17 +593,18 @@ export function useManifestExtraction() {
           }
         } catch (err) {
           console.error(`[extractAllSections] Combined extraction failed for section "${cleanTitle}":`, err);
-          allOk = false;
+          failed.push({ sectionIndex: secIdx, title: cleanTitle, section });
         }
       }
+
+      // Track which sections failed so user can retry them individually
+      setFailedSections(failed);
 
       // Mark completed even with partial failures — extracted content is still valuable
       await updateExtractionStatus(manifestItemId, 'completed');
 
-      // Clone is manual — use "Push to Family" on ManifestItemDetail after reviewing extractions
-
       setExtractionProgress(null);
-      return allOk;
+      return failed.length === 0;
     } catch (err) {
       setError((err as Error).message);
       // Only mark failed if the entire loop threw (no sections extracted)
@@ -606,6 +615,67 @@ export function useManifestExtraction() {
       setExtracting(false);
     }
   }, [user, sections, saveSummaryResults, saveDeclarationResults, saveActionStepResults, fetchSummaries, fetchDeclarations, fetchActionSteps, callExtract, updateExtractionStatus]);
+
+  // --- Retry a single failed section ---
+
+  const retrySection = useCallback(async (
+    manifestItemId: string,
+    genres: BookGenre[],
+    sectionIndex: number,
+    onFrameworkResult?: (result: FrameworkExtractionResult, sectionTitle: string, sectionIndex: number) => Promise<void>,
+  ): Promise<boolean> => {
+    if (!user) return false;
+
+    const failed = failedSections.find((f) => f.sectionIndex === sectionIndex);
+    if (!failed) return false;
+
+    // Mark this section as retrying
+    setFailedSections((prev) =>
+      prev.map((f) => f.sectionIndex === sectionIndex ? { ...f, retrying: true } : f),
+    );
+
+    try {
+      const rawResult = await callExtract(manifestItemId, 'combined_section', genres, {
+        sectionTitle: failed.title,
+        sectionStart: failed.section.start_char,
+        sectionEnd: failed.section.end_char,
+      });
+
+      const combined = rawResult as CombinedSectionResult;
+
+      // Save results — same logic as extractAllSections
+      if (combined?.summaries && combined.summaries.length > 0) {
+        await saveSummaryResults(manifestItemId, combined.summaries, failed.title, sectionIndex);
+      }
+      if (combined?.framework && onFrameworkResult) {
+        await onFrameworkResult(combined.framework, failed.title, sectionIndex);
+      }
+      if (combined?.action_steps && combined.action_steps.length > 0) {
+        await saveActionStepResults(manifestItemId, combined.action_steps, failed.title, sectionIndex);
+      }
+      if (combined?.declarations && combined.declarations.length > 0) {
+        await saveDeclarationResults(manifestItemId, combined.declarations, failed.title, sectionIndex);
+      }
+
+      // Re-fetch all extraction data so UI updates
+      await Promise.all([
+        fetchSummaries(manifestItemId),
+        fetchDeclarations(manifestItemId),
+        fetchActionSteps(manifestItemId),
+      ]);
+
+      // Remove from failed list
+      setFailedSections((prev) => prev.filter((f) => f.sectionIndex !== sectionIndex));
+      return true;
+    } catch (err) {
+      console.error(`[retrySection] Failed again for "${failed.title}":`, err);
+      // Clear retrying flag but keep in failed list
+      setFailedSections((prev) =>
+        prev.map((f) => f.sectionIndex === sectionIndex ? { ...f, retrying: false } : f),
+      );
+      return false;
+    }
+  }, [user, failedSections, callExtract, saveSummaryResults, saveDeclarationResults, saveActionStepResults, fetchSummaries, fetchDeclarations, fetchActionSteps]);
 
   // --- Go Deeper: extract additional content for a specific tab/section ---
 
@@ -1188,6 +1258,7 @@ export function useManifestExtraction() {
     updateSectionTitle,
     discoveringSections,
     extractionProgress,
+    failedSections,
     // Fetch
     fetchSummaries,
     fetchDeclarations,
@@ -1202,6 +1273,7 @@ export function useManifestExtraction() {
     extractActionSteps,
     goDeeper,
     reRunTab,
+    retrySection,
     getSectionOffsets,
     // Genres & Status
     updateGenres,
