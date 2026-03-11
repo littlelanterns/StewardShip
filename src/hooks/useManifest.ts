@@ -524,6 +524,65 @@ export function useManifest() {
     return (data as ManifestItem[]) || [];
   }, [user]);
 
+  // Process (or reprocess) child parts that are stuck in pending/failed/processing
+  const processChildParts = useCallback(async (
+    parentItemId: string,
+    parts: ManifestItem[],
+    onPartsUpdated: (updatedParts: ManifestItem[]) => void,
+  ): Promise<void> => {
+    if (!user) return;
+
+    // Find parts that need processing (not completed)
+    const stuckParts = parts.filter(
+      (p) => p.processing_status !== 'completed',
+    );
+    if (stuckParts.length === 0) return;
+
+    // Reset all stuck parts to pending in DB
+    const stuckIds = stuckParts.map((p) => p.id);
+    await supabase
+      .from('manifest_items')
+      .update({ processing_status: 'pending', chunk_count: 0, processing_detail: null })
+      .in('id', stuckIds)
+      .eq('user_id', user.id);
+
+    // Optimistically update parts in UI
+    const updatedParts = parts.map((p) =>
+      stuckIds.includes(p.id)
+        ? { ...p, processing_status: 'processing' as const, chunk_count: 0, processing_detail: null }
+        : p,
+    );
+    onPartsUpdated(updatedParts);
+
+    // Process sequentially to avoid overwhelming Edge Functions
+    for (const part of stuckParts) {
+      try {
+        const { error: invokeErr } = await supabase.functions.invoke('manifest-process', {
+          body: { manifest_item_id: part.id, user_id: user.id },
+        });
+        if (invokeErr) {
+          console.error(`[processChildParts] Failed for "${part.title}":`, invokeErr);
+        }
+      } catch (err) {
+        console.error(`[processChildParts] Error for "${part.title}":`, err);
+      }
+      // Start polling for this part
+      pollProcessingStatus(part.id);
+    }
+
+    // After all invocations fired, poll until all complete then re-fetch
+    const pollAll = setInterval(async () => {
+      const freshParts = await fetchParts(parentItemId);
+      onPartsUpdated(freshParts);
+      const allDone = freshParts.every(
+        (p) => p.processing_status === 'completed' || p.processing_status === 'failed',
+      );
+      if (allDone) {
+        clearInterval(pollAll);
+      }
+    }, 5000);
+  }, [user, fetchParts, pollProcessingStatus]);
+
   // Generate AI summary (and optionally regenerate tags) for a manifest item
   const enrichItem = useCallback(async (
     itemId: string,
@@ -768,6 +827,7 @@ export function useManifest() {
     getUniqueFolders,
     fetchItemDetail,
     fetchParts,
+    processChildParts,
     checkDuplicate,
     enrichItem,
     autoIntakeItem,

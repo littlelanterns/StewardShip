@@ -54,6 +54,7 @@ export default function Manifest() {
     enrichItem,
     autoIntakeItem,
     fetchParts,
+    processChildParts,
     getQueuePosition,
   } = useManifest();
 
@@ -649,6 +650,9 @@ export default function Manifest() {
           parentItem={parentItem}
           onSelectPart={handleSelectPart}
           onBackToParent={handleBackToParent}
+          onProcessParts={(parentId, parts) => {
+            processChildParts(parentId, parts, setChildParts);
+          }}
         />
         {/* Discussion modal rendered outside conditional content */}
         {discussionModal && (

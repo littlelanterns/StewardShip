@@ -4,6 +4,15 @@
   gap: var(--spacing-md);
 }
 
+.manifest-detail .spin {
+  animation: manifest-spin 1s linear infinite;
+}
+
+@keyframes manifest-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 .manifest-detail__back {
   display: inline-flex;
   align-items: center;

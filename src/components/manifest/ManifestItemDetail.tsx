@@ -24,6 +24,7 @@ interface ManifestItemDetailProps {
   parentItem?: ManifestItem | null;
   onSelectPart?: (part: ManifestItem) => void;
   onBackToParent?: () => void;
+  onProcessParts?: (parentId: string, parts: ManifestItem[]) => void;
   // Extraction
   summaries: ManifestSummary[];
   declarations: ManifestDeclaration[];
@@ -158,6 +159,7 @@ export function ManifestItemDetail({
   parentItem,
   onSelectPart,
   onBackToParent,
+  onProcessParts,
 }: ManifestItemDetailProps) {
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(item.title);
@@ -525,50 +527,75 @@ export function ManifestItemDetail({
       )}
 
       {/* Parts Section — shown for parent items that have been split */}
-      {isParentWithParts && childParts && childParts.length > 0 && (
-        <section className="manifest-detail__section">
-          <h3 className="manifest-detail__section-title">Parts ({childParts.length})</h3>
-          <p className="manifest-detail__parts-info">
-            This book has been split into {childParts.length} parts for extraction. Select a part to view or extract.
-          </p>
-          <div className="manifest-detail__parts-list">
-            {childParts.map((part) => {
-              const partProcessing = part.processing_status === 'pending' || part.processing_status === 'processing';
-              const partFailed = part.processing_status === 'failed';
-              const partExtracted = part.extraction_status === 'completed';
-              return (
-                <button
-                  key={part.id}
-                  type="button"
-                  className="manifest-detail__part-card"
-                  onClick={() => onSelectPart?.(part)}
+      {isParentWithParts && childParts && childParts.length > 0 && (() => {
+        const stuckParts = childParts.filter((p) => p.processing_status !== 'completed');
+        const processingParts = childParts.filter((p) => p.processing_status === 'processing');
+        const hasStuckParts = stuckParts.length > 0;
+        const isProcessingParts = processingParts.length > 0;
+        return (
+          <section className="manifest-detail__section">
+            <div className="manifest-detail__section-header">
+              <h3 className="manifest-detail__section-title">Parts ({childParts.length})</h3>
+              {hasStuckParts && onProcessParts && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => onProcessParts(item.id, childParts)}
+                  disabled={isProcessingParts}
                 >
-                  <div className="manifest-detail__part-info">
-                    <span className="manifest-detail__part-title">
-                      {part.part_number ? `Part ${part.part_number}: ` : ''}
-                      {part.title.replace(`${item.title} — `, '')}
-                    </span>
-                    {part.chunk_count > 0 && (
-                      <span className="manifest-detail__part-meta">
-                        {part.chunk_count} chunks indexed
+                  <RefreshCw size={14} className={isProcessingParts ? 'spin' : ''} />
+                  {isProcessingParts
+                    ? `Processing ${processingParts.length}/${childParts.length}...`
+                    : `Process ${stuckParts.length} Part${stuckParts.length > 1 ? 's' : ''}`}
+                </Button>
+              )}
+            </div>
+            <p className="manifest-detail__parts-info">
+              This book has been split into {childParts.length} parts for extraction. Select a part to view or extract.
+            </p>
+            <div className="manifest-detail__parts-list">
+              {childParts.map((part) => {
+                const partProcessing = part.processing_status === 'pending' || part.processing_status === 'processing';
+                const partFailed = part.processing_status === 'failed';
+                const partExtracted = part.extraction_status === 'completed' || part.extraction_status === 'failed';
+                return (
+                  <button
+                    key={part.id}
+                    type="button"
+                    className="manifest-detail__part-card"
+                    onClick={() => onSelectPart?.(part)}
+                  >
+                    <div className="manifest-detail__part-info">
+                      <span className="manifest-detail__part-title">
+                        {part.part_number ? `Part ${part.part_number}: ` : ''}
+                        {part.title.replace(`${item.title} — `, '')}
                       </span>
-                    )}
-                  </div>
-                  <div className="manifest-detail__part-status">
-                    {partProcessing && <span className="manifest-detail__part-badge manifest-detail__part-badge--processing">Processing</span>}
-                    {partFailed && <span className="manifest-detail__part-badge manifest-detail__part-badge--failed">Failed</span>}
-                    {partExtracted && <span className="manifest-detail__part-badge manifest-detail__part-badge--extracted">Extracted</span>}
-                    {part.processing_status === 'completed' && !partExtracted && (
-                      <span className="manifest-detail__part-badge manifest-detail__part-badge--ready">Ready</span>
-                    )}
-                  </div>
-                  <ChevronRight size={16} className="manifest-detail__part-chevron" />
-                </button>
-              );
-            })}
-          </div>
-        </section>
-      )}
+                      {part.chunk_count > 0 && (
+                        <span className="manifest-detail__part-meta">
+                          {part.chunk_count} chunks indexed
+                        </span>
+                      )}
+                    </div>
+                    <div className="manifest-detail__part-status">
+                      {partProcessing && (
+                        <span className="manifest-detail__part-badge manifest-detail__part-badge--processing">
+                          {part.processing_detail || 'Processing'}
+                        </span>
+                      )}
+                      {partFailed && <span className="manifest-detail__part-badge manifest-detail__part-badge--failed">Failed</span>}
+                      {partExtracted && <span className="manifest-detail__part-badge manifest-detail__part-badge--extracted">Extracted</span>}
+                      {part.processing_status === 'completed' && !partExtracted && (
+                        <span className="manifest-detail__part-badge manifest-detail__part-badge--ready">Ready</span>
+                      )}
+                    </div>
+                    <ChevronRight size={16} className="manifest-detail__part-chevron" />
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })()}
 
       {/* Extract Section — genre picker + section discovery + extract */}
       {isProcessed && !isParentWithParts && (
