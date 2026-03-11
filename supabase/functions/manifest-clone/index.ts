@@ -6,6 +6,477 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// deno-lint-ignore no-explicit-any
+type SupabaseClient = any;
+
+// --- Helper: clone extractions from one item to a target user's cloned item ---
+async function cloneExtractionsForItem(
+  supabase: SupabaseClient,
+  sourceItemId: string,
+  sourceUserId: string,
+  targetUserId: string,
+  clonedItemId: string,
+  forceUpdate: boolean,
+): Promise<boolean> {
+  // Fetch source extraction data
+  const [summariesRes, frameworksRes, declarationsRes, actionStepsRes] = await Promise.all([
+    supabase
+      .from('manifest_summaries')
+      .select('*')
+      .eq('manifest_item_id', sourceItemId)
+      .eq('user_id', sourceUserId)
+      .eq('is_deleted', false),
+    supabase
+      .from('ai_frameworks')
+      .select('*, ai_framework_principles(*)')
+      .eq('manifest_item_id', sourceItemId)
+      .eq('user_id', sourceUserId)
+      .is('archived_at', null),
+    supabase
+      .from('manifest_declarations')
+      .select('*')
+      .eq('manifest_item_id', sourceItemId)
+      .eq('user_id', sourceUserId)
+      .eq('is_deleted', false),
+    supabase
+      .from('manifest_action_steps')
+      .select('*')
+      .eq('manifest_item_id', sourceItemId)
+      .eq('user_id', sourceUserId)
+      .eq('is_deleted', false),
+  ]);
+
+  // deno-lint-ignore no-explicit-any
+  const sourceSummaries = (summariesRes.data || []) as Record<string, any>[];
+  // deno-lint-ignore no-explicit-any
+  const sourceFrameworks = (frameworksRes.data || []) as Record<string, any>[];
+  // deno-lint-ignore no-explicit-any
+  const sourceDeclarations = (declarationsRes.data || []) as Record<string, any>[];
+  // deno-lint-ignore no-explicit-any
+  const sourceActionSteps = (actionStepsRes.data || []) as Record<string, any>[];
+
+  const hasExtractions = sourceSummaries.length > 0 || sourceFrameworks.length > 0 ||
+    sourceDeclarations.length > 0 || sourceActionSteps.length > 0;
+
+  if (!hasExtractions) return false;
+
+  // Check if target already has extractions
+  const { data: existingSummaries } = await supabase
+    .from('manifest_summaries')
+    .select('id')
+    .eq('manifest_item_id', clonedItemId)
+    .eq('user_id', targetUserId)
+    .limit(1);
+
+  if (existingSummaries && existingSummaries.length > 0) {
+    if (!forceUpdate) {
+      console.log(`[manifest-clone] User ${targetUserId} already has extractions for ${clonedItemId}, skipping`);
+      return false;
+    }
+    // Curation-aware merge
+    await mergeExtractions(supabase, targetUserId, clonedItemId, sourceSummaries, sourceFrameworks, sourceDeclarations, sourceActionSteps);
+  } else {
+    // Fresh clone
+    await freshCloneExtractions(supabase, targetUserId, clonedItemId, sourceSummaries, sourceFrameworks, sourceDeclarations, sourceActionSteps);
+  }
+
+  return true;
+}
+
+// --- Helper: fresh clone extractions (no existing data) ---
+async function freshCloneExtractions(
+  supabase: SupabaseClient,
+  targetUserId: string,
+  clonedItemId: string,
+  // deno-lint-ignore no-explicit-any
+  sourceSummaries: Record<string, any>[],
+  // deno-lint-ignore no-explicit-any
+  sourceFrameworks: Record<string, any>[],
+  // deno-lint-ignore no-explicit-any
+  sourceDeclarations: Record<string, any>[],
+  // deno-lint-ignore no-explicit-any
+  sourceActionSteps: Record<string, any>[],
+) {
+  // Clone summaries
+  if (sourceSummaries.length > 0) {
+    const records = sourceSummaries.map((s) => ({
+      user_id: targetUserId,
+      manifest_item_id: clonedItemId,
+      section_title: s.section_title,
+      section_index: s.section_index,
+      content_type: s.content_type,
+      text: s.text,
+      sort_order: s.sort_order,
+      is_hearted: false,
+      is_deleted: false,
+      is_from_go_deeper: s.is_from_go_deeper || false,
+    }));
+    await supabase.from('manifest_summaries').insert(records);
+  }
+
+  // Clone frameworks + principles
+  for (const fw of sourceFrameworks) {
+    const principles = (fw.ai_framework_principles || []) as Array<Record<string, unknown>>;
+
+    const { data: newFw } = await supabase
+      .from('ai_frameworks')
+      .insert({
+        user_id: targetUserId,
+        manifest_item_id: clonedItemId,
+        name: fw.name,
+        is_active: true,
+      })
+      .select('id')
+      .single();
+
+    if (newFw && principles.length > 0) {
+      const principleRecords = principles.map((p) => ({
+        user_id: targetUserId,
+        framework_id: newFw.id,
+        text: p.text,
+        sort_order: p.sort_order,
+        section_title: p.section_title || null,
+        is_hearted: false,
+        is_deleted: false,
+        is_from_go_deeper: p.is_from_go_deeper || false,
+      }));
+      await supabase.from('ai_framework_principles').insert(principleRecords);
+    }
+  }
+
+  // Clone declarations
+  if (sourceDeclarations.length > 0) {
+    const records = sourceDeclarations.map((d) => ({
+      user_id: targetUserId,
+      manifest_item_id: clonedItemId,
+      section_title: d.section_title,
+      section_index: d.section_index,
+      value_name: d.value_name,
+      declaration_text: d.declaration_text,
+      declaration_style: d.declaration_style,
+      sort_order: d.sort_order,
+      is_hearted: false,
+      is_deleted: false,
+      is_from_go_deeper: d.is_from_go_deeper || false,
+      sent_to_mast: false,
+    }));
+    await supabase.from('manifest_declarations').insert(records);
+  }
+
+  // Clone action steps
+  if (sourceActionSteps.length > 0) {
+    const records = sourceActionSteps.map((a) => ({
+      user_id: targetUserId,
+      manifest_item_id: clonedItemId,
+      section_title: a.section_title,
+      section_index: a.section_index,
+      content_type: a.content_type,
+      text: a.text,
+      sort_order: a.sort_order,
+      is_hearted: false,
+      is_deleted: false,
+      is_from_go_deeper: a.is_from_go_deeper || false,
+      sent_to_compass: false,
+    }));
+    await supabase.from('manifest_action_steps').insert(records);
+  }
+}
+
+// --- Helper: curation-aware merge of extractions ---
+async function mergeExtractions(
+  supabase: SupabaseClient,
+  targetUserId: string,
+  clonedItemId: string,
+  // deno-lint-ignore no-explicit-any
+  sourceSummaries: Record<string, any>[],
+  // deno-lint-ignore no-explicit-any
+  sourceFrameworks: Record<string, any>[],
+  // deno-lint-ignore no-explicit-any
+  sourceDeclarations: Record<string, any>[],
+  // deno-lint-ignore no-explicit-any
+  sourceActionSteps: Record<string, any>[],
+) {
+  console.log(`[manifest-clone] Curation-aware merge for user ${targetUserId}, item ${clonedItemId}`);
+
+  // --- Summaries merge ---
+  const { data: targetSummaries } = await supabase
+    .from('manifest_summaries')
+    .select('id, text, section_title, section_index, is_hearted, is_deleted, user_note')
+    .eq('manifest_item_id', clonedItemId)
+    .eq('user_id', targetUserId);
+
+  const preservedSummaryKeys = new Set(
+    (targetSummaries || [])
+      .filter((s: Record<string, unknown>) => s.is_hearted || s.user_note)
+      .map((s: Record<string, unknown>) => `${s.text}||${s.section_title}||${s.section_index}`),
+  );
+
+  // Delete neutral items
+  await supabase
+    .from('manifest_summaries')
+    .delete()
+    .eq('manifest_item_id', clonedItemId)
+    .eq('user_id', targetUserId)
+    .eq('is_hearted', false)
+    .eq('is_deleted', false)
+    .is('user_note', null);
+
+  // Insert non-duplicate source summaries
+  const newSummaries = sourceSummaries
+    .filter((s) => !preservedSummaryKeys.has(`${s.text}||${s.section_title}||${s.section_index}`))
+    .map((s) => ({
+      user_id: targetUserId,
+      manifest_item_id: clonedItemId,
+      section_title: s.section_title,
+      section_index: s.section_index,
+      content_type: s.content_type,
+      text: s.text,
+      sort_order: s.sort_order,
+      is_hearted: false,
+      is_deleted: false,
+      is_from_go_deeper: s.is_from_go_deeper || false,
+    }));
+  if (newSummaries.length > 0) {
+    await supabase.from('manifest_summaries').insert(newSummaries);
+  }
+
+  // --- Declarations merge ---
+  const { data: targetDeclarations } = await supabase
+    .from('manifest_declarations')
+    .select('id, declaration_text, section_title, section_index, is_hearted, is_deleted, sent_to_mast, user_note')
+    .eq('manifest_item_id', clonedItemId)
+    .eq('user_id', targetUserId);
+
+  const preservedDeclKeys = new Set(
+    (targetDeclarations || [])
+      .filter((d: Record<string, unknown>) => d.is_hearted || d.sent_to_mast || d.user_note)
+      .map((d: Record<string, unknown>) => `${d.declaration_text}||${d.section_title}||${d.section_index}`),
+  );
+
+  await supabase
+    .from('manifest_declarations')
+    .delete()
+    .eq('manifest_item_id', clonedItemId)
+    .eq('user_id', targetUserId)
+    .eq('is_hearted', false)
+    .eq('is_deleted', false)
+    .eq('sent_to_mast', false)
+    .is('user_note', null);
+
+  const newDeclarations = sourceDeclarations
+    .filter((d) => !preservedDeclKeys.has(`${d.declaration_text}||${d.section_title}||${d.section_index}`))
+    .map((d) => ({
+      user_id: targetUserId,
+      manifest_item_id: clonedItemId,
+      section_title: d.section_title,
+      section_index: d.section_index,
+      value_name: d.value_name,
+      declaration_text: d.declaration_text,
+      declaration_style: d.declaration_style,
+      sort_order: d.sort_order,
+      is_hearted: false,
+      is_deleted: false,
+      is_from_go_deeper: d.is_from_go_deeper || false,
+      sent_to_mast: false,
+    }));
+  if (newDeclarations.length > 0) {
+    await supabase.from('manifest_declarations').insert(newDeclarations);
+  }
+
+  // --- Frameworks merge ---
+  const { data: targetFw } = await supabase
+    .from('ai_frameworks')
+    .select('id, is_active')
+    .eq('manifest_item_id', clonedItemId)
+    .eq('user_id', targetUserId)
+    .is('archived_at', null)
+    .maybeSingle();
+
+  for (const fw of sourceFrameworks) {
+    const sourcePrinciples = (fw.ai_framework_principles || []) as Array<Record<string, unknown>>;
+
+    if (targetFw) {
+      await supabase.from('ai_frameworks').update({ name: fw.name }).eq('id', targetFw.id);
+
+      const { data: targetPrinciples } = await supabase
+        .from('ai_framework_principles')
+        .select('id, text, section_title, is_hearted, is_deleted, user_note')
+        .eq('framework_id', targetFw.id)
+        .eq('user_id', targetUserId);
+
+      const preservedPrincipleKeys = new Set(
+        (targetPrinciples || [])
+          .filter((p: Record<string, unknown>) => p.is_hearted || p.user_note)
+          .map((p: Record<string, unknown>) => `${p.text}||${p.section_title}`),
+      );
+
+      // Delete neutral principles (also check user_note is null)
+      await supabase
+        .from('ai_framework_principles')
+        .delete()
+        .eq('framework_id', targetFw.id)
+        .eq('user_id', targetUserId)
+        .eq('is_hearted', false)
+        .eq('is_deleted', false)
+        .is('user_note', null);
+
+      const newPrinciples = sourcePrinciples
+        .filter((p) => !preservedPrincipleKeys.has(`${p.text}||${p.section_title}`))
+        .map((p) => ({
+          user_id: targetUserId,
+          framework_id: targetFw.id,
+          text: p.text,
+          sort_order: p.sort_order,
+          section_title: p.section_title || null,
+          is_hearted: false,
+          is_deleted: false,
+          is_from_go_deeper: p.is_from_go_deeper || false,
+        }));
+      if (newPrinciples.length > 0) {
+        await supabase.from('ai_framework_principles').insert(newPrinciples);
+      }
+    } else {
+      const { data: newFw } = await supabase
+        .from('ai_frameworks')
+        .insert({
+          user_id: targetUserId,
+          manifest_item_id: clonedItemId,
+          name: fw.name,
+          is_active: true,
+        })
+        .select('id')
+        .single();
+
+      if (newFw && sourcePrinciples.length > 0) {
+        const principleRecords = sourcePrinciples.map((p) => ({
+          user_id: targetUserId,
+          framework_id: newFw.id,
+          text: p.text,
+          sort_order: p.sort_order,
+          section_title: p.section_title || null,
+          is_hearted: false,
+          is_deleted: false,
+          is_from_go_deeper: p.is_from_go_deeper || false,
+        }));
+        await supabase.from('ai_framework_principles').insert(principleRecords);
+      }
+    }
+  }
+
+  // --- Action Steps merge ---
+  const { data: targetActionSteps } = await supabase
+    .from('manifest_action_steps')
+    .select('id, text, section_title, section_index, is_hearted, is_deleted, sent_to_compass, user_note')
+    .eq('manifest_item_id', clonedItemId)
+    .eq('user_id', targetUserId);
+
+  const preservedActionStepKeys = new Set(
+    (targetActionSteps || [])
+      .filter((a: Record<string, unknown>) => a.is_hearted || a.sent_to_compass || a.user_note)
+      .map((a: Record<string, unknown>) => `${a.text}||${a.section_title}||${a.section_index}`),
+  );
+
+  await supabase
+    .from('manifest_action_steps')
+    .delete()
+    .eq('manifest_item_id', clonedItemId)
+    .eq('user_id', targetUserId)
+    .eq('is_hearted', false)
+    .eq('is_deleted', false)
+    .eq('sent_to_compass', false)
+    .is('user_note', null);
+
+  const newActionSteps = sourceActionSteps
+    .filter((a) => !preservedActionStepKeys.has(`${a.text}||${a.section_title}||${a.section_index}`))
+    .map((a) => ({
+      user_id: targetUserId,
+      manifest_item_id: clonedItemId,
+      section_title: a.section_title,
+      section_index: a.section_index,
+      content_type: a.content_type,
+      text: a.text,
+      sort_order: a.sort_order,
+      is_hearted: false,
+      is_deleted: false,
+      is_from_go_deeper: a.is_from_go_deeper || false,
+      sent_to_compass: false,
+    }));
+  if (newActionSteps.length > 0) {
+    await supabase.from('manifest_action_steps').insert(newActionSteps);
+  }
+}
+
+// --- Helper: clone a single item to target users, returns map of userId → clonedItemId ---
+async function cloneItemToUsers(
+  supabase: SupabaseClient,
+  // deno-lint-ignore no-explicit-any
+  originalItem: Record<string, any>,
+  sourceId: string,
+  sourceUserId: string,
+  targetUserIds: string[],
+  parentCloneMap?: Map<string, string>, // userId → cloned parent ID (for child parts)
+): Promise<{ clonedItemMap: Map<string, string>; newCount: number }> {
+  const clonedItemMap = new Map<string, string>();
+
+  // Check which users already have a clone of this item
+  const { data: existingClones } = await supabase
+    .from('manifest_items')
+    .select('id, user_id')
+    .eq('source_manifest_item_id', sourceId);
+
+  const existingUserIds = new Set((existingClones || []).map((c: { user_id: string }) => c.user_id));
+  const newTargetIds = targetUserIds.filter((uid) => !existingUserIds.has(uid));
+
+  // Create cloned items for new users
+  if (newTargetIds.length > 0) {
+    const itemRecords = newTargetIds.map((uid) => ({
+      user_id: uid,
+      title: originalItem.title,
+      file_type: originalItem.file_type,
+      file_name: originalItem.file_name,
+      storage_path: originalItem.storage_path,
+      text_content: originalItem.text_content,
+      file_size_bytes: originalItem.file_size_bytes,
+      tags: originalItem.tags || [],
+      folder_group: originalItem.folder_group || 'uncategorized',
+      genres: originalItem.genres || [],
+      ai_summary: originalItem.ai_summary,
+      toc: originalItem.toc,
+      chunk_count: originalItem.chunk_count || 0,
+      processing_status: 'completed',
+      extraction_status: originalItem.extraction_status || 'none',
+      intake_completed: true,
+      source_manifest_item_id: sourceId,
+      part_number: originalItem.part_number || null,
+      part_count: originalItem.part_count || null,
+      parent_manifest_item_id: parentCloneMap?.get(uid) || null,
+    }));
+
+    const { data: inserted, error: insertErr } = await supabase
+      .from('manifest_items')
+      .insert(itemRecords)
+      .select('id, user_id');
+
+    if (insertErr) {
+      console.error('[manifest-clone] Failed to insert cloned items:', insertErr);
+      throw new Error(`Clone failed: ${insertErr.message}`);
+    }
+
+    for (const item of inserted || []) {
+      clonedItemMap.set(item.user_id, item.id);
+    }
+  }
+
+  // Fetch existing clone IDs for users who already had them
+  for (const clone of existingClones || []) {
+    if (!clonedItemMap.has(clone.user_id)) {
+      clonedItemMap.set(clone.user_id, clone.id);
+    }
+  }
+
+  return { clonedItemMap, newCount: newTargetIds.length };
+}
+
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -97,460 +568,98 @@ serve(async (req: Request) => {
       );
     }
 
-    // 3. Check which users already have a clone of this item
-    const { data: existingClones } = await supabase
+    // 3. Clone the main/parent item to all target users
+    const { clonedItemMap, newCount } = await cloneItemToUsers(
+      supabase, originalItem, sourceId, sourceUserId, targetUserIds,
+    );
+
+    console.log(`[manifest-clone] Cloned parent item to ${newCount} new users (${clonedItemMap.size} total)`);
+
+    // 4. Handle multi-part books: clone child parts too
+    let childrenCloned = 0;
+    const { data: childParts } = await supabase
       .from('manifest_items')
-      .select('user_id')
-      .eq('source_manifest_item_id', sourceId);
+      .select('*')
+      .eq('parent_manifest_item_id', sourceId)
+      .eq('user_id', sourceUserId)
+      .order('part_number');
 
-    const existingUserIds = new Set((existingClones || []).map((c: { user_id: string }) => c.user_id));
+    if (childParts && childParts.length > 0) {
+      console.log(`[manifest-clone] Found ${childParts.length} child parts to clone`);
 
-    // Filter to users who don't have a clone yet
-    const newTargetIds = targetUserIds.filter((uid: string) => !existingUserIds.has(uid));
-
-    // 4. Clone manifest_items for new users
-    const clonedItemMap = new Map<string, string>(); // userId → clonedItemId
-
-    if (newTargetIds.length > 0) {
-      const itemRecords = newTargetIds.map((uid: string) => ({
-        user_id: uid,
-        title: originalItem.title,
-        file_type: originalItem.file_type,
-        file_name: originalItem.file_name,
-        storage_path: originalItem.storage_path,
-        text_content: originalItem.text_content,
-        file_size_bytes: originalItem.file_size_bytes,
-        tags: originalItem.tags || [],
-        folder_group: originalItem.folder_group || 'uncategorized',
-        genres: originalItem.genres || [],
-        ai_summary: originalItem.ai_summary,
-        toc: originalItem.toc,
-        chunk_count: originalItem.chunk_count || 0,
-        processing_status: 'completed',
-        extraction_status: originalItem.extraction_status || 'none',
-        intake_completed: true,
-        source_manifest_item_id: sourceId,
-      }));
-
-      const { data: inserted, error: insertErr } = await supabase
-        .from('manifest_items')
-        .insert(itemRecords)
-        .select('id, user_id');
-
-      if (insertErr) {
-        console.error('[manifest-clone] Failed to insert cloned items:', insertErr);
-        return new Response(
-          JSON.stringify({ error: `Clone failed: ${insertErr.message}` }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-        );
-      }
-
-      for (const item of inserted || []) {
-        clonedItemMap.set(item.user_id, item.id);
-      }
-
-      console.log(`[manifest-clone] Cloned manifest_items to ${inserted?.length || 0} users`);
-    }
-
-    // For users who already had clones, fetch their cloned item IDs
-    if (existingClones && existingClones.length > 0) {
-      const { data: existingItems } = await supabase
-        .from('manifest_items')
-        .select('id, user_id')
-        .eq('source_manifest_item_id', sourceId);
-
-      for (const item of existingItems || []) {
-        if (!clonedItemMap.has(item.user_id)) {
-          clonedItemMap.set(item.user_id, item.id);
+      for (const child of childParts) {
+        try {
+          const { newCount: childNew } = await cloneItemToUsers(
+            supabase, child, child.id, sourceUserId, targetUserIds, clonedItemMap,
+          );
+          childrenCloned += childNew;
+        } catch (err) {
+          console.error(`[manifest-clone] Failed to clone child part ${child.id}:`, err);
         }
       }
     }
 
     // 5. Clone extractions if requested
     let extractionsCopied = 0;
-    if (clone_extractions && originalItem.extraction_status === 'completed') {
-      // Fetch source extraction data
-      const [summariesRes, frameworksRes, declarationsRes, actionStepsRes] = await Promise.all([
-        supabase
-          .from('manifest_summaries')
-          .select('*')
-          .eq('manifest_item_id', sourceId)
-          .eq('user_id', sourceUserId)
-          .eq('is_deleted', false),
-        supabase
-          .from('ai_frameworks')
-          .select('*, ai_framework_principles(*)')
-          .eq('manifest_item_id', sourceId)
-          .eq('user_id', sourceUserId)
-          .is('archived_at', null),
-        supabase
-          .from('manifest_declarations')
-          .select('*')
-          .eq('manifest_item_id', sourceId)
-          .eq('user_id', sourceUserId)
-          .eq('is_deleted', false),
-        supabase
-          .from('manifest_action_steps')
-          .select('*')
-          .eq('manifest_item_id', sourceId)
-          .eq('user_id', sourceUserId)
-          .eq('is_deleted', false),
-      ]);
-
-      const sourceSummaries = summariesRes.data || [];
-      const sourceFrameworks = frameworksRes.data || [];
-      const sourceDeclarations = declarationsRes.data || [];
-      const sourceActionSteps = actionStepsRes.data || [];
-
-      for (const [targetUserId, clonedItemId] of clonedItemMap.entries()) {
-        if (targetUserId === sourceUserId) continue;
-
-        try {
-          // Check if this user already has extractions for this cloned item
-          const { data: existingSummaries } = await supabase
-            .from('manifest_summaries')
-            .select('id')
-            .eq('manifest_item_id', clonedItemId)
-            .eq('user_id', targetUserId)
-            .limit(1);
-
-          if (existingSummaries && existingSummaries.length > 0) {
-            if (!force_update) {
-              console.log(`[manifest-clone] User ${targetUserId} already has extractions, skipping (no force_update)`);
-              continue;
-            }
-
-            // --- Curation-aware merge ---
-            console.log(`[manifest-clone] Force updating extractions for user ${targetUserId}`);
-
-            // --- Summaries merge ---
-            const { data: targetSummaries } = await supabase
-              .from('manifest_summaries')
-              .select('id, text, section_title, section_index, is_hearted, is_deleted')
-              .eq('manifest_item_id', clonedItemId)
-              .eq('user_id', targetUserId);
-
-            const heartedSummaries = (targetSummaries || []).filter((s: Record<string, unknown>) => s.is_hearted);
-            const heartedSummaryKeys = new Set(
-              heartedSummaries.map((s: Record<string, unknown>) => `${s.text}||${s.section_title}||${s.section_index}`),
+    if (clone_extractions) {
+      // Clone extractions for the main item
+      if (originalItem.extraction_status === 'completed') {
+        for (const [targetUserId, clonedItemId] of clonedItemMap.entries()) {
+          if (targetUserId === sourceUserId) continue;
+          try {
+            const copied = await cloneExtractionsForItem(
+              supabase, sourceId, sourceUserId, targetUserId, clonedItemId, !!force_update,
             );
-
-            // Delete neutral items (not hearted, not deleted)
-            await supabase
-              .from('manifest_summaries')
-              .delete()
-              .eq('manifest_item_id', clonedItemId)
-              .eq('user_id', targetUserId)
-              .eq('is_hearted', false)
-              .eq('is_deleted', false);
-
-            // Insert source summaries that don't duplicate hearted items
-            const newSummaries = sourceSummaries
-              .filter((s: Record<string, unknown>) =>
-                !heartedSummaryKeys.has(`${s.text}||${s.section_title}||${s.section_index}`),
-              )
-              .map((s: Record<string, unknown>) => ({
-                user_id: targetUserId,
-                manifest_item_id: clonedItemId,
-                section_title: s.section_title,
-                section_index: s.section_index,
-                content_type: s.content_type,
-                text: s.text,
-                sort_order: s.sort_order,
-                is_hearted: false,
-                is_deleted: false,
-                is_from_go_deeper: s.is_from_go_deeper || false,
-              }));
-
-            if (newSummaries.length > 0) {
-              await supabase.from('manifest_summaries').insert(newSummaries);
+            if (copied) {
+              await supabase
+                .from('manifest_items')
+                .update({
+                  extraction_status: 'completed',
+                  genres: originalItem.genres || [],
+                  ai_summary: originalItem.ai_summary,
+                  toc: originalItem.toc,
+                })
+                .eq('id', clonedItemId);
+              extractionsCopied++;
             }
-
-            // --- Declarations merge ---
-            const { data: targetDeclarations } = await supabase
-              .from('manifest_declarations')
-              .select('id, declaration_text, section_title, section_index, is_hearted, is_deleted, sent_to_mast, mast_entry_id')
-              .eq('manifest_item_id', clonedItemId)
-              .eq('user_id', targetUserId);
-
-            const heartedDeclarations = (targetDeclarations || []).filter((d: Record<string, unknown>) => d.is_hearted);
-            const heartedDeclKeys = new Set(
-              heartedDeclarations.map((d: Record<string, unknown>) => `${d.declaration_text}||${d.section_title}||${d.section_index}`),
-            );
-
-            // Delete neutral declarations
-            await supabase
-              .from('manifest_declarations')
-              .delete()
-              .eq('manifest_item_id', clonedItemId)
-              .eq('user_id', targetUserId)
-              .eq('is_hearted', false)
-              .eq('is_deleted', false);
-
-            // Insert source declarations that don't duplicate hearted items
-            const newDeclarations = sourceDeclarations
-              .filter((d: Record<string, unknown>) =>
-                !heartedDeclKeys.has(`${d.declaration_text}||${d.section_title}||${d.section_index}`),
-              )
-              .map((d: Record<string, unknown>) => ({
-                user_id: targetUserId,
-                manifest_item_id: clonedItemId,
-                section_title: d.section_title,
-                section_index: d.section_index,
-                value_name: d.value_name,
-                declaration_text: d.declaration_text,
-                declaration_style: d.declaration_style,
-                sort_order: d.sort_order,
-                is_hearted: false,
-                is_deleted: false,
-                is_from_go_deeper: d.is_from_go_deeper || false,
-                sent_to_mast: false,
-              }));
-
-            if (newDeclarations.length > 0) {
-              await supabase.from('manifest_declarations').insert(newDeclarations);
-            }
-
-            // --- Frameworks merge ---
-            const { data: targetFw } = await supabase
-              .from('ai_frameworks')
-              .select('id, is_active')
-              .eq('manifest_item_id', clonedItemId)
-              .eq('user_id', targetUserId)
-              .is('archived_at', null)
-              .maybeSingle();
-
-            for (const fw of sourceFrameworks) {
-              const sourcePrinciples = (fw as Record<string, unknown>).ai_framework_principles as Array<Record<string, unknown>> || [];
-
-              if (targetFw) {
-                // Update framework name, preserve is_active
-                await supabase
-                  .from('ai_frameworks')
-                  .update({ name: fw.name })
-                  .eq('id', targetFw.id);
-
-                // Get existing principles
-                const { data: targetPrinciples } = await supabase
-                  .from('ai_framework_principles')
-                  .select('id, text, section_title, is_hearted, is_deleted')
-                  .eq('framework_id', targetFw.id)
-                  .eq('user_id', targetUserId);
-
-                const heartedPrinciples = (targetPrinciples || []).filter((p: Record<string, unknown>) => p.is_hearted);
-                const heartedPrincipleKeys = new Set(
-                  heartedPrinciples.map((p: Record<string, unknown>) => `${p.text}||${p.section_title}`),
-                );
-
-                // Delete neutral principles
-                await supabase
-                  .from('ai_framework_principles')
-                  .delete()
-                  .eq('framework_id', targetFw.id)
-                  .eq('user_id', targetUserId)
-                  .eq('is_hearted', false)
-                  .eq('is_deleted', false);
-
-                // Insert non-duplicate source principles
-                const newPrinciples = sourcePrinciples
-                  .filter((p: Record<string, unknown>) =>
-                    !heartedPrincipleKeys.has(`${p.text}||${p.section_title}`),
-                  )
-                  .map((p: Record<string, unknown>) => ({
-                    user_id: targetUserId,
-                    framework_id: targetFw.id,
-                    text: p.text,
-                    sort_order: p.sort_order,
-                    section_title: p.section_title || null,
-                    is_hearted: false,
-                    is_deleted: false,
-                    is_from_go_deeper: p.is_from_go_deeper || false,
-                  }));
-
-                if (newPrinciples.length > 0) {
-                  await supabase.from('ai_framework_principles').insert(newPrinciples);
-                }
-              } else {
-                // No existing framework — create fresh
-                const { data: newFw } = await supabase
-                  .from('ai_frameworks')
-                  .insert({
-                    user_id: targetUserId,
-                    manifest_item_id: clonedItemId,
-                    name: fw.name,
-                    is_active: true,
-                  })
-                  .select('id')
-                  .single();
-
-                if (newFw && sourcePrinciples.length > 0) {
-                  const principleRecords = sourcePrinciples.map((p: Record<string, unknown>) => ({
-                    user_id: targetUserId,
-                    framework_id: newFw.id,
-                    text: p.text,
-                    sort_order: p.sort_order,
-                    section_title: p.section_title || null,
-                    is_hearted: false,
-                    is_deleted: false,
-                    is_from_go_deeper: p.is_from_go_deeper || false,
-                  }));
-                  await supabase.from('ai_framework_principles').insert(principleRecords);
-                }
-              }
-            }
-
-            // --- Action Steps merge ---
-            const { data: targetActionSteps } = await supabase
-              .from('manifest_action_steps')
-              .select('id, text, section_title, section_index, is_hearted, is_deleted')
-              .eq('manifest_item_id', clonedItemId)
-              .eq('user_id', targetUserId);
-
-            const heartedActionSteps = (targetActionSteps || []).filter((a: Record<string, unknown>) => a.is_hearted);
-            const heartedActionStepKeys = new Set(
-              heartedActionSteps.map((a: Record<string, unknown>) => `${a.text}||${a.section_title}||${a.section_index}`),
-            );
-
-            // Delete neutral action steps
-            await supabase
-              .from('manifest_action_steps')
-              .delete()
-              .eq('manifest_item_id', clonedItemId)
-              .eq('user_id', targetUserId)
-              .eq('is_hearted', false)
-              .eq('is_deleted', false);
-
-            // Insert source action steps that don't duplicate hearted items
-            const newActionSteps = sourceActionSteps
-              .filter((a: Record<string, unknown>) =>
-                !heartedActionStepKeys.has(`${a.text}||${a.section_title}||${a.section_index}`),
-              )
-              .map((a: Record<string, unknown>) => ({
-                user_id: targetUserId,
-                manifest_item_id: clonedItemId,
-                section_title: a.section_title,
-                section_index: a.section_index,
-                content_type: a.content_type,
-                text: a.text,
-                sort_order: a.sort_order,
-                is_hearted: false,
-                is_deleted: false,
-                is_from_go_deeper: a.is_from_go_deeper || false,
-                sent_to_compass: false,
-              }));
-
-            if (newActionSteps.length > 0) {
-              await supabase.from('manifest_action_steps').insert(newActionSteps);
-            }
-
-            // Update cloned item metadata (extraction_status, genres, ai_summary, toc)
-            await supabase
-              .from('manifest_items')
-              .update({
-                extraction_status: 'completed',
-                genres: originalItem.genres || [],
-                ai_summary: originalItem.ai_summary,
-                toc: originalItem.toc,
-              })
-              .eq('id', clonedItemId);
-
-            extractionsCopied++;
-            continue;
+          } catch (err) {
+            console.error(`[manifest-clone] Failed to clone extractions for user ${targetUserId}:`, err);
           }
+        }
+      }
 
-          // Clone summaries (fresh — no existing extractions)
-          if (sourceSummaries.length > 0) {
-            const summaryRecords = sourceSummaries.map((s: Record<string, unknown>) => ({
-              user_id: targetUserId,
-              manifest_item_id: clonedItemId,
-              section_title: s.section_title,
-              section_index: s.section_index,
-              content_type: s.content_type,
-              text: s.text,
-              sort_order: s.sort_order,
-              is_hearted: false,
-              is_deleted: false,
-              is_from_go_deeper: s.is_from_go_deeper || false,
-            }));
-            await supabase.from('manifest_summaries').insert(summaryRecords);
-          }
+      // Clone extractions for child parts
+      if (childParts && childParts.length > 0) {
+        for (const child of childParts) {
+          if (child.extraction_status !== 'completed') continue;
 
-          // Clone frameworks + principles
-          for (const fw of sourceFrameworks) {
-            const principles = (fw as Record<string, unknown>).ai_framework_principles as Array<Record<string, unknown>> || [];
-
-            const { data: newFw } = await supabase
-              .from('ai_frameworks')
-              .insert({
-                user_id: targetUserId,
-                manifest_item_id: clonedItemId,
-                name: fw.name,
-                is_active: true,
-              })
-              .select('id')
-              .single();
-
-            if (newFw && principles.length > 0) {
-              const principleRecords = principles.map((p: Record<string, unknown>) => ({
-                user_id: targetUserId,
-                framework_id: newFw.id,
-                text: p.text,
-                sort_order: p.sort_order,
-                section_title: p.section_title || null,
-                is_hearted: false,
-                is_deleted: false,
-                is_from_go_deeper: p.is_from_go_deeper || false,
-              }));
-              await supabase.from('ai_framework_principles').insert(principleRecords);
-            }
-          }
-
-          // Clone declarations
-          if (sourceDeclarations.length > 0) {
-            const declRecords = sourceDeclarations.map((d: Record<string, unknown>) => ({
-              user_id: targetUserId,
-              manifest_item_id: clonedItemId,
-              section_title: d.section_title,
-              section_index: d.section_index,
-              value_name: d.value_name,
-              declaration_text: d.declaration_text,
-              declaration_style: d.declaration_style,
-              sort_order: d.sort_order,
-              is_hearted: false,
-              is_deleted: false,
-              is_from_go_deeper: d.is_from_go_deeper || false,
-              sent_to_mast: false,
-            }));
-            await supabase.from('manifest_declarations').insert(declRecords);
-          }
-
-          // Clone action steps
-          if (sourceActionSteps.length > 0) {
-            const actionStepRecords = sourceActionSteps.map((a: Record<string, unknown>) => ({
-              user_id: targetUserId,
-              manifest_item_id: clonedItemId,
-              section_title: a.section_title,
-              section_index: a.section_index,
-              content_type: a.content_type,
-              text: a.text,
-              sort_order: a.sort_order,
-              is_hearted: false,
-              is_deleted: false,
-              is_from_go_deeper: a.is_from_go_deeper || false,
-              sent_to_compass: false,
-            }));
-            await supabase.from('manifest_action_steps').insert(actionStepRecords);
-          }
-
-          // Update cloned item's extraction_status
-          await supabase
+          // Get each user's clone of this child
+          const { data: childClones } = await supabase
             .from('manifest_items')
-            .update({ extraction_status: 'completed' })
-            .eq('id', clonedItemId);
+            .select('id, user_id')
+            .eq('source_manifest_item_id', child.id);
 
-          extractionsCopied++;
-        } catch (err) {
-          console.error(`[manifest-clone] Failed to clone extractions for user ${targetUserId}:`, err);
+          for (const childClone of childClones || []) {
+            if (childClone.user_id === sourceUserId) continue;
+            try {
+              const copied = await cloneExtractionsForItem(
+                supabase, child.id, sourceUserId, childClone.user_id, childClone.id, !!force_update,
+              );
+              if (copied) {
+                await supabase
+                  .from('manifest_items')
+                  .update({
+                    extraction_status: 'completed',
+                    genres: child.genres || [],
+                    ai_summary: child.ai_summary,
+                    toc: child.toc,
+                  })
+                  .eq('id', childClone.id);
+              }
+            } catch (err) {
+              console.error(`[manifest-clone] Failed to clone child extractions for user ${childClone.user_id}:`, err);
+            }
+          }
         }
       }
 
@@ -560,7 +669,8 @@ serve(async (req: Request) => {
     return new Response(
       JSON.stringify({
         message: 'Clone complete',
-        cloned_items: newTargetIds.length,
+        cloned_items: newCount,
+        children_cloned: childrenCloned,
         extractions_copied: extractionsCopied,
         source_id: sourceId,
       }),

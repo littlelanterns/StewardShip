@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Shield, RefreshCw, Eraser, UserMinus, Trash2, ChevronDown, ChevronRight, Loader } from 'lucide-react';
+import { Shield, RefreshCw, Eraser, UserMinus, Trash2, ChevronDown, ChevronRight, Loader, Send, Users } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 interface AdminBook {
@@ -10,6 +10,10 @@ interface AdminBook {
   processing_status: string;
   created_at: string;
   clone_count: number;
+  is_auto_cloned?: boolean;
+  original_uploader?: string | null;
+  part_count?: number | null;
+  part_extraction?: { extracted: number; total: number } | null;
 }
 
 interface AdminBookManagerProps {
@@ -23,6 +27,8 @@ export function AdminBookManager({ onBooksChanged }: AdminBookManagerProps) {
   const [actionLoading, setActionLoading] = useState<Record<string, string>>({}); // bookId → action
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null); // bookId awaiting confirmation
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [pushingAll, setPushingAll] = useState(false);
+  const [pushAllProgress, setPushAllProgress] = useState<{ current: number; total: number } | null>(null);
 
   const fetchBooks = useCallback(async () => {
     setLoading(true);
@@ -72,12 +78,87 @@ export function AdminBookManager({ onBooksChanged }: AdminBookManagerProps) {
     }
   }, [fetchBooks, onBooksChanged]);
 
-  const getStatusBadge = (status: string | null) => {
+  const pushAllExtracts = useCallback(async () => {
+    setPushingAll(true);
+    setStatusMessage(null);
+    try {
+      // Get books with extractions
+      const booksWithExtractions = books.filter(
+        (b) => b.extraction_status === 'completed' ||
+          (b.part_extraction && b.part_extraction.extracted > 0),
+      );
+
+      if (booksWithExtractions.length === 0) {
+        setStatusMessage('No books with extractions to push.');
+        setPushingAll(false);
+        return;
+      }
+
+      setPushAllProgress({ current: 0, total: booksWithExtractions.length });
+
+      let pushed = 0;
+      let failed = 0;
+      for (let i = 0; i < booksWithExtractions.length; i++) {
+        setPushAllProgress({ current: i + 1, total: booksWithExtractions.length });
+        try {
+          const { error } = await supabase.functions.invoke('manifest-clone', {
+            body: {
+              manifest_item_id: booksWithExtractions[i].id,
+              clone_extractions: true,
+              force_update: true,
+            },
+          });
+          if (error) throw error;
+          pushed++;
+        } catch (err) {
+          console.error(`[admin] Push failed for ${booksWithExtractions[i].title}:`, err);
+          failed++;
+        }
+      }
+
+      setStatusMessage(`Pushed ${pushed} book${pushed !== 1 ? 's' : ''} to all users${failed > 0 ? `, ${failed} failed` : ''}.`);
+      await fetchBooks();
+      onBooksChanged?.();
+    } catch (err) {
+      setStatusMessage(`Push All failed: ${(err as Error).message}`);
+    } finally {
+      setPushingAll(false);
+      setPushAllProgress(null);
+    }
+  }, [books, fetchBooks, onBooksChanged]);
+
+  const getStatusBadge = (book: AdminBook) => {
+    // Multi-part book: show part extraction progress
+    if (book.part_count && book.part_count > 0 && book.part_extraction) {
+      if (book.part_extraction.extracted === book.part_extraction.total) return 'done';
+      if (book.part_extraction.extracted > 0) return 'partial';
+      return 'none';
+    }
+    // Single book
+    const status = book.extraction_status;
     if (!status || status === 'none') return 'none';
     if (status === 'completed') return 'done';
-    if (status === 'in_progress') return 'extracting';
+    if (status === 'extracting') return 'extracting';
     return status;
   };
+
+  const getStatusLabel = (book: AdminBook) => {
+    if (book.part_count && book.part_count > 0 && book.part_extraction) {
+      const { extracted, total } = book.part_extraction;
+      if (extracted === total) return `${total}/${total} Extracted`;
+      if (extracted > 0) return `${extracted}/${total} Extracted`;
+      return `${total} Parts`;
+    }
+    const badge = getStatusBadge(book);
+    if (badge === 'done') return 'Extracted';
+    if (badge === 'extracting') return 'Extracting';
+    return 'None';
+  };
+
+  const extractedCount = books.filter(
+    (b) => b.extraction_status === 'completed' ||
+      (b.part_extraction && b.part_extraction.extracted > 0),
+  ).length;
 
   return (
     <div className="admin-book-manager">
@@ -94,15 +175,37 @@ export function AdminBookManager({ onBooksChanged }: AdminBookManagerProps) {
       {expanded && (
         <div className="admin-book-manager__content">
           <div className="admin-book-manager__toolbar">
-            <button
-              type="button"
-              className="admin-book-manager__refresh"
-              onClick={fetchBooks}
-              disabled={loading}
-            >
-              <RefreshCw size={14} className={loading ? 'admin-book-manager__spin' : ''} />
-              Refresh
-            </button>
+            <div style={{ display: 'flex', gap: 'var(--spacing-xs)', alignItems: 'center' }}>
+              <button
+                type="button"
+                className="admin-book-manager__refresh"
+                onClick={fetchBooks}
+                disabled={loading}
+              >
+                <RefreshCw size={14} className={loading ? 'admin-book-manager__spin' : ''} />
+                Refresh
+              </button>
+              <button
+                type="button"
+                className="admin-book-manager__push-all"
+                onClick={pushAllExtracts}
+                disabled={pushingAll || extractedCount === 0}
+              >
+                {pushingAll ? (
+                  <>
+                    <Loader size={14} className="admin-book-manager__spin" />
+                    {pushAllProgress
+                      ? `${pushAllProgress.current}/${pushAllProgress.total}`
+                      : 'Pushing...'}
+                  </>
+                ) : (
+                  <>
+                    <Send size={14} />
+                    Push All ({extractedCount})
+                  </>
+                )}
+              </button>
+            </div>
             <span className="admin-book-manager__count">{books.length} books</span>
           </div>
 
@@ -119,14 +222,22 @@ export function AdminBookManager({ onBooksChanged }: AdminBookManagerProps) {
               {books.map((book) => {
                 const isActing = !!actionLoading[book.id];
                 const currentAction = actionLoading[book.id];
+                const badge = getStatusBadge(book);
 
                 return (
                   <div key={book.id} className="admin-book-manager__row">
                     <div className="admin-book-manager__row-info">
-                      <span className="admin-book-manager__row-title">{book.title}</span>
+                      <span className="admin-book-manager__row-title">
+                        {book.title}
+                        {book.is_auto_cloned && (
+                          <span className="admin-book-manager__source-badge" title={`Uploaded by ${book.original_uploader || 'another user'}`}>
+                            <Users size={10} />
+                          </span>
+                        )}
+                      </span>
                       <div className="admin-book-manager__row-meta">
-                        <span className={`admin-book-manager__badge admin-book-manager__badge--${getStatusBadge(book.extraction_status)}`}>
-                          {getStatusBadge(book.extraction_status)}
+                        <span className={`admin-book-manager__badge admin-book-manager__badge--${badge}`}>
+                          {getStatusLabel(book)}
                         </span>
                         <span className="admin-book-manager__clone-count">
                           {book.clone_count} clone{book.clone_count !== 1 ? 's' : ''}

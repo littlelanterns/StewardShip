@@ -447,6 +447,10 @@ serve(async (req: Request) => {
       })
       .eq('id', manifest_item_id);
 
+    // 7. Auto-clone to admin if uploader is not admin
+    const uploaderEmail = jwtPayload.email as string;
+    await autoCloneToAdmin(supabase, manifest_item_id, userId, uploaderEmail, totalChunksInserted);
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -1020,4 +1024,167 @@ function extractTOCFromMarkdown(text: string): TocEntry[] | null {
     }
   }
   return entries.length > 0 ? entries : null;
+}
+
+// --- Auto-Clone to Admin ---
+
+const ADMIN_EMAIL = 'tenisewertman@gmail.com';
+
+/**
+ * After processing a book uploaded by a non-admin user, auto-clone it to the admin
+ * with independent chunks. This gives the admin full control over the book even if
+ * the original uploader deletes it. Also handles multi-part books by linking
+ * parent-child relationships on the admin's clones.
+ *
+ * Duplicate prevention: skips if admin already has a clone of this exact item
+ * (by source_manifest_item_id) OR a book with the same title+file_type (fuzzy match).
+ */
+async function autoCloneToAdmin(
+  supabase: ReturnType<typeof createClient>,
+  manifestItemId: string,
+  userId: string,
+  uploaderEmail: string,
+  totalChunksInserted: number,
+): Promise<void> {
+  try {
+    // Skip if uploader IS the admin
+    if (uploaderEmail === ADMIN_EMAIL) return;
+
+    // Find admin user
+    const { data: adminListData } = await supabase.auth.admin.listUsers({ page: 1, perPage: 200 });
+    const adminUser = adminListData?.users?.find((u: { email?: string }) => u.email === ADMIN_EMAIL);
+    if (!adminUser) {
+      console.log('Auto-clone: admin user not found, skipping');
+      return;
+    }
+    const adminId = adminUser.id;
+
+    // Check if admin already has a clone of this exact item
+    const { data: existingClone } = await supabase
+      .from('manifest_items')
+      .select('id')
+      .eq('user_id', adminId)
+      .eq('source_manifest_item_id', manifestItemId)
+      .is('archived_at', null)
+      .maybeSingle();
+
+    if (existingClone) {
+      console.log(`Auto-clone: admin already has clone of ${manifestItemId}, skipping`);
+      return;
+    }
+
+    // Re-fetch item to get latest metadata (toc, ai_summary may have been updated)
+    const { data: latestItem } = await supabase
+      .from('manifest_items')
+      .select('*')
+      .eq('id', manifestItemId)
+      .single();
+
+    if (!latestItem) return;
+
+    // Duplicate prevention: check if admin already has a book with same title + file_type
+    const { data: titleDup } = await supabase
+      .from('manifest_items')
+      .select('id, title')
+      .eq('user_id', adminId)
+      .eq('title', latestItem.title)
+      .eq('file_type', latestItem.file_type)
+      .is('archived_at', null)
+      .is('parent_manifest_item_id', null) // only check top-level items
+      .maybeSingle();
+
+    if (titleDup) {
+      console.log(`Auto-clone: admin already has "${latestItem.title}" (${titleDup.id}), skipping duplicate`);
+      return;
+    }
+
+    // Handle multi-part: if this is a child part, find/create admin's parent clone
+    let adminParentId: string | null = null;
+    if (latestItem.parent_manifest_item_id) {
+      const { data: adminParent } = await supabase
+        .from('manifest_items')
+        .select('id')
+        .eq('user_id', adminId)
+        .eq('source_manifest_item_id', latestItem.parent_manifest_item_id)
+        .is('archived_at', null)
+        .maybeSingle();
+
+      if (adminParent) {
+        adminParentId = adminParent.id;
+      }
+      // If parent clone doesn't exist yet, it will be created when the parent processes
+    }
+
+    // Create clone for admin
+    const { data: clone, error: cloneErr } = await supabase
+      .from('manifest_items')
+      .insert({
+        user_id: adminId,
+        title: latestItem.title,
+        file_type: latestItem.file_type,
+        file_name: latestItem.file_name,
+        storage_path: latestItem.storage_path,
+        text_content: latestItem.text_content,
+        file_size_bytes: latestItem.file_size_bytes,
+        tags: latestItem.tags || [],
+        folder_group: latestItem.folder_group,
+        genres: latestItem.genres || [],
+        ai_summary: latestItem.ai_summary,
+        toc: latestItem.toc,
+        chunk_count: totalChunksInserted,
+        processing_status: 'completed',
+        intake_completed: true,
+        source_manifest_item_id: manifestItemId,
+        parent_manifest_item_id: adminParentId,
+        part_number: latestItem.part_number,
+        part_count: latestItem.part_count,
+        usage_designations: latestItem.usage_designations || ['general_reference'],
+      })
+      .select('id')
+      .single();
+
+    if (cloneErr || !clone) {
+      console.error('Auto-clone to admin failed:', cloneErr);
+      return;
+    }
+
+    // Copy chunks to admin's clone in batches
+    const { data: chunks } = await supabase
+      .from('manifest_chunks')
+      .select('chunk_index, chunk_text, token_count, embedding, metadata')
+      .eq('manifest_item_id', manifestItemId);
+
+    if (chunks && chunks.length > 0) {
+      const CLONE_BATCH = 100;
+      for (let i = 0; i < chunks.length; i += CLONE_BATCH) {
+        const batch = chunks.slice(i, i + CLONE_BATCH).map((c: {
+          chunk_index: number; chunk_text: string; token_count: number;
+          embedding: number[]; metadata: Record<string, unknown>;
+        }) => ({
+          user_id: adminId,
+          manifest_item_id: clone.id,
+          chunk_index: c.chunk_index,
+          chunk_text: c.chunk_text,
+          token_count: c.token_count,
+          embedding: c.embedding,
+          metadata: c.metadata || {},
+        }));
+        const { error: insertErr } = await supabase.from('manifest_chunks').insert(batch);
+        if (insertErr) {
+          console.error(`Auto-clone chunk batch failed:`, insertErr);
+        }
+      }
+    }
+
+    // If this is a parent item with part_count, update the clone's part_count
+    // (child parts will link to this clone when they process)
+    if (latestItem.part_count && latestItem.part_count > 0) {
+      console.log(`Auto-cloned parent ${manifestItemId} to admin as ${clone.id} (${latestItem.part_count} parts expected)`);
+    } else {
+      console.log(`Auto-cloned ${manifestItemId} to admin as ${clone.id} with ${chunks?.length || 0} chunks`);
+    }
+  } catch (err) {
+    // Non-fatal — don't break the user's processing
+    console.error('Auto-clone to admin error (non-fatal):', err);
+  }
 }

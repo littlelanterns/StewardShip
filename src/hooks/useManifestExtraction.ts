@@ -69,6 +69,18 @@ export function useManifestExtraction() {
     retrying?: boolean;
   }>>([]);
 
+  // --- Fire-and-forget: sync extractions to admin's clone ---
+  const syncExtractionsToAdmin = useCallback(async (manifestItemId: string) => {
+    try {
+      await supabase.functions.invoke('manifest-admin', {
+        body: { action: 'sync_from_user', manifest_item_id: manifestItemId },
+      });
+    } catch (err) {
+      // Non-fatal — admin sync failure should never affect user experience
+      console.warn('[syncExtractionsToAdmin] Failed (non-fatal):', err);
+    }
+  }, []);
+
   // --- Fetch existing extracted items for an item ---
 
   const fetchSummaries = useCallback(async (manifestItemId: string) => {
@@ -511,6 +523,7 @@ export function useManifestExtraction() {
 
       const allOk = summaryOk && declarationOk;
       await updateExtractionStatus(manifestItemId, allOk ? 'completed' : 'failed');
+      if (allOk) syncExtractionsToAdmin(manifestItemId);
       return allOk;
     } catch (err) {
       setError((err as Error).message);
@@ -519,7 +532,7 @@ export function useManifestExtraction() {
     } finally {
       setExtracting(false);
     }
-  }, [user, extractSummary, extractDeclarations, callExtract, updateExtractionStatus]);
+  }, [user, extractSummary, extractDeclarations, callExtract, updateExtractionStatus, syncExtractionsToAdmin]);
 
   // --- Combined section result shape from Edge Function ---
 
@@ -602,6 +615,7 @@ export function useManifestExtraction() {
 
       // Mark completed even with partial failures — extracted content is still valuable
       await updateExtractionStatus(manifestItemId, 'completed');
+      syncExtractionsToAdmin(manifestItemId);
 
       setExtractionProgress(null);
       return failed.length === 0;
@@ -614,7 +628,7 @@ export function useManifestExtraction() {
     } finally {
       setExtracting(false);
     }
-  }, [user, sections, saveSummaryResults, saveDeclarationResults, saveActionStepResults, fetchSummaries, fetchDeclarations, fetchActionSteps, callExtract, updateExtractionStatus]);
+  }, [user, sections, saveSummaryResults, saveDeclarationResults, saveActionStepResults, fetchSummaries, fetchDeclarations, fetchActionSteps, callExtract, updateExtractionStatus, syncExtractionsToAdmin]);
 
   // --- Retry a single failed section ---
 
@@ -744,13 +758,14 @@ export function useManifestExtraction() {
       }
 
       await updateExtractionStatus(manifestItemId, 'completed');
+      syncExtractionsToAdmin(manifestItemId);
       return true;
     } catch (err) {
       console.error('[extractSectionsForPart] Fatal error:', err);
       await updateExtractionStatus(manifestItemId, 'failed');
       return false;
     }
-  }, [user, callExtract, saveSummaryResults, saveDeclarationResults, saveActionStepResults, updateExtractionStatus]);
+  }, [user, callExtract, saveSummaryResults, saveDeclarationResults, saveActionStepResults, updateExtractionStatus, syncExtractionsToAdmin]);
 
   // --- Go Deeper: extract additional content for a specific tab/section ---
 

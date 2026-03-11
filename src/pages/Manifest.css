@@ -539,6 +539,29 @@
   color: var(--color-mid-teal);
 }
 
+.admin-book-manager__push-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px var(--spacing-sm);
+  border: 1px solid var(--color-mid-teal);
+  border-radius: var(--radius-md);
+  background: var(--color-mid-teal);
+  font-size: var(--font-size-xs);
+  color: var(--color-white);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.admin-book-manager__push-all:hover:not(:disabled) {
+  background: var(--color-dark-teal);
+}
+
+.admin-book-manager__push-all:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .admin-book-manager__count {
   font-size: var(--font-size-xs);
   color: var(--color-slate-gray);
@@ -618,6 +641,20 @@
 .admin-book-manager__badge--extracting {
   background: var(--color-cognac);
   color: var(--color-white);
+}
+
+.admin-book-manager__badge--partial {
+  background: var(--color-warm-sand);
+  color: var(--color-mid-teal);
+  font-weight: 600;
+}
+
+.admin-book-manager__source-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+  color: var(--color-cognac);
+  vertical-align: middle;
 }
 
 .admin-book-manager__clone-count {
