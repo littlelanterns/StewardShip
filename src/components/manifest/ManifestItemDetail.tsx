@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { ChevronLeft, FileText, FileCode, Mic, Image, StickyNote, RefreshCw, BookOpen, Wand2, MessageSquare, Target, HelpCircle, CheckSquare, BarChart3, Users, ChevronRight, AlertTriangle } from 'lucide-react';
 import type { ManifestItem, ManifestSummary, ManifestDeclaration, ManifestActionStep, AIFrameworkPrinciple, BookGenre, DiscussionType } from '../../lib/types';
 import { MANIFEST_FILE_TYPE_LABELS, MANIFEST_STATUS_LABELS } from '../../lib/types';
@@ -261,6 +261,16 @@ export function ManifestItemDetail({
   const [editingSectionIndex, setEditingSectionIndex] = useState<number | null>(null);
   const [sectionTitleDraft, setSectionTitleDraft] = useState('');
 
+  // Compute which section titles already have extracted content
+  const extractedSectionTitles = useMemo(() => {
+    const titles = new Set<string>();
+    for (const s of summaries) if (s.section_title) titles.add(s.section_title);
+    for (const p of principles) if (p.section_title) titles.add(p.section_title);
+    for (const a of actionSteps) if (a.section_title) titles.add(a.section_title);
+    for (const d of declarations) if (d.section_title) titles.add(d.section_title);
+    return titles;
+  }, [summaries, principles, actionSteps, declarations]);
+
   const handleExtract = useCallback(async () => {
     if (selectedGenres.length === 0) {
       setShowGenrePicker(true);
@@ -278,6 +288,32 @@ export function ManifestItemDetail({
       setDiscoveryError('Section discovery failed. Please try again.');
     }
   }, [selectedGenres, item.id, onDiscoverSections]);
+
+  // Continue extraction — discover sections, auto-select only missing ones
+  const handleContinueExtraction = useCallback(async () => {
+    if (selectedGenres.length === 0) {
+      setShowGenrePicker(true);
+      return;
+    }
+    setExtractionPhase('discovering');
+    setDiscoveryError(null);
+    const discovered = await onDiscoverSections(item.id);
+    if (discovered && discovered.length > 0) {
+      // Pre-select only sections that don't have extracted content yet
+      const missingIndices = discovered
+        .map((s, i) => ({ s, i }))
+        .filter(({ s }) => {
+          const cleanTitle = s.title.replace(/^\[NON-CONTENT\]\s*/i, '');
+          return !extractedSectionTitles.has(cleanTitle);
+        })
+        .map(({ i }) => i);
+      onSetSelectedSectionIndices(missingIndices);
+      setExtractionPhase('selecting');
+    } else {
+      setExtractionPhase('idle');
+      setDiscoveryError('Section discovery failed. Please try again.');
+    }
+  }, [selectedGenres, item.id, onDiscoverSections, extractedSectionTitles, onSetSelectedSectionIndices]);
 
   const handleExtractSelected = useCallback(async () => {
     setExtractionPhase('extracting');
@@ -621,12 +657,17 @@ export function ManifestItemDetail({
             </Button>
           )}
 
-          {/* Re-extract button for items that already have extractions */}
+          {/* Continue / Re-extract buttons for items that already have extractions */}
           {extractionPhase === 'idle' && hasExtraction && !extracting && selectedGenres.length > 0 && (
-            <Button size="sm" variant="secondary" onClick={handleExtract} disabled={extracting}>
-              <Wand2 size={14} />
-              Re-extract All
-            </Button>
+            <div className="manifest-detail__extract-actions">
+              <Button size="sm" onClick={handleContinueExtraction} disabled={extracting}>
+                <Wand2 size={14} />
+                Continue Extraction
+              </Button>
+              <Button size="sm" variant="secondary" onClick={handleExtract} disabled={extracting}>
+                Re-extract All
+              </Button>
+            </div>
           )}
 
           {/* Show genre picker toggle if genres not yet set */}
@@ -674,10 +715,11 @@ export function ManifestItemDetail({
                   const displayTitle = section.title.replace(/^\[NON-CONTENT\]\s*/i, '');
                   const wordEstimate = Math.round((section.end_char - section.start_char) / 5);
                   const isEditingThis = editingSectionIndex === i;
+                  const alreadyExtracted = extractedSectionTitles.has(displayTitle);
                   return (
                     <label
                       key={i}
-                      className={`manifest-detail__section-item${isNonContent ? ' manifest-detail__section-item--non-content' : ''}`}
+                      className={`manifest-detail__section-item${isNonContent ? ' manifest-detail__section-item--non-content' : ''}${alreadyExtracted ? ' manifest-detail__section-item--extracted' : ''}`}
                     >
                       <input
                         type="checkbox"
@@ -719,7 +761,10 @@ export function ManifestItemDetail({
                           </span>
                         )}
                         <span className="manifest-detail__section-item-desc">{section.description}</span>
-                        <span className="manifest-detail__section-item-size">~{wordEstimate.toLocaleString()} words</span>
+                        <span className="manifest-detail__section-item-size">
+                          ~{wordEstimate.toLocaleString()} words
+                          {alreadyExtracted && <span className="manifest-detail__section-item-done"> (extracted)</span>}
+                        </span>
                       </div>
                     </label>
                   );

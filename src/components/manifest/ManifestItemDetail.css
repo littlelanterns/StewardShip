@@ -666,6 +666,21 @@
   opacity: 0.5;
 }
 
+.manifest-detail__section-item--extracted {
+  opacity: 0.6;
+}
+
+.manifest-detail__section-item-done {
+  color: var(--color-mid-teal);
+  font-weight: 600;
+}
+
+.manifest-detail__extract-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
 .manifest-detail__section-item input[type="checkbox"] {
   margin-top: 3px;
   flex-shrink: 0;
