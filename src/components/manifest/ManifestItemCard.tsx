@@ -11,6 +11,7 @@ interface ManifestItemCardProps {
   selectable?: boolean;
   selected?: boolean;
   queuePosition?: number | null;
+  partExtraction?: { extracted: number; total: number } | null;
 }
 
 const FILE_TYPE_ICONS = {
@@ -37,7 +38,7 @@ function getRelativeDate(dateStr: string): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-export function ManifestItemCard({ item, onClick, compact, selectable, selected, queuePosition }: ManifestItemCardProps) {
+export function ManifestItemCard({ item, onClick, compact, selectable, selected, queuePosition, partExtraction }: ManifestItemCardProps) {
   const Icon = FILE_TYPE_ICONS[item.file_type] || FileText;
   const isPending = item.processing_status === 'pending';
   const isProcessing = item.processing_status === 'processing';
@@ -87,11 +88,15 @@ export function ManifestItemCard({ item, onClick, compact, selectable, selected,
           {isCompleted && item.extraction_status !== 'completed' && item.extraction_status !== 'failed' && !item.part_count && (
             <span className="manifest-row__badge manifest-row__badge--ready">Ready</span>
           )}
-          {item.part_count && item.part_count > 0 && (
+          {item.part_count && item.part_count > 0 && partExtraction && partExtraction.extracted > 0 ? (
+            <span className={`manifest-row__badge ${partExtraction.extracted === partExtraction.total ? 'manifest-row__badge--extracted' : 'manifest-row__badge--partial'}`}>
+              {partExtraction.extracted === partExtraction.total ? 'Extracted' : `${partExtraction.extracted}/${partExtraction.total} Extracted`}
+            </span>
+          ) : item.part_count && item.part_count > 0 ? (
             <span className="manifest-row__badge manifest-row__badge--parts">
               {item.part_count} Parts
             </span>
-          )}
+          ) : null}
         </div>
         <ChevronRight size={16} className="manifest-row__chevron" />
       </button>
@@ -153,7 +158,11 @@ export function ManifestItemCard({ item, onClick, compact, selectable, selected,
         )}
 
         <div className="manifest-card__meta">
-          {item.part_count && item.part_count > 0 ? (
+          {item.part_count && item.part_count > 0 && partExtraction && partExtraction.extracted > 0 ? (
+            <span className={`manifest-card__badge ${partExtraction.extracted === partExtraction.total ? 'manifest-card__badge--extracted' : 'manifest-card__badge--partial'}`}>
+              {partExtraction.extracted === partExtraction.total ? 'Extracted' : `${partExtraction.extracted}/${partExtraction.total} Extracted`}
+            </span>
+          ) : item.part_count && item.part_count > 0 ? (
             <span className="manifest-card__badge manifest-card__badge--parts">
               {item.part_count} Parts
             </span>

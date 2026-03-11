@@ -79,13 +79,80 @@ export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsVie
   const [booksExpanded, setBooksExpanded] = useState(true);
   const { counts: tagUsageCounts, recordTagClick } = useTagUsage();
 
-  const extractedItems = useMemo(
+  // Multi-part book support: fetch child parts for parents
+  const [childPartsMap, setChildPartsMap] = useState<Map<string, ManifestItem[]>>(new Map());
+
+  const parentItems = useMemo(
+    () => items.filter((i) => (i.part_count ?? 0) > 0),
+    [items],
+  );
+
+  useEffect(() => {
+    if (!user || parentItems.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const parentIds = parentItems.map((p) => p.id);
+      const { data } = await supabase
+        .from('manifest_items')
+        .select('id, user_id, title, file_type, file_name, storage_path, file_size_bytes, usage_designations, tags, folder_group, processing_status, processing_detail, chunk_count, intake_completed, ai_summary, extraction_status, genres, source_manifest_item_id, parent_manifest_item_id, part_number, part_count, archived_at, created_at, updated_at')
+        .in('parent_manifest_item_id', parentIds)
+        .eq('user_id', user.id)
+        .is('archived_at', null)
+        .order('part_number', { ascending: true });
+      if (cancelled || !data) return;
+      const map = new Map<string, ManifestItem[]>();
+      for (const part of data as ManifestItem[]) {
+        const pid = part.parent_manifest_item_id!;
+        if (!map.has(pid)) map.set(pid, []);
+        map.get(pid)!.push(part);
+      }
+      setChildPartsMap(map);
+    })();
+    return () => { cancelled = true; };
+  }, [user, parentItems]);
+
+  // Single-volume extracted items (no parts)
+  const extractedSingleItems = useMemo(
     () => items.filter((i) =>
-      i.extraction_status === 'completed' ||
-      i.extraction_status === 'failed' ||
-      i.extraction_status === 'extracting'
+      (i.part_count ?? 0) === 0 && (
+        i.extraction_status === 'completed' ||
+        i.extraction_status === 'failed' ||
+        i.extraction_status === 'extracting'
+      )
     ),
     [items],
+  );
+
+  // Parents that have at least one extracted part
+  const extractedParents = useMemo(
+    () => parentItems.filter((p) => {
+      const parts = childPartsMap.get(p.id);
+      return parts?.some((c) =>
+        c.extraction_status === 'completed' ||
+        c.extraction_status === 'failed' ||
+        c.extraction_status === 'extracting'
+      );
+    }),
+    [parentItems, childPartsMap],
+  );
+
+  // Combined list for counting and tag gathering (singles + extracted parts)
+  const allExtractedPartItems = useMemo(() => {
+    const parts: ManifestItem[] = [];
+    for (const parent of extractedParents) {
+      const children = childPartsMap.get(parent.id) || [];
+      for (const c of children) {
+        if (c.extraction_status === 'completed' || c.extraction_status === 'failed' || c.extraction_status === 'extracting') {
+          parts.push(c);
+        }
+      }
+    }
+    return parts;
+  }, [extractedParents, childPartsMap]);
+
+  const extractedItems = useMemo(
+    () => [...extractedSingleItems, ...allExtractedPartItems],
+    [extractedSingleItems, allExtractedPartItems],
   );
 
   // No auto-select: books start unchecked so user picks what they want
@@ -93,13 +160,20 @@ export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsVie
   // Unique book-level tags with counts for filtering
   const bookTagData = useMemo(() => {
     const counts: Record<string, number> = {};
-    for (const item of extractedItems) {
+    // Count from singles
+    for (const item of extractedSingleItems) {
       for (const tag of (item.tags || [])) {
         counts[tag] = (counts[tag] || 0) + 1;
       }
     }
+    // Count from parents (use parent tags for the whole book)
+    for (const parent of extractedParents) {
+      for (const tag of (parent.tags || [])) {
+        counts[tag] = (counts[tag] || 0) + 1;
+      }
+    }
     return Object.entries(counts);
-  }, [extractedItems]);
+  }, [extractedSingleItems, extractedParents]);
 
   // Tag toggle helpers with usage tracking
   const handleBookTagToggle = useCallback((tag: string) => {
@@ -120,9 +194,17 @@ export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsVie
     });
   }, [recordTagClick]);
 
-  // Filter books by search + active book tags
-  const filteredBooks = useMemo(() => {
-    let result = extractedItems;
+  // Helper: get extracted part IDs for a parent
+  const getExtractedPartIds = useCallback((parentId: string): string[] => {
+    const parts = childPartsMap.get(parentId) || [];
+    return parts
+      .filter((c) => c.extraction_status === 'completed' || c.extraction_status === 'failed' || c.extraction_status === 'extracting')
+      .map((c) => c.id);
+  }, [childPartsMap]);
+
+  // Filter singles by search + active book tags
+  const filteredSingles = useMemo(() => {
+    let result = extractedSingleItems;
     if (bookSearch.trim()) {
       const q = bookSearch.toLowerCase();
       result = result.filter((i) =>
@@ -136,7 +218,40 @@ export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsVie
       );
     }
     return result;
-  }, [extractedItems, bookSearch, activeBookTags]);
+  }, [extractedSingleItems, bookSearch, activeBookTags]);
+
+  // Filter parents by search + tags (use parent title/tags)
+  const filteredParents = useMemo(() => {
+    let result = extractedParents;
+    if (bookSearch.trim()) {
+      const q = bookSearch.toLowerCase();
+      result = result.filter((i) =>
+        i.title.toLowerCase().includes(q) ||
+        (i.tags || []).some((t) => t.toLowerCase().includes(q))
+      );
+    }
+    if (activeBookTags.size > 0) {
+      result = result.filter((i) =>
+        Array.from(activeBookTags).some((tag) => (i.tags || []).includes(tag))
+      );
+    }
+    return result;
+  }, [extractedParents, bookSearch, activeBookTags]);
+
+  // Combined filtered list for "Select All" and count display
+  const filteredBooks = useMemo(() => {
+    // For counting purposes: singles + all extracted parts from filtered parents
+    const all: ManifestItem[] = [...filteredSingles];
+    for (const parent of filteredParents) {
+      const parts = childPartsMap.get(parent.id) || [];
+      for (const part of parts) {
+        if (part.extraction_status === 'completed' || part.extraction_status === 'failed' || part.extraction_status === 'extracting') {
+          all.push(part);
+        }
+      }
+    }
+    return all;
+  }, [filteredSingles, filteredParents, childPartsMap]);
 
   // Fetch extractions for selected books (with fixed sort order)
   const fetchExtractions = useCallback(async (ids: string[]) => {
@@ -269,6 +384,22 @@ export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsVie
       return next;
     });
   }, []);
+
+  // Toggle all extracted parts of a parent at once
+  const handleToggleParent = useCallback((parentId: string) => {
+    const partIds = getExtractedPartIds(parentId);
+    if (partIds.length === 0) return;
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      const allSelected = partIds.every((id) => next.has(id));
+      if (allSelected) {
+        partIds.forEach((id) => next.delete(id));
+      } else {
+        partIds.forEach((id) => next.add(id));
+      }
+      return next;
+    });
+  }, [getExtractedPartIds]);
 
   const selectedData = useMemo(() => {
     const result: BookExtractions[] = [];
@@ -1364,7 +1495,7 @@ export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsVie
             >
               {booksExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
               <span className="extractions-view__books-label">
-                Select books{selectedIds.size > 0 ? ` (${selectedIds.size} of ${extractedItems.length})` : ` (${extractedItems.length} available)`}
+                Select books{selectedIds.size > 0 ? ` (${selectedIds.size} selected)` : ` (${extractedSingleItems.length + extractedParents.length} available)`}
               </span>
               <div className="extractions-view__books-actions">
                 <span className="extractions-view__select-btn" onClick={(e) => {
@@ -1406,7 +1537,8 @@ export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsVie
                   label="Filter by tag"
                 />
                 <div className="extractions-view__book-list">
-                  {filteredBooks.map((item) => (
+                  {/* Single-volume books */}
+                  {filteredSingles.map((item) => (
                     <label key={item.id} className="extractions-view__book-item">
                       <input
                         type="checkbox"
@@ -1416,7 +1548,42 @@ export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsVie
                       <span className="extractions-view__book-title">{item.title}</span>
                     </label>
                   ))}
-                  {filteredBooks.length === 0 && bookSearch && (
+                  {/* Multi-part books: parent header + indented parts */}
+                  {filteredParents.map((parent) => {
+                    const parts = (childPartsMap.get(parent.id) || []).filter((c) =>
+                      c.extraction_status === 'completed' || c.extraction_status === 'failed' || c.extraction_status === 'extracting'
+                    );
+                    if (parts.length === 0) return null;
+                    const allPartsSelected = parts.every((p) => selectedIds.has(p.id));
+                    const somePartsSelected = parts.some((p) => selectedIds.has(p.id));
+                    return (
+                      <div key={parent.id} className="extractions-view__book-group">
+                        <label className="extractions-view__book-item extractions-view__book-item--parent">
+                          <input
+                            type="checkbox"
+                            checked={allPartsSelected}
+                            ref={(el) => { if (el) el.indeterminate = somePartsSelected && !allPartsSelected; }}
+                            onChange={() => handleToggleParent(parent.id)}
+                          />
+                          <span className="extractions-view__book-title">{parent.title}</span>
+                          <span className="extractions-view__part-count">{parts.length} part{parts.length !== 1 ? 's' : ''}</span>
+                        </label>
+                        {parts.map((part) => (
+                          <label key={part.id} className="extractions-view__book-item extractions-view__book-item--part">
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.has(part.id)}
+                              onChange={() => handleToggle(part.id)}
+                            />
+                            <span className="extractions-view__book-title">
+                              {part.part_number ? `Part ${part.part_number}` : part.title.replace(`${parent.title} — `, '')}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    );
+                  })}
+                  {filteredSingles.length === 0 && filteredParents.length === 0 && bookSearch && (
                     <div className="extractions-view__no-match">No books match "{bookSearch}"</div>
                   )}
                 </div>

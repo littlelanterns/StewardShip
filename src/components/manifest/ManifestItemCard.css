@@ -127,9 +127,21 @@
   color: var(--color-white);
 }
 
+.manifest-card__badge--partial {
+  background: var(--color-warm-sand);
+  color: var(--color-mid-teal);
+  font-weight: 600;
+}
+
 .manifest-row__badge--parts {
   background: var(--color-cognac);
   color: var(--color-white);
+}
+
+.manifest-row__badge--partial {
+  background: var(--color-warm-sand);
+  color: var(--color-mid-teal);
+  font-weight: 600;
 }
 
 /* Compact row view */

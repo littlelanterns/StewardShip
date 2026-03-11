@@ -228,6 +228,28 @@
   white-space: nowrap;
 }
 
+.extractions-view__book-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.extractions-view__book-item--parent {
+  font-weight: 600;
+}
+
+.extractions-view__book-item--part {
+  padding-left: calc(var(--spacing-sm) + 20px);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.extractions-view__part-count {
+  flex-shrink: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  font-weight: 400;
+}
+
 .extractions-view__no-match {
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);

@@ -191,6 +191,39 @@ export default function Manifest() {
     fetchDiscussions();
   }, [fetchItems, fetchFrameworks, fetchDiscussions]);
 
+  // Fetch extraction status for child parts of multi-part books
+  const [partExtractionMap, setPartExtractionMap] = useState<Map<string, { extracted: number; total: number }>>(new Map());
+
+  useEffect(() => {
+    if (!user) return;
+    const parents = items.filter((i) => (i.part_count ?? 0) > 0);
+    if (parents.length === 0) {
+      setPartExtractionMap(new Map());
+      return;
+    }
+    const parentIds = parents.map((p) => p.id);
+    supabase
+      .from('manifest_items')
+      .select('id, parent_manifest_item_id, extraction_status')
+      .in('parent_manifest_item_id', parentIds)
+      .eq('user_id', user.id)
+      .is('archived_at', null)
+      .then(({ data }) => {
+        if (!data) return;
+        const map = new Map<string, { extracted: number; total: number }>();
+        for (const part of data) {
+          const pid = part.parent_manifest_item_id as string;
+          if (!map.has(pid)) map.set(pid, { extracted: 0, total: 0 });
+          const entry = map.get(pid)!;
+          entry.total++;
+          if (part.extraction_status === 'completed' || part.extraction_status === 'failed') {
+            entry.extracted++;
+          }
+        }
+        setPartExtractionMap(map);
+      });
+  }, [user, items]);
+
   // Poll for processing items — use ref to avoid feedback loop
   // (pollProcessingStatus calls setItems → items change → effect re-fires)
   const itemsRef = useRef(items);
@@ -471,7 +504,10 @@ export default function Manifest() {
   }, [items, activeManifestTags, titleSearch]);
 
   const hasCompletedItems = items.some((i) => i.processing_status === 'completed');
-  const hasExtractedItems = items.some((i) => i.extraction_status === 'completed' || i.extraction_status === 'failed');
+  const hasExtractedItems = items.some((i) =>
+    i.extraction_status === 'completed' || i.extraction_status === 'failed' ||
+    (partExtractionMap.get(i.id)?.extracted ?? 0) > 0
+  );
   const processingItems = items.filter(
     (i) => i.processing_status === 'pending' || i.processing_status === 'processing',
   );
@@ -493,9 +529,9 @@ export default function Manifest() {
         case 'name_desc':
           return b.title.localeCompare(a.title);
         case 'has_extractions': {
-          const aExtracted = (a.extraction_status === 'completed' || a.extraction_status === 'failed') ? 0 : 1;
-          const bExtracted = (b.extraction_status === 'completed' || b.extraction_status === 'failed') ? 0 : 1;
-          if (aExtracted !== bExtracted) return aExtracted - bExtracted;
+          const aHasExtraction = (a.extraction_status === 'completed' || a.extraction_status === 'failed' || (partExtractionMap.get(a.id)?.extracted ?? 0) > 0) ? 0 : 1;
+          const bHasExtraction = (b.extraction_status === 'completed' || b.extraction_status === 'failed' || (partExtractionMap.get(b.id)?.extracted ?? 0) > 0) ? 0 : 1;
+          if (aHasExtraction !== bHasExtraction) return aHasExtraction - bHasExtraction;
           return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
         }
         case 'newest':
@@ -503,7 +539,7 @@ export default function Manifest() {
           return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       }
     });
-  }, [filteredItems, sortOption]);
+  }, [filteredItems, sortOption, partExtractionMap]);
 
   // Group by folder (uses sortedItems so items within folders respect sort order)
   const folderGroups = useMemo(() => {
@@ -899,6 +935,7 @@ export default function Manifest() {
                 selectable={selectMode}
                 selected={selectedIds.has(item.id)}
                 queuePosition={item.processing_status === 'pending' ? getQueuePosition(item.id) : null}
+                partExtraction={partExtractionMap.get(item.id) || null}
               />
             ))}
           </div>
@@ -930,6 +967,7 @@ export default function Manifest() {
                     selectable={selectMode}
                     selected={selectedIds.has(item.id)}
                     queuePosition={item.processing_status === 'pending' ? getQueuePosition(item.id) : null}
+                    partExtraction={partExtractionMap.get(item.id) || null}
                   />
                 ))}
               </div>
