@@ -599,21 +599,29 @@ serve(async (req: Request) => {
     console.log(`[manifest-clone] Cloned parent item to ${newCount} new users (${clonedItemMap.size} total)`);
 
     // 4. Handle multi-part books: clone child parts too
+    // IMPORTANT: Use source.id (the caller's actual item ID) for parent lookup, NOT sourceId.
+    // When the caller's book is itself a clone, sourceId points to the original uploader's parent,
+    // but the caller's children reference the caller's clone as parent_manifest_item_id.
     let childrenCloned = 0;
     const { data: childParts } = await supabase
       .from('manifest_items')
       .select('*')
-      .eq('parent_manifest_item_id', sourceId)
+      .eq('parent_manifest_item_id', source.id)
       .eq('user_id', sourceUserId)
       .order('part_number');
 
+    // Map each child to its resolved source ID (original child if this child is a clone)
+    const childSourceMap = new Map<string, string>();
     if (childParts && childParts.length > 0) {
       console.log(`[manifest-clone] Found ${childParts.length} child parts to clone`);
 
       for (const child of childParts) {
+        // Resolve clone-of-clone: target clones should point to the original child
+        const childSourceId = child.source_manifest_item_id || child.id;
+        childSourceMap.set(child.id, childSourceId);
         try {
           const { newCount: childNew } = await cloneItemToUsers(
-            supabase, child, child.id, sourceUserId, targetUserIds, clonedItemMap,
+            supabase, child, childSourceId, sourceUserId, targetUserIds, clonedItemMap,
           );
           childrenCloned += childNew;
         } catch (err) {
@@ -656,15 +664,19 @@ serve(async (req: Request) => {
         for (const child of childParts) {
           if (child.extraction_status !== 'completed') continue;
 
-          // Get each user's clone of this child
+          // Use the resolved source ID (handles clone-of-clone)
+          const childSourceId = childSourceMap.get(child.id) || child.id;
+
+          // Get each user's clone of this child (by resolved source ID)
           const { data: childClones } = await supabase
             .from('manifest_items')
             .select('id, user_id')
-            .eq('source_manifest_item_id', child.id);
+            .eq('source_manifest_item_id', childSourceId);
 
           for (const childClone of childClones || []) {
             if (childClone.user_id === sourceUserId) continue;
             try {
+              // Extraction data lives on the caller's child (child.id), not the original
               const copied = await cloneExtractionsForItem(
                 supabase, child.id, sourceUserId, childClone.user_id, childClone.id, !!force_update,
               );

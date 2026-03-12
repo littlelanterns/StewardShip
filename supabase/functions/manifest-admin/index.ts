@@ -57,7 +57,8 @@ serve(async (req: Request) => {
       }
       const adminId = adminUser.id;
 
-      // Find admin's clone of this item
+      // Strategy 1: Admin has a clone of this item (user uploaded, admin auto-cloned)
+      let adminTargetId: string | null = null;
       const { data: adminClone } = await supabase
         .from('manifest_items')
         .select('id')
@@ -66,22 +67,49 @@ serve(async (req: Request) => {
         .is('archived_at', null)
         .maybeSingle();
 
-      if (!adminClone) {
-        console.log(`[manifest-admin] sync_from_user: no admin clone for ${manifest_item_id}, skipping`);
-        return jsonResponse({ message: 'No admin clone found', synced: false });
+      if (adminClone) {
+        adminTargetId = adminClone.id;
+      } else {
+        // Strategy 2: Admin IS the original owner (admin uploaded, user has a clone)
+        // Check if caller's item has a source_manifest_item_id pointing to an admin-owned item
+        const { data: callerItem } = await supabase
+          .from('manifest_items')
+          .select('source_manifest_item_id')
+          .eq('id', manifest_item_id)
+          .eq('user_id', callerUserId)
+          .maybeSingle();
+
+        if (callerItem?.source_manifest_item_id) {
+          // Verify the source item is owned by admin
+          const { data: sourceItem } = await supabase
+            .from('manifest_items')
+            .select('id, user_id')
+            .eq('id', callerItem.source_manifest_item_id)
+            .is('archived_at', null)
+            .maybeSingle();
+
+          if (sourceItem && sourceItem.user_id === adminId) {
+            adminTargetId = sourceItem.id;
+          }
+        }
       }
 
-      // Sync extraction data from caller's item to admin's clone
+      if (!adminTargetId) {
+        console.log(`[manifest-admin] sync_from_user: no admin target for ${manifest_item_id}, skipping`);
+        return jsonResponse({ message: 'No admin target found', synced: false });
+      }
+
+      // Sync extraction data from caller's item to admin's target
       const synced = await syncExtractionsToTarget(
-        supabase, manifest_item_id, callerUserId, adminClone.id, adminId,
+        supabase, manifest_item_id, callerUserId, adminTargetId, adminId,
       );
 
-      // Update admin clone's extraction_status
+      // Update admin target's extraction_status
       if (synced) {
         await supabase
           .from('manifest_items')
           .update({ extraction_status: 'completed' })
-          .eq('id', adminClone.id);
+          .eq('id', adminTargetId);
       }
 
       return jsonResponse({ message: 'Sync complete', synced });

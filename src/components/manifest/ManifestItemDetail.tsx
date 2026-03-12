@@ -459,10 +459,16 @@ export function ManifestItemDetail({
       );
     }
 
+    // Update parent's extraction_status to 'completed' so push-all and UI recognize it
+    await supabase
+      .from('manifest_items')
+      .update({ extraction_status: 'completed' })
+      .eq('id', item.id);
+
     setMultiPartPhase('idle');
     setMultiPartData([]);
     setMultiPartProgress('');
-  }, [multiPartData, selectedGenres, onExtractSectionsForPart, onSaveFrameworkForPart]);
+  }, [multiPartData, selectedGenres, onExtractSectionsForPart, onSaveFrameworkForPart, item.id]);
 
   const multiPartTotalSelected = useMemo(
     () => multiPartData.reduce((sum, d) => sum + d.selectedIndices.length, 0),
