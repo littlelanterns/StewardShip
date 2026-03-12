@@ -62,6 +62,7 @@ export default function Manifest() {
     saveFramework,
     getFrameworkForItem,
     fetchFrameworks,
+    tagFramework,
   } = useFrameworks();
 
   const extraction = useManifestExtraction();
@@ -92,6 +93,8 @@ export default function Manifest() {
     fetchDiscussions,
     deleteDiscussion,
   } = useBookDiscussions();
+
+  const [generatingTags, setGeneratingTags] = useState(false);
 
   // Select mode (for folder assignment)
   const [selectMode, setSelectMode] = useState(false);
@@ -338,6 +341,18 @@ export default function Manifest() {
       discussionType: type,
     });
   }, [selectedItem]);
+
+  const handleGenerateTags = useCallback(async () => {
+    if (!selectedItem) return;
+    const framework = getFrameworkForItem(selectedItem.id);
+    if (!framework?.principles?.length) return;
+    setGeneratingTags(true);
+    try {
+      await tagFramework(framework.id, framework.name, framework.principles.map((p) => p.text));
+    } finally {
+      setGeneratingTags(false);
+    }
+  }, [selectedItem, getFrameworkForItem, tagFramework]);
 
   const handleContinueDiscussion = useCallback(async (discussionId: string) => {
     const disc = discussions.find((d) => d.id === discussionId);
@@ -681,6 +696,9 @@ export default function Manifest() {
           }}
           // Discussion
           onOpenDiscussion={handleOpenDiscussionFromDetail}
+          // Generate Tags
+          onGenerateTags={currentFramework?.principles?.length ? handleGenerateTags : undefined}
+          generatingTags={generatingTags}
           // Parts (split books)
           childParts={childParts}
           parentItem={parentItem}

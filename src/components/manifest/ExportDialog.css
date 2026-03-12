@@ -1,0 +1,169 @@
+.export-dialog__section {
+  margin-bottom: var(--spacing-lg);
+}
+
+.export-dialog__section-title {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 var(--spacing-sm) 0;
+}
+
+/* Tab checkboxes */
+.export-dialog__tab-checkboxes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.export-dialog__tab-checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  min-height: var(--touch-target-min);
+}
+
+.export-dialog__tab-checkbox:hover {
+  background-color: var(--color-bg-secondary);
+}
+
+.export-dialog__tab-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-accent);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.export-dialog__tab-label {
+  flex: 1;
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+}
+
+.export-dialog__tab-count {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  background-color: var(--color-bg-secondary);
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+}
+
+/* Book order section */
+.export-dialog__book-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.export-dialog__book-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background-color: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  min-height: 36px;
+}
+
+.export-dialog__book-row--dragging {
+  opacity: 0.5;
+  box-shadow: var(--shadow-md);
+}
+
+.export-dialog__drag-handle {
+  display: flex;
+  align-items: center;
+  color: var(--color-text-secondary);
+  cursor: grab;
+  touch-action: none;
+  padding: 2px;
+  flex-shrink: 0;
+}
+
+.export-dialog__drag-handle:active {
+  cursor: grabbing;
+}
+
+.export-dialog__book-title {
+  flex: 1;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.export-dialog__book-count {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+/* Format selection */
+.export-dialog__format-options {
+  display: flex;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.export-dialog__format-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background-color: var(--color-bg-card);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background-color var(--transition-fast);
+  min-height: var(--touch-target-min);
+}
+
+.export-dialog__format-btn:hover {
+  border-color: var(--color-border-focus);
+}
+
+.export-dialog__format-btn--active {
+  border-color: var(--color-accent);
+  background-color: var(--color-bg-secondary);
+  font-weight: var(--font-weight-medium);
+}
+
+/* Actions */
+.export-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--color-border);
+}
+
+/* Section toggle */
+.export-dialog__section-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  margin-bottom: var(--spacing-sm);
+}
+
+.export-dialog__section-toggle:hover {
+  color: var(--color-text-primary);
+}

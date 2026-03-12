@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Download, FileText, FileCode, Heart, Trash2, Anchor, Compass, Sparkles, StickyNote } from 'lucide-react';
+import { ChevronLeft, Download, Heart, Trash2, Anchor, Compass, Sparkles, StickyNote } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../contexts/AuthContext';
 import type { ManifestSummary, ManifestDeclaration, ManifestActionStep, AIFrameworkPrinciple } from '../../lib/types';
 import { ACTION_STEP_CONTENT_TYPE_LABELS, DECLARATION_STYLE_LABELS } from '../../lib/types';
 import type { ActionStepContentType } from '../../lib/types';
-import { exportHeartedMd, exportHeartedTxt, exportHeartedDocx } from '../../lib/exportExtractions';
 import type { BookExtractionGroup } from '../../lib/exportExtractions';
+import { ExportDialog } from './ExportDialog';
 import './HeartedItemsView.css';
 import './ExtractionTabs.css';
 
@@ -295,6 +295,8 @@ export function HeartedItemsView({ onBack }: HeartedItemsViewProps) {
   }, [user, bookGroups]);
 
   // --- Export ---
+  const [showExportDialog, setShowExportDialog] = useState(false);
+
   const exportGroups = useMemo((): BookExtractionGroup[] => {
     return bookGroups.map((g) => ({
       bookTitle: g.bookTitle,
@@ -304,10 +306,6 @@ export function HeartedItemsView({ onBack }: HeartedItemsViewProps) {
       principles: g.principles,
     }));
   }, [bookGroups]);
-
-  const handleExportMd = useCallback(() => exportHeartedMd(exportGroups), [exportGroups]);
-  const handleExportTxt = useCallback(() => exportHeartedTxt(exportGroups), [exportGroups]);
-  const handleExportDocx = useCallback(async () => exportHeartedDocx(exportGroups), [exportGroups]);
 
   if (loading) {
     return (
@@ -336,16 +334,19 @@ export function HeartedItemsView({ onBack }: HeartedItemsViewProps) {
 
       {totalCount > 0 && (
         <div className="hearted-items__export-row">
-          <button type="button" className="hearted-items__export-btn" onClick={handleExportMd}>
-            <FileCode size={12} /> Export .md
-          </button>
-          <button type="button" className="hearted-items__export-btn" onClick={handleExportDocx}>
-            <FileText size={12} /> Export .docx
-          </button>
-          <button type="button" className="hearted-items__export-btn" onClick={handleExportTxt}>
-            <Download size={12} /> Export .txt
+          <button type="button" className="hearted-items__export-btn" onClick={() => setShowExportDialog(true)}>
+            <Download size={12} /> Export
           </button>
         </div>
+      )}
+
+      {showExportDialog && (
+        <ExportDialog
+          groups={exportGroups}
+          onClose={() => setShowExportDialog(false)}
+          defaultTitle={`My Hearted Items`}
+          mode="hearted"
+        />
       )}
 
       {bookGroups.length === 0 ? (

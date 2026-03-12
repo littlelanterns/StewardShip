@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { ChevronLeft, FileText, FileCode, Mic, Image, StickyNote, RefreshCw, BookOpen, Wand2, MessageSquare, Target, HelpCircle, CheckSquare, BarChart3, Users, ChevronRight, AlertTriangle } from 'lucide-react';
+import { ChevronLeft, FileText, FileCode, Mic, Image, StickyNote, RefreshCw, BookOpen, Wand2, MessageSquare, Target, HelpCircle, CheckSquare, BarChart3, Users, ChevronRight, AlertTriangle, Tags } from 'lucide-react';
 import type { ManifestItem, ManifestSummary, ManifestDeclaration, ManifestActionStep, AIFrameworkPrinciple, BookGenre, DiscussionType } from '../../lib/types';
 import { MANIFEST_FILE_TYPE_LABELS, MANIFEST_STATUS_LABELS } from '../../lib/types';
 import type { SectionInfo } from '../../hooks/useManifestExtraction';
@@ -95,6 +95,9 @@ interface ManifestItemDetailProps {
   onUpdateDeclarationNote?: (id: string, note: string | null) => void;
   // Discussion
   onOpenDiscussion?: (type: DiscussionType) => void;
+  // Generate Tags
+  onGenerateTags?: () => Promise<void>;
+  generatingTags?: boolean;
 }
 
 const FILE_TYPE_ICONS = {
@@ -170,6 +173,8 @@ export function ManifestItemDetail({
   onUpdateActionStepNote,
   onUpdateDeclarationNote,
   onOpenDiscussion,
+  onGenerateTags,
+  generatingTags,
   childParts,
   parentItem,
   onSelectPart,
@@ -645,17 +650,31 @@ export function ManifestItemDetail({
         <section className="manifest-detail__section">
           <div className="manifest-detail__section-header">
             <h3 className="manifest-detail__section-title">About This Book</h3>
-            {onEnrichItem && (
-              <button
-                type="button"
-                className="manifest-detail__enrich-btn"
-                onClick={handleRegenerate}
-                disabled={enriching}
-                title="Regenerate summary and suggest tags"
-              >
-                {enriching ? 'Regenerating...' : 'Regenerate'}
-              </button>
-            )}
+            <div className="manifest-detail__section-actions">
+              {onGenerateTags && (
+                <button
+                  type="button"
+                  className="manifest-detail__enrich-btn"
+                  onClick={onGenerateTags}
+                  disabled={generatingTags}
+                  title="Generate topic tags for this book's framework"
+                >
+                  <Tags size={12} />
+                  {generatingTags ? 'Tagging...' : 'Generate Tags'}
+                </button>
+              )}
+              {onEnrichItem && (
+                <button
+                  type="button"
+                  className="manifest-detail__enrich-btn"
+                  onClick={handleRegenerate}
+                  disabled={enriching}
+                  title="Regenerate summary and suggest tags"
+                >
+                  {enriching ? 'Regenerating...' : 'Regenerate'}
+                </button>
+              )}
+            </div>
           </div>
 
           {item.ai_summary ? (

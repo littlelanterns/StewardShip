@@ -13,9 +13,25 @@ export interface BookExtractionGroup {
   principles: (AIFrameworkPrinciple & { framework_name?: string })[];
 }
 
-// --- Helpers ---
+export interface ExportTabFilter {
+  summary?: boolean;
+  frameworks?: boolean;
+  action_steps?: boolean;
+  mast_content?: boolean;
+}
 
-function triggerDownload(blob: Blob, filename: string): void {
+export type ExportFormat = 'md' | 'txt' | 'docx' | 'epub';
+
+export interface ExportOptions {
+  tabs?: ExportTabFilter;
+  format: ExportFormat;
+  title?: string;
+  mode?: 'extractions' | 'hearted' | 'notes';
+}
+
+// --- Helpers (exported for use by exportEpub.ts) ---
+
+export function triggerDownload(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -26,15 +42,15 @@ function triggerDownload(blob: Blob, filename: string): void {
   URL.revokeObjectURL(url);
 }
 
-function toFilename(name: string): string {
+export function toFilename(name: string): string {
   return name.replace(/[^a-z0-9\-_ ]/gi, '').trim().replace(/\s+/g, '_');
 }
 
-function today(): string {
+export function today(): string {
   return new Date().toISOString().split('T')[0];
 }
 
-function escapeXml(str: string): string {
+export function escapeXml(str: string): string {
   return str
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -44,7 +60,7 @@ function escapeXml(str: string): string {
 }
 
 /** Clean up AI-generated text: remove escaped quotes, backslash escapes, and stray bracket tags */
-function cleanText(str: string): string {
+export function cleanText(str: string): string {
   return str
     .replace(/\\'/g, "'")
     .replace(/\\"/g, '"')
@@ -53,17 +69,17 @@ function cleanText(str: string): string {
 }
 
 /** Convert content_type slug to human-readable label: key_concept → KEY CONCEPT */
-function contentTypeLabel(type: string): string {
+export function contentTypeLabel(type: string): string {
   return type.replace(/_/g, ' ').toUpperCase();
 }
 
 /** Format a declaration style enum to display label */
-function styleLabel(style: string): string {
+export function styleLabel(style: string): string {
   return DECLARATION_STYLE_LABELS[style as keyof typeof DECLARATION_STYLE_LABELS] || style.replace(/_/g, ' ');
 }
 
 /** Format action step content_type to display label */
-function actionStepLabel(type: string): string {
+export function actionStepLabel(type: string): string {
   return ACTION_STEP_CONTENT_TYPE_LABELS[type as ActionStepContentType] || type.replace(/_/g, ' ').toUpperCase();
 }
 
@@ -87,7 +103,7 @@ function docxNoteParagraph(note: string | null | undefined): string {
 
 // --- Chapter-first organization: collect all sections across content types ---
 
-interface ChapterData {
+export interface ChapterData {
   sectionTitle: string;
   sectionIndex: number;
   summaries: ManifestSummary[];
@@ -96,7 +112,12 @@ interface ChapterData {
   declarations: ManifestDeclaration[];
 }
 
-function collectChapters(group: BookExtractionGroup): ChapterData[] {
+export function tabEnabled(tabs: ExportTabFilter | undefined, key: keyof ExportTabFilter): boolean {
+  if (!tabs) return true; // no filter = all enabled
+  return tabs[key] !== false; // undefined or true = enabled
+}
+
+export function collectChapters(group: BookExtractionGroup, tabs?: ExportTabFilter): ChapterData[] {
   const map = new Map<string, ChapterData>();
 
   const getOrCreate = (title: string | null, index: number): ChapterData => {
@@ -117,12 +138,18 @@ function collectChapters(group: BookExtractionGroup): ChapterData[] {
     return chapter;
   };
 
-  for (const s of group.summaries) getOrCreate(s.section_title, s.section_index).summaries.push(s);
-  for (const p of group.principles) getOrCreate(p.section_title, (p as unknown as { section_index?: number }).section_index ?? 999).principles.push(p);
-  if (group.actionSteps) {
+  if (tabEnabled(tabs, 'summary')) {
+    for (const s of group.summaries) getOrCreate(s.section_title, s.section_index).summaries.push(s);
+  }
+  if (tabEnabled(tabs, 'frameworks')) {
+    for (const p of group.principles) getOrCreate(p.section_title, (p as unknown as { section_index?: number }).section_index ?? 999).principles.push(p);
+  }
+  if (tabEnabled(tabs, 'action_steps') && group.actionSteps) {
     for (const a of group.actionSteps) getOrCreate(a.section_title, a.section_index).actionSteps.push(a);
   }
-  for (const d of group.declarations) getOrCreate(d.section_title, d.section_index).declarations.push(d);
+  if (tabEnabled(tabs, 'mast_content')) {
+    for (const d of group.declarations) getOrCreate(d.section_title, d.section_index).declarations.push(d);
+  }
 
   return Array.from(map.values()).sort((a, b) => a.sectionIndex - b.sectionIndex);
 }
@@ -131,12 +158,12 @@ function collectChapters(group: BookExtractionGroup): ChapterData[] {
 //  MARKDOWN EXPORT
 // ============================================================
 
-function buildBookMarkdown(group: BookExtractionGroup, headingLevel: '#' | '##'): string[] {
+function buildBookMarkdown(group: BookExtractionGroup, headingLevel: '#' | '##', tabs?: ExportTabFilter): string[] {
   const lines: string[] = [];
   const sub = headingLevel === '#' ? '##' : '###';
   const subsub = headingLevel === '#' ? '###' : '####';
 
-  const chapters = collectChapters(group);
+  const chapters = collectChapters(group, tabs);
   const fwName = group.principles[0]?.framework_name;
 
   for (const chapter of chapters) {
@@ -200,7 +227,7 @@ function buildBookMarkdown(group: BookExtractionGroup, headingLevel: '#' | '##')
   return lines;
 }
 
-export function exportExtractionsMd(groups: BookExtractionGroup[], title?: string): void {
+export function exportExtractionsMd(groups: BookExtractionGroup[], title?: string, tabs?: ExportTabFilter): void {
   const isSingleBook = groups.length === 1;
   const docTitle = title || (isSingleBook ? `${groups[0].bookTitle} - Extractions` : 'Extractions');
 
@@ -217,7 +244,7 @@ export function exportExtractionsMd(groups: BookExtractionGroup[], title?: strin
     if (!isSingleBook) {
       lines.push(`## ${group.bookTitle}`, '');
     }
-    lines.push(...buildBookMarkdown(group, isSingleBook ? '#' : '##'));
+    lines.push(...buildBookMarkdown(group, isSingleBook ? '#' : '##', tabs));
     if (!isSingleBook) {
       lines.push('---', '');
     }
@@ -231,11 +258,11 @@ export function exportExtractionsMd(groups: BookExtractionGroup[], title?: strin
 //  PLAIN TEXT EXPORT
 // ============================================================
 
-function buildBookTxt(group: BookExtractionGroup, isTopLevel: boolean): string[] {
+function buildBookTxt(group: BookExtractionGroup, isTopLevel: boolean, tabs?: ExportTabFilter): string[] {
   const lines: string[] = [];
   const sectionDivider = isTopLevel ? '===' : '---';
 
-  const chapters = collectChapters(group);
+  const chapters = collectChapters(group, tabs);
   const fwName = group.principles[0]?.framework_name;
 
   for (const chapter of chapters) {
@@ -299,7 +326,7 @@ function buildBookTxt(group: BookExtractionGroup, isTopLevel: boolean): string[]
   return lines;
 }
 
-export function exportExtractionsTxt(groups: BookExtractionGroup[], title?: string): void {
+export function exportExtractionsTxt(groups: BookExtractionGroup[], title?: string, tabs?: ExportTabFilter): void {
   const isSingleBook = groups.length === 1;
   const docTitle = title || (isSingleBook ? `${groups[0].bookTitle} - Extractions` : 'Extractions');
 
@@ -315,7 +342,7 @@ export function exportExtractionsTxt(groups: BookExtractionGroup[], title?: stri
     if (!isSingleBook) {
       lines.push(`== ${group.bookTitle.toUpperCase()} ==`, '');
     }
-    lines.push(...buildBookTxt(group, isSingleBook));
+    lines.push(...buildBookTxt(group, isSingleBook, tabs));
     if (!isSingleBook) {
       lines.push('========================================', '');
     }
@@ -329,7 +356,7 @@ export function exportExtractionsTxt(groups: BookExtractionGroup[], title?: stri
 //  DOCX EXPORT
 // ============================================================
 
-function buildDocxParagraphs(groups: BookExtractionGroup[], isMultiBook: boolean): string {
+function buildDocxParagraphs(groups: BookExtractionGroup[], isMultiBook: boolean, tabs?: ExportTabFilter): string {
   const paras: string[] = [];
 
   for (const group of groups) {
@@ -340,7 +367,7 @@ function buildDocxParagraphs(groups: BookExtractionGroup[], isMultiBook: boolean
     const h2 = isMultiBook ? 'Heading2' : 'Heading1';
     const h3 = isMultiBook ? 'Heading3' : 'Heading2';
 
-    const chapters = collectChapters(group);
+    const chapters = collectChapters(group, tabs);
     const fwName = group.principles[0]?.framework_name;
 
     for (const chapter of chapters) {
@@ -454,11 +481,11 @@ function docxDeclarationParagraph(
   return `<w:p><w:pPr><w:spacing w:after="100"/></w:pPr>${runs.join('')}</w:p>`;
 }
 
-export async function exportExtractionsDocx(groups: BookExtractionGroup[], title?: string): Promise<void> {
+export async function exportExtractionsDocx(groups: BookExtractionGroup[], title?: string, tabs?: ExportTabFilter): Promise<void> {
   const isSingleBook = groups.length === 1;
   const docTitle = title || (isSingleBook ? `${groups[0].bookTitle} - Extractions` : 'Extractions');
 
-  const bodyContent = buildDocxParagraphs(groups, !isSingleBook);
+  const bodyContent = buildDocxParagraphs(groups, !isSingleBook, tabs);
 
   const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"

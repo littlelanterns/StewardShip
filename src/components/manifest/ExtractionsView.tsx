@@ -1,14 +1,14 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Heart, Download, FileText, FileCode, ChevronDown, ChevronRight, Trash2, Anchor, Compass, RefreshCw, Sparkles, LayoutList, BookOpen, StickyNote, Search } from 'lucide-react';
+import { ChevronLeft, Heart, Download, ChevronDown, ChevronRight, Trash2, Anchor, Compass, RefreshCw, Sparkles, LayoutList, BookOpen, StickyNote, Search } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useTagUsage } from '../../hooks/useTagUsage';
 import type { ManifestItem, ManifestSummary, ManifestDeclaration, ManifestActionStep, AIFrameworkPrinciple, BookGenre } from '../../lib/types';
 import { DECLARATION_STYLE_LABELS, ACTION_STEP_CONTENT_TYPE_LABELS } from '../../lib/types';
 import type { ActionStepContentType } from '../../lib/types';
-import { exportExtractionsMd, exportExtractionsTxt, exportExtractionsDocx, exportNotesMd, exportNotesTxt, exportNotesDocx, exportHeartedMd, exportHeartedTxt, exportHeartedDocx } from '../../lib/exportExtractions';
 import type { BookExtractionGroup } from '../../lib/exportExtractions';
+import { ExportDialog } from './ExportDialog';
 import { Button, TagPills } from '../shared';
 import './ExtractionsView.css';
 import './ExtractionTabs.css';
@@ -899,6 +899,9 @@ export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsVie
   }, [favoritesMode, filterMode, visibleData]);
 
   // --- Export ---
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [exportMode, setExportMode] = useState<'extractions' | 'hearted' | 'notes'>('extractions');
+
   const exportGroups = useMemo((): BookExtractionGroup[] => {
     return selectedData.map((d) => ({
       bookTitle: d.bookTitle,
@@ -914,17 +917,15 @@ export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsVie
     return undefined;
   }, [exportGroups, favoritesMode]);
 
-  const handleExportMd = useCallback(() => favoritesMode ? exportHeartedMd(exportGroups) : exportExtractionsMd(exportGroups, singleBookTitle), [exportGroups, singleBookTitle, favoritesMode]);
-  const handleExportTxt = useCallback(() => favoritesMode ? exportHeartedTxt(exportGroups) : exportExtractionsTxt(exportGroups, singleBookTitle), [exportGroups, singleBookTitle, favoritesMode]);
-  const handleExportDocx = useCallback(async () => favoritesMode ? exportHeartedDocx(exportGroups) : exportExtractionsDocx(exportGroups, singleBookTitle), [exportGroups, singleBookTitle, favoritesMode]);
-
   const notesTitle = useMemo(() => {
     if (exportGroups.length === 1) return `${exportGroups[0].bookTitle} - My Notes`;
     return undefined;
   }, [exportGroups]);
-  const handleExportNotesMd = useCallback(() => exportNotesMd(exportGroups, notesTitle), [exportGroups, notesTitle]);
-  const handleExportNotesTxt = useCallback(() => exportNotesTxt(exportGroups, notesTitle), [exportGroups, notesTitle]);
-  const handleExportNotesDocx = useCallback(async () => exportNotesDocx(exportGroups, notesTitle), [exportGroups, notesTitle]);
+
+  const openExportDialog = useCallback((mode: 'extractions' | 'hearted' | 'notes') => {
+    setExportMode(mode);
+    setShowExportDialog(true);
+  }, []);
 
   // --- Render helpers ---
 
@@ -1607,16 +1608,10 @@ export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsVie
 
           {selectedIds.size > 0 && (
             <>
-              {/* Export row */}
+              {/* Export button */}
               <div className="extractions-view__export-row">
-                <button type="button" className="extractions-view__export-btn" onClick={handleExportMd}>
-                  <FileCode size={12} /> Export .md
-                </button>
-                <button type="button" className="extractions-view__export-btn" onClick={handleExportDocx}>
-                  <FileText size={12} /> Export .docx
-                </button>
-                <button type="button" className="extractions-view__export-btn" onClick={handleExportTxt}>
-                  <Download size={12} /> Export .txt
+                <button type="button" className="extractions-view__export-btn" onClick={() => openExportDialog(favoritesMode ? 'hearted' : 'extractions')}>
+                  <Download size={12} /> Export
                 </button>
               </div>
 
@@ -1705,15 +1700,8 @@ export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsVie
                 <div className="extractions-view__content">
                   {displayCounts.notes > 0 && (
                     <div className="extractions-view__export-row">
-                      <span className="extractions-view__export-label">Export Notes:</span>
-                      <button type="button" className="extractions-view__export-btn" onClick={handleExportNotesMd}>
-                        <FileCode size={12} /> .md
-                      </button>
-                      <button type="button" className="extractions-view__export-btn" onClick={handleExportNotesDocx}>
-                        <FileText size={12} /> .docx
-                      </button>
-                      <button type="button" className="extractions-view__export-btn" onClick={handleExportNotesTxt}>
-                        <Download size={12} /> .txt
+                      <button type="button" className="extractions-view__export-btn" onClick={() => openExportDialog('notes')}>
+                        <Download size={12} /> Export Notes
                       </button>
                     </div>
                   )}
@@ -2042,6 +2030,15 @@ export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsVie
             </>
           )}
         </>
+      )}
+
+      {showExportDialog && (
+        <ExportDialog
+          groups={exportGroups}
+          onClose={() => setShowExportDialog(false)}
+          defaultTitle={exportMode === 'notes' ? notesTitle : singleBookTitle}
+          mode={exportMode}
+        />
       )}
     </div>
   );
