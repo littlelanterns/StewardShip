@@ -51,7 +51,8 @@ export function HeartedItemsView({ onBack }: HeartedItemsViewProps) {
           .eq('is_hearted', true)
           .eq('is_deleted', false)
           .order('manifest_item_id')
-          .order('sort_order', { ascending: true }),
+          .order('sort_order', { ascending: true })
+          .limit(10000),
         supabase
           .from('manifest_declarations')
           .select('*')
@@ -59,14 +60,16 @@ export function HeartedItemsView({ onBack }: HeartedItemsViewProps) {
           .eq('is_hearted', true)
           .eq('is_deleted', false)
           .order('manifest_item_id')
-          .order('sort_order', { ascending: true }),
+          .order('sort_order', { ascending: true })
+          .limit(10000),
         supabase
           .from('ai_framework_principles')
           .select('*, ai_frameworks!inner(manifest_item_id, name)')
           .eq('user_id', user.id)
           .eq('is_hearted', true)
           .eq('is_deleted', false)
-          .order('sort_order', { ascending: true }),
+          .order('sort_order', { ascending: true })
+          .limit(10000),
         supabase
           .from('manifest_action_steps')
           .select('*')
@@ -74,7 +77,8 @@ export function HeartedItemsView({ onBack }: HeartedItemsViewProps) {
           .eq('is_hearted', true)
           .eq('is_deleted', false)
           .order('manifest_item_id')
-          .order('sort_order', { ascending: true }),
+          .order('sort_order', { ascending: true })
+          .limit(10000),
       ]);
 
       const summaries = (summaryRes.data || []) as ManifestSummary[];
