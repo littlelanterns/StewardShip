@@ -21,7 +21,6 @@ import {
   exportNotesTxt,
   exportNotesDocx,
 } from './exportExtractions';
-import { DECLARATION_STYLE_LABELS } from './types';
 
 // ============================================================
 //  EPUB EXPORT
