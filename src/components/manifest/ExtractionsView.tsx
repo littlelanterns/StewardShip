@@ -253,62 +253,71 @@ export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsVie
     return all;
   }, [filteredSingles, filteredParents, childPartsMap]);
 
-  // Fetch extractions for selected books (with fixed sort order)
+  // Fetch extractions for selected books, batched to avoid Supabase row limits
   const fetchExtractions = useCallback(async (ids: string[]) => {
     if (!user || ids.length === 0) return;
     setLoading(true);
 
     try {
-      const [summaryRes, declRes, principleRes, actionStepRes] = await Promise.all([
-        supabase
-          .from('manifest_summaries')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('is_deleted', false)
-          .in('manifest_item_id', ids)
-          .order('manifest_item_id')
-          .order('section_index', { ascending: true })
-          .order('sort_order', { ascending: true })
-          .limit(10000),
-        supabase
-          .from('manifest_declarations')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('is_deleted', false)
-          .in('manifest_item_id', ids)
-          .order('manifest_item_id')
-          .order('section_index', { ascending: true })
-          .order('sort_order', { ascending: true })
-          .limit(10000),
-        supabase
-          .from('ai_framework_principles')
-          .select('*, ai_frameworks!inner(manifest_item_id, name, tags)')
-          .eq('user_id', user.id)
-          .eq('is_deleted', false)
-          .in('ai_frameworks.manifest_item_id', ids)
-          .order('sort_order', { ascending: true })
-          .limit(10000),
-        supabase
-          .from('manifest_action_steps')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('is_deleted', false)
-          .in('manifest_item_id', ids)
-          .order('manifest_item_id')
-          .order('section_index', { ascending: true })
-          .order('sort_order', { ascending: true })
-          .limit(10000),
-      ]);
+      // Batch by 5 books at a time — each batch fetches all 4 tables in parallel
+      const BATCH_SIZE = 5;
+      const allSummaries: ManifestSummary[] = [];
+      const allDeclarations: ManifestDeclaration[] = [];
+      const allPrinciples: Array<AIFrameworkPrinciple & { ai_frameworks: { manifest_item_id: string; name: string; tags: string[] | null } }> = [];
+      const allActionSteps: ManifestActionStep[] = [];
 
-      const summaries = (summaryRes.data || []) as ManifestSummary[];
-      const declarations = (declRes.data || []) as ManifestDeclaration[];
-      const rawPrinciples = (principleRes.data || []) as Array<AIFrameworkPrinciple & { ai_frameworks: { manifest_item_id: string; name: string; tags: string[] | null } }>;
-      const actionSteps = (actionStepRes.data || []) as ManifestActionStep[];
+      for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+        const batchIds = ids.slice(i, i + BATCH_SIZE);
+        const [summaryRes, declRes, principleRes, actionStepRes] = await Promise.all([
+          supabase
+            .from('manifest_summaries')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('is_deleted', false)
+            .in('manifest_item_id', batchIds)
+            .order('manifest_item_id')
+            .order('section_index', { ascending: true })
+            .order('sort_order', { ascending: true })
+            .limit(5000),
+          supabase
+            .from('manifest_declarations')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('is_deleted', false)
+            .in('manifest_item_id', batchIds)
+            .order('manifest_item_id')
+            .order('section_index', { ascending: true })
+            .order('sort_order', { ascending: true })
+            .limit(5000),
+          supabase
+            .from('ai_framework_principles')
+            .select('*, ai_frameworks!inner(manifest_item_id, name, tags)')
+            .eq('user_id', user.id)
+            .eq('is_deleted', false)
+            .in('ai_frameworks.manifest_item_id', batchIds)
+            .order('sort_order', { ascending: true })
+            .limit(5000),
+          supabase
+            .from('manifest_action_steps')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('is_deleted', false)
+            .in('manifest_item_id', batchIds)
+            .order('manifest_item_id')
+            .order('section_index', { ascending: true })
+            .order('sort_order', { ascending: true })
+            .limit(5000),
+        ]);
+        allSummaries.push(...(summaryRes.data || []) as ManifestSummary[]);
+        allDeclarations.push(...(declRes.data || []) as ManifestDeclaration[]);
+        allPrinciples.push(...(principleRes.data || []) as typeof allPrinciples);
+        allActionSteps.push(...(actionStepRes.data || []) as ManifestActionStep[]);
+      }
 
       const newData = new Map<string, BookExtractions>();
       for (const id of ids) {
         const item = extractedItems.find((i) => i.id === id);
-        const bookPrinciples = rawPrinciples.filter((p) => p.ai_frameworks.manifest_item_id === id);
+        const bookPrinciples = allPrinciples.filter((p) => p.ai_frameworks.manifest_item_id === id);
         // Collect unique tags from all frameworks associated with this book
         const tagSet = new Set<string>();
         bookPrinciples.forEach((p) => {
@@ -318,9 +327,9 @@ export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsVie
           bookId: id,
           bookTitle: item?.title || 'Unknown Book',
           genres: (item?.genres || []) as BookGenre[],
-          summaries: summaries.filter((s) => s.manifest_item_id === id),
-          declarations: declarations.filter((d) => d.manifest_item_id === id),
-          actionSteps: actionSteps.filter((a) => a.manifest_item_id === id),
+          summaries: allSummaries.filter((s) => s.manifest_item_id === id),
+          declarations: allDeclarations.filter((d) => d.manifest_item_id === id),
+          actionSteps: allActionSteps.filter((a) => a.manifest_item_id === id),
           principles: bookPrinciples.map((p) => ({ ...p, framework_name: p.ai_frameworks.name })),
           frameworkTags: Array.from(tagSet),
         });
