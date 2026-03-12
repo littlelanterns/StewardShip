@@ -902,15 +902,59 @@ export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsVie
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [exportMode, setExportMode] = useState<'extractions' | 'hearted' | 'notes'>('extractions');
 
+  // Build a reverse map: part ID → parent item (for merging multi-part books)
+  const partToParent = useMemo(() => {
+    const map = new Map<string, ManifestItem>();
+    for (const [parentId, parts] of childPartsMap) {
+      const parent = parentItems.find((p) => p.id === parentId);
+      if (parent) {
+        for (const part of parts) map.set(part.id, parent);
+      }
+    }
+    return map;
+  }, [childPartsMap, parentItems]);
+
   const exportGroups = useMemo((): BookExtractionGroup[] => {
-    return selectedData.map((d) => ({
-      bookTitle: d.bookTitle,
-      summaries: d.summaries,
-      declarations: d.declarations,
-      actionSteps: d.actionSteps,
-      principles: d.principles,
-    }));
-  }, [selectedData]);
+    // Merge parts that share a parent into one group, keep singles as-is
+    const groupMap = new Map<string, BookExtractionGroup>();
+    const order: string[] = [];
+
+    for (const d of selectedData) {
+      const parent = partToParent.get(d.bookId);
+      if (parent) {
+        // This is a part — merge into parent group
+        const key = parent.id;
+        if (!groupMap.has(key)) {
+          groupMap.set(key, {
+            bookTitle: parent.title,
+            summaries: [],
+            declarations: [],
+            actionSteps: [],
+            principles: [],
+          });
+          order.push(key);
+        }
+        const group = groupMap.get(key)!;
+        group.summaries.push(...d.summaries);
+        group.declarations.push(...d.declarations);
+        (group.actionSteps ??= []).push(...d.actionSteps);
+        group.principles.push(...d.principles);
+      } else {
+        // Single book — add directly
+        const key = d.bookId;
+        groupMap.set(key, {
+          bookTitle: d.bookTitle,
+          summaries: d.summaries,
+          declarations: d.declarations,
+          actionSteps: d.actionSteps,
+          principles: d.principles,
+        });
+        order.push(key);
+      }
+    }
+
+    return order.map((key) => groupMap.get(key)!);
+  }, [selectedData, partToParent]);
 
   const singleBookTitle = useMemo(() => {
     if (exportGroups.length === 1) return `${exportGroups[0].bookTitle} - ${favoritesMode ? 'Favorites' : 'Extractions'}`;
