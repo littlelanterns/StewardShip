@@ -34,7 +34,7 @@ export const FEATURE_GUIDES: Record<string, FeatureGuideContent> = {
     featureKey: 'journal',
     title: "The Journal \u2014 A Record of the Voyage",
     description: "Capture anything \u2014 journal entries, gratitude, reflections, quick notes, commonplace book observations. After saving, route entries to other features: create a task, flag a victory, save a principle. The Journal is your universal inbox for the inner voyage.",
-    tips: ["AI auto-tags your life areas", "Route entries to Compass, Mast, or Victory Recorder after saving"],
+    tips: ["AI auto-tags your life areas", "Route entries to Compass, Mast, or Accomplishments after saving"],
   },
   activity_log: {
     featureKey: 'activity_log',
@@ -48,7 +48,7 @@ export const FEATURE_GUIDES: Record<string, FeatureGuideContent> = {
   compass: {
     featureKey: 'compass',
     title: "The Compass \u2014 Navigate Your Tasks",
-    description: "Your task management system with seven different ways to view the same tasks. Toggle between Simple List, Eisenhower Matrix, Eat the Frog, and more. Each view applies a different prioritization philosophy.",
+    description: "Your task management system with seven different ways to view the same tasks. Toggle between Simple List, Eisenhower Matrix, Eat the Frog, and more. Each view applies a different prioritization philosophy. Lists live on a separate page — tap 'View Lists' to get there.",
     tips: ["Long-press any view toggle for a quick explanation", "Use Task Breaker to decompose big tasks with AI"],
   },
   compass_views: {
@@ -83,7 +83,7 @@ export const FEATURE_GUIDES: Record<string, FeatureGuideContent> = {
   rigging: {
     featureKey: 'rigging',
     title: "Rigging \u2014 Plan Your Projects",
-    description: "For goals and projects that need real planning. The AI helps you choose the right framework \u2014 milestones, prioritization, obstacle mapping, or decision analysis \u2014 then breaks the plan into actionable steps for your Compass.",
+    description: "For goals and projects that need real planning. Two tabs: Plans and Priorities. Plans use AI-selected frameworks to break big goals into milestones. Priorities organize your commitments into tiers \u2014 Committed Now, Committed Later, Interested, and Achieved \u2014 so you stay focused on what matters most.",
     tips: ["Five planning frameworks adapt to what you're building", "Milestones can be broken into tasks with Task Breaker"],
   },
   priorities: {
@@ -113,8 +113,8 @@ export const FEATURE_GUIDES: Record<string, FeatureGuideContent> = {
   manifest: {
     featureKey: 'manifest',
     title: "The Manifest \u2014 Your Knowledge Base",
-    description: "Upload books, articles, notes, and documents. The AI processes and indexes them so it can draw on your personal library during conversations. Extract frameworks to teach the AI new principles.",
-    tips: ["Supported formats: PDF, EPUB, DOCX, TXT, MD", "Use Select mode to organize books into folders"],
+    description: "Upload books, articles, notes, and documents. The AI processes and indexes your library. Use 'Extract' to produce four tabs of curated content: summaries, frameworks, action steps, and declarations. Assign genres for richer extraction. Discuss books with the AI or apply them to generate goals, questions, and tasks.",
+    tips: ["Supported formats: PDF, EPUB, DOCX, TXT, MD", "Heart your favorite extracted items across all books"],
   },
   extractions: {
     featureKey: 'extractions',
@@ -131,24 +131,25 @@ export const FEATURE_GUIDES: Record<string, FeatureGuideContent> = {
   meetings: {
     featureKey: 'meetings',
     title: "Meeting Frameworks \u2014 Structured Conversations",
-    description: "Recurring meeting templates for your most important relationships \u2014 couple meetings, parent-child mentoring, weekly reviews, and custom meetings. The AI guides each session through a purposeful agenda and captures action items.",
-    tips: ["Meeting notes auto-save to your Journal", "Action items become Compass tasks"],
+    description: "Recurring meeting templates for your most important relationships \u2014 couple meetings, parent-child check-ins, family council, mentor sessions, weekly and monthly reviews, quarterly inventory, business reviews, and custom templates. The AI guides each session through a customizable agenda and captures action items.",
+    tips: ["Jot down agenda items between meetings so you don't forget what to discuss", "Customize each meeting type's agenda sections to fit your needs"],
   },
   lists: {
     featureKey: 'lists',
-    title: "Lists \u2014 Flexible and Shareable",
-    description: "For anything that doesn't fit in tasks \u2014 shopping lists, book recommendations, gift ideas, bucket lists. Check items off, reorder, and share with others via link.",
+    title: "Lists \u2014 Flexible Collections",
+    description: "For anything that doesn't fit in tasks \u2014 shopping, wishlists, expenses, to-do, someday (a mental parking lot), custom, and routines (checklists that auto-reset on a schedule). Features include sub-items, bulk add with AI sorting, per-item send to Compass, and optional victory-on-complete for celebrating checked-off items.",
+    tips: ["Routine lists track streaks and can appear as cards in Compass views", "Someday lists are pressure-free \u2014 no due dates, no daily reminders"],
   },
   settings: {
     featureKey: 'settings',
     title: "Settings \u2014 Make It Yours",
-    description: "Configure your AI, daily rhythms, notifications, meeting schedules, and more. Every setting has a sensible default \u2014 you never need to visit here unless you want to customize something.",
+    description: "Configure your daily rhythms, notifications, meeting schedules, appearance, and more. Choose from three themes (Captain's Quarters, Deep Waters, Hearthstone) and adjust font size for accessibility. Every setting has a sensible default \u2014 you never need to visit here unless you want to customize something.",
     tips: ["Changes take effect immediately", "Deep links bring you here from other features when relevant"],
   },
   reflections: {
     featureKey: 'reflections',
     title: "Reflections \u2014 Daily Questions to Guide Your Thinking",
-    description: "Answer a rotating set of questions each day to build self-awareness and track your growth over time. Route any response to your Journal or flag it as a Victory. Add your own questions or use the defaults.",
+    description: "Answer a rotating set of questions each day to build self-awareness and track your growth over time. Route any response to your Journal or flag it as an accomplishment. Add your own questions or use the defaults.",
     tips: ["Manage your question list on the Manage tab", "Past reflections are grouped by date for easy review"],
   },
   reports: {

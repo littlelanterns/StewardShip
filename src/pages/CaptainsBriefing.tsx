@@ -77,7 +77,7 @@ const VOYAGE_STAGES: VoyageStage[] = [
     name: 'Chart Your Course',
     tagline: 'The Mast and The Keel',
     narrative:
-      'Before a ship sets sail, the captain must know two things: where they\'re headed and what keeps them steady in the water. Your Mast holds your guiding principles — the north star you navigate by. Your Keel holds your self-knowledge — the ballast that keeps you upright when seas get rough. Set these first, and everything the AI does for you becomes personal.',
+      'Before a ship sets sail, you need to know two things: where you\'re headed and what keeps you steady in the water. Your Mast holds your guiding principles — the north star you navigate by. Your Keel holds your self-knowledge — the ballast that keeps you upright when seas get rough. Set these first, and everything the AI does for you becomes personal.',
     features: [
       {
         name: 'The Mast — Your Guiding Principles',
@@ -132,7 +132,7 @@ const VOYAGE_STAGES: VoyageStage[] = [
     name: 'Take the Wheel',
     tagline: 'The Helm — Your AI Companion',
     narrative:
-      'Every great captain has a trusted advisor — someone who knows the charts, remembers the journey, and speaks plainly. The Helm is yours. It\'s not just a chat window; it\'s the engine that powers guided processes throughout the entire ship. The more it knows about you, the more useful it becomes.',
+      'Every voyage needs a trusted advisor — someone who knows the charts, remembers the journey, and speaks plainly. The Helm is yours. It\'s not just a chat window; it\'s the engine that powers guided processes throughout the entire ship. The more it knows about you, the more useful it becomes.',
     features: [
       {
         name: 'The Helm — Your AI Companion',
@@ -170,7 +170,7 @@ const VOYAGE_STAGES: VoyageStage[] = [
     name: 'Keep the Journal',
     tagline: 'The Journal — A Record of the Voyage',
     narrative:
-      'Every captain keeps a journal — not because someone requires it, but because the voyage is worth recording. Your Journal is a universal inbox for thoughts, gratitude, reflections, meeting notes, and anything else worth capturing. Write it down, then decide what to do with it.',
+      'Every good steward keeps a journal — not because someone requires it, but because the voyage is worth recording. Your Journal is a universal inbox for thoughts, gratitude, reflections, meeting notes, and anything else worth capturing. Write it down, then decide what to do with it.',
     features: [
       {
         name: 'The Journal — Your Commonplace Book',
@@ -178,7 +178,7 @@ const VOYAGE_STAGES: VoyageStage[] = [
         description:
           'Capture anything: journal entries, gratitude, reflections, quick notes, meeting notes, or voice recordings. After saving, you can route entries to other features — create a task, flag a victory, save a principle to your Mast, or add self-knowledge to your Keel. The AI auto-tags your entries by life area.',
         connections:
-          'Routes to: Compass (tasks), Mast (principles), Keel (self-knowledge), Victory Recorder, Reminders.',
+          'Routes to: Compass (tasks), Mast (principles), Keel (self-knowledge), Accomplishments, Reminders.',
         route: '/journal',
         subTools: [
           {
@@ -265,9 +265,9 @@ const VOYAGE_STAGES: VoyageStage[] = [
           },
           {
             name: 'Lists',
-            brief: 'Flexible shareable lists beyond tasks',
+            brief: 'Flexible collections on a standalone page',
             detail:
-              'Create standalone lists for anything — grocery lists, packing lists, project checklists, or reference lists. Lists live under a separate "Lists" tab in the Compass. They can be shared with others via a link.',
+              'Create lists for anything — grocery lists, packing lists, project checklists, wishlists, someday items, or routines that auto-reset on a schedule. Lists live on their own page at /lists (linked from Compass via "View Lists"). Features include sub-items, bulk add with AI sorting, per-item send to Compass, and optional victory-on-complete.',
           },
           {
             name: 'Routines',
@@ -319,12 +319,12 @@ const VOYAGE_STAGES: VoyageStage[] = [
         ],
       },
       {
-        name: 'Victory Recorder — Celebrate Your Wins',
+        name: 'Accomplishments — Evidence of Who You\'re Becoming',
         icon: <Award size={18} />,
         description:
-          'Record accomplishments large and small. The AI generates identity-based celebration text that connects your wins to your principles — not generic praise, but recognition rooted in who you\'re becoming. Victories can come from manual entry, Journal routing, task completion, or routine completion.',
+          'Every completed task is an accomplishment. Record extra victories manually for wins outside your task list. Use "Celebrate this!" to generate an AI narrative for any time period\'s collection of accomplishments — identity-based recognition rooted in who you\'re becoming, not generic praise. Accomplishments can come from manual entry, Journal routing, task completion, list item completion, or routine completion.',
         connections:
-          'Fed by: Journal routing, Compass completions, Routine completions. Feeds into: Crow\'s Nest, Charts, Reckoning Victory Review.',
+          'Fed by: Journal routing, Compass completions, List item completions, Routine completions. Feeds into: Crow\'s Nest, Charts, Reckoning review.',
         route: '/victories',
       },
     ],
@@ -360,7 +360,7 @@ const VOYAGE_STAGES: VoyageStage[] = [
         description:
           'A lighter daily practice alongside Reveille and Reckoning. Each day presents a thoughtful question for contemplation. Write your response, and over time build a personal collection of reflections you can revisit. No pressure, no streak guilt — just a quiet moment of self-examination.',
         connections:
-          'Standalone practice. Responses appear in your weekly Reports summary.',
+          'Integrates with: Reckoning (nudge and summary), Crow\'s Nest (this-week card), Life Inventory (Reflections Toolbox), Reports (reflection section).',
         route: '/reflections',
       },
     ],
@@ -408,9 +408,9 @@ const VOYAGE_STAGES: VoyageStage[] = [
         name: 'Rigging — Plan Your Projects',
         icon: <Layers size={18} />,
         description:
-          'For goals and projects that need real planning. The AI helps you choose the right framework — milestones, prioritization, obstacle mapping, or decision analysis — then breaks the plan into actionable steps. Connected to your Mast so plans stay aligned with what matters.',
+          'For goals and projects that need real planning. Two tabs: Plans and Priorities. The AI helps you choose the right framework for plans, then breaks them into actionable steps. Priorities keep you focused on what matters most. Connected to your Mast so everything stays aligned.',
         connections:
-          'Uses: Mast (alignment), Manifest (reference material). Feeds into: Compass tasks via Task Breaker, Reveille/Reckoning milestone nudges.',
+          'Uses: Mast (alignment), Manifest (reference material). Feeds into: Compass tasks via Task Breaker, Crow\'s Nest (committed priorities), Reveille/Reckoning milestone nudges.',
         route: '/rigging',
         subTools: [
           {
@@ -419,28 +419,46 @@ const VOYAGE_STAGES: VoyageStage[] = [
             detail:
               'MoSCoW prioritizes what Must, Should, Could, or Won\'t happen. Backward Planning works from the desired end state. Milestone Mapping creates phases with checkpoints. Obstacle Pre-mortem anticipates what could go wrong and plans mitigation. 10-10-10 Decision Framework evaluates impact at 10 days, 10 months, and 10 years. The AI selects appropriate frameworks based on what you describe — or combines them.',
           },
+          {
+            name: 'Priorities',
+            brief: 'Track your commitments in four tiers',
+            detail:
+              'Organize your priorities into tiers: Committed Now (actively pursuing, max 7), Committed Later (queued for the future), Interested (exploring), and Achieved. When you complete one, promote something from your queue. Your Committed Now items appear on the Crow\'s Nest dashboard and in AI context.',
+          },
+          {
+            name: 'Sprint Import',
+            brief: 'Paste milestones in bulk with AI sorting',
+            detail:
+              'For rapid plan creation, paste a multi-line list of milestones. The AI parses and sorts them into a new plan with ordered milestones. Great for importing existing project plans or brainstormed milestone lists.',
+          },
         ],
       },
       {
         name: 'The Manifest — Your Knowledge Base',
         icon: <FileText size={18} />,
         description:
-          'Upload books, articles, notes, and documents. The AI processes and indexes them so it can draw on your personal library during conversations. Extract frameworks to teach the AI new principles. Over time, the AI grows wiser as your library grows.',
+          'Upload books, articles, notes, and documents (PDF, EPUB, DOCX, TXT, MD). The AI processes, chunks, and embeds content for retrieval. Assign genres to guide extraction. Use "Extract" to produce four tabs of curated content from any book. Discuss books with the AI, and apply insights directly to goals, tasks, and questions.',
         connections:
-          'Feeds into: Helm (relevant passages in conversation), Mast (extracted principles), Keel (personality data), Safe Harbor (wisdom), Reveille (thoughts).',
+          'Feeds into: Helm (extracted content in conversation), Mast (declarations), Compass (action steps as tasks), Rigging (generated goals), Safe Harbor (wisdom), Reveille/Reckoning (readings).',
         route: '/manifest',
         subTools: [
           {
-            name: 'Intake Flow',
-            brief: 'AI asks how to use each upload',
+            name: 'Extraction Pipeline',
+            brief: 'Four tabs of curated content from any book',
             detail:
-              'When you upload something, the AI asks what to do with it: keep as general reference, extract principles for your Mast, inform your Keel, connect to a specific goal or Wheel, or just store for later. This ensures your library stays organized and useful.',
+              'Run "Extract" on a book to produce four content tabs. Summary: key concepts, stories, metaphors, quotes, and insights. Frameworks: actionable principles that become part of the AI\'s toolkit. Action Steps: exercises, practices, habits, and prompts you can send to Compass. Mast Content: honest commitment declarations in five styles. Extraction is section-based — content is organized by chapter. Use "Go Deeper" to extract more from any chapter. Heart your favorites, edit inline, and add personal notes to any item.',
           },
           {
-            name: 'Framework Extraction',
-            brief: 'Teach the AI new principles from your reading',
+            name: 'Book Discussions',
+            brief: 'Discuss books with the AI',
             detail:
-              'The AI reads your uploaded material, extracts key principles and tools, and presents them for your confirmation. Confirmed frameworks become part of the AI\'s toolkit — loaded alongside your Mast in every conversation. You control which frameworks are active.',
+              'Open "Discuss Book" on any book to have a guided conversation about its content. Select multiple books for cross-book synthesis. Choose an audience (personal, family, teen, spouse, children) to adapt the conversation. The AI draws on your extracted content and RAG-indexed passages. Copy AI responses to clipboard or route insights to other features.',
+          },
+          {
+            name: 'Apply Section',
+            brief: 'Generate goals, questions, tasks, and trackers from books',
+            detail:
+              'Five action buttons on every book: Discuss Book, Generate Goals (routes to Rigging), Generate Questions (routes to Lists), Generate Tasks (routes to Compass), and Generate Tracker (coming soon). Each opens a book discussion with type-specific AI steering.',
           },
         ],
       },
@@ -451,7 +469,7 @@ const VOYAGE_STAGES: VoyageStage[] = [
     name: 'Know Your Crew',
     tagline: 'The People Sailing With You',
     narrative:
-      'No captain sails alone. The people in your life — your partner, your family, your mentors, your community — shape the voyage as much as any wind or current. These tools help you invest in those relationships with the same intentionality you bring to everything else.',
+      'No one sails alone. The people in your life — your partner, your family, your mentors, your community — shape the voyage as much as any wind or current. These tools help you invest in those relationships with the same intentionality you bring to everything else.',
     features: [
       {
         name: 'First Mate — Your Relationship Partner',
@@ -472,13 +490,13 @@ const VOYAGE_STAGES: VoyageStage[] = [
             name: 'Cyrano Me',
             brief: 'AI helps you find the right words',
             detail:
-              'Named after Cyrano de Bergerac — the AI helps you craft messages, texts, letters, or words of encouragement for your spouse. It draws on what it knows about both of you to suggest words that will land, not just sound nice. You always edit and send yourself.',
+              'Named after Cyrano de Bergerac — bring your raw thought and the AI immediately crafts an upgraded version, teaches one communication skill per message, and invites refinement. Over time it rotates through 7 skills (specificity, partner lens, feeling over function, and more). After 5+ uses, it offers "skill check" mode — feedback on your own draft instead of a rewrite. You always edit and send yourself.',
           },
           {
-            name: 'Spouse Questions',
-            brief: 'Conversation starters and deeper connection',
+            name: 'Spouse Prompts',
+            brief: 'AI-generated prompts tailored to your relationship',
             detail:
-              'Curated questions designed to spark meaningful conversation with your partner — from light and fun to deep and vulnerable. Use them at dinner, on walks, or during your Couple Meeting.',
+              'Three types of prompts: Ask Them (questions to spark meaningful conversation), Reflect (internal prompts to notice and appreciate your partner), and Express (action ideas for showing love in your own words). The AI tailors each prompt to gaps in your partner knowledge, recent relationship context, and your partner\'s unique profile. Responses auto-save to spouse insights.',
           },
         ],
       },
@@ -495,7 +513,7 @@ const VOYAGE_STAGES: VoyageStage[] = [
             name: 'Higgins — Communication Coach',
             brief: 'AI helps you navigate conversations with anyone',
             detail:
-              'Named after Professor Higgins — two modes for any crew member. "Say This" helps you craft what to say in a specific situation, drawing on what the AI knows about that person. "Navigate This" helps you think through a complex interpersonal situation before acting. The AI loads that person\'s profile for personalized guidance.',
+              'Named after Professor Higgins — two modes for any crew member. "Help me say something" crafts what to say in a specific situation, drawing on what the AI knows about that person. "Help me navigate a situation" helps you think through a complex interpersonal dynamic before acting. The AI adapts its coaching voice based on the relationship — parent to child, child to parent, peer to peer — and teaches one communication skill per message. Available from individual profiles or the Crew page toolbar for multi-person situations.',
           },
           {
             name: 'Sphere of Influence',
@@ -512,7 +530,7 @@ const VOYAGE_STAGES: VoyageStage[] = [
     name: 'When Storms Come',
     tagline: 'Safe Harbor — A Port in Every Storm',
     narrative:
-      'Every voyage meets rough weather. Safe Harbor is not a sign of weakness — it\'s the wisdom of a seasoned captain who knows when to seek shelter, regroup, and wait for the storm to pass. This space is different from the rest of the app. The AI shifts its approach here: validating first, offering perspective only when you\'re ready, and always pointing you toward the people and faith that anchor you.',
+      'Every voyage meets rough weather. Safe Harbor is not a sign of weakness — it\'s the wisdom of a seasoned sailor who knows when to seek shelter, regroup, and wait for the storm to pass. This space is different from the rest of the app. The AI shifts its approach here: validating first, offering perspective only when you\'re ready, and always pointing you toward the people and faith that anchor you.',
     features: [
       {
         name: 'Safe Harbor — When Seas Get Rough',
@@ -520,7 +538,7 @@ const VOYAGE_STAGES: VoyageStage[] = [
         description:
           'A specialized space for processing stress, difficult emotions, or hard seasons. The AI uses a three-tier safety system: capacity building for everyday stress, professional support suggestions when things are heavier, and immediate crisis resources when needed. It draws on your Mast, Keel, and Manifest for grounding, and always redirects toward human connection and faith.',
         connections:
-          'Uses: Mast, Keel, Manifest, First Mate, Crew, Wheel, Life Inventory. Routes to: Journal (processing notes), Compass (action items), Keel (self-insights), Victory Recorder (overcoming).',
+          'Uses: Mast, Keel, Manifest, First Mate, Crew, Wheel, Life Inventory. Routes to: Journal (processing notes), Compass (action items), Keel (self-insights), Accomplishments (overcoming).',
         route: '/safe-harbor',
         subTools: [
           {
@@ -544,9 +562,9 @@ const VOYAGE_STAGES: VoyageStage[] = [
         name: 'Meeting Frameworks — Structured Sessions',
         icon: <Calendar size={18} />,
         description:
-          'Templates for recurring meetings: Couple Meetings with your spouse, Parent-Child check-ins, Weekly Reviews, Monthly Reviews, Business meetings, and custom templates you create. Each meeting type loads relevant context and guides the conversation with prompts and note-taking.',
+          'Templates for recurring meetings: Couple Meetings, Parent-Child check-ins, Family Council, Mentor sessions, Weekly Reviews, Monthly Reviews, Quarterly Inventory, Business Reviews, and custom templates you create. Each meeting type loads relevant context and guides the conversation through a customizable agenda. Jot down agenda items between meetings so you don\'t forget what to discuss.',
         connections:
-          'Uses: First Mate (couple meetings), Crew (parent-child meetings). Notes save to: Journal, linked Crew members.',
+          'Uses: First Mate (couple meetings), Crew (parent-child and mentor meetings). Notes save to: Journal, linked Crew members. Agenda sections customizable per meeting type.',
         route: '/meetings',
       },
       {
@@ -559,12 +577,12 @@ const VOYAGE_STAGES: VoyageStage[] = [
         route: '/settings',
       },
       {
-        name: 'Reports — Weekly Summaries',
+        name: 'Reports — See the Full Picture',
         icon: <ClipboardList size={18} />,
         description:
-          'Generate progress reports that pull from across the app — task completion, victories, journal highlights, reflection responses, routine performance, and more. A snapshot of your week in one view.',
+          'Generate progress reports across any time period — today, this week, this month, last month, or a custom date range. Choose which sections to include: tasks, journal entries, victories, goals, streaks, routines, and reflections. Preview inline, then export as PDF or Markdown.',
         connections:
-          'Reads from: Compass, Victories, Journal, Reflections, Routines, Charts.',
+          'Reads from: Compass, Victories, Journal, Reflections, Routines, Charts, Goals.',
         route: '/reports',
       },
       {
@@ -635,10 +653,10 @@ const CaptainsBriefing: React.FC = () => {
       <div className="captains-briefing__intro">
         <p className="captains-briefing__intro-text">
           StewardShip is a personal growth system built around one idea: you are
-          the captain of your own voyage. The tools here help you define where
-          you're headed, manage the daily work of getting there, track your
-          progress, invest in your relationships, and process the hard days when
-          they come.
+          a steward of the voyage you've been entrusted with. The tools here
+          help you define where you're headed, manage the daily work of getting
+          there, track your progress, invest in your relationships, and process
+          the hard days when they come.
         </p>
         <p className="captains-briefing__intro-text">
           You don't need to use everything at once. Start with the first two
