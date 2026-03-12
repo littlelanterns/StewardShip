@@ -443,10 +443,34 @@ const VOYAGE_STAGES: VoyageStage[] = [
         route: '/manifest',
         subTools: [
           {
-            name: 'Extraction Pipeline',
-            brief: 'Four tabs of curated content from any book',
+            name: 'Summary Tab',
+            brief: 'Key concepts, stories, quotes, and insights',
             detail:
-              'Run "Extract" on a book to produce four content tabs. Summary: key concepts, stories, metaphors, quotes, and insights. Frameworks: actionable principles that become part of the AI\'s toolkit. Action Steps: exercises, practices, habits, and prompts you can send to Compass. Mast Content: honest commitment declarations in five styles. Extraction is section-based — content is organized by chapter. Use "Go Deeper" to extract more from any chapter. Heart your favorites, edit inline, and add personal notes to any item.',
+              'The first extraction tab pulls out the heart of a book: key concepts, stories and metaphors, memorable quotes, lessons, themes, character insights, and principles. Content is organized by chapter so you can trace ideas to their source. Heart your favorites, edit inline, and add personal notes.',
+          },
+          {
+            name: 'Frameworks Tab',
+            brief: 'Actionable principles for the AI\'s toolkit',
+            detail:
+              'The second tab extracts actionable principles — practical frameworks the AI can apply in your conversations. These become part of the AI\'s working knowledge, loaded alongside your Mast when relevant. Browse all frameworks by topic tag, export them, and toggle which ones are active.',
+          },
+          {
+            name: 'Action Steps Tab',
+            brief: 'Exercises, practices, and habits you can act on',
+            detail:
+              'The third tab surfaces exercises, practices, daily and weekly habits, reflection prompts, conversation starters, and projects from the book. Each item can be sent directly to Compass as a task. The tab distinguishes content types so you can scan for what fits your current season.',
+          },
+          {
+            name: 'Mast Content Tab',
+            brief: 'Honest declarations — not affirmations',
+            detail:
+              'The fourth tab generates honest commitment declarations drawn from the book\'s wisdom. These are NOT affirmations ("I am patient") — they are declarations your whole being can stand behind right now ("I choose to respond with patience, even when it\'s hard"). The difference matters: affirmations claim a finished state your subconscious knows isn\'t true, creating an honesty gap that dulls your discernment over time. Declarations claim the choosing, the committing, the recognizing — things that are immediately true in the act of declaring them. Your brain recruits itself as an ally instead of a prosecutor. Five declaration styles are used: Choosing & Committing (the decision itself is the truth), Recognizing & Awakening (honoring growth you can actually see), Claiming & Stepping Into (bold identity claims that become true in the claiming), Learning & Striving (respecting the messy middle), and Resolute & Unashamed (fierce vows and battle cries). Each can be sent to your Mast with one tap.',
+          },
+          {
+            name: 'Curation Tools',
+            brief: 'Heart, edit, annotate, and export across all tabs',
+            detail:
+              'Extraction is section-based — content is organized by chapter. Use "Go Deeper" to extract more from any chapter. Heart your favorites across all four tabs, edit any text inline, and add personal notes. View by tab, by chapter, or notes-only. Export per-book or aggregated hearted items as Markdown, text, or Word.',
           },
           {
             name: 'Book Discussions',
@@ -481,22 +505,46 @@ const VOYAGE_STAGES: VoyageStage[] = [
         route: '/first-mate',
         subTools: [
           {
-            name: 'Marriage Toolbox',
-            brief: 'Guided modes for relationship goals',
+            name: 'Quality Time',
+            brief: 'Plan dates that actually fit your partner',
             detail:
-              'A collection of AI-guided conversation modes focused on your relationship: planning quality time, choosing gifts, observing and serving, expressing words of affirmation, and capturing gratitude. Each mode loads your spouse\'s profile so the AI\'s suggestions are personal, not generic.',
+              'The AI uses your partner\'s profile — interests, love language, personality, current season of life — to help you plan quality time that feels personal, not generic. Produces Compass tasks so ideas become action.',
+          },
+          {
+            name: 'Gifts',
+            brief: 'Thoughtful gift ideas connected to who they are',
+            detail:
+              'Brainstorm gift ideas rooted in what you actually know about your partner — their interests, wishes, current challenges, and what lights them up. The AI draws from your full First Mate profile so suggestions feel like they came from someone who knows them, not an algorithm.',
+          },
+          {
+            name: 'Observe and Serve',
+            brief: 'Notice what they need before they ask',
+            detail:
+              'The AI nudges your awareness toward the things your partner deals with daily — repeated frustrations, put-off requests, overlooked needs. It helps you see service opportunities through their eyes, not yours. Produces Compass tasks for follow-through.',
+          },
+          {
+            name: 'Words of Affirmation',
+            brief: 'See and say what\'s incredible about them',
+            detail:
+              'Helps you articulate what you genuinely admire about your partner, drawing from your full First Mate profile and gratitude entries. Includes the 21 Compliments Practice — a structured conversation that generates thoughtful, specific compliments (default 21, adjustable). All are editable. Saved as a List you can deliver throughout the week.',
+          },
+          {
+            name: 'Gratitude',
+            brief: 'Quick capture or deeper reflection',
+            detail:
+              'Two modes: quick capture (simple text entry that saves to both your Journal with a marriage life area tag and to spouse insights as gratitude) and deeper Helm conversation. The AI occasionally offers to go deeper when a quick entry has more to unpack.',
           },
           {
             name: 'Cyrano Me',
             brief: 'AI helps you find the right words',
             detail:
-              'Named after Cyrano de Bergerac — bring your raw thought and the AI immediately crafts an upgraded version, teaches one communication skill per message, and invites refinement. Over time it rotates through 7 skills (specificity, partner lens, feeling over function, and more). After 5+ uses, it offers "skill check" mode — feedback on your own draft instead of a rewrite. You always edit and send yourself.',
+              'Named after Cyrano de Bergerac — bring your raw thought and the AI immediately crafts an upgraded version, teaches one communication skill per message, and invites refinement. Over time it rotates through 7 skills (specificity, partner lens, feeling over function, and more). After 5+ uses, it offers "skill check" mode — feedback on your own draft instead of a rewrite. The goal is to make itself unnecessary. You always edit and send yourself.',
           },
           {
             name: 'Spouse Prompts',
             brief: 'AI-generated prompts tailored to your relationship',
             detail:
-              'Three types of prompts: Ask Them (questions to spark meaningful conversation), Reflect (internal prompts to notice and appreciate your partner), and Express (action ideas for showing love in your own words). The AI tailors each prompt to gaps in your partner knowledge, recent relationship context, and your partner\'s unique profile. Responses auto-save to spouse insights.',
+              'Three buttons on the First Mate page: Ask Them (questions to spark meaningful conversation), Reflect (internal prompts to notice and appreciate your partner), and Express (action ideas for showing love in your own words — not scripted messages). The AI tailors each prompt to gaps in your partner knowledge, recent relationship context, and your partner\'s unique profile. Responses auto-save to spouse insights. The three form a natural progression: Reflect (notice) then Express (act on it) then Cyrano Me (craft the words).',
           },
         ],
       },
