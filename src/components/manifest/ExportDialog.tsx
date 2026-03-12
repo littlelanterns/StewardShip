@@ -185,7 +185,7 @@ export function ExportDialog({ groups, onClose, defaultTitle, mode = 'extraction
               checked={tabs.mast_content ?? true}
               onChange={() => toggleTab('mast_content')}
             />
-            <span className="export-dialog__tab-label">Mast Content</span>
+            <span className="export-dialog__tab-label">Declarations</span>
             {tabCounts.declarations > 0 && <span className="export-dialog__tab-count">{tabCounts.declarations}</span>}
           </label>
         </div>

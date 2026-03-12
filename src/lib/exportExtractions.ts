@@ -208,9 +208,9 @@ function buildBookMarkdown(group: BookExtractionGroup, headingLevel: '#' | '##',
       }
     }
 
-    // Mast content (declarations) for this chapter
+    // Declarations for this chapter
     if (chapter.declarations.length > 0) {
-      lines.push(`${contentSub} Mast Content`, '');
+      lines.push(`${contentSub} Declarations`, '');
       for (const d of chapter.declarations) {
         const heartPrefix = d.is_hearted ? '\u2764\uFE0F ' : '';
         const valuePart = d.value_name ? `**${d.value_name}** ` : '';
@@ -306,9 +306,9 @@ function buildBookTxt(group: BookExtractionGroup, isTopLevel: boolean, tabs?: Ex
       }
     }
 
-    // Mast content for this chapter
+    // Declarations for this chapter
     if (chapter.declarations.length > 0) {
-      lines.push('--- MAST CONTENT ---', '');
+      lines.push('--- DECLARATIONS ---', '');
       for (const d of chapter.declarations) {
         const heartPrefix = d.is_hearted ? '[hearted] ' : '';
         const valuePart = d.value_name ? `${d.value_name} — ` : '';
@@ -420,9 +420,9 @@ function buildDocxParagraphs(groups: BookExtractionGroup[], isMultiBook: boolean
         paras.push(docxSpacer());
       }
 
-      // Mast content for this chapter
+      // Declarations for this chapter
       if (chapter.declarations.length > 0) {
-        paras.push(docxHeading('Mast Content', contentHeading));
+        paras.push(docxHeading('Declarations', contentHeading));
         for (const d of chapter.declarations) {
           const heartPrefix = d.is_hearted ? '\u2764\uFE0F ' : '';
           paras.push(docxDeclarationParagraph(

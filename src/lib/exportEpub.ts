@@ -176,7 +176,7 @@ function buildBookXhtml(group: BookExtractionGroup, tabs?: ExportTabFilter): str
     }
 
     if (chapter.declarations.length > 0) {
-      parts.push('<h3>Mast Content</h3>');
+      parts.push('<h3>Declarations</h3>');
       for (const d of chapter.declarations) {
         const cls = d.is_hearted ? ' class="hearted declaration"' : ' class="declaration"';
         const valuePart = d.value_name ? `<span class="value-name">${escapeXml(d.value_name)}</span> ` : '';

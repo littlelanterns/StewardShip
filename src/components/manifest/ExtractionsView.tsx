@@ -278,7 +278,7 @@ export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsVie
             .order('manifest_item_id')
             .order('section_index', { ascending: true })
             .order('sort_order', { ascending: true })
-            .limit(5000),
+            .limit(10000),
           supabase
             .from('manifest_declarations')
             .select('*')
@@ -288,7 +288,7 @@ export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsVie
             .order('manifest_item_id')
             .order('section_index', { ascending: true })
             .order('sort_order', { ascending: true })
-            .limit(5000),
+            .limit(10000),
           supabase
             .from('ai_framework_principles')
             .select('*, ai_frameworks!inner(manifest_item_id, name, tags)')
@@ -296,7 +296,7 @@ export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsVie
             .eq('is_deleted', false)
             .in('ai_frameworks.manifest_item_id', batchIds)
             .order('sort_order', { ascending: true })
-            .limit(5000),
+            .limit(10000),
           supabase
             .from('manifest_action_steps')
             .select('*')
@@ -306,7 +306,7 @@ export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsVie
             .order('manifest_item_id')
             .order('section_index', { ascending: true })
             .order('sort_order', { ascending: true })
-            .limit(5000),
+            .limit(10000),
         ]);
         allSummaries.push(...(summaryRes.data || []) as ManifestSummary[]);
         allDeclarations.push(...(declRes.data || []) as ManifestDeclaration[]);
