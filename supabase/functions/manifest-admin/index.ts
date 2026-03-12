@@ -110,6 +110,34 @@ serve(async (req: Request) => {
           .from('manifest_items')
           .update({ extraction_status: 'completed' })
           .eq('id', adminTargetId);
+
+        // If the synced item is a child part, update the parent's extraction_status too
+        const { data: targetItem } = await supabase
+          .from('manifest_items')
+          .select('parent_manifest_item_id')
+          .eq('id', adminTargetId)
+          .single();
+
+        if (targetItem?.parent_manifest_item_id) {
+          const parentId = targetItem.parent_manifest_item_id;
+          // Check how many children are now extracted
+          const { data: allChildren } = await supabase
+            .from('manifest_items')
+            .select('id, extraction_status')
+            .eq('parent_manifest_item_id', parentId);
+
+          const anyExtracted = allChildren?.some(
+            (c: Record<string, unknown>) => c.extraction_status === 'completed',
+          );
+
+          if (anyExtracted) {
+            await supabase
+              .from('manifest_items')
+              .update({ extraction_status: 'completed' })
+              .eq('id', parentId);
+            console.log(`[manifest-admin] sync_from_user: updated parent ${parentId} extraction_status to completed`);
+          }
+        }
       }
 
       return jsonResponse({ message: 'Sync complete', synced });
@@ -272,16 +300,25 @@ serve(async (req: Request) => {
 
       for (const bookId of booksWithExtractions) {
         try {
-          const { error: cloneErr } = await supabase.functions.invoke('manifest-clone', {
-            body: {
-              manifest_item_id: bookId,
-              clone_extractions: true,
-              force_update: true,
+          const cloneRes = await fetch(
+            `${supabaseUrl}/functions/v1/manifest-clone`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': authHeader,
+              },
+              body: JSON.stringify({
+                manifest_item_id: bookId,
+                clone_extractions: true,
+                force_update: true,
+              }),
             },
-          });
+          );
 
-          if (cloneErr) {
-            errors.push(`${bookId}: ${cloneErr.message}`);
+          if (!cloneRes.ok) {
+            const errText = await cloneRes.text();
+            errors.push(`${bookId}: ${cloneRes.status} ${errText}`);
           } else {
             pushed++;
           }
@@ -548,20 +585,31 @@ serve(async (req: Request) => {
 
     // ── REPUSH ── (re-clone book + extractions to all users with force_update)
     if (action === 'repush') {
-      // Invoke manifest-clone with force_update
-      const { error: cloneErr } = await supabase.functions.invoke('manifest-clone', {
-        body: {
-          manifest_item_id,
-          clone_extractions: true,
-          force_update: true,
+      // Invoke manifest-clone with force_update, forwarding the caller's JWT
+      const cloneRes = await fetch(
+        `${supabaseUrl}/functions/v1/manifest-clone`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': authHeader,
+          },
+          body: JSON.stringify({
+            manifest_item_id,
+            clone_extractions: true,
+            force_update: true,
+          }),
         },
-      });
+      );
 
-      if (cloneErr) {
-        return jsonResponse({ error: `Repush failed: ${cloneErr.message}` }, 500);
+      if (!cloneRes.ok) {
+        const errText = await cloneRes.text();
+        console.error(`[admin] repush manifest-clone call failed: ${cloneRes.status} ${errText}`);
+        return jsonResponse({ error: `Repush failed: ${cloneRes.status} ${errText}` }, 500);
       }
 
-      return jsonResponse({ message: 'Repush complete' });
+      const cloneData = await cloneRes.json();
+      return jsonResponse({ message: 'Repush complete', ...cloneData });
     }
 
     // ── CLEAR EXTRACTIONS ── (clear extractions for one book, own copy only)

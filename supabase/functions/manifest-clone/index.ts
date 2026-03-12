@@ -96,7 +96,9 @@ async function freshCloneExtractions(
   sourceDeclarations: Record<string, any>[],
   // deno-lint-ignore no-explicit-any
   sourceActionSteps: Record<string, any>[],
-) {
+): Promise<boolean> {
+  let hasErrors = false;
+
   // Clone summaries
   if (sourceSummaries.length > 0) {
     const records = sourceSummaries.map((s) => ({
@@ -111,14 +113,18 @@ async function freshCloneExtractions(
       is_deleted: false,
       is_from_go_deeper: s.is_from_go_deeper || false,
     }));
-    await supabase.from('manifest_summaries').insert(records);
+    const { error: sumErr } = await supabase.from('manifest_summaries').insert(records);
+    if (sumErr) {
+      console.error(`[clone] Failed to insert ${records.length} summaries for ${clonedItemId}:`, sumErr.message);
+      hasErrors = true;
+    }
   }
 
   // Clone frameworks + principles
   for (const fw of sourceFrameworks) {
     const principles = (fw.ai_framework_principles || []) as Array<Record<string, unknown>>;
 
-    const { data: newFw } = await supabase
+    const { data: newFw, error: fwErr } = await supabase
       .from('ai_frameworks')
       .insert({
         user_id: targetUserId,
@@ -128,6 +134,12 @@ async function freshCloneExtractions(
       })
       .select('id')
       .single();
+
+    if (fwErr) {
+      console.error(`[clone] Failed to insert framework for ${clonedItemId}:`, fwErr.message);
+      hasErrors = true;
+      continue;
+    }
 
     if (newFw && principles.length > 0) {
       const principleRecords = principles.map((p) => ({
@@ -140,7 +152,11 @@ async function freshCloneExtractions(
         is_deleted: false,
         is_from_go_deeper: p.is_from_go_deeper || false,
       }));
-      await supabase.from('ai_framework_principles').insert(principleRecords);
+      const { error: prinErr } = await supabase.from('ai_framework_principles').insert(principleRecords);
+      if (prinErr) {
+        console.error(`[clone] Failed to insert ${principleRecords.length} principles for ${clonedItemId}:`, prinErr.message);
+        hasErrors = true;
+      }
     }
   }
 
@@ -160,7 +176,11 @@ async function freshCloneExtractions(
       is_from_go_deeper: d.is_from_go_deeper || false,
       sent_to_mast: false,
     }));
-    await supabase.from('manifest_declarations').insert(records);
+    const { error: declErr } = await supabase.from('manifest_declarations').insert(records);
+    if (declErr) {
+      console.error(`[clone] Failed to insert ${records.length} declarations for ${clonedItemId}:`, declErr.message);
+      hasErrors = true;
+    }
   }
 
   // Clone action steps
@@ -178,8 +198,17 @@ async function freshCloneExtractions(
       is_from_go_deeper: a.is_from_go_deeper || false,
       sent_to_compass: false,
     }));
-    await supabase.from('manifest_action_steps').insert(records);
+    const { error: actErr } = await supabase.from('manifest_action_steps').insert(records);
+    if (actErr) {
+      console.error(`[clone] Failed to insert ${records.length} action steps for ${clonedItemId}:`, actErr.message);
+      hasErrors = true;
+    }
   }
+
+  if (hasErrors) {
+    console.warn(`[clone] freshCloneExtractions completed with errors for item ${clonedItemId}`);
+  }
+  return !hasErrors;
 }
 
 // --- Helper: curation-aware merge of extractions ---
@@ -237,7 +266,8 @@ async function mergeExtractions(
       is_from_go_deeper: s.is_from_go_deeper || false,
     }));
   if (newSummaries.length > 0) {
-    await supabase.from('manifest_summaries').insert(newSummaries);
+    const { error: sumErr } = await supabase.from('manifest_summaries').insert(newSummaries);
+    if (sumErr) console.error(`[clone] merge: Failed to insert ${newSummaries.length} summaries for ${clonedItemId}:`, sumErr.message);
   }
 
   // --- Declarations merge ---
@@ -280,7 +310,8 @@ async function mergeExtractions(
       sent_to_mast: false,
     }));
   if (newDeclarations.length > 0) {
-    await supabase.from('manifest_declarations').insert(newDeclarations);
+    const { error: declErr } = await supabase.from('manifest_declarations').insert(newDeclarations);
+    if (declErr) console.error(`[clone] merge: Failed to insert ${newDeclarations.length} declarations for ${clonedItemId}:`, declErr.message);
   }
 
   // --- Frameworks merge ---
@@ -333,10 +364,11 @@ async function mergeExtractions(
           is_from_go_deeper: p.is_from_go_deeper || false,
         }));
       if (newPrinciples.length > 0) {
-        await supabase.from('ai_framework_principles').insert(newPrinciples);
+        const { error: prinErr } = await supabase.from('ai_framework_principles').insert(newPrinciples);
+        if (prinErr) console.error(`[clone] merge: Failed to insert ${newPrinciples.length} principles for ${clonedItemId}:`, prinErr.message);
       }
     } else {
-      const { data: newFw } = await supabase
+      const { data: newFw, error: fwErr } = await supabase
         .from('ai_frameworks')
         .insert({
           user_id: targetUserId,
@@ -347,7 +379,9 @@ async function mergeExtractions(
         .select('id')
         .single();
 
-      if (newFw && sourcePrinciples.length > 0) {
+      if (fwErr) {
+        console.error(`[clone] merge: Failed to insert framework for ${clonedItemId}:`, fwErr.message);
+      } else if (newFw && sourcePrinciples.length > 0) {
         const principleRecords = sourcePrinciples.map((p) => ({
           user_id: targetUserId,
           framework_id: newFw.id,
@@ -358,7 +392,8 @@ async function mergeExtractions(
           is_deleted: false,
           is_from_go_deeper: p.is_from_go_deeper || false,
         }));
-        await supabase.from('ai_framework_principles').insert(principleRecords);
+        const { error: prinErr } = await supabase.from('ai_framework_principles').insert(principleRecords);
+        if (prinErr) console.error(`[clone] merge: Failed to insert ${principleRecords.length} principles for ${clonedItemId}:`, prinErr.message);
       }
     }
   }
@@ -402,7 +437,8 @@ async function mergeExtractions(
       sent_to_compass: false,
     }));
   if (newActionSteps.length > 0) {
-    await supabase.from('manifest_action_steps').insert(newActionSteps);
+    const { error: actErr } = await supabase.from('manifest_action_steps').insert(newActionSteps);
+    if (actErr) console.error(`[clone] merge: Failed to insert ${newActionSteps.length} action steps for ${clonedItemId}:`, actErr.message);
   }
 }
 
@@ -634,6 +670,7 @@ serve(async (req: Request) => {
     let extractionsCopied = 0;
     if (clone_extractions) {
       // Clone extractions for the main item
+      console.log(`[manifest-clone] Extraction cloning: parent status=${originalItem.extraction_status}, part_count=${originalItem.part_count || 0}, childParts=${childParts?.length || 0}`);
       if (originalItem.extraction_status === 'completed') {
         for (const [targetUserId, clonedItemId] of clonedItemMap.entries()) {
           if (targetUserId === sourceUserId) continue;
@@ -661,8 +698,36 @@ serve(async (req: Request) => {
 
       // Clone extractions for child parts
       if (childParts && childParts.length > 0) {
+        console.log(`[manifest-clone] Processing ${childParts.length} child parts for extraction cloning`);
+        let childrenProcessed = 0;
+        let childrenSkipped = 0;
+
         for (const child of childParts) {
-          if (child.extraction_status !== 'completed') continue;
+          // Check extraction_status, but fall back to checking actual data if status is stale
+          if (child.extraction_status !== 'completed') {
+            const { count: dataCount } = await supabase
+              .from('manifest_summaries')
+              .select('id', { count: 'exact', head: true })
+              .eq('manifest_item_id', child.id)
+              .eq('user_id', sourceUserId);
+
+            if (!dataCount || dataCount === 0) {
+              // Also check frameworks
+              const { count: fwCount } = await supabase
+                .from('ai_frameworks')
+                .select('id', { count: 'exact', head: true })
+                .eq('manifest_item_id', child.id)
+                .eq('user_id', sourceUserId)
+                .is('archived_at', null);
+
+              if (!fwCount || fwCount === 0) {
+                console.log(`[manifest-clone] Skipping child ${child.id} (part ${child.part_number}) — no extractions (status: ${child.extraction_status})`);
+                childrenSkipped++;
+                continue;
+              }
+            }
+            console.log(`[manifest-clone] Child ${child.id} (part ${child.part_number}) has extraction data despite status '${child.extraction_status}' — proceeding`);
+          }
 
           // Use the resolved source ID (handles clone-of-clone)
           const childSourceId = childSourceMap.get(child.id) || child.id;
@@ -672,6 +737,8 @@ serve(async (req: Request) => {
             .from('manifest_items')
             .select('id, user_id')
             .eq('source_manifest_item_id', childSourceId);
+
+          console.log(`[manifest-clone] Child ${child.id} (part ${child.part_number}): ${(childClones || []).length} clones found`);
 
           for (const childClone of childClones || []) {
             if (childClone.user_id === sourceUserId) continue;
@@ -690,12 +757,15 @@ serve(async (req: Request) => {
                     toc: child.toc,
                   })
                   .eq('id', childClone.id);
+                childrenProcessed++;
               }
             } catch (err) {
               console.error(`[manifest-clone] Failed to clone child extractions for user ${childClone.user_id}:`, err);
             }
           }
         }
+
+        console.log(`[manifest-clone] Child extraction cloning complete: ${childrenProcessed} processed, ${childrenSkipped} skipped`);
       }
 
       console.log(`[manifest-clone] Cloned extractions to ${extractionsCopied} users`);
