@@ -652,14 +652,14 @@ export function useManifest() {
       return;
     }
 
+    // Only clone books that have extractions — no reason to clone books without extracted content
     const originals = freshItems.filter(
-      (i) => !i.source_manifest_item_id && i.processing_status === 'completed',
+      (i) => !i.source_manifest_item_id && i.processing_status === 'completed' && i.extraction_status === 'completed',
     );
-    console.log(`[backfill] Cloning ${originals.length} original items to all users...`);
+    console.log(`[backfill] Cloning ${originals.length} extracted items to all users...`);
     for (const item of originals) {
-      const cloneExtractions = item.extraction_status === 'completed';
-      console.log(`[backfill] Cloning "${item.title}" (extractions: ${cloneExtractions})...`);
-      await cloneToAllUsers(item.id, cloneExtractions);
+      console.log(`[backfill] Cloning "${item.title}" with extractions...`);
+      await cloneToAllUsers(item.id, true);
       await new Promise((r) => setTimeout(r, 500));
     }
     console.log('[backfill] Done.');

@@ -429,7 +429,7 @@ async function cloneItemToUsers(
 
   // Create cloned items for new users
   if (newTargetIds.length > 0) {
-    const itemRecords = newTargetIds.map((uid) => ({
+    const makeRecord = (uid: string) => ({
       user_id: uid,
       title: originalItem.title,
       file_type: originalItem.file_type,
@@ -450,20 +450,43 @@ async function cloneItemToUsers(
       part_number: originalItem.part_number || null,
       part_count: originalItem.part_count || null,
       parent_manifest_item_id: parentCloneMap?.get(uid) || null,
-    }));
+    });
 
+    // Try bulk insert first (fast path)
+    const itemRecords = newTargetIds.map(makeRecord);
     const { data: inserted, error: insertErr } = await supabase
       .from('manifest_items')
       .insert(itemRecords)
       .select('id, user_id');
 
     if (insertErr) {
-      console.error('[manifest-clone] Failed to insert cloned items:', insertErr);
-      throw new Error(`Clone failed: ${insertErr.message}`);
-    }
-
-    for (const item of inserted || []) {
-      clonedItemMap.set(item.user_id, item.id);
+      // Unique constraint violation — fall back to one-by-one, skipping duplicates
+      console.warn('[manifest-clone] Bulk insert failed (likely duplicates), falling back to individual inserts:', insertErr.message);
+      for (const uid of newTargetIds) {
+        const { data: single, error: singleErr } = await supabase
+          .from('manifest_items')
+          .insert(makeRecord(uid))
+          .select('id, user_id')
+          .single();
+        if (singleErr) {
+          console.warn(`[manifest-clone] Skipping user ${uid} (already has clone): ${singleErr.message}`);
+          // Fetch their existing clone instead
+          const { data: existing } = await supabase
+            .from('manifest_items')
+            .select('id')
+            .eq('user_id', uid)
+            .eq('source_manifest_item_id', sourceId)
+            .is('archived_at', null)
+            .maybeSingle();
+          if (existing) clonedItemMap.set(uid, existing.id);
+        } else if (single) {
+          clonedItemMap.set(single.user_id, single.id);
+        }
+      }
+    } else {
+      for (const item of inserted || []) {
+        clonedItemMap.set(item.user_id, item.id);
+      }
     }
   }
 

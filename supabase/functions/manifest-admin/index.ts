@@ -105,19 +105,27 @@ serve(async (req: Request) => {
 
       if (booksErr) return jsonResponse({ error: booksErr.message }, 500);
 
-      // Get clone counts per book (how many users have a clone of each)
+      // Get clone counts per book (how many UNIQUE USERS have a clone of each)
       const bookIds = (books || []).map((b: { id: string }) => b.id);
       const cloneCounts: Record<string, number> = {};
 
       if (bookIds.length > 0) {
         const { data: clones } = await supabase
           .from('manifest_items')
-          .select('source_manifest_item_id')
-          .in('source_manifest_item_id', bookIds);
+          .select('source_manifest_item_id, user_id')
+          .in('source_manifest_item_id', bookIds)
+          .neq('user_id', callerUserId)
+          .is('archived_at', null);
 
+        // Count unique users per source (dedup in case of duplicate clone records)
+        const perSource = new Map<string, Set<string>>();
         for (const clone of clones || []) {
           const srcId = clone.source_manifest_item_id as string;
-          cloneCounts[srcId] = (cloneCounts[srcId] || 0) + 1;
+          if (!perSource.has(srcId)) perSource.set(srcId, new Set());
+          perSource.get(srcId)!.add(clone.user_id as string);
+        }
+        for (const [srcId, users] of perSource) {
+          cloneCounts[srcId] = users.size;
         }
       }
 
@@ -259,6 +267,171 @@ serve(async (req: Request) => {
         pushed,
         total: booksWithExtractions.length,
         errors: errors.length > 0 ? errors : undefined,
+      });
+    }
+
+    // ── CLEANUP DUPLICATES ── (remove duplicate clone records + orphan clones with no extractions)
+    if (action === 'cleanup_duplicates') {
+      let duplicatesRemoved = 0;
+      let orphansRemoved = 0;
+
+      // 1. Find all clone records (items with source_manifest_item_id set)
+      const { data: allClones } = await supabase
+        .from('manifest_items')
+        .select('id, user_id, source_manifest_item_id, created_at')
+        .not('source_manifest_item_id', 'is', null)
+        .is('archived_at', null)
+        .order('created_at', { ascending: true });
+
+      if (allClones && allClones.length > 0) {
+        // Group by user_id + source_manifest_item_id to find duplicates
+        const groups = new Map<string, Array<{ id: string; created_at: string }>>();
+        for (const clone of allClones) {
+          const key = `${clone.user_id}::${clone.source_manifest_item_id}`;
+          if (!groups.has(key)) groups.set(key, []);
+          groups.get(key)!.push({ id: clone.id, created_at: clone.created_at });
+        }
+
+        // For each group with >1 entry, keep the oldest, delete the rest
+        const dupeIds: string[] = [];
+        for (const [, items] of groups) {
+          if (items.length > 1) {
+            // Keep first (oldest), remove rest
+            for (let i = 1; i < items.length; i++) {
+              dupeIds.push(items[i].id);
+            }
+          }
+        }
+
+        if (dupeIds.length > 0) {
+          // Delete extraction data for duplicate items
+          await Promise.all([
+            supabase.from('manifest_summaries').delete().in('manifest_item_id', dupeIds),
+            supabase.from('manifest_declarations').delete().in('manifest_item_id', dupeIds),
+            supabase.from('manifest_action_steps').delete().in('manifest_item_id', dupeIds),
+            supabase.from('manifest_chunks').delete().in('manifest_item_id', dupeIds),
+          ]);
+
+          const { data: dupeFws } = await supabase
+            .from('ai_frameworks')
+            .select('id')
+            .in('manifest_item_id', dupeIds);
+
+          if (dupeFws && dupeFws.length > 0) {
+            const fwIds = dupeFws.map((f: { id: string }) => f.id);
+            await supabase.from('ai_framework_principles').delete().in('framework_id', fwIds);
+            await supabase.from('ai_frameworks').delete().in('id', fwIds);
+          }
+
+          // Delete child parts of duplicate parent items
+          const { data: dupeChildren } = await supabase
+            .from('manifest_items')
+            .select('id')
+            .in('parent_manifest_item_id', dupeIds);
+
+          if (dupeChildren && dupeChildren.length > 0) {
+            const childIds = dupeChildren.map((c: { id: string }) => c.id);
+            await Promise.all([
+              supabase.from('manifest_summaries').delete().in('manifest_item_id', childIds),
+              supabase.from('manifest_declarations').delete().in('manifest_item_id', childIds),
+              supabase.from('manifest_action_steps').delete().in('manifest_item_id', childIds),
+              supabase.from('manifest_chunks').delete().in('manifest_item_id', childIds),
+            ]);
+            await supabase.from('manifest_items').delete().in('id', childIds);
+          }
+
+          await supabase.from('manifest_items').delete().in('id', dupeIds);
+          duplicatesRemoved = dupeIds.length;
+        }
+      }
+
+      // 2. Remove orphan clones — clones of books with no extractions (not admin's own)
+      const { data: cloneItems } = await supabase
+        .from('manifest_items')
+        .select('id, source_manifest_item_id, user_id')
+        .not('source_manifest_item_id', 'is', null)
+        .neq('user_id', callerUserId)
+        .is('archived_at', null)
+        .is('parent_manifest_item_id', null);
+
+      if (cloneItems && cloneItems.length > 0) {
+        // Get unique source IDs
+        const sourceIds = [...new Set(cloneItems.map((c: Record<string, unknown>) => c.source_manifest_item_id as string))];
+
+        // Check which sources have extractions
+        const sourcesWithExtractions = new Set<string>();
+        for (const srcId of sourceIds) {
+          const { count } = await supabase
+            .from('manifest_summaries')
+            .select('id', { count: 'exact', head: true })
+            .eq('manifest_item_id', srcId);
+          if (count && count > 0) { sourcesWithExtractions.add(srcId); continue; }
+
+          const { count: fwCount } = await supabase
+            .from('ai_frameworks')
+            .select('id', { count: 'exact', head: true })
+            .eq('manifest_item_id', srcId)
+            .is('archived_at', null);
+          if (fwCount && fwCount > 0) { sourcesWithExtractions.add(srcId); continue; }
+
+          // Also check if admin's clone of this source has extractions
+          const { data: adminClone } = await supabase
+            .from('manifest_items')
+            .select('id')
+            .eq('user_id', callerUserId)
+            .or(`id.eq.${srcId},source_manifest_item_id.eq.${srcId}`)
+            .is('archived_at', null)
+            .limit(1);
+
+          if (adminClone && adminClone.length > 0) {
+            const adminItemId = adminClone[0].id;
+            const { count: adminSumCount } = await supabase
+              .from('manifest_summaries')
+              .select('id', { count: 'exact', head: true })
+              .eq('manifest_item_id', adminItemId);
+            if (adminSumCount && adminSumCount > 0) { sourcesWithExtractions.add(srcId); continue; }
+
+            const { count: adminFwCount } = await supabase
+              .from('ai_frameworks')
+              .select('id', { count: 'exact', head: true })
+              .eq('manifest_item_id', adminItemId)
+              .is('archived_at', null);
+            if (adminFwCount && adminFwCount > 0) { sourcesWithExtractions.add(srcId); continue; }
+          }
+        }
+
+        // Remove clones whose source has no extractions
+        const orphanIds = cloneItems
+          .filter((c: Record<string, unknown>) => !sourcesWithExtractions.has(c.source_manifest_item_id as string))
+          .map((c: Record<string, unknown>) => c.id as string);
+
+        if (orphanIds.length > 0) {
+          // Clean up child parts first
+          const { data: orphanChildren } = await supabase
+            .from('manifest_items')
+            .select('id')
+            .in('parent_manifest_item_id', orphanIds);
+
+          if (orphanChildren && orphanChildren.length > 0) {
+            const childIds = orphanChildren.map((c: { id: string }) => c.id);
+            await Promise.all([
+              supabase.from('manifest_chunks').delete().in('manifest_item_id', childIds),
+            ]);
+            await supabase.from('manifest_items').delete().in('id', childIds);
+          }
+
+          await Promise.all([
+            supabase.from('manifest_chunks').delete().in('manifest_item_id', orphanIds),
+          ]);
+          await supabase.from('manifest_items').delete().in('id', orphanIds);
+          orphansRemoved = orphanIds.length;
+        }
+      }
+
+      return jsonResponse({
+        message: `Cleanup complete: ${duplicatesRemoved} duplicates removed, ${orphansRemoved} orphan clones removed`,
+        duplicates_removed: duplicatesRemoved,
+        orphans_removed: orphansRemoved,
       });
     }
 

@@ -85,32 +85,46 @@ function docxNoteParagraph(note: string | null | undefined): string {
   return `<w:p><w:pPr><w:spacing w:after="60"/><w:ind w:left="360"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="A46A3C"/><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr><w:t xml:space="preserve">Note: </w:t></w:r><w:r><w:rPr><w:color w:val="666666"/><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr><w:t xml:space="preserve">${escapeXml(cleanText(note))}</w:t></w:r></w:p>`;
 }
 
-// --- Group summaries/declarations by section_title ---
+// --- Chapter-first organization: collect all sections across content types ---
 
-interface SectionGroup<T> {
+interface ChapterData {
   sectionTitle: string;
-  items: T[];
+  sectionIndex: number;
+  summaries: ManifestSummary[];
+  principles: (AIFrameworkPrinciple & { framework_name?: string })[];
+  actionSteps: ManifestActionStep[];
+  declarations: ManifestDeclaration[];
 }
 
-function groupBySection<T extends { section_title: string | null; section_index: number }>(
-  items: T[],
-): SectionGroup<T>[] {
-  const map = new Map<string, T[]>();
-  for (const item of items) {
-    const key = item.section_title || '__full_book__';
-    if (!map.has(key)) map.set(key, []);
-    map.get(key)!.push(item);
+function collectChapters(group: BookExtractionGroup): ChapterData[] {
+  const map = new Map<string, ChapterData>();
+
+  const getOrCreate = (title: string | null, index: number): ChapterData => {
+    const key = title || '__full_book__';
+    if (!map.has(key)) {
+      map.set(key, {
+        sectionTitle: title || '',
+        sectionIndex: index,
+        summaries: [],
+        principles: [],
+        actionSteps: [],
+        declarations: [],
+      });
+    }
+    const chapter = map.get(key)!;
+    // Use the lowest section_index for ordering
+    if (index < chapter.sectionIndex) chapter.sectionIndex = index;
+    return chapter;
+  };
+
+  for (const s of group.summaries) getOrCreate(s.section_title, s.section_index).summaries.push(s);
+  for (const p of group.principles) getOrCreate(p.section_title, (p as unknown as { section_index?: number }).section_index ?? 999).principles.push(p);
+  if (group.actionSteps) {
+    for (const a of group.actionSteps) getOrCreate(a.section_title, a.section_index).actionSteps.push(a);
   }
-  return Array.from(map.entries())
-    .sort((a, b) => {
-      const aIdx = a[1][0]?.section_index ?? 0;
-      const bIdx = b[1][0]?.section_index ?? 0;
-      return aIdx - bIdx;
-    })
-    .map(([key, items]) => ({
-      sectionTitle: key === '__full_book__' ? '' : key,
-      items,
-    }));
+  for (const d of group.declarations) getOrCreate(d.section_title, d.section_index).declarations.push(d);
+
+  return Array.from(map.values()).sort((a, b) => a.sectionIndex - b.sectionIndex);
 }
 
 // ============================================================
@@ -122,32 +136,32 @@ function buildBookMarkdown(group: BookExtractionGroup, headingLevel: '#' | '##')
   const sub = headingLevel === '#' ? '##' : '###';
   const subsub = headingLevel === '#' ? '###' : '####';
 
-  // --- Summary ---
-  if (group.summaries.length > 0) {
-    lines.push(`${sub} Summary`, '');
-    const sections = groupBySection(group.summaries);
-    for (const section of sections) {
-      if (section.sectionTitle) {
-        lines.push(`${subsub} ${section.sectionTitle}`, '');
-      }
-      for (const s of section.items) {
+  const chapters = collectChapters(group);
+  const fwName = group.principles[0]?.framework_name;
+
+  for (const chapter of chapters) {
+    // Chapter heading (skip if only one untitled chapter)
+    if (chapter.sectionTitle) {
+      lines.push(`${sub} ${chapter.sectionTitle}`, '');
+    }
+
+    const contentSub = chapter.sectionTitle ? subsub : sub;
+
+    // Summary items for this chapter
+    if (chapter.summaries.length > 0) {
+      lines.push(`${contentSub} Summary`, '');
+      for (const s of chapter.summaries) {
         const heartPrefix = s.is_hearted ? '\u2764\uFE0F ' : '';
         lines.push(`${heartPrefix}**${contentTypeLabel(s.content_type)}** \u2014 ${cleanText(s.text)}`, '');
         const note = mdNote(s.user_note);
         if (note) lines.push(note);
       }
     }
-  }
 
-  // --- Frameworks ---
-  if (group.principles.length > 0) {
-    const fwName = group.principles[0]?.framework_name;
-    lines.push(`${sub} Frameworks${fwName ? ` (${fwName})` : ''}`, '');
-    // Group by section_title if present
-    const withSection = group.principles.filter((p) => p.section_title);
-    const withoutSection = group.principles.filter((p) => !p.section_title);
-    if (withoutSection.length > 0) {
-      for (const p of withoutSection) {
+    // Framework principles for this chapter
+    if (chapter.principles.length > 0) {
+      lines.push(`${contentSub} Frameworks${fwName ? ` (${fwName})` : ''}`, '');
+      for (const p of chapter.principles) {
         const heartPrefix = p.is_hearted ? '\u2764\uFE0F ' : '';
         lines.push(`- ${heartPrefix}${cleanText(p.text)}`);
         const note = mdNote(p.user_note);
@@ -155,52 +169,22 @@ function buildBookMarkdown(group: BookExtractionGroup, headingLevel: '#' | '##')
       }
       lines.push('');
     }
-    if (withSection.length > 0) {
-      const sectionMap = new Map<string, typeof withSection>();
-      for (const p of withSection) {
-        const key = p.section_title!;
-        if (!sectionMap.has(key)) sectionMap.set(key, []);
-        sectionMap.get(key)!.push(p);
-      }
-      for (const [title, items] of sectionMap) {
-        lines.push(`${subsub} ${title}`, '');
-        for (const p of items) {
-          const heartPrefix = p.is_hearted ? '\u2764\uFE0F ' : '';
-          lines.push(`- ${heartPrefix}${cleanText(p.text)}`);
-          const note = mdNote(p.user_note);
-          if (note) lines.push(note);
-        }
-        lines.push('');
-      }
-    }
-  }
 
-  // --- Action Steps ---
-  if (group.actionSteps && group.actionSteps.length > 0) {
-    lines.push(`${sub} Action Steps`, '');
-    const sections = groupBySection(group.actionSteps);
-    for (const section of sections) {
-      if (section.sectionTitle) {
-        lines.push(`${subsub} ${section.sectionTitle}`, '');
-      }
-      for (const a of section.items) {
+    // Action steps for this chapter
+    if (chapter.actionSteps.length > 0) {
+      lines.push(`${contentSub} Action Steps`, '');
+      for (const a of chapter.actionSteps) {
         const heartPrefix = a.is_hearted ? '\u2764\uFE0F ' : '';
         lines.push(`${heartPrefix}**${actionStepLabel(a.content_type)}** \u2014 ${cleanText(a.text)}`, '');
         const note = mdNote(a.user_note);
         if (note) lines.push(note);
       }
     }
-  }
 
-  // --- Mast Content (Declarations) ---
-  if (group.declarations.length > 0) {
-    lines.push(`${sub} Mast Content`, '');
-    const sections = groupBySection(group.declarations);
-    for (const section of sections) {
-      if (section.sectionTitle) {
-        lines.push(`${subsub} ${section.sectionTitle}`, '');
-      }
-      for (const d of section.items) {
+    // Mast content (declarations) for this chapter
+    if (chapter.declarations.length > 0) {
+      lines.push(`${contentSub} Mast Content`, '');
+      for (const d of chapter.declarations) {
         const heartPrefix = d.is_hearted ? '\u2764\uFE0F ' : '';
         const valuePart = d.value_name ? `**${d.value_name}** ` : '';
         const stylePart = `*${styleLabel(d.declaration_style)}*`;
@@ -209,6 +193,8 @@ function buildBookMarkdown(group: BookExtractionGroup, headingLevel: '#' | '##')
         if (note) lines.push(note);
       }
     }
+
+    lines.push('---', '');
   }
 
   return lines;
@@ -249,15 +235,18 @@ function buildBookTxt(group: BookExtractionGroup, isTopLevel: boolean): string[]
   const lines: string[] = [];
   const sectionDivider = isTopLevel ? '===' : '---';
 
-  // --- Summary ---
-  if (group.summaries.length > 0) {
-    lines.push(`${sectionDivider} SUMMARY ${sectionDivider}`, '');
-    const sections = groupBySection(group.summaries);
-    for (const section of sections) {
-      if (section.sectionTitle) {
-        lines.push(`--- ${section.sectionTitle} ---`, '');
-      }
-      for (const s of section.items) {
+  const chapters = collectChapters(group);
+  const fwName = group.principles[0]?.framework_name;
+
+  for (const chapter of chapters) {
+    if (chapter.sectionTitle) {
+      lines.push(`${sectionDivider} ${chapter.sectionTitle.toUpperCase()} ${sectionDivider}`, '');
+    }
+
+    // Summary items for this chapter
+    if (chapter.summaries.length > 0) {
+      lines.push('--- SUMMARY ---', '');
+      for (const s of chapter.summaries) {
         const heartPrefix = s.is_hearted ? '[hearted] ' : '';
         lines.push(`${heartPrefix}${contentTypeLabel(s.content_type)}: ${cleanText(s.text)}`);
         const note = txtNote(s.user_note);
@@ -265,16 +254,11 @@ function buildBookTxt(group: BookExtractionGroup, isTopLevel: boolean): string[]
         lines.push('');
       }
     }
-  }
 
-  // --- Frameworks ---
-  if (group.principles.length > 0) {
-    const fwName = group.principles[0]?.framework_name;
-    lines.push(`${sectionDivider} FRAMEWORKS${fwName ? ` (${fwName})` : ''} ${sectionDivider}`, '');
-    const withSection = group.principles.filter((p) => p.section_title);
-    const withoutSection = group.principles.filter((p) => !p.section_title);
-    if (withoutSection.length > 0) {
-      for (const p of withoutSection) {
+    // Framework principles for this chapter
+    if (chapter.principles.length > 0) {
+      lines.push(`--- FRAMEWORKS${fwName ? ` (${fwName})` : ''} ---`, '');
+      for (const p of chapter.principles) {
         const heartPrefix = p.is_hearted ? '[hearted] ' : '';
         lines.push(`${heartPrefix}${cleanText(p.text)}`);
         const note = txtNote(p.user_note);
@@ -282,35 +266,11 @@ function buildBookTxt(group: BookExtractionGroup, isTopLevel: boolean): string[]
         lines.push('');
       }
     }
-    if (withSection.length > 0) {
-      const sectionMap = new Map<string, typeof withSection>();
-      for (const p of withSection) {
-        const key = p.section_title!;
-        if (!sectionMap.has(key)) sectionMap.set(key, []);
-        sectionMap.get(key)!.push(p);
-      }
-      for (const [t, items] of sectionMap) {
-        lines.push(`--- ${t} ---`, '');
-        for (const p of items) {
-          const heartPrefix = p.is_hearted ? '[hearted] ' : '';
-          lines.push(`${heartPrefix}${cleanText(p.text)}`);
-          const note = txtNote(p.user_note);
-          if (note) lines.push(note);
-          lines.push('');
-        }
-      }
-    }
-  }
 
-  // --- Action Steps ---
-  if (group.actionSteps && group.actionSteps.length > 0) {
-    lines.push(`${sectionDivider} ACTION STEPS ${sectionDivider}`, '');
-    const sections = groupBySection(group.actionSteps);
-    for (const section of sections) {
-      if (section.sectionTitle) {
-        lines.push(`--- ${section.sectionTitle} ---`, '');
-      }
-      for (const a of section.items) {
+    // Action steps for this chapter
+    if (chapter.actionSteps.length > 0) {
+      lines.push('--- ACTION STEPS ---', '');
+      for (const a of chapter.actionSteps) {
         const heartPrefix = a.is_hearted ? '[hearted] ' : '';
         lines.push(`${heartPrefix}${actionStepLabel(a.content_type)}: ${cleanText(a.text)}`);
         const note = txtNote(a.user_note);
@@ -318,17 +278,11 @@ function buildBookTxt(group: BookExtractionGroup, isTopLevel: boolean): string[]
         lines.push('');
       }
     }
-  }
 
-  // --- Mast Content ---
-  if (group.declarations.length > 0) {
-    lines.push(`${sectionDivider} MAST CONTENT ${sectionDivider}`, '');
-    const sections = groupBySection(group.declarations);
-    for (const section of sections) {
-      if (section.sectionTitle) {
-        lines.push(`--- ${section.sectionTitle} ---`, '');
-      }
-      for (const d of section.items) {
+    // Mast content for this chapter
+    if (chapter.declarations.length > 0) {
+      lines.push('--- MAST CONTENT ---', '');
+      for (const d of chapter.declarations) {
         const heartPrefix = d.is_hearted ? '[hearted] ' : '';
         const valuePart = d.value_name ? `${d.value_name} — ` : '';
         const stylePart = `(${styleLabel(d.declaration_style)})`;
@@ -338,6 +292,8 @@ function buildBookTxt(group: BookExtractionGroup, isTopLevel: boolean): string[]
         lines.push('');
       }
     }
+
+    lines.push('');
   }
 
   return lines;
@@ -384,15 +340,21 @@ function buildDocxParagraphs(groups: BookExtractionGroup[], isMultiBook: boolean
     const h2 = isMultiBook ? 'Heading2' : 'Heading1';
     const h3 = isMultiBook ? 'Heading3' : 'Heading2';
 
-    // --- Summary ---
-    if (group.summaries.length > 0) {
-      paras.push(docxHeading('Summary', h2));
-      const sections = groupBySection(group.summaries);
-      for (const section of sections) {
-        if (section.sectionTitle) {
-          paras.push(docxHeading(section.sectionTitle, h3));
-        }
-        for (const s of section.items) {
+    const chapters = collectChapters(group);
+    const fwName = group.principles[0]?.framework_name;
+
+    for (const chapter of chapters) {
+      // Chapter heading
+      if (chapter.sectionTitle) {
+        paras.push(docxHeading(chapter.sectionTitle, h2));
+      }
+
+      const contentHeading = chapter.sectionTitle ? h3 : h2;
+
+      // Summary items for this chapter
+      if (chapter.summaries.length > 0) {
+        paras.push(docxHeading('Summary', contentHeading));
+        for (const s of chapter.summaries) {
           const heartPrefix = s.is_hearted ? '\u2764\uFE0F ' : '';
           paras.push(docxBoldPrefixParagraph(
             `${heartPrefix}${contentTypeLabel(s.content_type)}`,
@@ -403,49 +365,23 @@ function buildDocxParagraphs(groups: BookExtractionGroup[], isMultiBook: boolean
         }
         paras.push(docxSpacer());
       }
-    }
 
-    // --- Frameworks ---
-    if (group.principles.length > 0) {
-      const fwName = group.principles[0]?.framework_name;
-      paras.push(docxHeading(`Frameworks${fwName ? ` (${fwName})` : ''}`, h2));
-      const withSection = group.principles.filter((p) => p.section_title);
-      const withoutSection = group.principles.filter((p) => !p.section_title);
-      for (const p of withoutSection) {
-        const heartPrefix = p.is_hearted ? '\u2764\uFE0F ' : '';
-        paras.push(docxParagraph(`${heartPrefix}${cleanText(p.text)}`));
-        const note = docxNoteParagraph(p.user_note);
-        if (note) paras.push(note);
-      }
-      if (withSection.length > 0) {
-        const sectionMap = new Map<string, typeof withSection>();
-        for (const p of withSection) {
-          const key = p.section_title!;
-          if (!sectionMap.has(key)) sectionMap.set(key, []);
-          sectionMap.get(key)!.push(p);
+      // Framework principles for this chapter
+      if (chapter.principles.length > 0) {
+        paras.push(docxHeading(`Frameworks${fwName ? ` (${fwName})` : ''}`, contentHeading));
+        for (const p of chapter.principles) {
+          const heartPrefix = p.is_hearted ? '\u2764\uFE0F ' : '';
+          paras.push(docxParagraph(`${heartPrefix}${cleanText(p.text)}`));
+          const note = docxNoteParagraph(p.user_note);
+          if (note) paras.push(note);
         }
-        for (const [t, items] of sectionMap) {
-          paras.push(docxHeading(t, h3));
-          for (const p of items) {
-            const heartPrefix = p.is_hearted ? '\u2764\uFE0F ' : '';
-            paras.push(docxParagraph(`${heartPrefix}${cleanText(p.text)}`));
-            const note = docxNoteParagraph(p.user_note);
-            if (note) paras.push(note);
-          }
-        }
+        paras.push(docxSpacer());
       }
-      paras.push(docxSpacer());
-    }
 
-    // --- Action Steps ---
-    if (group.actionSteps && group.actionSteps.length > 0) {
-      paras.push(docxHeading('Action Steps', h2));
-      const sections = groupBySection(group.actionSteps);
-      for (const section of sections) {
-        if (section.sectionTitle) {
-          paras.push(docxHeading(section.sectionTitle, h3));
-        }
-        for (const a of section.items) {
+      // Action steps for this chapter
+      if (chapter.actionSteps.length > 0) {
+        paras.push(docxHeading('Action Steps', contentHeading));
+        for (const a of chapter.actionSteps) {
           const heartPrefix = a.is_hearted ? '\u2764\uFE0F ' : '';
           paras.push(docxBoldPrefixParagraph(
             `${heartPrefix}${actionStepLabel(a.content_type)}`,
@@ -456,17 +392,11 @@ function buildDocxParagraphs(groups: BookExtractionGroup[], isMultiBook: boolean
         }
         paras.push(docxSpacer());
       }
-    }
 
-    // --- Mast Content ---
-    if (group.declarations.length > 0) {
-      paras.push(docxHeading('Mast Content', h2));
-      const sections = groupBySection(group.declarations);
-      for (const section of sections) {
-        if (section.sectionTitle) {
-          paras.push(docxHeading(section.sectionTitle, h3));
-        }
-        for (const d of section.items) {
+      // Mast content for this chapter
+      if (chapter.declarations.length > 0) {
+        paras.push(docxHeading('Mast Content', contentHeading));
+        for (const d of chapter.declarations) {
           const heartPrefix = d.is_hearted ? '\u2764\uFE0F ' : '';
           paras.push(docxDeclarationParagraph(
             heartPrefix,

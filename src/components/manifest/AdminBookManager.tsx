@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Shield, RefreshCw, Eraser, UserMinus, Trash2, ChevronDown, ChevronRight, Loader, Send, Users } from 'lucide-react';
+import { Shield, RefreshCw, Eraser, UserMinus, Trash2, ChevronDown, ChevronRight, Loader, Send, Users, Sparkles } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 interface AdminBook {
@@ -29,6 +29,7 @@ export function AdminBookManager({ onBooksChanged }: AdminBookManagerProps) {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [pushingAll, setPushingAll] = useState(false);
   const [pushAllProgress, setPushAllProgress] = useState<{ current: number; total: number } | null>(null);
+  const [cleaningUp, setCleaningUp] = useState(false);
 
   const fetchBooks = useCallback(async () => {
     setLoading(true);
@@ -155,6 +156,24 @@ export function AdminBookManager({ onBooksChanged }: AdminBookManagerProps) {
     return 'None';
   };
 
+  const cleanupDuplicates = useCallback(async () => {
+    setCleaningUp(true);
+    setStatusMessage(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('manifest-admin', {
+        body: { action: 'cleanup_duplicates' },
+      });
+      if (error) throw error;
+      setStatusMessage(data?.message || 'Cleanup complete');
+      await fetchBooks();
+      onBooksChanged?.();
+    } catch (err) {
+      setStatusMessage(`Cleanup failed: ${(err as Error).message}`);
+    } finally {
+      setCleaningUp(false);
+    }
+  }, [fetchBooks, onBooksChanged]);
+
   const extractedCount = books.filter(
     (b) => b.extraction_status === 'completed' ||
       (b.part_extraction && b.part_extraction.extracted > 0),
@@ -205,6 +224,16 @@ export function AdminBookManager({ onBooksChanged }: AdminBookManagerProps) {
                   </>
                 )}
               </button>
+              <button
+                type="button"
+                className="admin-book-manager__refresh"
+                onClick={cleanupDuplicates}
+                disabled={cleaningUp}
+                title="Remove duplicate clones and orphan clones (books with no extractions)"
+              >
+                {cleaningUp ? <Loader size={14} className="admin-book-manager__spin" /> : <Sparkles size={14} />}
+                Clean
+              </button>
             </div>
             <span className="admin-book-manager__count">{books.length} books</span>
           </div>
@@ -240,7 +269,7 @@ export function AdminBookManager({ onBooksChanged }: AdminBookManagerProps) {
                           {getStatusLabel(book)}
                         </span>
                         <span className="admin-book-manager__clone-count">
-                          {book.clone_count} clone{book.clone_count !== 1 ? 's' : ''}
+                          {book.clone_count} user{book.clone_count !== 1 ? 's' : ''}
                         </span>
                       </div>
                     </div>
