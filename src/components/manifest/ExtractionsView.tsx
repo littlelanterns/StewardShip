@@ -1699,8 +1699,8 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
               onToggle={handleFrameworkTagToggle}
               onClear={() => setActiveTags(new Set())}
               usageCounts={tagUsageCounts}
-              horizontal
-              showAllButton
+              collapsible
+              label="Filter by framework tag"
               showCounts={false}
             />
           )}
