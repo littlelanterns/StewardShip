@@ -239,20 +239,48 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
     return result;
   }, [extractedParents, bookSearch, activeBookTags]);
 
-  // Combined filtered list for "Select All" and count display
+  // Combined filtered list for "Select All" and count display — preserves items prop order
   const filteredBooks = useMemo(() => {
-    // For counting purposes: singles + all extracted parts from filtered parents
-    const all: ManifestItem[] = [...filteredSingles];
-    for (const parent of filteredParents) {
-      const parts = childPartsMap.get(parent.id) || [];
-      for (const part of parts) {
-        if (part.extraction_status === 'completed' || part.extraction_status === 'failed' || part.extraction_status === 'extracting') {
-          all.push(part);
+    const singleIds = new Set(filteredSingles.map((i) => i.id));
+    const parentIds = new Set(filteredParents.map((i) => i.id));
+    const all: ManifestItem[] = [];
+    for (const item of items) {
+      if ((item.part_count ?? 0) > 0) {
+        if (parentIds.has(item.id)) {
+          const parts = childPartsMap.get(item.id) || [];
+          for (const part of parts) {
+            if (part.extraction_status === 'completed' || part.extraction_status === 'failed' || part.extraction_status === 'extracting') {
+              all.push(part);
+            }
+          }
         }
+      } else if (singleIds.has(item.id)) {
+        all.push(item);
       }
     }
     return all;
-  }, [filteredSingles, filteredParents, childPartsMap]);
+  }, [items, filteredSingles, filteredParents, childPartsMap]);
+
+  // Ordered book list for rendering — preserves items prop order (collection order)
+  type BookListEntry = { type: 'single'; item: ManifestItem } | { type: 'parent'; item: ManifestItem; parts: ManifestItem[] };
+  const orderedBookList = useMemo((): BookListEntry[] => {
+    const singleIds = new Set(filteredSingles.map((i) => i.id));
+    const parentIds = new Set(filteredParents.map((i) => i.id));
+    const result: BookListEntry[] = [];
+    for (const item of items) {
+      if ((item.part_count ?? 0) > 0) {
+        if (parentIds.has(item.id)) {
+          const parts = (childPartsMap.get(item.id) || []).filter((c) =>
+            c.extraction_status === 'completed' || c.extraction_status === 'failed' || c.extraction_status === 'extracting'
+          );
+          if (parts.length > 0) result.push({ type: 'parent', item, parts });
+        }
+      } else if (singleIds.has(item.id)) {
+        result.push({ type: 'single', item });
+      }
+    }
+    return result;
+  }, [items, filteredSingles, filteredParents, childPartsMap]);
 
   // Fetch extractions for selected books, batched to avoid Supabase row limits
   const fetchExtractions = useCallback(async (ids: string[]) => {
@@ -415,14 +443,28 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
     });
   }, [getExtractedPartIds]);
 
+  // Iterate in items prop order so collection/library order is preserved
   const selectedData = useMemo(() => {
     const result: BookExtractions[] = [];
-    for (const id of selectedIds) {
-      const data = bookData.get(id);
-      if (data) result.push(data);
+    for (const item of items) {
+      if ((item.part_count ?? 0) > 0) {
+        // Multi-part parent: add extracted parts in item order
+        const parts = childPartsMap.get(item.id) || [];
+        for (const part of parts) {
+          if (selectedIds.has(part.id)) {
+            const data = bookData.get(part.id);
+            if (data) result.push(data);
+          }
+        }
+      } else {
+        if (selectedIds.has(item.id)) {
+          const data = bookData.get(item.id);
+          if (data) result.push(data);
+        }
+      }
     }
     return result;
-  }, [selectedIds, bookData]);
+  }, [items, selectedIds, bookData, childPartsMap]);
 
   // --- Toggle book collapse ---
   const toggleBook = useCallback((bookId: string) => {
@@ -1597,23 +1639,21 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
                   label="Filter by tag"
                 />
                 <div className="extractions-view__book-list">
-                  {/* Single-volume books */}
-                  {filteredSingles.map((item) => (
-                    <label key={item.id} className="extractions-view__book-item">
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.has(item.id)}
-                        onChange={() => handleToggle(item.id)}
-                      />
-                      <span className="extractions-view__book-title">{item.title}</span>
-                    </label>
-                  ))}
-                  {/* Multi-part books: parent header + indented parts */}
-                  {filteredParents.map((parent) => {
-                    const parts = (childPartsMap.get(parent.id) || []).filter((c) =>
-                      c.extraction_status === 'completed' || c.extraction_status === 'failed' || c.extraction_status === 'extracting'
-                    );
-                    if (parts.length === 0) return null;
+                  {/* Books in items prop order (preserves collection order) */}
+                  {orderedBookList.map((entry) => {
+                    if (entry.type === 'single') {
+                      return (
+                        <label key={entry.item.id} className="extractions-view__book-item">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(entry.item.id)}
+                            onChange={() => handleToggle(entry.item.id)}
+                          />
+                          <span className="extractions-view__book-title">{entry.item.title}</span>
+                        </label>
+                      );
+                    }
+                    const { item: parent, parts } = entry;
                     const allPartsSelected = parts.every((p) => selectedIds.has(p.id));
                     const somePartsSelected = parts.some((p) => selectedIds.has(p.id));
                     return (
@@ -1643,7 +1683,7 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
                       </div>
                     );
                   })}
-                  {filteredSingles.length === 0 && filteredParents.length === 0 && bookSearch && (
+                  {orderedBookList.length === 0 && bookSearch && (
                     <div className="extractions-view__no-match">No books match "{bookSearch}"</div>
                   )}
                 </div>
