@@ -1,8 +1,10 @@
 import { useState, useCallback, useRef, useMemo, type ReactNode } from 'react';
-import { Paperclip } from 'lucide-react';
+import { Paperclip, Copy, Check } from 'lucide-react';
 import type { HelmMessage } from '../../lib/types';
 import { supabase } from '../../lib/supabase';
 import { SLL_DISTINCTIONS } from '../../lib/sllDefinitions';
+import { useHelmContext } from '../../contexts/HelmContext';
+import { extractCraftedText } from './craftedTextUtils';
 import MessageContextMenu from './MessageContextMenu';
 import './MessageBubble.css';
 
@@ -64,10 +66,52 @@ function renderMessageContent(content: string): ReactNode {
   return <>{parts}</>;
 }
 
+function CraftedBlock({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = (e: React.MouseEvent | React.TouchEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="message-bubble__crafted">
+      <button
+        className="message-bubble__crafted-copy"
+        onClick={handleCopy}
+        onTouchEnd={handleCopy}
+        aria-label={copied ? 'Copied' : 'Copy crafted text'}
+      >
+        {copied ? <Check size={14} /> : <Copy size={14} />}
+        <span>{copied ? 'Copied' : 'Copy'}</span>
+      </button>
+      <p className="message-bubble__crafted-text">{renderMessageContent(text)}</p>
+    </div>
+  );
+}
+
 export default function MessageBubble({ message }: MessageBubbleProps) {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { activeConversation } = useHelmContext();
   const isUser = message.role === 'user';
+
+  // Detect communication coaching mode (Cyrano or Higgins)
+  const isCraftMode = activeConversation && (
+    (activeConversation.guided_mode === 'first_mate_action' && activeConversation.guided_subtype === 'cyrano') ||
+    (activeConversation.guided_mode === 'crew_action' && (
+      activeConversation.guided_subtype === 'higgins_say' || activeConversation.guided_subtype === 'higgins_navigate'
+    ))
+  );
+
+  // Extract crafted text from AI messages in coaching mode
+  const craftParts = useMemo(() => {
+    if (!isCraftMode || isUser || message.role === 'system') return null;
+    return extractCraftedText(message.content);
+  }, [isCraftMode, isUser, message.content, message.role]);
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -141,7 +185,15 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
             )}
           </div>
         )}
-        <p className="message-bubble__text">{renderedContent}</p>
+        {craftParts ? (
+          <>
+            {craftParts.before && <p className="message-bubble__text">{renderMessageContent(craftParts.before)}</p>}
+            <CraftedBlock text={craftParts.crafted} />
+            {craftParts.after && <p className="message-bubble__text">{renderMessageContent(craftParts.after)}</p>}
+          </>
+        ) : (
+          <p className="message-bubble__text">{renderedContent}</p>
+        )}
         <span className="message-bubble__time">{time}</span>
       </div>
 

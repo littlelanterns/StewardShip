@@ -93,6 +93,8 @@ interface ManifestItemDetailProps {
   onUpdatePrincipleNote?: (id: string, note: string | null) => void;
   onUpdateActionStepNote?: (id: string, note: string | null) => void;
   onUpdateDeclarationNote?: (id: string, note: string | null) => void;
+  // Framework Re-run
+  onFrameworkReRun?: () => Promise<void>;
   // Discussion
   onOpenDiscussion?: (type: DiscussionType) => void;
   // Generate Tags
@@ -172,6 +174,7 @@ export function ManifestItemDetail({
   onUpdatePrincipleNote,
   onUpdateActionStepNote,
   onUpdateDeclarationNote,
+  onFrameworkReRun,
   onOpenDiscussion,
   onGenerateTags,
   generatingTags,
@@ -1140,6 +1143,7 @@ export function ManifestItemDetail({
             onUpdateActionStepNote={onUpdateActionStepNote || (() => {})}
             onUpdateDeclarationNote={onUpdateDeclarationNote || (() => {})}
             extractionProgress={extractionProgress}
+            onFrameworkReRun={onFrameworkReRun}
           />
         </section>
       )}

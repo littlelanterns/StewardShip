@@ -163,10 +163,12 @@ export function useFrameworks() {
 
         // In append mode, keep existing principles (used by per-section extraction)
         if (!append) {
+          // Soft delete existing principles so they can be recovered
           await supabase
             .from('ai_framework_principles')
-            .delete()
-            .eq('framework_id', frameworkId);
+            .update({ is_deleted: true })
+            .eq('framework_id', frameworkId)
+            .eq('user_id', user.id);
         }
       } else {
         const { data: fw, error: insertErr } = await supabase

@@ -294,6 +294,7 @@ interface FrameworksTabProps {
   onToggleHeart: (id: string) => void;
   onDelete: (id: string) => void;
   onUpdateNote: (id: string, note: string | null) => void;
+  onReRun?: () => Promise<void>;
   filterMode: FilterMode;
   hasFramework: boolean;
 }
@@ -304,6 +305,7 @@ function FrameworksTab({
   onToggleHeart,
   onDelete,
   onUpdateNote,
+  onReRun,
   filterMode,
   hasFramework,
 }: FrameworksTabProps) {
@@ -311,6 +313,7 @@ function FrameworksTab({
   const [notingId, setNotingId] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState('');
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+  const [confirmReRun, setConfirmReRun] = useState(false);
 
   const handleAnimatedDelete = useCallback((id: string) => {
     setDeletingIds((prev) => new Set(prev).add(id));
@@ -396,6 +399,22 @@ function FrameworksTab({
         <div className="extraction-tab__progress">
           <div className="extraction-tab__progress-bar" />
           <span>Extracting...</span>
+        </div>
+      )}
+
+      {onReRun && (
+        <div className="extraction-tab__toolbar">
+          {confirmReRun ? (
+            <div className="extraction-tab__confirm">
+              <span>Replace all frameworks with fresh extraction?</span>
+              <Button size="sm" onClick={() => { onReRun(); setConfirmReRun(false); }}>Re-run</Button>
+              <Button size="sm" variant="text" onClick={() => setConfirmReRun(false)}>Cancel</Button>
+            </div>
+          ) : (
+            <button type="button" className="extraction-tab__rerun-btn" onClick={() => setConfirmReRun(true)}>
+              <RefreshCw size={12} /> Re-run
+            </button>
+          )}
         </div>
       )}
 
@@ -1080,6 +1099,7 @@ interface ExtractionTabsProps {
   onTogglePrincipleHeart: (id: string) => void;
   onDeletePrinciple: (id: string) => void;
   onUpdatePrincipleNote: (id: string, note: string | null) => void;
+  onFrameworkReRun?: () => Promise<void>;
   // Action Step actions
   onToggleActionStepHeart: (id: string) => void;
   onDeleteActionStep: (id: string) => void;
@@ -1117,6 +1137,7 @@ export function ExtractionTabs({
   onTogglePrincipleHeart,
   onDeletePrinciple,
   onUpdatePrincipleNote,
+  onFrameworkReRun,
   onToggleActionStepHeart,
   onDeleteActionStep,
   onUpdateActionStepText,
@@ -1232,6 +1253,7 @@ export function ExtractionTabs({
                 onToggleHeart={onTogglePrincipleHeart}
                 onDelete={onDeletePrinciple}
                 onUpdateNote={onUpdatePrincipleNote}
+                onReRun={onFrameworkReRun}
                 filterMode={filterMode}
                 hasFramework={hasFramework}
               />

@@ -5,6 +5,7 @@ import { useAuthContext } from '../../contexts/AuthContext';
 import { useHelmContext } from '../../contexts/HelmContext';
 import { useHatchContext } from '../../contexts/HatchContext';
 import type { HelmMessage } from '../../lib/types';
+import { extractCraftedText, stripSLLMarkers } from './craftedTextUtils';
 import './MessageContextMenu.css';
 
 interface MessageContextMenuProps {
@@ -171,8 +172,10 @@ export default function MessageContextMenu({
     && activeConversation?.guided_subtype === 'cyrano';
 
   const handleCopyDraft = () => {
-    navigator.clipboard.writeText(message.content);
-    showToast('Draft copied');
+    const parts = extractCraftedText(message.content);
+    const text = parts ? parts.crafted : stripSLLMarkers(message.content);
+    navigator.clipboard.writeText(text);
+    showToast(parts ? 'Crafted text copied' : 'Draft copied');
   };
 
   const handleEditInHatch = async () => {
@@ -188,13 +191,15 @@ export default function MessageContextMenu({
   const handleSaveDraft = async () => {
     if (!user || !activeConversation?.guided_mode_reference_id) return;
     try {
+      const parts = extractCraftedText(message.content);
+      const craftedText = parts ? parts.crafted : stripSLLMarkers(message.content);
       const { error } = await supabase
         .from('cyrano_messages')
         .insert({
           user_id: user.id,
           people_id: activeConversation.guided_mode_reference_id,
-          raw_input: message.content,
-          crafted_version: message.content,
+          raw_input: craftedText,
+          crafted_version: craftedText,
           status: 'draft',
           helm_conversation_id: activeConversation.id,
         });

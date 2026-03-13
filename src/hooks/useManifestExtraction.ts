@@ -867,6 +867,68 @@ export function useManifestExtraction() {
     }
   }, [user, extractSummary, extractDeclarations, extractActionSteps]);
 
+  // --- Re-run Frameworks: discovers sections, extracts only frameworks per section ---
+
+  const reRunFrameworks = useCallback(async (
+    manifestItemId: string,
+    genres: BookGenre[],
+    onFrameworkResult?: (result: FrameworkExtractionResult, sectionTitle: string, sectionIndex: number) => Promise<void>,
+  ): Promise<boolean> => {
+    if (!user) return false;
+    setExtractingTab('framework');
+    setError(null);
+    try {
+      // Discover sections
+      const sectionsResult = await discoverSectionsRaw(manifestItemId);
+
+      if (!sectionsResult || sectionsResult.length === 0) {
+        // Short book — extract as a whole
+        const result = await callExtract(manifestItemId, 'framework', genres);
+        if (result && onFrameworkResult) {
+          await onFrameworkResult(result as FrameworkExtractionResult, '', 0);
+        }
+        return true;
+      }
+
+      // Filter content sections
+      const contentSections = sectionsResult
+        .map((s, i) => ({ ...s, originalIndex: i }))
+        .filter(s => !s.title.startsWith('[NON-CONTENT]'));
+
+      // Extract framework for each section
+      for (let i = 0; i < contentSections.length; i++) {
+        if (i > 0) await new Promise(r => setTimeout(r, 1500));
+
+        const section = contentSections[i];
+        const cleanTitle = section.title.replace(/^\[NON-CONTENT\]\s*/i, '');
+
+        setExtractionProgress({ current: i, total: contentSections.length, currentType: 'framework' });
+        try {
+          const result = await callExtract(manifestItemId, 'framework_section', genres, {
+            sectionTitle: cleanTitle,
+            sectionStart: section.start_char,
+            sectionEnd: section.end_char,
+          });
+          if (result && onFrameworkResult) {
+            await onFrameworkResult(result as FrameworkExtractionResult, cleanTitle, section.originalIndex);
+          }
+        } catch (err) {
+          console.error(`[reRunFrameworks] Failed for section "${cleanTitle}":`, err);
+          // Continue with remaining sections
+        }
+      }
+
+      setExtractionProgress(null);
+      return true;
+    } catch (err) {
+      setError((err as Error).message);
+      return false;
+    } finally {
+      setExtractingTab(null);
+      setExtractionProgress(null);
+    }
+  }, [user, callExtract, discoverSectionsRaw]);
+
   // --- CRUD: Summary items ---
 
   const updateSummaryText = useCallback(async (summaryId: string, text: string) => {
@@ -1363,6 +1425,7 @@ export function useManifestExtraction() {
     extractActionSteps,
     goDeeper,
     reRunTab,
+    reRunFrameworks,
     retrySection,
     discoverSectionsRaw,
     extractSectionsForPart,

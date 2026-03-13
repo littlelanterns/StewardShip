@@ -386,6 +386,8 @@ export default function Manifest() {
 
   const handleExtractAll = useCallback(async (genres: BookGenre[]): Promise<boolean> => {
     if (!selectedItem) return false;
+    // If framework already exists, append to preserve existing principles
+    const existingFw = getFrameworkForItem(selectedItem.id);
     const success = await extraction.extractAll(selectedItem.id, genres, async (result) => {
       // Save framework result through useFrameworks
       if (result && result.framework_name && result.principles?.length > 0) {
@@ -397,13 +399,14 @@ export default function Manifest() {
             sort_order: p.sort_order,
           })),
           true,
+          !!existingFw,
         );
         fetchFrameworks();
       }
     });
     await refreshAfterExtraction(selectedItem.id);
     return success;
-  }, [selectedItem, extraction, saveFramework, fetchFrameworks, refreshAfterExtraction]);
+  }, [selectedItem, extraction, saveFramework, getFrameworkForItem, fetchFrameworks, refreshAfterExtraction]);
 
   const handleDiscoverSections = useCallback(async () => {
     if (!selectedItem) return [];
@@ -413,7 +416,10 @@ export default function Manifest() {
   const handleExtractAllSections = useCallback(async (genres: BookGenre[], sectionIndices: number[]): Promise<boolean> => {
     if (!selectedItem) return false;
     let principleOffset = 0;
-    let isFirstSection = true;
+
+    // Check if framework already exists — if so, always append to preserve existing principles.
+    // User can "Clear Extractions" first if they want to start from scratch.
+    const existingFw = getFrameworkForItem(selectedItem.id);
 
     const success = await extraction.extractAllSections(selectedItem.id, genres, sectionIndices, async (result, sectionTitle, _sectionIndex) => {
       // Save framework results progressively per-section so they appear in the UI immediately
@@ -425,17 +431,16 @@ export default function Manifest() {
           section_title: sectionTitle,
         }));
         principleOffset += principles.length;
-        // First section: replace existing principles (append=false). Subsequent: append.
-        const shouldAppend = !isFirstSection;
-        isFirstSection = false;
-        await saveFramework(selectedItem.id, result.framework_name, principles, true, shouldAppend);
+        // Always append when framework exists (retries, continuations).
+        // Only replace on first-ever extraction for this book.
+        await saveFramework(selectedItem.id, result.framework_name, principles, true, !!existingFw);
       }
     });
 
     fetchFrameworks();
     await refreshAfterExtraction(selectedItem.id);
     return success;
-  }, [selectedItem, extraction, saveFramework, fetchFrameworks, refreshAfterExtraction]);
+  }, [selectedItem, extraction, saveFramework, getFrameworkForItem, fetchFrameworks, refreshAfterExtraction]);
 
   const handleSummaryGoDeeper = useCallback((sectionTitle: string | undefined, existingItems: string[], sectionIndex?: number) => {
     if (!selectedItem) return;
@@ -484,6 +489,32 @@ export default function Manifest() {
     const offsets = sectionTitle ? extraction.getSectionOffsets(sectionTitle) : null;
     extraction.reRunTab(selectedItem.id, 'action_steps', selectedItem.genres || [], sectionTitle, offsets?.start, offsets?.end, offsets?.index);
   }, [selectedItem, extraction]);
+
+  const handleFrameworkReRun = useCallback(async () => {
+    if (!selectedItem) return;
+    // Soft-delete existing principles first
+    const existingFw = getFrameworkForItem(selectedItem.id);
+    if (existingFw) {
+      // saveFramework with append=false now soft-deletes (is_deleted=true)
+      await saveFramework(selectedItem.id, existingFw.name, [], true, false);
+    }
+
+    let principleOffset = 0;
+    await extraction.reRunFrameworks(selectedItem.id, selectedItem.genres || [], async (result, sectionTitle, _sectionIndex) => {
+      if (result && result.framework_name && result.principles?.length > 0) {
+        const principles = result.principles.map((p: { text: string; sort_order: number }, idx: number) => ({
+          text: p.text,
+          sort_order: principleOffset + idx,
+          section_title: sectionTitle,
+        }));
+        principleOffset += principles.length;
+        await saveFramework(selectedItem.id, result.framework_name, principles, true, true);
+      }
+    });
+
+    fetchFrameworks();
+    await refreshAfterExtraction(selectedItem.id);
+  }, [selectedItem, extraction, saveFramework, getFrameworkForItem, fetchFrameworks, refreshAfterExtraction]);
 
   // Fresh Start state
   const [showFreshStart, setShowFreshStart] = useState(false);
@@ -637,6 +668,7 @@ export default function Manifest() {
           // Framework actions
           onTogglePrincipleHeart={extraction.togglePrincipleHeart}
           onDeletePrinciple={extraction.deletePrinciple}
+          onFrameworkReRun={handleFrameworkReRun}
           // Declaration actions
           onToggleDeclarationHeart={extraction.toggleDeclarationHeart}
           onDeleteDeclaration={extraction.deleteDeclaration}

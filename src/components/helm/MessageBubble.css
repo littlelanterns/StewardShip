@@ -80,6 +80,50 @@
   opacity: 0.8;
 }
 
+/* Crafted text block — distinct copyable section in Cyrano/Higgins coaching */
+.message-bubble__crafted {
+  position: relative;
+  background: var(--color-warm-sand);
+  border-left: 3px solid var(--color-cognac);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  margin: var(--spacing-sm) 0;
+}
+
+.message-bubble__crafted-copy {
+  position: absolute;
+  top: var(--spacing-xs);
+  right: var(--spacing-xs);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--color-cream);
+  border: 1px solid var(--color-slate-gray);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font-size: var(--font-size-xs);
+  font-family: var(--font-body);
+  color: var(--color-mid-teal);
+  cursor: pointer;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+  min-height: 28px;
+}
+
+.message-bubble__crafted-copy:hover,
+.message-bubble__crafted-copy:active {
+  opacity: 1;
+}
+
+.message-bubble__crafted-text {
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-normal);
+  margin: 0;
+  white-space: pre-wrap;
+  padding-right: 60px;
+}
+
 /* SLL Term — tappable inline term */
 .sll-term {
   position: relative;
