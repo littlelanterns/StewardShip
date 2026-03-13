@@ -453,8 +453,8 @@ export default function Manifest() {
     let principleOffset = 0;
 
     // Check if framework already exists — if so, always append to preserve existing principles.
-    // User can "Clear Extractions" first if they want to start from scratch.
-    const existingFw = getFrameworkForItem(selectedItem.id);
+    // Use mutable flag: after first section creates the framework, all subsequent sections must append.
+    let shouldAppend = !!getFrameworkForItem(selectedItem.id);
 
     const success = await extraction.extractAllSections(selectedItem.id, genres, sectionIndices, async (result, sectionTitle, _sectionIndex) => {
       // Save framework results progressively per-section so they appear in the UI immediately
@@ -466,9 +466,8 @@ export default function Manifest() {
           section_title: sectionTitle,
         }));
         principleOffset += principles.length;
-        // Always append when framework exists (retries, continuations).
-        // Only replace on first-ever extraction for this book.
-        await saveFramework(selectedItem.id, result.framework_name, principles, true, !!existingFw);
+        await saveFramework(selectedItem.id, result.framework_name, principles, true, shouldAppend);
+        shouldAppend = true; // After first save creates the framework, always append
       }
     });
 
