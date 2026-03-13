@@ -238,9 +238,11 @@ export function CollectionSidebar({
           {/* Collection list */}
           <div className="collection-sidebar__list">
             {collections.length === 0 ? (
-              <p className="collection-sidebar__empty">
-                No collections yet. Create one and drag books in.
-              </p>
+              <div className="collection-sidebar__empty">
+                <p className="collection-sidebar__empty-text">
+                  Name a collection below, then drag books into it.
+                </p>
+              </div>
             ) : (
               collections.map((col) => (
                 <DroppableCollection
@@ -260,12 +262,13 @@ export function CollectionSidebar({
             <input
               type="text"
               className="collection-sidebar__new-input"
-              placeholder="New collection..."
+              placeholder="New collection name..."
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleCreate();
               }}
+              autoFocus={collections.length === 0}
             />
             <button
               type="button"

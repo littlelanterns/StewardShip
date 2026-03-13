@@ -1,13 +1,13 @@
 /* Let Manifest use more horizontal space on desktop */
 @media (min-width: 768px) {
   .manifest-page.page {
-    max-width: 960px;
+    max-width: 1100px;
   }
 }
 
 @media (min-width: 1200px) {
   .manifest-page.page {
-    max-width: 1100px;
+    max-width: 1400px;
   }
 }
 
@@ -947,13 +947,20 @@
 /* Sidebar layout */
 .manifest-page__with-sidebar {
   display: flex;
+  flex-direction: column;
   gap: 0;
-  align-items: flex-start;
 }
 
 .manifest-page__library-content {
   flex: 1;
   min-width: 0;
+}
+
+@media (min-width: 768px) {
+  .manifest-page__with-sidebar {
+    flex-direction: row;
+    align-items: flex-start;
+  }
 }
 
 /* Drag ghost overlay */
