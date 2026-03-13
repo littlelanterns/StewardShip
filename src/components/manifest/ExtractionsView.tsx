@@ -17,6 +17,7 @@ interface ExtractionsViewProps {
   items: ManifestItem[];
   onBack?: () => void;
   favoritesMode?: boolean;
+  collectionName?: string;
 }
 
 type TabType = 'summary' | 'frameworks' | 'action_steps' | 'mast_content';
@@ -52,7 +53,7 @@ function groupBySection<T extends { section_title: string | null; section_index?
   });
 }
 
-export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsViewProps) {
+export function ExtractionsView({ items, onBack, favoritesMode, collectionName }: ExtractionsViewProps) {
   const navigate = useNavigate();
   const { user } = useAuthContext();
   const handleBack = onBack || (() => navigate('/manifest'));
@@ -970,9 +971,10 @@ export function ExtractionsView({ items, onBack, favoritesMode }: ExtractionsVie
   }, [selectedData, partToParent]);
 
   const singleBookTitle = useMemo(() => {
+    if (collectionName) return collectionName;
     if (exportGroups.length === 1) return `${exportGroups[0].bookTitle} - ${favoritesMode ? 'Favorites' : 'Extractions'}`;
     return undefined;
-  }, [exportGroups, favoritesMode]);
+  }, [exportGroups, favoritesMode, collectionName]);
 
   const notesTitle = useMemo(() => {
     if (exportGroups.length === 1) return `${exportGroups[0].bookTitle} - My Notes`;

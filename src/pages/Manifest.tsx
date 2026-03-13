@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 
-import { Upload, MessageSquare, Loader, List, LayoutGrid, CheckSquare, FolderInput, X, Plus, Folder, Trash2, Search } from 'lucide-react';
+import { Upload, MessageSquare, Loader, List, LayoutGrid, CheckSquare, FolderInput, X, Plus, Folder, Trash2, Search, Library } from 'lucide-react';
+import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core';
 import { usePageContext } from '../hooks/usePageContext';
 import { useAuthContext } from '../contexts/AuthContext';
 import { useManifest } from '../hooks/useManifest';
@@ -16,6 +17,9 @@ import { UploadFlow } from '../components/manifest/UploadFlow';
 import { BookDiscussionModal } from '../components/manifest/BookDiscussionModal';
 import { BookSelector } from '../components/manifest/BookSelector';
 import { AdminBookManager } from '../components/manifest/AdminBookManager';
+import { CollectionSidebar } from '../components/manifest/CollectionSidebar';
+import { ExtractionsView } from '../components/manifest/ExtractionsView';
+import { useManifestCollections } from '../hooks/useManifestCollections';
 import { CollapsibleGroup } from '../components/shared/CollapsibleGroup';
 import { FloatingActionButton } from '../components/shared/FloatingActionButton';
 import { Button, EmptyState, LoadingSpinner, FeatureGuide, TagPills } from '../components/shared';
@@ -95,6 +99,31 @@ export default function Manifest() {
   } = useBookDiscussions();
 
   const [generatingTags, setGeneratingTags] = useState(false);
+
+  // Collections
+  const {
+    collections,
+    collectionItemsMap,
+    fetchCollections,
+    createCollection,
+    updateCollection,
+    archiveCollection,
+    addToCollection,
+    removeFromCollection,
+    getItemIdsForCollection,
+  } = useManifestCollections();
+  const [collectionSidebarOpen, setCollectionSidebarOpen] = useState(false);
+  const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
+  const [showCollectionPicker, setShowCollectionPicker] = useState(false);
+  const [newCollectionName, setNewCollectionName] = useState('');
+  const [dragActiveId, setDragActiveId] = useState<string | null>(null);
+  // Collection extractions view state
+  const [collectionExtractionsId, setCollectionExtractionsId] = useState<string | null>(null);
+
+  // DnD sensors for collections
+  const dndSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+  );
 
   // Select mode (for folder assignment)
   const [selectMode, setSelectMode] = useState(false);
@@ -192,7 +221,8 @@ export default function Manifest() {
     fetchItems();
     fetchFrameworks();
     fetchDiscussions();
-  }, [fetchItems, fetchFrameworks, fetchDiscussions]);
+    fetchCollections();
+  }, [fetchItems, fetchFrameworks, fetchDiscussions, fetchCollections]);
 
   // Fetch extraction status for child parts of multi-part books
   const [partExtractionMap, setPartExtractionMap] = useState<Map<string, { extracted: number; total: number }>>(new Map());
@@ -618,6 +648,67 @@ export default function Manifest() {
   const currentFramework = currentSelectedItem ? getFrameworkForItem(currentSelectedItem.id) : undefined;
   const currentPrinciples: import('../lib/types').AIFrameworkPrinciple[] = currentFramework?.principles || [];
 
+  // Collection drag-and-drop handlers
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setDragActiveId(event.active.id as string);
+  }, []);
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    setDragActiveId(null);
+    const { active, over } = event;
+    if (!over) return;
+    addToCollection(over.id as string, [active.id as string]);
+  }, [addToCollection]);
+
+  const handleDragCancel = useCallback(() => {
+    setDragActiveId(null);
+  }, []);
+
+  const draggedItem = dragActiveId ? items.find((i) => i.id === dragActiveId) : null;
+
+  // Collection action handlers
+  const handleViewCollectionExtractions = useCallback((collectionId: string) => {
+    setCollectionExtractionsId(collectionId);
+  }, []);
+
+  const handleExportCollection = useCallback((collectionId: string) => {
+    // Set collection extractions view then immediately trigger export
+    setCollectionExtractionsId(collectionId);
+  }, []);
+
+  const handleAddSelectedToCollection = useCallback(async (collectionId: string) => {
+    await addToCollection(collectionId, [...selectedIds]);
+    setSelectedIds(new Set());
+    setSelectMode(false);
+    setShowCollectionPicker(false);
+    setNewCollectionName('');
+  }, [selectedIds, addToCollection]);
+
+  const handleCreateAndAddToCollection = useCallback(async () => {
+    if (!newCollectionName.trim()) return;
+    const col = await createCollection(newCollectionName.trim());
+    if (col) {
+      await addToCollection(col.id, [...selectedIds]);
+      setSelectedIds(new Set());
+      setSelectMode(false);
+      setShowCollectionPicker(false);
+      setNewCollectionName('');
+    }
+  }, [newCollectionName, createCollection, addToCollection, selectedIds]);
+
+  // Get collection name for extractions view title
+  const collectionExtractionsName = useMemo(() => {
+    if (!collectionExtractionsId) return undefined;
+    return collections.find((c) => c.id === collectionExtractionsId)?.name;
+  }, [collectionExtractionsId, collections]);
+
+  // Get items for the collection extractions view
+  const collectionExtractionsItems = useMemo(() => {
+    if (!collectionExtractionsId) return [];
+    const itemIds = getItemIdsForCollection(collectionExtractionsId);
+    return items.filter((i) => itemIds.includes(i.id));
+  }, [collectionExtractionsId, getItemIdsForCollection, items]);
+
   // Upload view
   if (viewMode === 'upload') {
     return (
@@ -821,6 +912,15 @@ export default function Manifest() {
                   <LayoutGrid size={18} />
                 </button>
               </div>
+              <button
+                type="button"
+                className={`manifest-page__select-btn${collectionSidebarOpen ? ' manifest-page__select-btn--active' : ''}`}
+                onClick={() => setCollectionSidebarOpen((v) => !v)}
+                title={collectionSidebarOpen ? 'Close collections' : 'Collections'}
+              >
+                <Library size={16} />
+                Collections
+              </button>
             </div>
           )}
         </div>
@@ -960,70 +1060,119 @@ export default function Manifest() {
         </div>
       )}
 
-      {/* Content */}
-      {(
-        loading && items.length === 0 ? (
-          <LoadingSpinner />
-        ) : items.length === 0 ? (
-          <EmptyState
-            heading="Your library is empty"
-            message="Upload books, articles, notes, and transcripts. The AI draws from your library to give you advice grounded in the wisdom you trust."
-          />
-        ) : filteredItems.length === 0 ? (
-          <EmptyState
-            heading="No matching items"
-            message="Try adjusting your filters to see more items."
-          />
-        ) : groupMode === 'all_books' || folderGroups.length === 1 ? (
-          <div className={libraryLayout === 'compact' ? 'manifest-page__compact-list' : 'manifest-page__item-list'}>
-            {sortedItems.map((item) => (
-              <ManifestItemCard
-                key={item.id}
-                item={item}
-                onClick={selectMode ? () => toggleSelectItem(item.id) : handleSelectItem}
-                compact={libraryLayout === 'compact'}
-                selectable={selectMode}
-                selected={selectedIds.has(item.id)}
-                queuePosition={item.processing_status === 'pending' ? getQueuePosition(item.id) : null}
-                partExtraction={partExtractionMap.get(item.id) || null}
-              />
-            ))}
+      {/* Collection Extractions View */}
+      {collectionExtractionsId && collectionExtractionsItems.length > 0 ? (
+        <ExtractionsView
+          items={collectionExtractionsItems}
+          onBack={() => setCollectionExtractionsId(null)}
+          collectionName={collectionExtractionsName}
+        />
+      ) : (
+      /* Content — wrapped in DndContext when sidebar is open */
+      <DndContext
+        sensors={collectionSidebarOpen ? dndSensors : undefined}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
+      >
+        <div className={collectionSidebarOpen ? 'manifest-page__with-sidebar' : undefined}>
+          <div className={collectionSidebarOpen ? 'manifest-page__library-content' : undefined}>
+            {(
+              loading && items.length === 0 ? (
+                <LoadingSpinner />
+              ) : items.length === 0 ? (
+                <EmptyState
+                  heading="Your library is empty"
+                  message="Upload books, articles, notes, and transcripts. The AI draws from your library to give you advice grounded in the wisdom you trust."
+                />
+              ) : filteredItems.length === 0 ? (
+                <EmptyState
+                  heading="No matching items"
+                  message="Try adjusting your filters to see more items."
+                />
+              ) : groupMode === 'all_books' || folderGroups.length === 1 ? (
+                <div className={libraryLayout === 'compact' ? 'manifest-page__compact-list' : 'manifest-page__item-list'}>
+                  {sortedItems.map((item) => (
+                    <ManifestItemCard
+                      key={item.id}
+                      item={item}
+                      onClick={selectMode ? () => toggleSelectItem(item.id) : handleSelectItem}
+                      compact={libraryLayout === 'compact'}
+                      selectable={selectMode}
+                      selected={selectedIds.has(item.id)}
+                      queuePosition={item.processing_status === 'pending' ? getQueuePosition(item.id) : null}
+                      partExtraction={partExtractionMap.get(item.id) || null}
+                      draggable={collectionSidebarOpen && !selectMode}
+                    />
+                  ))}
+                </div>
+              ) : (
+                folderGroups.map(([folder, folderItems]) => (
+                  <CollapsibleGroup
+                    key={folder}
+                    label={folder}
+                    count={folderItems.length}
+                    defaultExpanded
+                    headerAction={folder !== 'Uncategorized' ? (
+                      <button
+                        type="button"
+                        className="manifest-page__folder-delete-btn"
+                        onClick={() => setFolderToDelete(folder)}
+                        title={`Remove folder "${folder}"`}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    ) : undefined}
+                  >
+                    <div className={libraryLayout === 'compact' ? 'manifest-page__compact-list' : 'manifest-page__item-list'}>
+                      {folderItems.map((item) => (
+                        <ManifestItemCard
+                          key={item.id}
+                          item={item}
+                          onClick={selectMode ? () => toggleSelectItem(item.id) : handleSelectItem}
+                          compact={libraryLayout === 'compact'}
+                          selectable={selectMode}
+                          selected={selectedIds.has(item.id)}
+                          queuePosition={item.processing_status === 'pending' ? getQueuePosition(item.id) : null}
+                          partExtraction={partExtractionMap.get(item.id) || null}
+                          draggable={collectionSidebarOpen && !selectMode}
+                        />
+                      ))}
+                    </div>
+                  </CollapsibleGroup>
+                ))
+              )
+            )}
           </div>
-        ) : (
-          folderGroups.map(([folder, folderItems]) => (
-            <CollapsibleGroup
-              key={folder}
-              label={folder}
-              count={folderItems.length}
-              defaultExpanded
-              headerAction={folder !== 'Uncategorized' ? (
-                <button
-                  type="button"
-                  className="manifest-page__folder-delete-btn"
-                  onClick={() => setFolderToDelete(folder)}
-                  title={`Remove folder "${folder}"`}
-                >
-                  <Trash2 size={14} />
-                </button>
-              ) : undefined}
-            >
-              <div className={libraryLayout === 'compact' ? 'manifest-page__compact-list' : 'manifest-page__item-list'}>
-                {folderItems.map((item) => (
-                  <ManifestItemCard
-                    key={item.id}
-                    item={item}
-                    onClick={selectMode ? () => toggleSelectItem(item.id) : handleSelectItem}
-                    compact={libraryLayout === 'compact'}
-                    selectable={selectMode}
-                    selected={selectedIds.has(item.id)}
-                    queuePosition={item.processing_status === 'pending' ? getQueuePosition(item.id) : null}
-                    partExtraction={partExtractionMap.get(item.id) || null}
-                  />
-                ))}
-              </div>
-            </CollapsibleGroup>
-          ))
-        )
+
+          {/* Collection Sidebar */}
+          {collectionSidebarOpen && (
+            <CollectionSidebar
+              collections={collections}
+              collectionItemsMap={collectionItemsMap}
+              items={items}
+              activeCollectionId={activeCollectionId}
+              onSelectCollection={setActiveCollectionId}
+              onCreateCollection={createCollection}
+              onArchiveCollection={archiveCollection}
+              onUpdateCollection={updateCollection}
+              onRemoveFromCollection={removeFromCollection}
+              onViewExtractions={handleViewCollectionExtractions}
+              onExportCollection={handleExportCollection}
+              onClose={() => { setCollectionSidebarOpen(false); setActiveCollectionId(null); }}
+            />
+          )}
+        </div>
+
+        {/* Drag overlay ghost */}
+        <DragOverlay>
+          {draggedItem ? (
+            <div className="manifest-page__drag-ghost">
+              {draggedItem.title}
+            </div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
       )}
 
       {/* Discussion Archive */}
@@ -1082,6 +1231,14 @@ export default function Manifest() {
           </button>
           <button
             type="button"
+            className="manifest-page__select-action"
+            onClick={() => setShowCollectionPicker(true)}
+          >
+            <Library size={16} />
+            Add to Collection
+          </button>
+          <button
+            type="button"
             className="manifest-page__select-cancel"
             onClick={toggleSelectMode}
           >
@@ -1135,6 +1292,59 @@ export default function Manifest() {
                 className="manifest-page__folder-create"
                 onClick={() => newFolderName.trim() && handleMoveToFolder(newFolderName.trim())}
                 disabled={!newFolderName.trim() || movingToFolder}
+              >
+                <Plus size={16} />
+                Create
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Collection picker modal */}
+      {showCollectionPicker && (
+        <>
+          <div className="manifest-page__folder-backdrop" onClick={() => { setShowCollectionPicker(false); setNewCollectionName(''); }} />
+          <div className="manifest-page__folder-picker">
+            <h3 className="manifest-page__folder-picker-title">Add to Collection</h3>
+            <div className="manifest-page__folder-list">
+              {collections.map((col) => (
+                <button
+                  key={col.id}
+                  type="button"
+                  className="manifest-page__folder-option"
+                  onClick={() => handleAddSelectedToCollection(col.id)}
+                >
+                  {col.name}
+                  <span className="manifest-page__collection-count">
+                    {(collectionItemsMap.get(col.id) || []).length} books
+                  </span>
+                </button>
+              ))}
+              {collections.length === 0 && (
+                <p style={{ padding: 'var(--spacing-sm)', color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
+                  No collections yet. Create one below.
+                </p>
+              )}
+            </div>
+            <div className="manifest-page__folder-new">
+              <input
+                type="text"
+                className="manifest-page__folder-input"
+                placeholder="New collection name..."
+                value={newCollectionName}
+                onChange={(e) => setNewCollectionName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && newCollectionName.trim()) {
+                    handleCreateAndAddToCollection();
+                  }
+                }}
+              />
+              <button
+                type="button"
+                className="manifest-page__folder-create"
+                onClick={handleCreateAndAddToCollection}
+                disabled={!newCollectionName.trim()}
               >
                 <Plus size={16} />
                 Create

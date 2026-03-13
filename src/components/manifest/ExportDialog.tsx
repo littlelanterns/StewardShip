@@ -73,6 +73,9 @@ function SortableBookRow({ group, id }: { group: BookExtractionGroup; id: string
 // --- Main component ---
 
 export function ExportDialog({ groups, onClose, defaultTitle, mode = 'extractions' }: ExportDialogProps) {
+  // Custom title
+  const [customTitle, setCustomTitle] = useState(defaultTitle || '');
+
   // Tab selection
   const [tabs, setTabs] = useState<ExportTabFilter>({
     summary: true,
@@ -137,17 +140,29 @@ export function ExportDialog({ groups, onClose, defaultTitle, mode = 'extraction
       await exportWithOptions(orderedGroups, {
         tabs,
         format,
-        title: defaultTitle,
+        title: customTitle.trim() || undefined,
         mode,
       });
       onClose();
     } finally {
       setExporting(false);
     }
-  }, [orderedGroups, tabs, format, defaultTitle, mode, onClose]);
+  }, [orderedGroups, tabs, format, customTitle, mode, onClose]);
 
   return (
     <AddEntryModal title="Export" onClose={onClose}>
+      {/* Title */}
+      <div className="export-dialog__section">
+        <h4 className="export-dialog__section-title">Title</h4>
+        <input
+          type="text"
+          className="export-dialog__title-input"
+          value={customTitle}
+          onChange={(e) => setCustomTitle(e.target.value)}
+          placeholder="Export title..."
+        />
+      </div>
+
       {/* Tab selection */}
       <div className="export-dialog__section">
         <h4 className="export-dialog__section-title">Content to Include</h4>

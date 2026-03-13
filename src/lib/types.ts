@@ -1521,6 +1521,27 @@ export interface ManifestActionStep {
   created_at: string;
 }
 
+// Manifest Collections
+export interface ManifestCollection {
+  id: string;
+  user_id: string;
+  name: string;
+  description: string | null;
+  sort_order: number;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ManifestCollectionItem {
+  id: string;
+  collection_id: string;
+  manifest_item_id: string;
+  user_id: string;
+  sort_order: number;
+  added_at: string;
+}
+
 // PRD-24: Book Discussions
 export interface BookDiscussion {
   id: string;

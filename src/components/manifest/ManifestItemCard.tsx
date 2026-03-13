@@ -1,4 +1,5 @@
 import { FileText, BookOpen, FileCode, Mic, Image, StickyNote, Loader, ChevronRight } from 'lucide-react';
+import { useDraggable } from '@dnd-kit/core';
 import type { ManifestItem } from '../../lib/types';
 import { MANIFEST_USAGE_LABELS } from '../../lib/types';
 import { Card } from '../shared/Card';
@@ -12,6 +13,7 @@ interface ManifestItemCardProps {
   selected?: boolean;
   queuePosition?: number | null;
   partExtraction?: { extracted: number; total: number } | null;
+  draggable?: boolean;
 }
 
 const FILE_TYPE_ICONS = {
@@ -38,7 +40,11 @@ function getRelativeDate(dateStr: string): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-export function ManifestItemCard({ item, onClick, compact, selectable, selected, queuePosition, partExtraction }: ManifestItemCardProps) {
+export function ManifestItemCard({ item, onClick, compact, selectable, selected, queuePosition, partExtraction, draggable: isDraggable }: ManifestItemCardProps) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: item.id,
+    disabled: !isDraggable,
+  });
   const Icon = FILE_TYPE_ICONS[item.file_type] || FileText;
   const isPending = item.processing_status === 'pending';
   const isProcessing = item.processing_status === 'processing';
@@ -48,9 +54,12 @@ export function ManifestItemCard({ item, onClick, compact, selectable, selected,
   if (compact) {
     return (
       <button
+        ref={isDraggable ? setNodeRef : undefined}
         type="button"
-        className={`manifest-row${selected ? ' manifest-row--selected' : ''}`}
+        className={`manifest-row${selected ? ' manifest-row--selected' : ''}${isDragging ? ' manifest-row--dragging' : ''}`}
         onClick={() => onClick(item)}
+        {...(isDraggable ? { ...listeners, ...attributes } : {})}
+        style={isDragging ? { opacity: 0.4 } : undefined}
       >
         {selectable && (
           <input
@@ -104,7 +113,13 @@ export function ManifestItemCard({ item, onClick, compact, selectable, selected,
   }
 
   return (
-    <Card className={`manifest-card${selected ? ' manifest-card--selected' : ''}`} onClick={() => onClick(item)}>
+    <Card
+      ref={isDraggable ? setNodeRef : undefined}
+      className={`manifest-card${selected ? ' manifest-card--selected' : ''}`}
+      onClick={() => onClick(item)}
+      {...(isDraggable ? { ...listeners, ...attributes } : {})}
+      style={isDragging ? { opacity: 0.4 } : undefined}
+    >
       <div className="manifest-card__content">
         <div className="manifest-card__top">
           {selectable && (
