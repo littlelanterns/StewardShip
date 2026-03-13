@@ -425,10 +425,11 @@ export default function Manifest() {
     const existingFw = getFrameworkForItem(selectedItem.id);
     const success = await extraction.extractAll(selectedItem.id, genres, async (result) => {
       // Save framework result through useFrameworks
-      if (result && result.framework_name && result.principles?.length > 0) {
+      if (result && result.principles?.length > 0) {
+        const frameworkName = result.framework_name || selectedItem.title || 'Extracted Framework';
         await saveFramework(
           selectedItem.id,
-          result.framework_name,
+          frameworkName,
           result.principles.map((p: { text: string; sort_order: number }) => ({
             text: p.text,
             sort_order: p.sort_order,
@@ -458,15 +459,17 @@ export default function Manifest() {
 
     const success = await extraction.extractAllSections(selectedItem.id, genres, sectionIndices, async (result, sectionTitle, _sectionIndex) => {
       // Save framework results progressively per-section so they appear in the UI immediately
-      if (result && result.framework_name && result.principles?.length > 0) {
-        console.log(`[handleExtractAllSections] Saving ${result.principles.length} principles from section "${sectionTitle}"`);
+      // Accept results even if framework_name is missing/empty — use book title as fallback
+      if (result && result.principles?.length > 0) {
+        const frameworkName = result.framework_name || selectedItem.title || 'Extracted Framework';
+        console.log(`[handleExtractAllSections] Saving ${result.principles.length} principles from section "${sectionTitle}" (framework: "${frameworkName}")`);
         const principles = result.principles.map((p: { text: string; sort_order: number }, idx: number) => ({
           text: p.text,
           sort_order: principleOffset + idx,
           section_title: sectionTitle,
         }));
         principleOffset += principles.length;
-        await saveFramework(selectedItem.id, result.framework_name, principles, true, shouldAppend);
+        await saveFramework(selectedItem.id, frameworkName, principles, true, shouldAppend);
         shouldAppend = true; // After first save creates the framework, always append
       }
     });
@@ -535,14 +538,15 @@ export default function Manifest() {
 
     let principleOffset = 0;
     await extraction.reRunFrameworks(selectedItem.id, selectedItem.genres || [], async (result, sectionTitle, _sectionIndex) => {
-      if (result && result.framework_name && result.principles?.length > 0) {
+      if (result && result.principles?.length > 0) {
+        const frameworkName = result.framework_name || selectedItem.title || 'Extracted Framework';
         const principles = result.principles.map((p: { text: string; sort_order: number }, idx: number) => ({
           text: p.text,
           sort_order: principleOffset + idx,
           section_title: sectionTitle,
         }));
         principleOffset += principles.length;
-        await saveFramework(selectedItem.id, result.framework_name, principles, true, true);
+        await saveFramework(selectedItem.id, frameworkName, principles, true, true);
       }
     });
 
@@ -832,14 +836,15 @@ export default function Manifest() {
               selectedItem.genres || [],
               sectionIndex,
               async (result, sectionTitle, _secIdx) => {
-                if (result && result.framework_name && result.principles?.length > 0) {
+                if (result && result.principles?.length > 0) {
+                  const frameworkName = result.framework_name || selectedItem.title || 'Extracted Framework';
                   const principles = result.principles.map((p: { text: string; sort_order: number }, idx: number) => ({
                     text: p.text,
                     sort_order: idx,
                     section_title: sectionTitle,
                   }));
                   // Always append — framework already exists from initial extraction
-                  await saveFramework(selectedItem.id, result.framework_name, principles, true, true);
+                  await saveFramework(selectedItem.id, frameworkName, principles, true, true);
                 }
               },
             );

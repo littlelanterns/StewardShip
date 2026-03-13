@@ -205,8 +205,10 @@ Extract the key concepts, stories, metaphors, lessons, and insights that capture
 
 === TASK 2: FRAMEWORK PRINCIPLES ===
 Extract the key principles, mental models, and actionable frameworks.
+IMPORTANT: This section is the MOST VALUABLE extraction. Users rely on these principles as a distilled toolkit from the book. Be generous — do NOT under-extract here.
 - COHESION RULE: A named process, technique, or system is ONE principle — never split its steps across multiple principles. But distinct standalone insights should each be their own principle even if they relate to a common theme.
 - Be thorough — extract generously. Use section length as a rough guide: ~1 principle per 1,000-2,000 characters of input. A short section may produce 3-8 principles, a long one 10-20. It is better to capture a principle that turns out to be minor than to miss one that matters. Never pad with generic filler, but do not hold back on distinct, actionable content.
+- MINIMUM: Every section with substantive content MUST produce at least 3 framework principles. If you find yourself producing fewer, look harder — the content has principles even if they're implicit rather than stated as rules.
 - Default principle length: 1-3 complete sentences. Never cut off mid-thought.
 - EXCEPTION — Processes, systems, and step-by-step methods: extract as structured principles with numbered steps (3-8 sentences)
 - NEVER skip a named process, technique, step sequence, or method. If the content describes a specific procedure with steps (e.g., "The Rule of 3," "The 5-Step Correction Process," "How to disagree appropriately"), extract the COMPLETE process with all steps. These are often the most valuable content in the source material.
@@ -348,6 +350,46 @@ function safeParseJSON(raw: string): { parsed: unknown; error?: string } {
         const result = JSON.parse(truncated);
         if (Array.isArray(result) && result.length > 0) {
           console.log(`[safeParseJSON] Recovered truncated JSON array with ${result.length} items`);
+          return { parsed: result };
+        }
+      } catch { /* fall through */ }
+    }
+  }
+
+  // Try 5: Truncated JSON object recovery — for combined extraction responses
+  // If the object was cut off mid-way, try to close open arrays and the object
+  if (cleaned.startsWith('{')) {
+    // Walk backwards from the end to find a salvageable point
+    // Strategy: find the last complete value (after a complete string, number, ], or })
+    // and close any open arrays/objects
+    let attempt = cleaned;
+    // Remove any trailing incomplete string (unclosed quote)
+    const lastQuote = attempt.lastIndexOf('"');
+    const quotesBefore = (attempt.substring(0, lastQuote).match(/"/g) || []).length;
+    if (quotesBefore % 2 === 0) {
+      // Even quotes before the last one means the last quote opens an unclosed string
+      attempt = attempt.substring(0, lastQuote);
+    }
+    // Find the last clean break point (end of a complete value)
+    const lastCleanBreak = Math.max(
+      attempt.lastIndexOf('}'),
+      attempt.lastIndexOf(']'),
+      attempt.lastIndexOf('"'),
+    );
+    if (lastCleanBreak > 0) {
+      let truncated = attempt.substring(0, lastCleanBreak + 1);
+      // Count open vs close brackets to figure out what needs closing
+      const openBraces = (truncated.match(/\{/g) || []).length;
+      const closeBraces = (truncated.match(/\}/g) || []).length;
+      const openBrackets = (truncated.match(/\[/g) || []).length;
+      const closeBrackets = (truncated.match(/\]/g) || []).length;
+      // Close any open arrays then objects
+      for (let i = 0; i < openBrackets - closeBrackets; i++) truncated += ']';
+      for (let i = 0; i < openBraces - closeBraces; i++) truncated += '}';
+      try {
+        const result = JSON.parse(truncated);
+        if (result && typeof result === 'object') {
+          console.log(`[safeParseJSON] Recovered truncated JSON object with keys: ${Object.keys(result).join(', ')}`);
           return { parsed: result };
         }
       } catch { /* fall through */ }
@@ -623,7 +665,7 @@ serve(async (req: Request) => {
         headers: openRouterHeaders,
         body: JSON.stringify({
           model: 'anthropic/claude-sonnet-4',
-          max_tokens: 10240,
+          max_tokens: 16384,
           messages: [
             { role: 'system', content: fullPrompt },
             {
@@ -645,7 +687,11 @@ serve(async (req: Request) => {
 
       const data = await response.json();
       const content = data.choices?.[0]?.message?.content || '';
-      console.log(`[manifest-extract] combined_section section="${section_title}" raw response length:`, content.length);
+      const finishReason = data.choices?.[0]?.finish_reason || 'unknown';
+      console.log(`[manifest-extract] combined_section section="${section_title}" raw response length: ${content.length}, finish_reason: ${finishReason}`);
+      if (finishReason === 'length') {
+        console.warn(`[manifest-extract] combined_section TRUNCATED for section="${section_title}" — response hit max_tokens limit. JSON may be incomplete.`);
+      }
 
       const { parsed: result, error: parseErr } = safeParseJSON(content);
       if (!result) {
