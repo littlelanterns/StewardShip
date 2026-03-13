@@ -113,8 +113,10 @@ export default function Manifest() {
     removeFromCollection,
     getItemIdsForCollection,
     reorderCollectionItems,
+    pushCollection,
   } = useManifestCollections();
   const [collectionSidebarOpen, setCollectionSidebarOpen] = useState(false);
+  const [pushCollectionLoading, setPushCollectionLoading] = useState(false);
   const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
   const [showCollectionPicker, setShowCollectionPicker] = useState(false);
   const [newCollectionName, setNewCollectionName] = useState('');
@@ -679,6 +681,16 @@ export default function Manifest() {
     setCollectionExtractionsId(collectionId);
   }, []);
 
+  const handlePushCollection = useCallback(async (collectionId: string) => {
+    setPushCollectionLoading(true);
+    try {
+      const result = await pushCollection(collectionId);
+      alert(result.message);
+    } finally {
+      setPushCollectionLoading(false);
+    }
+  }, [pushCollection]);
+
   const handleAddSelectedToCollection = useCallback(async (collectionId: string) => {
     await addToCollection(collectionId, [...selectedIds]);
     setSelectedIds(new Set());
@@ -1167,6 +1179,9 @@ export default function Manifest() {
               onExportCollection={handleExportCollection}
               onOpenModal={setCollectionModalId}
               onClose={() => { setCollectionSidebarOpen(false); setActiveCollectionId(null); }}
+              isAdmin={user?.email === 'tenisewertman@gmail.com'}
+              onPushCollection={handlePushCollection}
+              pushLoading={pushCollectionLoading}
             />
           )}
         </div>
@@ -1424,6 +1439,9 @@ export default function Manifest() {
             onUpdateCollection={updateCollection}
             onViewExtractions={handleViewCollectionExtractions}
             onExportCollection={handleExportCollection}
+            isAdmin={user?.email === 'tenisewertman@gmail.com'}
+            onPushCollection={handlePushCollection}
+            pushLoading={pushCollectionLoading}
           />
         );
       })()}

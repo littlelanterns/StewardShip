@@ -38,7 +38,7 @@ serve(async (req: Request) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { action, manifest_item_id } = await req.json();
+    const { action, manifest_item_id, collection_id } = await req.json();
 
     // ── SYNC_FROM_USER ── (any authenticated user can call — syncs their extractions to admin's clone)
     if (action === 'sync_from_user') {
@@ -645,6 +645,216 @@ serve(async (req: Request) => {
         .eq('user_id', callerUserId);
 
       return jsonResponse({ message: 'Extractions cleared' });
+    }
+
+    // ── PUSH COLLECTION ── (push admin's collection to all other users)
+    if (action === 'push_collection') {
+      if (!collection_id) return jsonResponse({ error: 'Missing collection_id' }, 400);
+
+      // 1. Fetch admin's collection
+      const { data: adminCol, error: colErr } = await supabase
+        .from('manifest_collections')
+        .select('*')
+        .eq('id', collection_id)
+        .eq('user_id', callerUserId)
+        .is('archived_at', null)
+        .single();
+
+      if (colErr || !adminCol) {
+        return jsonResponse({ error: 'Collection not found or not yours' }, 404);
+      }
+
+      // 2. Fetch admin's collection items with manifest_items join for source resolution
+      const { data: adminItems } = await supabase
+        .from('manifest_collection_items')
+        .select('manifest_item_id, sort_order, manifest_items!inner(id, source_manifest_item_id)')
+        .eq('collection_id', collection_id)
+        .order('sort_order', { ascending: true });
+
+      if (!adminItems || adminItems.length === 0) {
+        return jsonResponse({ error: 'Collection is empty' }, 400);
+      }
+
+      // 3. Resolve canonical source IDs for each book
+      // deno-lint-ignore no-explicit-any
+      const bookMappings = adminItems.map((item: any) => ({
+        adminManifestItemId: item.manifest_item_id as string,
+        canonicalSourceId: (item.manifest_items.source_manifest_item_id || item.manifest_items.id) as string,
+        sortOrder: item.sort_order as number,
+      }));
+
+      // 4. Get all non-admin users
+      const { data: allUsers } = await supabase.from('user_profiles').select('user_id');
+      if (!allUsers || allUsers.length === 0) {
+        return jsonResponse({ message: 'No users found', collections_created: 0 });
+      }
+      const targetUserIds = allUsers
+        .map((u: { user_id: string }) => u.user_id)
+        .filter((uid: string) => uid !== callerUserId);
+
+      if (targetUserIds.length === 0) {
+        return jsonResponse({ message: 'No other users to push to', collections_created: 0 });
+      }
+
+      let collectionsCreated = 0;
+      let collectionsUpdated = 0;
+      let booksCloned = 0;
+      const errors: string[] = [];
+
+      for (const targetUserId of targetUserIds) {
+        try {
+          // 5. Check if user already has a pushed copy
+          const { data: existingCol } = await supabase
+            .from('manifest_collections')
+            .select('id, pushed_item_source_ids')
+            .eq('source_collection_id', collection_id)
+            .eq('user_id', targetUserId)
+            .is('archived_at', null)
+            .maybeSingle();
+
+          // 6. Map admin books to user's clones (or clone missing ones)
+          const userBookIds: { canonicalId: string; userItemId: string; sortOrder: number }[] = [];
+
+          for (const mapping of bookMappings) {
+            // Find user's copy of this book
+            const { data: userItem } = await supabase
+              .from('manifest_items')
+              .select('id')
+              .eq('user_id', targetUserId)
+              .or(`id.eq.${mapping.canonicalSourceId},source_manifest_item_id.eq.${mapping.canonicalSourceId}`)
+              .is('archived_at', null)
+              .maybeSingle();
+
+            if (userItem) {
+              userBookIds.push({
+                canonicalId: mapping.canonicalSourceId,
+                userItemId: userItem.id,
+                sortOrder: mapping.sortOrder,
+              });
+            } else {
+              // Clone the missing book
+              try {
+                const cloneRes = await fetch(
+                  `${supabaseUrl}/functions/v1/manifest-clone`,
+                  {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': authHeader,
+                    },
+                    body: JSON.stringify({
+                      manifest_item_id: mapping.adminManifestItemId,
+                      clone_extractions: true,
+                      force_update: false,
+                    }),
+                  },
+                );
+
+                if (cloneRes.ok) {
+                  booksCloned++;
+                  // Re-fetch user's new clone
+                  const { data: newClone } = await supabase
+                    .from('manifest_items')
+                    .select('id')
+                    .eq('user_id', targetUserId)
+                    .eq('source_manifest_item_id', mapping.canonicalSourceId)
+                    .is('archived_at', null)
+                    .maybeSingle();
+
+                  if (newClone) {
+                    userBookIds.push({
+                      canonicalId: mapping.canonicalSourceId,
+                      userItemId: newClone.id,
+                      sortOrder: mapping.sortOrder,
+                    });
+                  }
+                } else {
+                  console.error(`[push_collection] Failed to clone book ${mapping.adminManifestItemId} for user ${targetUserId}`);
+                }
+              } catch (cloneErr) {
+                console.error(`[push_collection] Clone error:`, cloneErr);
+              }
+            }
+          }
+
+          const allCanonicalIds = bookMappings.map((m: { canonicalSourceId: string }) => m.canonicalSourceId);
+
+          if (existingCol) {
+            // RE-PUSH: merge new books, respect user curation
+            const { data: currentItems } = await supabase
+              .from('manifest_collection_items')
+              .select('manifest_item_id')
+              .eq('collection_id', existingCol.id);
+
+            const currentItemIds = new Set((currentItems || []).map((i: { manifest_item_id: string }) => i.manifest_item_id));
+            const previouslyPushed = new Set((existingCol.pushed_item_source_ids || []) as string[]);
+            const maxSort = (currentItems || []).length;
+
+            let addedCount = 0;
+            for (const book of userBookIds) {
+              if (currentItemIds.has(book.userItemId)) continue; // already in collection
+              if (previouslyPushed.has(book.canonicalId) && !currentItemIds.has(book.userItemId)) continue; // user removed it
+
+              await supabase.from('manifest_collection_items').insert({
+                collection_id: existingCol.id,
+                manifest_item_id: book.userItemId,
+                user_id: targetUserId,
+                sort_order: maxSort + addedCount,
+              });
+              addedCount++;
+            }
+
+            // Update pushed_item_source_ids
+            const mergedIds = [...new Set([...(existingCol.pushed_item_source_ids as string[] || []), ...allCanonicalIds])];
+            await supabase
+              .from('manifest_collections')
+              .update({ pushed_item_source_ids: mergedIds })
+              .eq('id', existingCol.id);
+
+            if (addedCount > 0) collectionsUpdated++;
+          } else {
+            // FRESH PUSH: create collection + items
+            const { data: newCol } = await supabase
+              .from('manifest_collections')
+              .insert({
+                user_id: targetUserId,
+                name: adminCol.name,
+                description: adminCol.description,
+                sort_order: 0,
+                source_collection_id: collection_id,
+                pushed_item_source_ids: allCanonicalIds,
+              })
+              .select('id')
+              .single();
+
+            if (newCol) {
+              const itemRows = userBookIds.map((book) => ({
+                collection_id: newCol.id,
+                manifest_item_id: book.userItemId,
+                user_id: targetUserId,
+                sort_order: book.sortOrder,
+              }));
+
+              if (itemRows.length > 0) {
+                await supabase.from('manifest_collection_items').insert(itemRows);
+              }
+              collectionsCreated++;
+            }
+          }
+        } catch (userErr) {
+          errors.push(`User ${targetUserId}: ${(userErr as Error).message}`);
+        }
+      }
+
+      const message = `Collection pushed: ${collectionsCreated} created, ${collectionsUpdated} updated, ${booksCloned} books cloned`;
+      console.log(`[manifest-admin] ${message}`);
+      return jsonResponse({
+        message,
+        collections_created: collectionsCreated,
+        collections_updated: collectionsUpdated,
+        books_cloned: booksCloned,
+        errors: errors.length > 0 ? errors : undefined,
+      });
     }
 
     return jsonResponse({ error: `Unknown action: ${action}` }, 400);

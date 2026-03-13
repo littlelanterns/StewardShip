@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { X, Plus, Trash2, ChevronLeft, BookOpen, Download, Maximize2 } from 'lucide-react';
+import { X, Plus, Trash2, ChevronLeft, BookOpen, Download, Maximize2, Send } from 'lucide-react';
 import { useDroppable } from '@dnd-kit/core';
 import type { ManifestCollection, ManifestItem } from '../../lib/types';
 import type { ManifestCollectionItem } from '../../lib/types';
@@ -19,6 +19,9 @@ interface CollectionSidebarProps {
   onExportCollection: (collectionId: string) => void;
   onOpenModal: (collectionId: string) => void;
   onClose: () => void;
+  isAdmin?: boolean;
+  onPushCollection?: (collectionId: string) => void;
+  pushLoading?: boolean;
 }
 
 function DroppableCollection({
@@ -48,6 +51,9 @@ function DroppableCollection({
         onClick={onSelect}
       >
         <span className="collection-sidebar__item-name">{collection.name}</span>
+        {collection.source_collection_id && (
+          <span className="collection-sidebar__shared-badge">Shared</span>
+        )}
         <span className="collection-sidebar__item-count">{count}</span>
       </button>
       {confirmDelete ? (
@@ -95,6 +101,9 @@ export function CollectionSidebar({
   onExportCollection,
   onOpenModal,
   onClose,
+  isAdmin,
+  onPushCollection,
+  pushLoading,
 }: CollectionSidebarProps) {
   const [newName, setNewName] = useState('');
   const [creating, setCreating] = useState(false);
@@ -242,6 +251,17 @@ export function CollectionSidebar({
                 <Download size={14} />
                 Export
               </button>
+              {isAdmin && onPushCollection && (
+                <button
+                  type="button"
+                  className="collection-sidebar__action-btn collection-sidebar__action-btn--admin"
+                  onClick={() => onPushCollection(activeCollection.id)}
+                  disabled={pushLoading}
+                >
+                  <Send size={14} />
+                  {pushLoading ? 'Pushing...' : 'Push to All Users'}
+                </button>
+              )}
             </div>
           )}
         </div>

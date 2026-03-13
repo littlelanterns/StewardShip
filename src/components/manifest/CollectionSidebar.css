@@ -423,3 +423,28 @@
   background: var(--color-accent, var(--color-mid-teal));
   color: var(--color-white);
 }
+
+.collection-sidebar__action-btn--admin {
+  border-color: var(--color-cognac);
+  color: var(--color-cognac);
+}
+
+.collection-sidebar__action-btn--admin:hover {
+  background: var(--color-cognac);
+  color: var(--color-white);
+}
+
+.collection-sidebar__action-btn--admin:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Shared badge */
+.collection-sidebar__shared-badge {
+  font-size: 10px;
+  color: var(--color-cognac);
+  background: var(--color-warm-sand);
+  padding: 1px 5px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}

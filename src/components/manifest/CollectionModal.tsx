@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
-import { X, GripVertical, BookOpen, Download, Trash2 } from 'lucide-react';
+import { X, GripVertical, BookOpen, Download, Trash2, Send } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -30,6 +30,9 @@ interface CollectionModalProps {
   onUpdateCollection: (id: string, updates: { name?: string }) => void;
   onViewExtractions: (collectionId: string) => void;
   onExportCollection: (collectionId: string) => void;
+  isAdmin?: boolean;
+  onPushCollection?: (collectionId: string) => void;
+  pushLoading?: boolean;
 }
 
 function SortableBookRow({
@@ -90,6 +93,9 @@ export function CollectionModal({
   onUpdateCollection,
   onViewExtractions,
   onExportCollection,
+  isAdmin,
+  onPushCollection,
+  pushLoading,
 }: CollectionModalProps) {
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(collection.name);
@@ -215,6 +221,17 @@ export function CollectionModal({
               <Download size={16} />
               Export
             </button>
+            {isAdmin && onPushCollection && (
+              <button
+                type="button"
+                className="collection-modal__action-btn collection-modal__action-btn--admin"
+                onClick={() => onPushCollection(collection.id)}
+                disabled={pushLoading}
+              >
+                <Send size={16} />
+                {pushLoading ? 'Pushing...' : 'Push to All Users'}
+              </button>
+            )}
           </div>
         )}
       </div>

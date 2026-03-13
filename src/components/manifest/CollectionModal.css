@@ -209,3 +209,18 @@
   background: var(--color-accent, var(--color-mid-teal));
   color: var(--color-white);
 }
+
+.collection-modal__action-btn--admin {
+  border-color: var(--color-cognac);
+  color: var(--color-cognac);
+}
+
+.collection-modal__action-btn--admin:hover {
+  background: var(--color-cognac);
+  color: var(--color-white);
+}
+
+.collection-modal__action-btn--admin:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

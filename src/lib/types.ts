@@ -1528,6 +1528,8 @@ export interface ManifestCollection {
   name: string;
   description: string | null;
   sort_order: number;
+  source_collection_id: string | null;
+  pushed_item_source_ids: string[] | null;
   archived_at: string | null;
   created_at: string;
   updated_at: string;

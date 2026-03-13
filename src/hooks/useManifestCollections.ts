@@ -190,6 +190,17 @@ export function useManifestCollections() {
     return result;
   }, [collectionItemsMap]);
 
+  const pushCollection = useCallback(async (collectionId: string): Promise<{
+    success: boolean;
+    message: string;
+  }> => {
+    const { data, error } = await supabase.functions.invoke('manifest-admin', {
+      body: { action: 'push_collection', collection_id: collectionId },
+    });
+    if (error) return { success: false, message: error.message };
+    return { success: true, message: data?.message || 'Collection pushed to all users' };
+  }, []);
+
   return {
     collections,
     collectionItemsMap,
@@ -203,5 +214,6 @@ export function useManifestCollections() {
     getItemIdsForCollection,
     getCollectionsForItem,
     reorderCollectionItems,
+    pushCollection,
   };
 }
