@@ -38,7 +38,8 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
-  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .manifest-page__select-btn {
@@ -943,11 +944,14 @@
   display: flex;
   flex-direction: column;
   gap: 0;
+  width: 100%;
+  overflow: hidden;
 }
 
 .manifest-page__library-content {
   flex: 1;
   min-width: 0;
+  overflow-x: hidden;
 }
 
 @media (min-width: 768px) {
