@@ -1,7 +1,7 @@
 /* Collection Sidebar — right-side panel on desktop */
 .collection-sidebar {
-  width: 280px;
-  min-width: 280px;
+  width: 220px;
+  min-width: 220px;
   border-left: 1px solid var(--color-border, var(--color-slate-gray));
   background: var(--color-bg-card, var(--color-white));
   display: flex;
