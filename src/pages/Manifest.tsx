@@ -822,6 +822,10 @@ export default function Manifest() {
           discoveringSections={extraction.discoveringSections}
           extractionProgress={extraction.extractionProgress}
           failedSections={extraction.failedSections}
+          // Merge sections
+          isMergeActive={extraction.isMergeActive}
+          mergeStats={extraction.mergeStats}
+          onToggleMerge={extraction.toggleMergeSections}
           onRetrySection={async (sectionIndex: number) => {
             if (!selectedItem) return false;
             const success = await extraction.retrySection(

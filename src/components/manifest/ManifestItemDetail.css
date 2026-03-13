@@ -619,6 +619,34 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 0 var(--spacing-xs);
+  gap: var(--spacing-sm);
+}
+
+.manifest-detail__section-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.manifest-detail__section-merge-toggle {
+  background: none;
+  border: 1px solid var(--color-cognac);
+  color: var(--color-cognac);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  padding: 2px var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.manifest-detail__section-merge-toggle:hover {
+  background: var(--color-cognac);
+  color: var(--color-white);
+}
+
+.manifest-detail__section-merge-toggle--active {
+  background: var(--color-cognac);
+  color: var(--color-white);
 }
 
 .manifest-detail__section-count {
@@ -668,6 +696,10 @@
 
 .manifest-detail__section-item--extracted {
   opacity: 0.6;
+}
+
+.manifest-detail__section-item--merged {
+  border-left: 3px solid var(--color-cognac);
 }
 
 .manifest-detail__section-item-done {

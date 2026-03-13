@@ -1,7 +1,9 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuthContext } from '../contexts/AuthContext';
 import type { SectionInfo } from './useFrameworks';
+import { computeMergeStats, mergeShortSections } from '../lib/mergeSections';
+import type { MergeStats } from '../lib/mergeSections';
 import type {
   ManifestSummary,
   ManifestDeclaration,
@@ -60,6 +62,10 @@ export function useManifestExtraction() {
     total: number;
     currentType: 'summary' | 'framework' | 'mast_content' | 'action_steps';
   } | null>(null);
+
+  // Merge sections state
+  const [originalSections, setOriginalSections] = useState<SectionInfo[]>([]);
+  const [isMergeActive, setIsMergeActive] = useState(false);
 
   // Failed sections tracking — sections that errored during extraction
   const [failedSections, setFailedSections] = useState<Array<{
@@ -230,6 +236,8 @@ export function useManifestExtraction() {
       const discovered: SectionInfo[] = data.sections || [];
       console.log('[discoverSections] Found', discovered.length, 'sections');
       setSections(discovered);
+      setOriginalSections(discovered);
+      setIsMergeActive(false);
       // Auto-select content sections, skip [NON-CONTENT]
       const defaultSelected = discovered
         .map((s, i) => ({ index: i, title: s.title }))
@@ -258,6 +266,33 @@ export function useManifestExtraction() {
     const index = sections.indexOf(match);
     return { start: match.start_char, end: match.end_char, index };
   }, [sections]);
+
+  // --- Merge sections ---
+
+  const mergeStats = useMemo<MergeStats>(
+    () => computeMergeStats(originalSections),
+    [originalSections],
+  );
+
+  const autoSelectContent = (secs: SectionInfo[]): number[] =>
+    secs
+      .map((s, i) => ({ index: i, title: s.title }))
+      .filter(({ title }) => !title.startsWith('[NON-CONTENT]'))
+      .map(({ index }) => index);
+
+  const toggleMergeSections = useCallback(() => {
+    const newMerge = !isMergeActive;
+    setIsMergeActive(newMerge);
+
+    if (newMerge) {
+      const merged = mergeShortSections(originalSections);
+      setSections(merged);
+      setSelectedSectionIndices(autoSelectContent(merged));
+    } else {
+      setSections(originalSections);
+      setSelectedSectionIndices(autoSelectContent(originalSections));
+    }
+  }, [isMergeActive, originalSections]);
 
   // --- Save summary extraction results to DB ---
 
@@ -1283,6 +1318,8 @@ export function useManifestExtraction() {
     setDeclarations([]);
     setActionSteps([]);
     setSections([]);
+    setOriginalSections([]);
+    setIsMergeActive(false);
     setSelectedSectionIndices([]);
     setExtractionProgress(null);
     setError(null);
@@ -1411,6 +1448,10 @@ export function useManifestExtraction() {
     discoveringSections,
     extractionProgress,
     failedSections,
+    // Merge sections
+    isMergeActive,
+    mergeStats,
+    toggleMergeSections,
     // Fetch
     fetchSummaries,
     fetchDeclarations,

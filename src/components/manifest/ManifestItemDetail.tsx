@@ -3,6 +3,7 @@ import { ChevronLeft, FileText, FileCode, Mic, Image, StickyNote, RefreshCw, Boo
 import type { ManifestItem, ManifestSummary, ManifestDeclaration, ManifestActionStep, AIFrameworkPrinciple, BookGenre, DiscussionType } from '../../lib/types';
 import { MANIFEST_FILE_TYPE_LABELS, MANIFEST_STATUS_LABELS } from '../../lib/types';
 import type { SectionInfo } from '../../hooks/useManifestExtraction';
+import type { MergeStats } from '../../lib/mergeSections';
 import { supabase } from '../../lib/supabase';
 import { Button, LoadingSpinner } from '../shared';
 import { GenrePicker } from './GenrePicker';
@@ -65,6 +66,10 @@ interface ManifestItemDetailProps {
   failedSections: Array<{ sectionIndex: number; title: string; retrying?: boolean }>;
   onRetrySection: (sectionIndex: number) => Promise<boolean>;
   onClearExtractions: (itemId: string) => Promise<void>;
+  // Merge sections
+  isMergeActive?: boolean;
+  mergeStats?: MergeStats;
+  onToggleMerge?: () => void;
   // Summary actions
   onToggleSummaryHeart: (id: string) => void;
   onDeleteSummary: (id: string) => void;
@@ -151,6 +156,9 @@ export function ManifestItemDetail({
   failedSections,
   onRetrySection,
   onClearExtractions,
+  isMergeActive,
+  mergeStats,
+  onToggleMerge,
   onToggleSummaryHeart,
   onDeleteSummary,
   onUpdateSummaryText,
@@ -953,13 +961,24 @@ export function ManifestItemDetail({
                 <span className="manifest-detail__section-count">
                   {selectedSectionIndices.length} of {sections.length} sections selected
                 </span>
-                <button
-                  type="button"
-                  className="manifest-detail__section-toggle"
-                  onClick={handleToggleAllSections}
-                >
-                  {selectedSectionIndices.length === sections.length ? 'Deselect All' : 'Select All'}
-                </button>
+                <div className="manifest-detail__section-header-actions">
+                  {mergeStats?.suggestMerge && onToggleMerge && (
+                    <button
+                      type="button"
+                      className={`manifest-detail__section-merge-toggle${isMergeActive ? ' manifest-detail__section-merge-toggle--active' : ''}`}
+                      onClick={onToggleMerge}
+                    >
+                      {isMergeActive ? 'Show All Sections' : 'Merge Short Sections'}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="manifest-detail__section-toggle"
+                    onClick={handleToggleAllSections}
+                  >
+                    {selectedSectionIndices.length === sections.length ? 'Deselect All' : 'Select All'}
+                  </button>
+                </div>
               </div>
 
               <div className="manifest-detail__section-list">
@@ -969,10 +988,11 @@ export function ManifestItemDetail({
                   const wordEstimate = Math.round((section.end_char - section.start_char) / 5);
                   const isEditingThis = editingSectionIndex === i;
                   const alreadyExtracted = extractedSectionTitles.has(displayTitle);
+                  const isMergedSection = isMergeActive && section.description.includes('sections merged');
                   return (
                     <label
                       key={i}
-                      className={`manifest-detail__section-item${isNonContent ? ' manifest-detail__section-item--non-content' : ''}${alreadyExtracted ? ' manifest-detail__section-item--extracted' : ''}`}
+                      className={`manifest-detail__section-item${isNonContent ? ' manifest-detail__section-item--non-content' : ''}${alreadyExtracted ? ' manifest-detail__section-item--extracted' : ''}${isMergedSection ? ' manifest-detail__section-item--merged' : ''}`}
                     >
                       <input
                         type="checkbox"
