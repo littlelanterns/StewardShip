@@ -709,7 +709,10 @@ export default function Manifest() {
   const collectionExtractionsItems = useMemo(() => {
     if (!collectionExtractionsId) return [];
     const itemIds = getItemIdsForCollection(collectionExtractionsId);
-    return items.filter((i) => itemIds.includes(i.id));
+    // Map over itemIds to preserve collection sort order
+    return itemIds
+      .map((id) => items.find((i) => i.id === id))
+      .filter((i): i is ManifestItem => i !== undefined);
   }, [collectionExtractionsId, getItemIdsForCollection, items]);
 
   // Upload view
