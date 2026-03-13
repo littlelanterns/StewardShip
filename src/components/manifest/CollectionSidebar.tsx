@@ -21,6 +21,7 @@ interface CollectionSidebarProps {
   onClose: () => void;
   isAdmin?: boolean;
   onPushCollection?: (collectionId: string) => void;
+  onPushAllCollections?: () => void;
   pushLoading?: boolean;
 }
 
@@ -103,6 +104,7 @@ export function CollectionSidebar({
   onClose,
   isAdmin,
   onPushCollection,
+  onPushAllCollections,
   pushLoading,
 }: CollectionSidebarProps) {
   const [newName, setNewName] = useState('');
@@ -148,6 +150,21 @@ export function CollectionSidebar({
           <X size={16} />
         </button>
       </div>
+
+      {/* Admin: Push All Collections button in list view */}
+      {isAdmin && !activeCollection && collections.length > 0 && onPushAllCollections && (
+        <div className="collection-sidebar__push-all">
+          <button
+            type="button"
+            className="collection-sidebar__push-all-btn"
+            onClick={onPushAllCollections}
+            disabled={pushLoading}
+          >
+            <Send size={14} />
+            {pushLoading ? 'Pushing...' : 'Push All to Users'}
+          </button>
+        </div>
+      )}
 
       {/* Collection detail view */}
       {activeCollection ? (

@@ -439,6 +439,40 @@
   cursor: default;
 }
 
+/* Push All button */
+.collection-sidebar__push-all {
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-bottom: 1px solid var(--color-border, var(--color-slate-gray));
+  flex-shrink: 0;
+}
+
+.collection-sidebar__push-all-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  width: 100%;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-cognac);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-card);
+  color: var(--color-cognac);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.collection-sidebar__push-all-btn:hover:not(:disabled) {
+  background: var(--color-cognac);
+  color: var(--color-white);
+}
+
+.collection-sidebar__push-all-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 /* Shared badge */
 .collection-sidebar__shared-badge {
   font-size: 10px;

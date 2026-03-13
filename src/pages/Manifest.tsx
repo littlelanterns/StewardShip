@@ -691,6 +691,21 @@ export default function Manifest() {
     }
   }, [pushCollection]);
 
+  const handlePushAllCollections = useCallback(async () => {
+    if (collections.length === 0) return;
+    setPushCollectionLoading(true);
+    const results: string[] = [];
+    try {
+      for (const col of collections) {
+        const result = await pushCollection(col.id);
+        results.push(`${col.name}: ${result.message}`);
+      }
+      alert(results.join('\n'));
+    } finally {
+      setPushCollectionLoading(false);
+    }
+  }, [collections, pushCollection]);
+
   const handleAddSelectedToCollection = useCallback(async (collectionId: string) => {
     await addToCollection(collectionId, [...selectedIds]);
     setSelectedIds(new Set());
@@ -1181,6 +1196,7 @@ export default function Manifest() {
               onClose={() => { setCollectionSidebarOpen(false); setActiveCollectionId(null); }}
               isAdmin={user?.email === 'tenisewertman@gmail.com'}
               onPushCollection={handlePushCollection}
+              onPushAllCollections={handlePushAllCollections}
               pushLoading={pushCollectionLoading}
             />
           )}
