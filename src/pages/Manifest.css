@@ -1,7 +1,7 @@
-/* Let Manifest fill the available content area on desktop */
+/* Let Manifest use more of the available width on desktop */
 @media (min-width: 768px) {
   .manifest-page.page {
-    max-width: none;
+    max-width: 900px;
   }
 }
 
