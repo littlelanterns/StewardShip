@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { X, Plus, Trash2, ChevronLeft, BookOpen, Download } from 'lucide-react';
+import { X, Plus, Trash2, ChevronLeft, BookOpen, Download, Maximize2 } from 'lucide-react';
 import { useDroppable } from '@dnd-kit/core';
 import type { ManifestCollection, ManifestItem } from '../../lib/types';
 import type { ManifestCollectionItem } from '../../lib/types';
@@ -17,6 +17,7 @@ interface CollectionSidebarProps {
   onRemoveFromCollection: (collectionId: string, manifestItemId: string) => void;
   onViewExtractions: (collectionId: string) => void;
   onExportCollection: (collectionId: string) => void;
+  onOpenModal: (collectionId: string) => void;
   onClose: () => void;
 }
 
@@ -92,6 +93,7 @@ export function CollectionSidebar({
   onRemoveFromCollection,
   onViewExtractions,
   onExportCollection,
+  onOpenModal,
   onClose,
 }: CollectionSidebarProps) {
   const [newName, setNewName] = useState('');
@@ -141,14 +143,24 @@ export function CollectionSidebar({
       {/* Collection detail view */}
       {activeCollection ? (
         <div className="collection-sidebar__detail">
-          <button
-            type="button"
-            className="collection-sidebar__back"
-            onClick={() => onSelectCollection(null)}
-          >
-            <ChevronLeft size={14} />
-            All Collections
-          </button>
+          <div className="collection-sidebar__detail-header">
+            <button
+              type="button"
+              className="collection-sidebar__back"
+              onClick={() => onSelectCollection(null)}
+            >
+              <ChevronLeft size={14} />
+              All Collections
+            </button>
+            <button
+              type="button"
+              className="collection-sidebar__expand-btn"
+              onClick={() => onOpenModal(activeCollection.id)}
+              title="Open full view to reorder"
+            >
+              <Maximize2 size={14} />
+            </button>
+          </div>
 
           {editingName === activeCollection.id ? (
             <div className="collection-sidebar__rename">

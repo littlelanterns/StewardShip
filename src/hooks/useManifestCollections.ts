@@ -150,6 +150,36 @@ export function useManifestCollections() {
     return (collectionItemsMap.get(collectionId) || []).map((i) => i.manifest_item_id);
   }, [collectionItemsMap]);
 
+  const reorderCollectionItems = useCallback(async (
+    collectionId: string,
+    orderedManifestItemIds: string[],
+  ): Promise<boolean> => {
+    // Optimistically update local state
+    setCollectionItemsMap((prev) => {
+      const next = new Map(prev);
+      const current = next.get(collectionId) || [];
+      const reordered = orderedManifestItemIds
+        .map((mid, idx) => {
+          const item = current.find((i) => i.manifest_item_id === mid);
+          return item ? { ...item, sort_order: idx } : null;
+        })
+        .filter((i): i is ManifestCollectionItem => i !== null);
+      next.set(collectionId, reordered);
+      return next;
+    });
+
+    // Persist to DB
+    const updates = orderedManifestItemIds.map((mid, idx) => (
+      supabase
+        .from('manifest_collection_items')
+        .update({ sort_order: idx })
+        .eq('collection_id', collectionId)
+        .eq('manifest_item_id', mid)
+    ));
+    const results = await Promise.all(updates);
+    return results.every((r) => !r.error);
+  }, []);
+
   const getCollectionsForItem = useCallback((manifestItemId: string): string[] => {
     const result: string[] = [];
     for (const [colId, items] of collectionItemsMap) {
@@ -172,5 +202,6 @@ export function useManifestCollections() {
     removeFromCollection,
     getItemIdsForCollection,
     getCollectionsForItem,
+    reorderCollectionItems,
   };
 }

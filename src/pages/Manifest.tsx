@@ -18,6 +18,7 @@ import { BookDiscussionModal } from '../components/manifest/BookDiscussionModal'
 import { BookSelector } from '../components/manifest/BookSelector';
 import { AdminBookManager } from '../components/manifest/AdminBookManager';
 import { CollectionSidebar } from '../components/manifest/CollectionSidebar';
+import { CollectionModal } from '../components/manifest/CollectionModal';
 import { ExtractionsView } from '../components/manifest/ExtractionsView';
 import { useManifestCollections } from '../hooks/useManifestCollections';
 import { CollapsibleGroup } from '../components/shared/CollapsibleGroup';
@@ -111,6 +112,7 @@ export default function Manifest() {
     addToCollection,
     removeFromCollection,
     getItemIdsForCollection,
+    reorderCollectionItems,
   } = useManifestCollections();
   const [collectionSidebarOpen, setCollectionSidebarOpen] = useState(false);
   const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
@@ -119,6 +121,7 @@ export default function Manifest() {
   const [dragActiveId, setDragActiveId] = useState<string | null>(null);
   // Collection extractions view state
   const [collectionExtractionsId, setCollectionExtractionsId] = useState<string | null>(null);
+  const [collectionModalId, setCollectionModalId] = useState<string | null>(null);
 
   // DnD sensors for collections
   const dndSensors = useSensors(
@@ -1159,6 +1162,7 @@ export default function Manifest() {
               onRemoveFromCollection={removeFromCollection}
               onViewExtractions={handleViewCollectionExtractions}
               onExportCollection={handleExportCollection}
+              onOpenModal={setCollectionModalId}
               onClose={() => { setCollectionSidebarOpen(false); setActiveCollectionId(null); }}
             />
           )}
@@ -1401,6 +1405,25 @@ export default function Manifest() {
           onClose={handleDiscussionClosed}
         />
       )}
+
+      {/* Collection Modal (full-screen reorder) */}
+      {collectionModalId && (() => {
+        const col = collections.find((c) => c.id === collectionModalId);
+        if (!col) return null;
+        return (
+          <CollectionModal
+            collection={col}
+            collectionItems={collectionItemsMap.get(collectionModalId) || []}
+            allItems={items}
+            onClose={() => setCollectionModalId(null)}
+            onReorder={reorderCollectionItems}
+            onRemove={removeFromCollection}
+            onUpdateCollection={updateCollection}
+            onViewExtractions={handleViewCollectionExtractions}
+            onExportCollection={handleExportCollection}
+          />
+        );
+      })()}
     </div>
   );
 }
