@@ -71,6 +71,11 @@ serve(async (req: Request) => {
 
       const textContent = fullItem?.text_content;
       if (!textContent || textContent.trim().length === 0) {
+        // Mark as Unknown so it won't be re-queried
+        await supabase
+          .from('manifest_items')
+          .update({ author: 'Unknown' })
+          .eq('id', item.id);
         results.push({ id: item.id, title: item.title, error: 'No text content' });
         continue;
       }
@@ -129,10 +134,11 @@ serve(async (req: Request) => {
               resultEntry.isbn = isbnCleaned;
             }
           }
-          // Only update title if still equals filename default
-          if (parsed.title && typeof parsed.title === 'string' && item.file_name) {
-            const filenameTitle = item.file_name.replace(/\.[^.]+$/, '');
-            if (item.title === filenameTitle && parsed.title.length > 3) {
+          // Update title if still equals filename default or looks garbled
+          if (parsed.title && typeof parsed.title === 'string' && parsed.title.length > 3) {
+            const filenameTitle = item.file_name ? item.file_name.replace(/\.[^.]+$/, '') : '';
+            const looksGarbled = item.title && !/\s/.test(item.title) && /[!@#$%^&]|^[A-Z0-9]{20,}/.test(item.title);
+            if (item.title === filenameTitle || looksGarbled) {
               updateData.title = parsed.title;
               resultEntry.newTitle = parsed.title;
             }

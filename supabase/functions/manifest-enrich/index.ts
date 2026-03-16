@@ -231,8 +231,8 @@ Rules:
       }
     }
 
-    // Extract author/title/ISBN via AI if author is not yet set
-    if (!item.author) {
+    // Extract author/title/ISBN via AI if author is not yet set or is 'Unknown'
+    if (!item.author || item.author === 'Unknown') {
       try {
         const metadataResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
@@ -275,10 +275,11 @@ Rules:
                 result.isbn = isbnCleaned;
               }
             }
-            // Only update title if still set to filename default
-            if (parsed.title && typeof parsed.title === 'string' && item.file_name) {
-              const filenameTitle = item.file_name.replace(/\.[^.]+$/, '');
-              if (item.title === filenameTitle && parsed.title.length > 3) {
+            // Update title if still set to filename default or looks like a garbled filename
+            if (parsed.title && typeof parsed.title === 'string' && parsed.title.length > 3) {
+              const filenameTitle = item.file_name ? item.file_name.replace(/\.[^.]+$/, '') : '';
+              const looksGarbled = item.title && !/\s/.test(item.title) && /[!@#$%^&]|^[A-Z0-9]{20,}/.test(item.title);
+              if (item.title === filenameTitle || looksGarbled) {
                 updateData.title = parsed.title;
                 result.title = parsed.title;
               }
