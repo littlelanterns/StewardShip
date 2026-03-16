@@ -333,14 +333,15 @@ export function useManifest() {
 
         // Clone is now manual — use "Push to Family" on ManifestItemDetail after reviewing extractions
 
-        // Auto-enrich newly completed items that have no summary yet (fire-and-forget)
-        if (status === 'completed' && !data.ai_summary) {
+        // Auto-enrich completed items — always run with force_all to ensure
+        // title, author, ISBN, summary, and tags are all populated/refreshed
+        if (status === 'completed') {
           supabase.functions
             .invoke('manifest-enrich', {
-              body: { manifest_item_id: itemId, user_id: user.id },
+              body: { manifest_item_id: itemId, user_id: user.id, force_all: true },
             })
             .then(({ data: enrichData }) => {
-              if (enrichData?.summary || enrichData?.author) {
+              if (enrichData?.summary || enrichData?.author || enrichData?.tags || enrichData?.title) {
                 setItems((prev) =>
                   prev.map((item) =>
                     item.id === itemId
@@ -350,6 +351,7 @@ export function useManifest() {
                           ...(enrichData.author ? { author: enrichData.author } : {}),
                           ...(enrichData.isbn ? { isbn: enrichData.isbn } : {}),
                           ...(enrichData.title ? { title: enrichData.title } : {}),
+                          ...(enrichData.tags ? { tags: enrichData.tags } : {}),
                         }
                       : item,
                   ),
