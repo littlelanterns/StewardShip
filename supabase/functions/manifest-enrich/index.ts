@@ -275,11 +275,13 @@ Rules:
                 result.isbn = isbnCleaned;
               }
             }
-            // Update title if: force_all, still equals filename, or looks garbled
+            // Update title only if it still equals the filename or looks garbled
+            // (don't override reasonable titles — AI only sees first 2000 chars
+            // and may guess a chapter title instead of the book title)
             if (parsed.title && typeof parsed.title === 'string' && parsed.title.length > 3) {
               const filenameTitle = item.file_name ? item.file_name.replace(/\.[^.]+$/, '') : '';
               const looksGarbled = item.title && !/\s/.test(item.title) && /[!@#$%^&]|^[A-Z0-9]{20,}/.test(item.title);
-              if (force_all || item.title === filenameTitle || looksGarbled) {
+              if (item.title === filenameTitle || looksGarbled) {
                 updateData.title = parsed.title;
                 result.title = parsed.title;
               }
