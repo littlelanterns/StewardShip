@@ -1,7 +1,8 @@
 import { supabase } from './supabase';
 import type { MastEntry, KeelEntry, JournalEntry, Victory, CompassTask, GuidedMode, GuidedSubtype, HelmMessage, WheelInstance, LifeInventoryArea, RiggingPlan, Person, SpouseInsight, SphereEntity, ManifestSearchResult, Meeting, CrewNote, MeetingAgendaItem, MeetingTemplateSection } from './types';
 import { SPOKE_LABELS, PLANNING_FRAMEWORK_LABELS, CREW_NOTE_CATEGORY_LABELS } from './types';
-import { searchManifest } from './rag';
+import { searchManifest, searchManifestContent, searchPersonalContext } from './rag';
+import type { ManifestContentMatch, PersonalContextMatch } from './rag';
 import {
   shouldLoadKeel,
   shouldLoadJournal,
@@ -153,6 +154,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
   let reflectionsContext: string | undefined;
   let hatchContext: string | undefined;
   let appGuideContext: string | undefined;
+  let semanticSearchContext: string | undefined;
 
   // Fetch conditional data in parallel
   const keelPromise = needKeel
@@ -424,7 +426,19 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
       .limit(20);
   }
 
-  const [keelResult, journalResult, compassResult, victoriesResult, wheelResult, lifeInvResult, riggingResult, prioritiesResult, firstMateResult, spouseInsightsResult, crewResult, sphereEntitiesResult, frameworksResult, manifestResults, meetingResult, agendaResult, reflectionsResult, hatchResult, meetingSectionsResult, bkSummariesResult, bkDeclarationsResult, bkPrinciplesResult] = await Promise.all([
+  // Semantic search — run when message has substance (not greetings/trivial)
+  // Skips for manifest_discuss mode (book discussions handle their own search)
+  const shouldRunSemanticSearch = message.trim().length > 15
+    && guidedMode !== 'manifest_discuss'
+    && !isManifestDiscuss;
+  const semanticContentPromise: Promise<ManifestContentMatch[]> | null = shouldRunSemanticSearch
+    ? searchManifestContent(message, userId, { matchThreshold: 0.35, matchCount: 8 }).catch(() => [])
+    : null;
+  const semanticPersonalPromise: Promise<PersonalContextMatch[]> | null = shouldRunSemanticSearch
+    ? searchPersonalContext(message, userId, { matchThreshold: 0.35, matchCount: 5 }).catch(() => [])
+    : null;
+
+  const [keelResult, journalResult, compassResult, victoriesResult, wheelResult, lifeInvResult, riggingResult, prioritiesResult, firstMateResult, spouseInsightsResult, crewResult, sphereEntitiesResult, frameworksResult, manifestResults, meetingResult, agendaResult, reflectionsResult, hatchResult, meetingSectionsResult, bkSummariesResult, bkDeclarationsResult, bkPrinciplesResult, semanticContentResults, semanticPersonalResults] = await Promise.all([
     keelPromise,
     journalPromise,
     compassPromise,
@@ -447,6 +461,8 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     bookKnowledgeSummariesPromise,
     bookKnowledgeDeclarationsPromise,
     bookKnowledgePrinciplesPromise,
+    semanticContentPromise,
+    semanticPersonalPromise,
   ]);
 
   if (keelResult?.data) {
@@ -753,6 +769,13 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     reckoningContext = await buildReckoningContext(userId, today, compassResult?.data as CompassTask[] | undefined, recentVictories);
   }
 
+  // Semantic search context — meaning-matched content from extracted books + personal data
+  const contentMatches = (semanticContentResults as ManifestContentMatch[] | null) || [];
+  const personalMatches = (semanticPersonalResults as PersonalContextMatch[] | null) || [];
+  if (contentMatches.length > 0 || personalMatches.length > 0) {
+    semanticSearchContext = formatSemanticSearchContext(contentMatches, personalMatches);
+  }
+
   return {
     displayName,
     mastEntries,
@@ -782,6 +805,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
     reflectionsContext,
     hatchContext,
     appGuideContext,
+    semanticSearchContext,
     pageContext,
     guidedMode: guidedMode || null,
     guidedSubtype: guidedSubtype || null,
@@ -811,6 +835,33 @@ function formatCompassContext(tasks: Pick<CompassTask, 'title' | 'status' | 'lif
     }
   }
   return result;
+}
+
+function formatSemanticSearchContext(
+  contentMatches: ManifestContentMatch[],
+  personalMatches: PersonalContextMatch[],
+): string {
+  const parts: string[] = [];
+
+  if (contentMatches.length > 0) {
+    parts.push('From books and extracted content:');
+    for (const m of contentMatches) {
+      const sourceLabel = m.source_table.replace('manifest_', '').replace('ai_framework_', '').replace(/_/g, ' ');
+      const sim = Math.round(m.similarity * 100);
+      parts.push(`- [${m.book_title} — ${sourceLabel}] (${sim}% match) ${m.content_preview}`);
+    }
+  }
+
+  if (personalMatches.length > 0) {
+    parts.push('From personal entries (mast, keel, journal):');
+    for (const m of personalMatches) {
+      const sourceLabel = m.source_table.replace(/_/g, ' ');
+      const sim = Math.round(m.similarity * 100);
+      parts.push(`- [${sourceLabel}] (${sim}% match) ${m.content_preview}`);
+    }
+  }
+
+  return parts.join('\n');
 }
 
 async function buildChartsContext(userId: string, today: string): Promise<string | undefined> {

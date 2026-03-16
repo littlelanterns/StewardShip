@@ -1,15 +1,38 @@
 import { supabase } from './supabase';
 import type { ManifestSearchResult } from './types';
 
+// --- Semantic Search Result Types ---
+
+export interface ManifestContentMatch {
+  source_table: string;
+  record_id: string;
+  manifest_item_id: string;
+  book_title: string;
+  content_preview: string;
+  similarity: number;
+}
+
+export interface PersonalContextMatch {
+  source_table: string;
+  record_id: string;
+  content_preview: string;
+  similarity: number;
+}
+
 // --- Embedding ---
 
 /**
  * Generate an embedding vector for text via the manifest-embed Edge Function.
- * The Edge Function calls OpenAI ada-002 server-side where the API key lives.
+ * Default model: ada-002 (for manifest_chunks RAG search).
+ * Pass model: 'text-embedding-3-small' for semantic search on extracted content.
  */
-export async function generateEmbedding(text: string, userId: string): Promise<number[] | null> {
+export async function generateEmbedding(
+  text: string,
+  userId: string,
+  model?: 'text-embedding-ada-002' | 'text-embedding-3-small',
+): Promise<number[] | null> {
   const { data, error } = await supabase.functions.invoke('manifest-embed', {
-    body: { text, user_id: userId },
+    body: { text, user_id: userId, model },
   });
 
   if (error || !data?.embedding) {
@@ -18,6 +41,15 @@ export async function generateEmbedding(text: string, userId: string): Promise<n
   }
 
   return data.embedding;
+}
+
+/**
+ * Generate an embedding using text-embedding-3-small for semantic search
+ * on extracted content columns (manifest_summaries, declarations, principles, etc.)
+ * and personal context (mast, keel, journal).
+ */
+export async function generateSearchEmbedding(text: string, userId: string): Promise<number[] | null> {
+  return generateEmbedding(text, userId, 'text-embedding-3-small');
 }
 
 // --- Retrieval ---
@@ -93,6 +125,96 @@ export async function searchManifest(
     similarity: r.similarity,
     source_title: titleMap.get(r.manifest_item_id) || 'Unknown Source',
   }));
+}
+
+// --- Semantic Search (extracted content + personal context) ---
+
+/**
+ * Search extracted book content (summaries, declarations, principles, action steps)
+ * by semantic similarity. Uses text-embedding-3-small embeddings on extracted content.
+ */
+export async function searchManifestContent(
+  query: string,
+  userId: string,
+  options?: {
+    matchThreshold?: number;
+    matchCount?: number;
+  },
+): Promise<ManifestContentMatch[]> {
+  const { matchThreshold = 0.3, matchCount = 15 } = options || {};
+
+  const embedding = await generateSearchEmbedding(query, userId);
+  if (!embedding) return [];
+
+  const { data, error } = await supabase.rpc('match_manifest_content', {
+    query_embedding: embedding,
+    target_user_id: userId,
+    match_threshold: matchThreshold,
+    match_count: matchCount,
+  });
+
+  if (error) {
+    console.error('Manifest content search failed:', error);
+    return [];
+  }
+
+  return (data || []) as ManifestContentMatch[];
+}
+
+/**
+ * Search personal context (mast entries, keel entries, journal entries)
+ * by semantic similarity.
+ */
+export async function searchPersonalContext(
+  query: string,
+  userId: string,
+  options?: {
+    matchThreshold?: number;
+    matchCount?: number;
+  },
+): Promise<PersonalContextMatch[]> {
+  const { matchThreshold = 0.3, matchCount = 10 } = options || {};
+
+  const embedding = await generateSearchEmbedding(query, userId);
+  if (!embedding) return [];
+
+  const { data, error } = await supabase.rpc('match_personal_context', {
+    query_embedding: embedding,
+    target_user_id: userId,
+    match_threshold: matchThreshold,
+    match_count: matchCount,
+  });
+
+  if (error) {
+    console.error('Personal context search failed:', error);
+    return [];
+  }
+
+  return (data || []) as PersonalContextMatch[];
+}
+
+/**
+ * Trigger embedding generation for unembedded rows.
+ * Calls the embed Edge Function which processes rows with NULL embeddings.
+ * Returns the number of rows processed and remaining counts.
+ */
+export async function triggerEmbedding(options?: {
+  table?: string;
+  batchSize?: number;
+}): Promise<{ processed: number; failed: number; remaining: Record<string, number> }> {
+  const { data, error } = await supabase.functions.invoke('embed', {
+    body: {
+      table: options?.table,
+      batch_size: options?.batchSize || 50,
+    },
+  });
+
+  if (error) {
+    console.error('Embedding trigger failed:', error);
+    return { processed: 0, failed: 0, remaining: {} };
+  }
+
+  return data as { processed: number; failed: number; remaining: Record<string, number> };
 }
 
 // --- Chunking Utilities ---

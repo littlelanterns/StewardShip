@@ -40,6 +40,7 @@ export interface SystemPromptContext {
   reflectionsContext?: string;
   hatchContext?: string;
   appGuideContext?: string;
+  semanticSearchContext?: string;
   pageContext: string;
   guidedMode?: GuidedMode;
   guidedSubtype?: string | null;
@@ -893,6 +894,19 @@ When referencing this material: paraphrase, attribute the source by title, never
     if (currentTokens + bkTokens < budget) {
       prompt += bkSection;
       currentTokens += bkTokens;
+    }
+  }
+
+  // Semantic search results — meaning-based matches from extracted content + personal data
+  if (context.semanticSearchContext) {
+    const semanticSection = `\n\nSEMANTICALLY RELEVANT CONTEXT (retrieved by meaning-match to the user's message):
+${context.semanticSearchContext}
+
+These items were found because they relate to what the user is discussing. Weave them in naturally — reference book titles and content types. Don't list them mechanically. If a match connects to their Mast principles or current goals, highlight that connection.`;
+    const semanticTokens = estimateTokens(semanticSection);
+    if (currentTokens + semanticTokens < budget) {
+      prompt += semanticSection;
+      currentTokens += semanticTokens;
     }
   }
 

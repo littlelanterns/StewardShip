@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuthContext } from '../contexts/AuthContext';
+import { triggerEmbedding } from '../lib/rag';
 import type { SectionInfo } from './useFrameworks';
 import { computeMergeStats, mergeShortSections } from '../lib/mergeSections';
 import type { MergeStats } from '../lib/mergeSections';
@@ -74,6 +75,17 @@ export function useManifestExtraction() {
     section: SectionInfo;
     retrying?: boolean;
   }>>([]);
+
+  // --- Fire-and-forget: generate semantic embeddings for newly extracted content ---
+  const triggerSemanticEmbeddings = useCallback(() => {
+    // Process each table that extractions write to — fire-and-forget, non-blocking
+    const tables = ['manifest_summaries', 'manifest_declarations', 'ai_framework_principles', 'manifest_action_steps'];
+    for (const table of tables) {
+      triggerEmbedding({ table, batchSize: 100 }).catch((err) => {
+        console.warn(`[triggerSemanticEmbeddings] Non-fatal error for ${table}:`, err);
+      });
+    }
+  }, []);
 
   // --- Fire-and-forget: sync extractions to admin's clone ---
   const syncExtractionsToAdmin = useCallback(async (manifestItemId: string) => {
@@ -558,7 +570,10 @@ export function useManifestExtraction() {
 
       const allOk = summaryOk && declarationOk;
       await updateExtractionStatus(manifestItemId, allOk ? 'completed' : 'failed');
-      if (allOk) syncExtractionsToAdmin(manifestItemId);
+      if (allOk) {
+        syncExtractionsToAdmin(manifestItemId);
+        triggerSemanticEmbeddings();
+      }
       return allOk;
     } catch (err) {
       setError((err as Error).message);
@@ -567,7 +582,7 @@ export function useManifestExtraction() {
     } finally {
       setExtracting(false);
     }
-  }, [user, extractSummary, extractDeclarations, callExtract, updateExtractionStatus, syncExtractionsToAdmin]);
+  }, [user, extractSummary, extractDeclarations, callExtract, updateExtractionStatus, syncExtractionsToAdmin, triggerSemanticEmbeddings]);
 
   // --- Combined section result shape from Edge Function ---
 
@@ -651,6 +666,7 @@ export function useManifestExtraction() {
       // Mark completed even with partial failures — extracted content is still valuable
       await updateExtractionStatus(manifestItemId, 'completed');
       syncExtractionsToAdmin(manifestItemId);
+      triggerSemanticEmbeddings();
 
       setExtractionProgress(null);
       return failed.length === 0;
@@ -663,7 +679,7 @@ export function useManifestExtraction() {
     } finally {
       setExtracting(false);
     }
-  }, [user, sections, saveSummaryResults, saveDeclarationResults, saveActionStepResults, fetchSummaries, fetchDeclarations, fetchActionSteps, callExtract, updateExtractionStatus, syncExtractionsToAdmin]);
+  }, [user, sections, saveSummaryResults, saveDeclarationResults, saveActionStepResults, fetchSummaries, fetchDeclarations, fetchActionSteps, callExtract, updateExtractionStatus, syncExtractionsToAdmin, triggerSemanticEmbeddings]);
 
   // --- Retry a single failed section ---
 
@@ -715,6 +731,7 @@ export function useManifestExtraction() {
 
       // Remove from failed list
       setFailedSections((prev) => prev.filter((f) => f.sectionIndex !== sectionIndex));
+      triggerSemanticEmbeddings();
       return true;
     } catch (err) {
       console.error(`[retrySection] Failed again for "${failed.title}":`, err);
@@ -724,7 +741,7 @@ export function useManifestExtraction() {
       );
       return false;
     }
-  }, [user, failedSections, callExtract, saveSummaryResults, saveDeclarationResults, saveActionStepResults, fetchSummaries, fetchDeclarations, fetchActionSteps]);
+  }, [user, failedSections, callExtract, saveSummaryResults, saveDeclarationResults, saveActionStepResults, fetchSummaries, fetchDeclarations, fetchActionSteps, triggerSemanticEmbeddings]);
 
   // --- Multi-part helpers: stateless versions for orchestrating across parts ---
 
@@ -794,13 +811,14 @@ export function useManifestExtraction() {
 
       await updateExtractionStatus(manifestItemId, 'completed');
       syncExtractionsToAdmin(manifestItemId);
+      triggerSemanticEmbeddings();
       return true;
     } catch (err) {
       console.error('[extractSectionsForPart] Fatal error:', err);
       await updateExtractionStatus(manifestItemId, 'failed');
       return false;
     }
-  }, [user, callExtract, saveSummaryResults, saveDeclarationResults, saveActionStepResults, updateExtractionStatus, syncExtractionsToAdmin]);
+  }, [user, callExtract, saveSummaryResults, saveDeclarationResults, saveActionStepResults, updateExtractionStatus, syncExtractionsToAdmin, triggerSemanticEmbeddings]);
 
   // --- Go Deeper: extract additional content for a specific tab/section ---
 
@@ -829,12 +847,13 @@ export function useManifestExtraction() {
       existingItems,
     };
 
+    let ok = false;
     if (tabType === 'summary') {
-      return extractSummary(manifestItemId, genres, extractOptions);
+      ok = await extractSummary(manifestItemId, genres, extractOptions);
     } else if (tabType === 'action_steps') {
-      return extractActionSteps(manifestItemId, genres, extractOptions);
+      ok = await extractActionSteps(manifestItemId, genres, extractOptions);
     } else if (tabType === 'mast_content') {
-      return extractDeclarations(manifestItemId, genres, extractOptions);
+      ok = await extractDeclarations(manifestItemId, genres, extractOptions);
     } else if (tabType === 'framework') {
       setExtractingTab('framework');
       try {
@@ -844,7 +863,7 @@ export function useManifestExtraction() {
         if (result && options?.onFrameworkResult) {
           await options.onFrameworkResult(result as FrameworkExtractionResult);
         }
-        return true;
+        ok = true;
       } catch (err) {
         setError((err as Error).message);
         return false;
@@ -852,8 +871,9 @@ export function useManifestExtraction() {
         setExtractingTab(null);
       }
     }
-    return false;
-  }, [user, extractSummary, extractDeclarations, extractActionSteps, callExtract]);
+    if (ok) triggerSemanticEmbeddings();
+    return ok;
+  }, [user, extractSummary, extractDeclarations, extractActionSteps, callExtract, triggerSemanticEmbeddings]);
 
   // --- Re-run tab: clear existing items, re-extract ---
 
@@ -889,18 +909,21 @@ export function useManifestExtraction() {
 
       const options = sectionTitle ? { sectionTitle, sectionStart, sectionEnd, sectionIndex } : undefined;
 
+      let ok = false;
       if (tabType === 'summary') {
-        return extractSummary(manifestItemId, genres, options);
+        ok = await extractSummary(manifestItemId, genres, options);
       } else if (tabType === 'action_steps') {
-        return extractActionSteps(manifestItemId, genres, options);
+        ok = await extractActionSteps(manifestItemId, genres, options);
       } else {
-        return extractDeclarations(manifestItemId, genres, options);
+        ok = await extractDeclarations(manifestItemId, genres, options);
       }
+      if (ok) triggerSemanticEmbeddings();
+      return ok;
     } catch (err) {
       setError((err as Error).message);
       return false;
     }
-  }, [user, extractSummary, extractDeclarations, extractActionSteps]);
+  }, [user, extractSummary, extractDeclarations, extractActionSteps, triggerSemanticEmbeddings]);
 
   // --- Re-run Frameworks: discovers sections, extracts only frameworks per section ---
 

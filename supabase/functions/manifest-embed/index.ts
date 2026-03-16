@@ -22,7 +22,7 @@ serve(async (req: Request) => {
     }
     // Supabase validates JWT before Edge Function runs — auth verified
 
-    const { text } = await req.json();
+    const { text, model: requestedModel } = await req.json();
 
     if (!text) {
       return new Response(
@@ -39,6 +39,11 @@ serve(async (req: Request) => {
       );
     }
 
+    // Support both ada-002 (default, for manifest_chunks RAG) and
+    // text-embedding-3-small (for semantic search on extracted content)
+    const ALLOWED_MODELS = ['text-embedding-ada-002', 'text-embedding-3-small'];
+    const model = ALLOWED_MODELS.includes(requestedModel) ? requestedModel : 'text-embedding-ada-002';
+
     const response = await fetch('https://api.openai.com/v1/embeddings', {
       method: 'POST',
       headers: {
@@ -46,7 +51,7 @@ serve(async (req: Request) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'text-embedding-ada-002',
+        model,
         input: text,
       }),
     });
