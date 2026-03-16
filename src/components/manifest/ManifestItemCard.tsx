@@ -73,7 +73,10 @@ export function ManifestItemCard({ item, onClick, compact, selectable, selected,
         <div className="manifest-row__icon">
           <Icon size={16} />
         </div>
-        <span className="manifest-row__title">{item.title}</span>
+        <div className="manifest-row__title-group">
+          <span className="manifest-row__title">{item.title}</span>
+          {item.author && <span className="manifest-row__author">{item.author}</span>}
+        </div>
         <div className="manifest-row__status">
           {isProcessing && (
             <span className="manifest-row__badge manifest-row__badge--processing">
@@ -136,6 +139,7 @@ export function ManifestItemCard({ item, onClick, compact, selectable, selected,
           </div>
           <div className="manifest-card__info">
             <p className="manifest-card__title">{item.title}</p>
+            {item.author && <p className="manifest-card__author">{item.author}</p>}
             {isPending ? (
               <span className="manifest-card__processing-msg">
                 Queued{queuePosition ? ` (#${queuePosition})` : ''}

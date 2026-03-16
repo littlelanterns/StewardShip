@@ -15,7 +15,7 @@ type ExtractionPhase = 'idle' | 'discovering' | 'selecting' | 'extracting';
 interface ManifestItemDetailProps {
   item: ManifestItem;
   onBack: () => void;
-  onUpdateItem: (id: string, updates: Partial<Pick<ManifestItem, 'title' | 'tags' | 'usage_designations' | 'folder_group' | 'text_content' | 'intake_completed'>>) => Promise<boolean>;
+  onUpdateItem: (id: string, updates: Partial<Pick<ManifestItem, 'title' | 'tags' | 'usage_designations' | 'folder_group' | 'text_content' | 'intake_completed' | 'author' | 'isbn'>>) => Promise<boolean>;
   onReprocess: (id: string) => Promise<boolean>;
   onArchive: (id: string) => Promise<boolean>;
   onDelete: (id: string) => Promise<boolean>;
@@ -197,6 +197,10 @@ export function ManifestItemDetail({
 }: ManifestItemDetailProps) {
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(item.title);
+  const [editingAuthor, setEditingAuthor] = useState(false);
+  const [authorDraft, setAuthorDraft] = useState(item.author || '');
+  const [editingISBN, setEditingISBN] = useState(false);
+  const [isbnDraft, setIsbnDraft] = useState(item.isbn || '');
   const [editingContent, setEditingContent] = useState(false);
   const [contentDraft, setContentDraft] = useState(item.text_content || '');
   const [contentExpanded, setContentExpanded] = useState(false);
@@ -249,6 +253,22 @@ export function ManifestItemDetail({
     }
     setEditingTitle(false);
   }, [titleDraft, item.id, item.title, onUpdateItem]);
+
+  const saveAuthor = useCallback(() => {
+    const trimmed = authorDraft.trim();
+    if (trimmed !== (item.author || '')) {
+      onUpdateItem(item.id, { author: trimmed || null });
+    }
+    setEditingAuthor(false);
+  }, [authorDraft, item.id, item.author, onUpdateItem]);
+
+  const saveISBN = useCallback(() => {
+    const trimmed = isbnDraft.trim();
+    if (trimmed !== (item.isbn || '')) {
+      onUpdateItem(item.id, { isbn: trimmed || null });
+    }
+    setEditingISBN(false);
+  }, [isbnDraft, item.id, item.isbn, onUpdateItem]);
 
   const saveContent = useCallback(() => {
     if (contentDraft !== item.text_content) {
@@ -557,6 +577,39 @@ export function ManifestItemDetail({
             </h2>
           )}
 
+          {/* Author — inline editable */}
+          {editingAuthor ? (
+            <input
+              type="text"
+              className="manifest-detail__author-input"
+              value={authorDraft}
+              onChange={(e) => setAuthorDraft(e.target.value)}
+              onBlur={saveAuthor}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') saveAuthor();
+                if (e.key === 'Escape') { setAuthorDraft(item.author || ''); setEditingAuthor(false); }
+              }}
+              placeholder="Author name..."
+              autoFocus
+            />
+          ) : item.author ? (
+            <p
+              className="manifest-detail__author"
+              onClick={() => { setAuthorDraft(item.author || ''); setEditingAuthor(true); }}
+              title="Click to edit"
+            >
+              {item.author}
+            </p>
+          ) : (
+            <button
+              type="button"
+              className="manifest-detail__add-meta-btn"
+              onClick={() => { setAuthorDraft(''); setEditingAuthor(true); }}
+            >
+              + Add author
+            </button>
+          )}
+
           <div className="manifest-detail__meta">
             <span>{MANIFEST_FILE_TYPE_LABELS[item.file_type]}</span>
             {item.file_size_bytes && <span>{formatFileSize(item.file_size_bytes)}</span>}
@@ -723,6 +776,41 @@ export function ManifestItemDetail({
               </ol>
             </div>
           )}
+
+          {/* ISBN — inline editable */}
+          <div className="manifest-detail__isbn-row">
+            {editingISBN ? (
+              <input
+                type="text"
+                className="manifest-detail__isbn-input"
+                value={isbnDraft}
+                onChange={(e) => setIsbnDraft(e.target.value)}
+                onBlur={saveISBN}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') saveISBN();
+                  if (e.key === 'Escape') { setIsbnDraft(item.isbn || ''); setEditingISBN(false); }
+                }}
+                placeholder="ISBN..."
+                autoFocus
+              />
+            ) : item.isbn ? (
+              <span
+                className="manifest-detail__isbn"
+                onClick={() => { setIsbnDraft(item.isbn || ''); setEditingISBN(true); }}
+                title="Click to edit"
+              >
+                ISBN: {item.isbn}
+              </span>
+            ) : (
+              <button
+                type="button"
+                className="manifest-detail__add-meta-btn"
+                onClick={() => { setIsbnDraft(''); setEditingISBN(true); }}
+              >
+                + Add ISBN
+              </button>
+            )}
+          </div>
 
           {item.chunk_count > 0 && (
             <p className="manifest-detail__chunk-info">{item.chunk_count} chunks indexed</p>

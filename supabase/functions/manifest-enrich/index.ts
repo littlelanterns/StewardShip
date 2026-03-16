@@ -48,7 +48,7 @@ serve(async (req: Request) => {
     // Fetch the manifest item
     const { data: item, error: fetchErr } = await supabase
       .from('manifest_items')
-      .select('title, text_content, file_type, tags')
+      .select('title, text_content, file_type, tags, file_name, author')
       .eq('id', manifest_item_id)
       .eq('user_id', userId)
       .single();
@@ -228,6 +228,65 @@ Rules:
             result.tags = cleanTags;
           }
         }
+      }
+    }
+
+    // Extract author/title/ISBN via AI if author is not yet set
+    if (!item.author) {
+      try {
+        const metadataResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': Deno.env.get('SITE_URL') || 'https://stewardship.app',
+            'X-Title': 'StewardShip',
+          },
+          body: JSON.stringify({
+            model: 'anthropic/claude-haiku-4.5',
+            max_tokens: 128,
+            messages: [
+              {
+                role: 'system',
+                content: 'Extract the author name, book title, and ISBN from this text. Return a JSON object: { "author": "...", "title": "...", "isbn": "..." }. If any field cannot be determined, use null. For multiple authors, comma-separate them. Return ONLY the JSON object.',
+              },
+              {
+                role: 'user',
+                content: `Current title: ${item.title}\n\nFirst ~2000 characters:\n${item.text_content.substring(0, 2000)}`,
+              },
+            ],
+          }),
+        });
+
+        if (metadataResponse.ok) {
+          const metaData = await metadataResponse.json();
+          const metaText = (metaData.choices?.[0]?.message?.content || '').trim();
+          try {
+            const cleaned = metaText.replace(/```json\n?|\n?```/g, '').trim();
+            const parsed = JSON.parse(cleaned);
+            if (parsed.author && typeof parsed.author === 'string') {
+              updateData.author = parsed.author;
+              result.author = parsed.author;
+            }
+            if (parsed.isbn && typeof parsed.isbn === 'string') {
+              const isbnCleaned = parsed.isbn.replace(/[^0-9X-]/gi, '');
+              if (isbnCleaned.length >= 10) {
+                updateData.isbn = isbnCleaned;
+                result.isbn = isbnCleaned;
+              }
+            }
+            // Only update title if still set to filename default
+            if (parsed.title && typeof parsed.title === 'string' && item.file_name) {
+              const filenameTitle = item.file_name.replace(/\.[^.]+$/, '');
+              if (item.title === filenameTitle && parsed.title.length > 3) {
+                updateData.title = parsed.title;
+                result.title = parsed.title;
+              }
+            }
+          } catch { /* JSON parse failed — skip metadata */ }
+        }
+      } catch (metaErr) {
+        console.error('AI metadata extraction failed (non-fatal):', metaErr);
       }
     }
 

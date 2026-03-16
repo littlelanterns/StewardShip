@@ -32,7 +32,7 @@ export function useManifest() {
     try {
       const { data, error: fetchErr } = await supabase
         .from('manifest_items')
-        .select('id, user_id, title, file_type, file_name, storage_path, file_size_bytes, usage_designations, tags, folder_group, processing_status, processing_detail, chunk_count, intake_completed, ai_summary, extraction_status, genres, source_manifest_item_id, parent_manifest_item_id, part_number, part_count, archived_at, created_at, updated_at')
+        .select('id, user_id, title, file_type, file_name, storage_path, file_size_bytes, usage_designations, tags, folder_group, processing_status, processing_detail, chunk_count, intake_completed, ai_summary, author, isbn, extraction_status, genres, source_manifest_item_id, parent_manifest_item_id, part_number, part_count, archived_at, created_at, updated_at')
         .eq('user_id', user.id)
         .is('archived_at', null)
         .is('parent_manifest_item_id', null)
@@ -151,7 +151,7 @@ export function useManifest() {
   // Update a manifest item
   const updateItem = useCallback(async (
     id: string,
-    updates: Partial<Pick<ManifestItem, 'title' | 'tags' | 'usage_designations' | 'folder_group' | 'related_wheel_id' | 'related_goal_id' | 'intake_completed' | 'text_content'>>,
+    updates: Partial<Pick<ManifestItem, 'title' | 'tags' | 'usage_designations' | 'folder_group' | 'related_wheel_id' | 'related_goal_id' | 'intake_completed' | 'text_content' | 'author' | 'isbn'>>,
   ): Promise<boolean> => {
     if (!user) return false;
     setError(null);
@@ -292,7 +292,7 @@ export function useManifest() {
     const interval = setInterval(async () => {
       const { data, error: pollErr } = await supabase
         .from('manifest_items')
-        .select('processing_status, processing_detail, chunk_count, ai_summary, toc, intake_completed')
+        .select('processing_status, processing_detail, chunk_count, ai_summary, toc, author, isbn, intake_completed')
         .eq('id', itemId)
         .eq('user_id', user.id)
         .single();
@@ -320,7 +320,7 @@ export function useManifest() {
                 processing_status: status,
                 processing_detail: data.processing_detail,
                 ...(status === 'completed' || status === 'failed'
-                  ? { chunk_count: data.chunk_count || 0, ai_summary: data.ai_summary, toc: data.toc }
+                  ? { chunk_count: data.chunk_count || 0, ai_summary: data.ai_summary, toc: data.toc, author: data.author, isbn: data.isbn }
                   : {}),
               }
             : item,
@@ -340,11 +340,17 @@ export function useManifest() {
               body: { manifest_item_id: itemId, user_id: user.id },
             })
             .then(({ data: enrichData }) => {
-              if (enrichData?.summary) {
+              if (enrichData?.summary || enrichData?.author) {
                 setItems((prev) =>
                   prev.map((item) =>
                     item.id === itemId
-                      ? { ...item, ai_summary: enrichData.summary }
+                      ? {
+                          ...item,
+                          ...(enrichData.summary ? { ai_summary: enrichData.summary } : {}),
+                          ...(enrichData.author ? { author: enrichData.author } : {}),
+                          ...(enrichData.isbn ? { isbn: enrichData.isbn } : {}),
+                          ...(enrichData.title ? { title: enrichData.title } : {}),
+                        }
                       : item,
                   ),
                 );
@@ -514,7 +520,7 @@ export function useManifest() {
     if (!user) return [];
     const { data, error: fetchErr } = await supabase
       .from('manifest_items')
-      .select('id, user_id, title, file_type, file_name, storage_path, file_size_bytes, usage_designations, tags, folder_group, processing_status, processing_detail, chunk_count, intake_completed, ai_summary, extraction_status, genres, source_manifest_item_id, parent_manifest_item_id, part_number, part_count, archived_at, created_at, updated_at')
+      .select('id, user_id, title, file_type, file_name, storage_path, file_size_bytes, usage_designations, tags, folder_group, processing_status, processing_detail, chunk_count, intake_completed, ai_summary, author, isbn, extraction_status, genres, source_manifest_item_id, parent_manifest_item_id, part_number, part_count, archived_at, created_at, updated_at')
       .eq('parent_manifest_item_id', parentItemId)
       .eq('user_id', user.id)
       .is('archived_at', null)
@@ -603,7 +609,7 @@ export function useManifest() {
       // (Edge Function may have saved tags even if response parsing varied)
       const { data: fresh } = await supabase
         .from('manifest_items')
-        .select('ai_summary, tags')
+        .select('ai_summary, tags, author, isbn, title')
         .eq('id', itemId)
         .eq('user_id', user.id)
         .single();
@@ -615,6 +621,9 @@ export function useManifest() {
                 ...item,
                 ai_summary: fresh?.ai_summary ?? data.summary,
                 tags: fresh?.tags ?? (data.tags ? data.tags : item.tags),
+                ...(fresh?.author || data.author ? { author: fresh?.author ?? data.author } : {}),
+                ...(fresh?.isbn || data.isbn ? { isbn: fresh?.isbn ?? data.isbn } : {}),
+                ...(fresh?.title ? { title: fresh.title } : {}),
               }
             : item,
         ),
@@ -635,6 +644,34 @@ export function useManifest() {
         Math.abs((i.file_size_bytes || 0) - fileSize) < 1024,
     ) || null;
   }, [items]);
+
+  // Backfill: enrich all completed books where author is null
+  const backfillAuthors = useCallback(async () => {
+    if (!user) return;
+
+    const { data: needsAuthor, error: fetchErr } = await supabase
+      .from('manifest_items')
+      .select('id, title')
+      .eq('user_id', user.id)
+      .eq('processing_status', 'completed')
+      .is('author', null)
+      .is('archived_at', null)
+      .neq('file_type', 'text_note');
+
+    if (fetchErr || !needsAuthor) {
+      console.error('[backfill-authors] Failed to fetch:', fetchErr);
+      return;
+    }
+
+    console.log(`[backfill-authors] Enriching ${needsAuthor.length} books for author/ISBN...`);
+    for (const item of needsAuthor) {
+      console.log(`[backfill-authors] Enriching "${item.title}"...`);
+      await enrichItem(item.id, false);
+      // Rate limit: 1 second between calls
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+    console.log('[backfill-authors] Done.');
+  }, [user, enrichItem]);
 
   // Backfill: clone all original (non-cloned) completed items to all other users
   // Fetches fresh data from DB to avoid stale React state
@@ -833,6 +870,7 @@ export function useManifest() {
     autoIntakeItem,
     cloneToAllUsers,
     backfillCloneAll,
+    backfillAuthors,
     getQueuePosition,
   };
 }

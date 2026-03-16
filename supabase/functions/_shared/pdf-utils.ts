@@ -56,6 +56,55 @@ export async function extractCleanTextFromPDF(bytes: Uint8Array): Promise<string
   return text;
 }
 
+// --- PDF Metadata Extraction ---
+
+export interface PDFMetadata {
+  title: string | null;
+  author: string | null;
+}
+
+/**
+ * Extract document metadata (Title, Author) from PDF info dictionary.
+ * Uses the same unpdf/PDF.js engine as text extraction.
+ * Non-fatal — returns nulls on any failure.
+ */
+export async function extractPDFMetadata(bytes: Uint8Array): Promise<PDFMetadata> {
+  try {
+    const unpdfModule = await import('https://esm.sh/unpdf@1.4.0');
+    const { getDocumentProxy, configureUnPDF } = unpdfModule;
+
+    try {
+      const pdfjsModule = await import('https://esm.sh/unpdf@1.4.0/pdfjs');
+      await configureUnPDF({ pdfjs: () => Promise.resolve(pdfjsModule) });
+    } catch { /* configureUnPDF is optional */ }
+
+    const pdf = await getDocumentProxy(new Uint8Array(bytes));
+    try {
+      const metadata = await pdf.getMetadata();
+      const info = metadata?.info as Record<string, string> | undefined;
+
+      const rawTitle = info?.Title?.trim() || null;
+      const rawAuthor = info?.Author?.trim() || null;
+
+      // Filter out clearly useless metadata values
+      const title = rawTitle && rawTitle.length > 1 && !/^untitled$/i.test(rawTitle) ? rawTitle : null;
+      const author = rawAuthor && rawAuthor.length > 1 ? rawAuthor : null;
+
+      if (title || author) {
+        console.log(`[PDF] Metadata extracted — title: ${title || '(none)'}, author: ${author || '(none)'}`);
+      }
+
+      return { title, author };
+    } finally {
+      try { pdf.cleanup?.(); } catch { /* ignore */ }
+      try { pdf.destroy?.(); } catch { /* ignore */ }
+    }
+  } catch (err) {
+    console.error('[PDF] Metadata extraction failed (non-fatal):', err);
+    return { title: null, author: null };
+  }
+}
+
 // --- unpdf Extraction (Primary) ---
 
 async function extractTextWithUnPDF(bytes: Uint8Array): Promise<string> {

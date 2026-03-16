@@ -142,16 +142,17 @@ async function buildBookContext(
     // 1. Book metadata
     const { data: item } = await supabase
       .from('manifest_items')
-      .select('title, genres, ai_summary, source_manifest_item_id')
+      .select('title, author, genres, ai_summary, source_manifest_item_id')
       .eq('id', itemId)
       .eq('user_id', userId)
       .single();
 
     if (!item) continue;
-    titles.push(item.title);
+    const displayTitle = item.author ? `${item.title} by ${item.author}` : item.title;
+    titles.push(displayTitle);
     const sourceItemId = item.source_manifest_item_id;
 
-    let bookSection = `\n--- ${item.title} ---`;
+    let bookSection = `\n--- ${displayTitle} ---`;
     if (item.ai_summary) {
       bookSection += `\nSummary: ${item.ai_summary}`;
     }
@@ -257,21 +258,32 @@ async function buildBookContext(
       }
     }
 
-    // 5. RAG chunks for deeper content
+    // 5. RAG chunks + semantic search for deeper content
     try {
-      // Generate embedding for the user's message to find relevant chunks
+      // Generate embeddings: ada-002 for RAG chunks, 3-small for semantic extracted content
       const embedUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/manifest-embed`;
-      const embedRes = await fetch(embedUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ text: userMessage || item.title, user_id: userId }),
-      });
+      const [ragEmbedRes, semanticEmbedRes] = await Promise.all([
+        fetch(embedUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ text: userMessage || item.title, user_id: userId }),
+        }),
+        fetch(embedUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ text: userMessage || item.title, user_id: userId, model: 'text-embedding-3-small' }),
+        }),
+      ]);
 
-      if (embedRes.ok) {
-        const embedData = await embedRes.json();
+      // RAG chunk search (ada-002 embeddings)
+      if (ragEmbedRes.ok) {
+        const embedData = await ragEmbedRes.json();
         if (embedData?.embedding) {
           const { data: chunks } = await supabase.rpc('match_manifest_chunks', {
             query_embedding: embedData.embedding,
@@ -296,8 +308,39 @@ async function buildBookContext(
           }
         }
       }
+
+      // Semantic search on extracted content (text-embedding-3-small embeddings)
+      if (semanticEmbedRes.ok) {
+        const semanticData = await semanticEmbedRes.json();
+        if (semanticData?.embedding) {
+          const { data: semanticMatches } = await supabase.rpc('match_manifest_content', {
+            query_embedding: semanticData.embedding,
+            target_user_id: userId,
+            match_threshold: 0.4,
+            match_count: manifestItemIds.length === 1 ? 6 : 10,
+          });
+
+          if (semanticMatches && semanticMatches.length > 0) {
+            // For single book: only show matches from OTHER books (cross-references)
+            // For multi-book: show all matches (cross-book synthesis)
+            const relevant = manifestItemIds.length === 1
+              ? semanticMatches.filter((m: { manifest_item_id: string }) => m.manifest_item_id !== itemId)
+              : semanticMatches;
+
+            if (relevant.length > 0) {
+              bookSection += manifestItemIds.length === 1
+                ? '\n\nRelated content from other books (semantic match):'
+                : '\n\nSemantically related content across library:';
+              for (const m of relevant.slice(0, 6)) {
+                const sourceType = m.source_table.replace('manifest_', '').replace('ai_framework_', '').replace(/_/g, ' ');
+                bookSection += `\n- [${m.book_title} — ${sourceType}] ${m.content_preview}`;
+              }
+            }
+          }
+        }
+      }
     } catch (ragErr) {
-      console.error('RAG search failed for book context:', ragErr);
+      console.error('RAG/semantic search failed for book context:', ragErr);
     }
 
     parts.push(bookSection);

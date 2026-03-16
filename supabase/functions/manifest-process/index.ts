@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { extractCleanTextFromPDF } from '../_shared/pdf-utils.ts';
+import { extractCleanTextFromPDF, extractPDFMetadata } from '../_shared/pdf-utils.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -115,6 +115,22 @@ serve(async (req: Request) => {
         } catch (tocErr) {
           console.error('PDF TOC save failed (non-fatal):', tocErr);
         }
+
+        // Metadata extraction — author, title (non-fatal)
+        try {
+          const pdfMeta = await extractPDFMetadata(new Uint8Array(arrayBuffer));
+          const metaUpdate: Record<string, unknown> = {};
+          if (pdfMeta.author) metaUpdate.author = pdfMeta.author;
+          // Only override title if it still matches the filename default
+          if (pdfMeta.title && item.file_name && item.title === item.file_name.replace(/\.[^.]+$/, '')) {
+            metaUpdate.title = pdfMeta.title;
+          }
+          if (Object.keys(metaUpdate).length > 0) {
+            await supabase.from('manifest_items').update(metaUpdate).eq('id', manifest_item_id);
+          }
+        } catch (metaErr) {
+          console.error('PDF metadata extraction failed (non-fatal):', metaErr);
+        }
       } catch (pdfErr) {
         console.error('PDF extraction failed:', pdfErr);
         await supabase
@@ -205,6 +221,23 @@ serve(async (req: Request) => {
         } catch (tocErr) {
           console.error('EPUB TOC save failed (non-fatal):', tocErr);
         }
+
+        // Metadata extraction — author, title, ISBN from OPF (non-fatal)
+        try {
+          const epubMeta = extractMetadataFromEPUBFiles(epubFiles);
+          const metaUpdate: Record<string, unknown> = {};
+          if (epubMeta.author) metaUpdate.author = epubMeta.author;
+          if (epubMeta.isbn) metaUpdate.isbn = epubMeta.isbn;
+          // Only override title if it still matches the filename default
+          if (epubMeta.title && item.file_name && item.title === item.file_name.replace(/\.[^.]+$/, '')) {
+            metaUpdate.title = epubMeta.title;
+          }
+          if (Object.keys(metaUpdate).length > 0) {
+            await supabase.from('manifest_items').update(metaUpdate).eq('id', manifest_item_id);
+          }
+        } catch (metaErr) {
+          console.error('EPUB metadata extraction failed (non-fatal):', metaErr);
+        }
       } catch (epubErr) {
         console.error('EPUB extraction failed:', epubErr);
         await supabase
@@ -251,6 +284,22 @@ serve(async (req: Request) => {
           }
         } catch (tocErr) {
           console.error('DOCX TOC save failed (non-fatal):', tocErr);
+        }
+
+        // Metadata extraction — author, title from core.xml (non-fatal)
+        try {
+          const docxMeta = extractMetadataFromDOCXFiles(docxFiles);
+          const metaUpdate: Record<string, unknown> = {};
+          if (docxMeta.author) metaUpdate.author = docxMeta.author;
+          // Only override title if it still matches the filename default
+          if (docxMeta.title && item.file_name && item.title === item.file_name.replace(/\.[^.]+$/, '')) {
+            metaUpdate.title = docxMeta.title;
+          }
+          if (Object.keys(metaUpdate).length > 0) {
+            await supabase.from('manifest_items').update(metaUpdate).eq('id', manifest_item_id);
+          }
+        } catch (metaErr) {
+          console.error('DOCX metadata extraction failed (non-fatal):', metaErr);
         }
       } catch (docxErr) {
         console.error('DOCX extraction failed:', docxErr);
@@ -555,6 +604,111 @@ function chunkText(
   }
 
   return chunks;
+}
+
+// --- Metadata Extraction Helpers ---
+
+interface FileMetadata {
+  title: string | null;
+  author: string | null;
+  isbn?: string | null;
+}
+
+/**
+ * Extract metadata (title, author, ISBN) from pre-unzipped EPUB OPF file.
+ * Parses dc:creator, dc:title, and dc:identifier elements.
+ */
+function extractMetadataFromEPUBFiles(files: Record<string, Uint8Array>): FileMetadata & { isbn: string | null } {
+  try {
+    const containerBytes = files['META-INF/container.xml'];
+    if (!containerBytes) return { title: null, author: null, isbn: null };
+
+    const containerXml = new TextDecoder().decode(containerBytes);
+    const opfPathMatch = containerXml.match(/full-path="([^"]+)"/);
+    const opfPath = opfPathMatch?.[1] || '';
+    if (!opfPath || !files[opfPath]) return { title: null, author: null, isbn: null };
+
+    const opfContent = new TextDecoder().decode(files[opfPath]);
+
+    // Extract dc:title
+    const titleMatch = opfContent.match(/<dc:title[^>]*>([^<]+)<\/dc:title>/i);
+    const title = titleMatch?.[1]?.trim() || null;
+
+    // Extract dc:creator (may be multiple)
+    const authorRegex = /<dc:creator[^>]*>([^<]+)<\/dc:creator>/gi;
+    const authors: string[] = [];
+    let authorMatch;
+    while ((authorMatch = authorRegex.exec(opfContent)) !== null) {
+      const a = authorMatch[1].trim();
+      if (a) authors.push(a);
+    }
+    const author = authors.length > 0 ? authors.join(', ') : null;
+
+    // Extract ISBN from dc:identifier
+    const identifierRegex = /<dc:identifier[^>]*>([^<]+)<\/dc:identifier>/gi;
+    let isbn: string | null = null;
+    let idMatch;
+    while ((idMatch = identifierRegex.exec(opfContent)) !== null) {
+      const fullTag = opfContent.substring(
+        opfContent.lastIndexOf('<dc:identifier', idMatch.index),
+        idMatch.index + idMatch[0].length,
+      );
+      const value = idMatch[1].trim();
+
+      // Check for explicit ISBN scheme attribute
+      if (/scheme\s*=\s*["']ISBN["']/i.test(fullTag) || /opf:scheme\s*=\s*["']ISBN["']/i.test(fullTag)) {
+        isbn = value.replace(/^urn:isbn:/i, '').replace(/[^0-9X-]/gi, '');
+        break;
+      }
+      // Check if value looks like an ISBN
+      const cleaned = value.replace(/^urn:isbn:/i, '').replace(/[^0-9X]/gi, '');
+      if (/^(\d{10}|\d{13}|\d{9}X)$/i.test(cleaned)) {
+        isbn = cleaned;
+      }
+    }
+
+    if (title || author || isbn) {
+      console.log(`[EPUB] Metadata — title: ${title || '(none)'}, author: ${author || '(none)'}, isbn: ${isbn || '(none)'}`);
+    }
+
+    return { title, author, isbn };
+  } catch (err) {
+    console.error('[EPUB] Metadata extraction failed (non-fatal):', err);
+    return { title: null, author: null, isbn: null };
+  }
+}
+
+/**
+ * Extract metadata (title, author) from pre-unzipped DOCX docProps/core.xml.
+ * Parses dc:creator and dc:title elements.
+ */
+function extractMetadataFromDOCXFiles(files: Record<string, Uint8Array>): FileMetadata {
+  try {
+    // Try both casing variants — ZIP entry names may vary
+    const coreXml = files['docProps/core.xml'] || files['docprops/core.xml'];
+    if (!coreXml) return { title: null, author: null };
+
+    const xml = new TextDecoder().decode(coreXml);
+
+    const titleMatch = xml.match(/<dc:title>([^<]+)<\/dc:title>/i);
+    const rawTitle = titleMatch?.[1]?.trim() || null;
+
+    const creatorMatch = xml.match(/<dc:creator>([^<]+)<\/dc:creator>/i);
+    const rawAuthor = creatorMatch?.[1]?.trim() || null;
+
+    // Filter out generic DOCX author values
+    const author = rawAuthor && !/^(Microsoft Office User|Unknown|Author)$/i.test(rawAuthor) ? rawAuthor : null;
+    const title = rawTitle && rawTitle.length > 1 ? rawTitle : null;
+
+    if (title || author) {
+      console.log(`[DOCX] Metadata — title: ${title || '(none)'}, author: ${author || '(none)'}`);
+    }
+
+    return { title, author };
+  } catch (err) {
+    console.error('[DOCX] Metadata extraction failed (non-fatal):', err);
+    return { title: null, author: null };
+  }
 }
 
 /**

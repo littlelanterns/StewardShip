@@ -1382,6 +1382,8 @@ export interface ManifestItem {
   intake_completed: boolean;
   ai_summary: string | null;
   toc: Array<{ title: string; level: number }> | null;
+  author: string | null;
+  isbn: string | null;
   genres: BookGenre[];
   extraction_status: ManifestExtractionStatus;
   source_manifest_item_id: string | null;
