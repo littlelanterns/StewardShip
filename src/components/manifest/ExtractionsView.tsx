@@ -339,7 +339,7 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
         ]);
         allSummaries.push(...(summaryRes.data || []) as ManifestSummary[]);
         allDeclarations.push(...(declRes.data || []) as ManifestDeclaration[]);
-        allPrinciples.push(...(principleRes.data || []) as typeof allPrinciples);
+        allPrinciples.push(...(principleRes.data || []) as unknown as typeof allPrinciples);
         allActionSteps.push(...(actionStepRes.data || []) as ManifestActionStep[]);
       }
 

@@ -83,7 +83,7 @@ export function HeartedItemsView({ onBack }: HeartedItemsViewProps) {
 
       const summaries = (summaryRes.data || []) as ManifestSummary[];
       const declarations = (declRes.data || []) as ManifestDeclaration[];
-      const rawPrinciples = (principleRes.data || []) as Array<AIFrameworkPrinciple & { ai_frameworks: { manifest_item_id: string; name: string } }>;
+      const rawPrinciples = (principleRes.data || []) as unknown as Array<AIFrameworkPrinciple & { ai_frameworks: { manifest_item_id: string; name: string } }>;
       const actionSteps = (actionStepRes.data || []) as ManifestActionStep[];
 
       const itemIds = new Set<string>();

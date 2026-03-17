@@ -332,7 +332,25 @@ function safeParseJSON(raw: string): { parsed: unknown; error?: string } {
     } catch { /* fall through */ }
   }
 
-  // Try 3: Extract JSON array [ ... ]
+  // Try 3: Extract JSON array starting with [{ (object array — most specific)
+  const arrObjMatch = cleaned.match(/\[\s*\{[\s\S]*\}/);
+  if (arrObjMatch) {
+    // Find the matching close bracket for this array
+    let candidate = arrObjMatch[0];
+    // If there's a ] after the last }, grab it
+    const afterMatch = cleaned.substring(cleaned.indexOf(candidate) + candidate.length);
+    const closeBracket = afterMatch.match(/^\s*\]/);
+    if (closeBracket) {
+      candidate = candidate + closeBracket[0];
+    } else {
+      candidate = candidate + '\n]'; // Close truncated array
+    }
+    try {
+      return { parsed: JSON.parse(candidate) };
+    } catch { /* fall through */ }
+  }
+
+  // Try 3b: Extract any JSON array [ ... ]
   const arrMatch = cleaned.match(/\[[\s\S]*\]/);
   if (arrMatch) {
     try {
@@ -341,11 +359,13 @@ function safeParseJSON(raw: string): { parsed: unknown; error?: string } {
   }
 
   // Try 4: Truncated JSON array recovery — AI hit max_tokens and JSON was cut off
-  // Find the last complete object "}" and close the array with "]"
-  if (cleaned.startsWith('[')) {
-    const lastCompleteObj = cleaned.lastIndexOf('}');
+  // Find the JSON array start ([{) and recover from truncation
+  const jsonArrayStart = cleaned.search(/\[\s*\{/);
+  if (jsonArrayStart >= 0) {
+    const fromArray = cleaned.substring(jsonArrayStart);
+    const lastCompleteObj = fromArray.lastIndexOf('}');
     if (lastCompleteObj > 0) {
-      const truncated = cleaned.substring(0, lastCompleteObj + 1) + '\n]';
+      const truncated = fromArray.substring(0, lastCompleteObj + 1) + '\n]';
       try {
         const result = JSON.parse(truncated);
         if (Array.isArray(result) && result.length > 0) {
