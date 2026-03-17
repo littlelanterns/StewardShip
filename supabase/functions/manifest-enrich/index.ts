@@ -231,8 +231,13 @@ Rules:
       }
     }
 
-    // Extract author/title/ISBN via AI if author is not yet set, is 'Unknown', or force_all
-    if (!item.author || item.author === 'Unknown' || force_all) {
+    // Extract author/title/ISBN via AI if author is not yet set, is 'Unknown', title looks garbled, or force_all
+    const titleLooksGarbled = item.title && (
+      (!/\s/.test(item.title) && /[!@#$%^&]|^[A-Z0-9]{20,}/.test(item.title)) ||
+      /^CR![A-Z0-9]+/i.test(item.title) ||
+      /\.(azw|mobi|azw3)$/i.test(item.title)
+    );
+    if (!item.author || item.author === 'Unknown' || titleLooksGarbled || force_all) {
       try {
         const metadataResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
