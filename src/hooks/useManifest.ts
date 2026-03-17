@@ -178,9 +178,17 @@ export function useManifest() {
     if (!user) return false;
     setError(null);
 
+    // Clear AI-generated metadata so format-native metadata (EPUB/PDF) can re-populate correctly
+    // This prevents stale AI-hallucinated ISBNs/authors from blocking correct metadata
     const { error: updateErr } = await supabase
       .from('manifest_items')
-      .update({ processing_status: 'pending', chunk_count: 0 })
+      .update({
+        processing_status: 'pending',
+        chunk_count: 0,
+        isbn: null,
+        author: null,
+        ai_summary: null,
+      })
       .eq('id', id)
       .eq('user_id', user.id);
 
@@ -192,7 +200,9 @@ export function useManifest() {
     // Reset to pending — queue manager useEffect will trigger processing
     setItems((prev) =>
       prev.map((item) =>
-        item.id === id ? { ...item, processing_status: 'pending' as const, chunk_count: 0 } : item,
+        item.id === id
+          ? { ...item, processing_status: 'pending' as const, chunk_count: 0, isbn: null, author: null, ai_summary: null }
+          : item,
       ),
     );
 

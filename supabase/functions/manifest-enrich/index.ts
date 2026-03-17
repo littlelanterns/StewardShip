@@ -278,15 +278,23 @@ Rules:
           try {
             const cleaned = metaText.replace(/```json\n?|\n?```/g, '').trim();
             const parsed = JSON.parse(cleaned);
+            // Only set author if we don't already have one
+            // (format-native metadata from EPUB/PDF is more reliable than AI extraction)
             if (parsed.author && typeof parsed.author === 'string') {
-              updateData.author = parsed.author;
-              result.author = parsed.author;
+              if (!item.author || item.author === 'Unknown') {
+                updateData.author = parsed.author;
+                result.author = parsed.author;
+              }
             }
+            // Only set ISBN if we don't already have one
+            // (AI frequently hallucinates ISBNs — format-native metadata is authoritative)
             if (parsed.isbn && typeof parsed.isbn === 'string') {
-              const isbnCleaned = parsed.isbn.replace(/[^0-9X-]/gi, '');
-              if (isbnCleaned.length >= 10) {
-                updateData.isbn = isbnCleaned;
-                result.isbn = isbnCleaned;
+              if (!item.isbn) {
+                const isbnCleaned = parsed.isbn.replace(/[^0-9X-]/gi, '');
+                if (isbnCleaned.length >= 10) {
+                  updateData.isbn = isbnCleaned;
+                  result.isbn = isbnCleaned;
+                }
               }
             }
             // Update title only if it still equals the filename or looks garbled
