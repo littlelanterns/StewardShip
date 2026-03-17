@@ -685,7 +685,7 @@ serve(async (req: Request) => {
         headers: openRouterHeaders,
         body: JSON.stringify({
           model: 'anthropic/claude-sonnet-4',
-          max_tokens: 16384,
+          max_tokens: 32768,
           messages: [
             { role: 'system', content: fullPrompt },
             {
@@ -722,8 +722,20 @@ serve(async (req: Request) => {
         );
       }
 
-      // Sanitize declaration_style on declarations
+      // Log what was parsed for debugging
       const resultObj = result as Record<string, unknown>;
+      const summaryCount = Array.isArray(resultObj?.summaries) ? (resultObj.summaries as unknown[]).length : 0;
+      const principleCount = (resultObj?.framework as Record<string, unknown>)?.principles
+        ? (((resultObj.framework as Record<string, unknown>).principles) as unknown[]).length : 0;
+      const actionCount = Array.isArray(resultObj?.action_steps) ? (resultObj.action_steps as unknown[]).length : 0;
+      const declCount = Array.isArray(resultObj?.declarations) ? (resultObj.declarations as unknown[]).length : 0;
+      console.log(`[manifest-extract] combined_section parsed: summaries=${summaryCount}, principles=${principleCount}, action_steps=${actionCount}, declarations=${declCount}`);
+
+      if (finishReason === 'length' && (actionCount === 0 || declCount === 0)) {
+        console.warn(`[manifest-extract] combined_section LIKELY TRUNCATED — missing action_steps (${actionCount}) or declarations (${declCount}) for section="${section_title}"`);
+      }
+
+      // Sanitize declaration_style on declarations
       const declarations = resultObj?.declarations as Array<Record<string, unknown>> | undefined;
       if (declarations && Array.isArray(declarations)) {
         const VALID_STYLES = ['choosing_committing', 'recognizing_awakening', 'claiming_stepping_into', 'learning_striving', 'resolute_unashamed'];
