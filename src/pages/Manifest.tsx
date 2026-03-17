@@ -582,7 +582,10 @@ export default function Manifest() {
     }
     if (titleSearch.trim()) {
       const q = titleSearch.trim().toLowerCase();
-      result = result.filter((item) => item.title.toLowerCase().includes(q));
+      result = result.filter((item) =>
+        item.title.toLowerCase().includes(q) ||
+        (item.author && item.author.toLowerCase().includes(q))
+      );
     }
     return result;
   }, [items, activeManifestTags, titleSearch]);
