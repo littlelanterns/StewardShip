@@ -19,7 +19,7 @@ interface ManifestItemDetailProps {
   onReprocess: (id: string) => Promise<boolean>;
   onArchive: (id: string) => Promise<boolean>;
   onDelete: (id: string) => Promise<boolean>;
-  onEnrichItem?: (itemId: string, regenerateTags?: boolean) => Promise<{ summary: string; tags?: string[] } | null>;
+  onEnrichItem?: (itemId: string, forceAll?: boolean) => Promise<{ summary: string; tags?: string[] } | null>;
   // Parts (split books)
   childParts?: ManifestItem[];
   parentItem?: ManifestItem | null;

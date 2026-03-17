@@ -594,7 +594,7 @@ export function useManifest() {
   // Generate AI summary (and optionally regenerate tags) for a manifest item
   const enrichItem = useCallback(async (
     itemId: string,
-    regenerateTags = false,
+    forceAll = false,
   ): Promise<{ summary: string; tags?: string[] } | null> => {
     if (!user) return null;
     try {
@@ -602,7 +602,8 @@ export function useManifest() {
         body: {
           manifest_item_id: itemId,
           user_id: user.id,
-          regenerate_tags: regenerateTags,
+          regenerate_tags: forceAll,
+          force_all: forceAll,
         },
       });
       if (invokeErr) throw invokeErr;
@@ -646,6 +647,52 @@ export function useManifest() {
         Math.abs((i.file_size_bytes || 0) - fileSize) < 1024,
     ) || null;
   }, [items]);
+
+  // Fix garbled titles: re-enrich books with garbled-looking titles (CR!, .azw, etc.)
+  // Uses ISBN + author context for confident identification. Very low API cost (Haiku).
+  const fixGarbledTitles = useCallback(async () => {
+    if (!user) return;
+
+    const { data: allBooks, error: fetchErr } = await supabase
+      .from('manifest_items')
+      .select('id, title, author, isbn')
+      .eq('user_id', user.id)
+      .eq('processing_status', 'completed')
+      .is('archived_at', null)
+      .neq('file_type', 'text_note');
+
+    if (fetchErr || !allBooks) {
+      console.error('[fix-garbled] Failed to fetch:', fetchErr);
+      return;
+    }
+
+    // Filter to garbled titles
+    const garbled = allBooks.filter((item) => {
+      if (!item.title) return false;
+      return (
+        (!/\s/.test(item.title) && /[!@#$%^&]|^[A-Z0-9]{20,}/.test(item.title)) ||
+        /^CR![A-Z0-9]+/i.test(item.title) ||
+        /\.(azw|mobi|azw3)$/i.test(item.title)
+      );
+    });
+
+    if (garbled.length === 0) {
+      console.log('[fix-garbled] No garbled titles found.');
+      return;
+    }
+
+    console.log(`[fix-garbled] Re-enriching ${garbled.length} books with garbled titles...`);
+    for (const item of garbled) {
+      console.log(`[fix-garbled] Fixing "${item.title}" (author: ${item.author || 'unknown'}, ISBN: ${item.isbn || 'none'})...`);
+      await enrichItem(item.id, true); // force_all = true
+      // Rate limit: 1.5 seconds between calls
+      await new Promise((r) => setTimeout(r, 1500));
+    }
+
+    // Refresh items list
+    await fetchItems();
+    console.log('[fix-garbled] Done.');
+  }, [user, enrichItem, fetchItems]);
 
   // Backfill: enrich all completed books where author is null
   const backfillAuthors = useCallback(async () => {
@@ -873,6 +920,7 @@ export function useManifest() {
     cloneToAllUsers,
     backfillCloneAll,
     backfillAuthors,
+    fixGarbledTitles,
     getQueuePosition,
   };
 }

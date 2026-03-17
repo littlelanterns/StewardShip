@@ -121,13 +121,15 @@ serve(async (req: Request) => {
           const pdfMeta = await extractPDFMetadata(new Uint8Array(arrayBuffer));
           const metaUpdate: Record<string, unknown> = {};
           if (pdfMeta.author) metaUpdate.author = pdfMeta.author;
-          // Only override title if it still matches the filename default AND metadata title isn't garbled
+          // Only override title if current title is still the filename default AND metadata title isn't garbled
           const pdfTitleGarbled = pdfMeta.title && (
             (!/\s/.test(pdfMeta.title) && /[!@#$%^&]|^[A-Z0-9]{20,}/.test(pdfMeta.title)) ||
             /^CR![A-Z0-9]+/i.test(pdfMeta.title) ||
             /\.(azw|mobi|azw3)$/i.test(pdfMeta.title)
           );
-          if (pdfMeta.title && !pdfTitleGarbled && item.file_name && item.title === item.file_name.replace(/\.[^.]+$/, '')) {
+          const currentTitleLooksGood = item.title && /\s/.test(item.title) && !/^CR![A-Z0-9]+/i.test(item.title) && !/\.(azw|mobi|azw3)$/i.test(item.title);
+          const filenameTitle = item.file_name ? item.file_name.replace(/\.[^.]+$/, '') : '';
+          if (pdfMeta.title && !pdfTitleGarbled && !currentTitleLooksGood && item.title === filenameTitle) {
             metaUpdate.title = pdfMeta.title;
           }
           if (Object.keys(metaUpdate).length > 0) {
@@ -233,13 +235,19 @@ serve(async (req: Request) => {
           const metaUpdate: Record<string, unknown> = {};
           if (epubMeta.author) metaUpdate.author = epubMeta.author;
           if (epubMeta.isbn) metaUpdate.isbn = epubMeta.isbn;
-          // Only override title if it still matches the filename default AND the metadata title isn't garbled
+          // Only override title if:
+          // 1. The current title is EXACTLY the filename (sans extension) — meaning no one has set a proper title yet
+          // 2. The metadata title isn't garbled (Kindle IDs, .azw extensions, etc.)
+          // 3. The current title itself looks garbled
+          // NEVER override a title that already has spaces/looks like a real book title
           const epubTitleGarbled = epubMeta.title && (
             (!/\s/.test(epubMeta.title) && /[!@#$%^&]|^[A-Z0-9]{20,}/.test(epubMeta.title)) ||
             /^CR![A-Z0-9]+/i.test(epubMeta.title) ||
             /\.(azw|mobi|azw3)$/i.test(epubMeta.title)
           );
-          if (epubMeta.title && !epubTitleGarbled && item.file_name && item.title === item.file_name.replace(/\.[^.]+$/, '')) {
+          const currentTitleLooksGood = item.title && /\s/.test(item.title) && !/^CR![A-Z0-9]+/i.test(item.title) && !/\.(azw|mobi|azw3)$/i.test(item.title);
+          const filenameTitle = item.file_name ? item.file_name.replace(/\.[^.]+$/, '') : '';
+          if (epubMeta.title && !epubTitleGarbled && !currentTitleLooksGood && item.title === filenameTitle) {
             metaUpdate.title = epubMeta.title;
           }
           if (Object.keys(metaUpdate).length > 0) {

@@ -48,7 +48,7 @@ serve(async (req: Request) => {
     // Fetch the manifest item
     const { data: item, error: fetchErr } = await supabase
       .from('manifest_items')
-      .select('title, text_content, file_type, tags, file_name, author')
+      .select('title, text_content, file_type, tags, file_name, author, isbn')
       .eq('id', manifest_item_id)
       .eq('user_id', userId)
       .single();
@@ -239,6 +239,15 @@ Rules:
     );
     if (!item.author || item.author === 'Unknown' || titleLooksGarbled || force_all) {
       try {
+        // Build context: if we already know the author, tell the AI to help identify the book
+        const knownAuthor = item.author && item.author !== 'Unknown' ? item.author : null;
+        const knownIsbn = item.isbn || null;
+        const titleNote = titleLooksGarbled
+          ? `Current title appears to be a garbled filename or ID: "${item.title}" — please determine the ACTUAL book title from the content.`
+          : `Current title: ${item.title}`;
+        const authorNote = knownAuthor ? `\nKnown author: ${knownAuthor}` : '';
+        const isbnNote = knownIsbn ? `\nKnown ISBN: ${knownIsbn}` : '';
+
         const metadataResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -253,11 +262,11 @@ Rules:
             messages: [
               {
                 role: 'system',
-                content: 'Extract the author name, book title, and ISBN from this text. Return a JSON object: { "author": "...", "title": "...", "isbn": "..." }. If any field cannot be determined, use null. For multiple authors, comma-separate them. Return ONLY the JSON object.',
+                content: 'Extract the author name, book title, and ISBN from this text. The current title may be a garbled filename — determine the ACTUAL book title from the content itself. Return a JSON object: { "author": "...", "title": "...", "isbn": "..." }. If any field cannot be determined, use null. For multiple authors, comma-separate them. Return ONLY the JSON object.',
               },
               {
                 role: 'user',
-                content: `Current title: ${item.title}\n\nFirst ~2000 characters:\n${item.text_content.substring(0, 2000)}`,
+                content: `${titleNote}${authorNote}${isbnNote}\n\nFirst ~3000 characters:\n${item.text_content.substring(0, 3000)}`,
               },
             ],
           }),
@@ -281,18 +290,26 @@ Rules:
               }
             }
             // Update title only if it still equals the filename or looks garbled
-            // (don't override reasonable titles — AI only sees first 2000 chars
+            // (don't override reasonable titles — AI only sees first ~3000 chars
             // and may guess a chapter title instead of the book title)
             if (parsed.title && typeof parsed.title === 'string' && parsed.title.length > 3) {
-              const filenameTitle = item.file_name ? item.file_name.replace(/\.[^.]+$/, '') : '';
-              const looksGarbled = item.title && (
-                (!/\s/.test(item.title) && /[!@#$%^&]|^[A-Z0-9]{20,}/.test(item.title)) ||
-                /^CR![A-Z0-9]+/i.test(item.title) ||
-                /\.(azw|mobi|azw3)$/i.test(item.title)
-              );
-              if (item.title === filenameTitle || looksGarbled) {
-                updateData.title = parsed.title;
-                result.title = parsed.title;
+              // Check if the AI-returned title is ALSO garbled (AI sometimes echoes back the input)
+              const returnedTitleGarbled =
+                (!/\s/.test(parsed.title) && /[!@#$%^&]|^[A-Z0-9]{20,}/.test(parsed.title)) ||
+                /^CR![A-Z0-9]+/i.test(parsed.title) ||
+                /\.(azw|mobi|azw3)$/i.test(parsed.title);
+
+              if (!returnedTitleGarbled) {
+                const filenameTitle = item.file_name ? item.file_name.replace(/\.[^.]+$/, '') : '';
+                const looksGarbled = item.title && (
+                  (!/\s/.test(item.title) && /[!@#$%^&]|^[A-Z0-9]{20,}/.test(item.title)) ||
+                  /^CR![A-Z0-9]+/i.test(item.title) ||
+                  /\.(azw|mobi|azw3)$/i.test(item.title)
+                );
+                if (item.title === filenameTitle || looksGarbled) {
+                  updateData.title = parsed.title;
+                  result.title = parsed.title;
+                }
               }
             }
           } catch { /* JSON parse failed — skip metadata */ }
