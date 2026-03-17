@@ -280,7 +280,11 @@ Rules:
             // and may guess a chapter title instead of the book title)
             if (parsed.title && typeof parsed.title === 'string' && parsed.title.length > 3) {
               const filenameTitle = item.file_name ? item.file_name.replace(/\.[^.]+$/, '') : '';
-              const looksGarbled = item.title && !/\s/.test(item.title) && /[!@#$%^&]|^[A-Z0-9]{20,}/.test(item.title);
+              const looksGarbled = item.title && (
+                (!/\s/.test(item.title) && /[!@#$%^&]|^[A-Z0-9]{20,}/.test(item.title)) ||
+                /^CR![A-Z0-9]+/i.test(item.title) ||
+                /\.(azw|mobi|azw3)$/i.test(item.title)
+              );
               if (item.title === filenameTitle || looksGarbled) {
                 updateData.title = parsed.title;
                 result.title = parsed.title;
