@@ -685,7 +685,7 @@ serve(async (req: Request) => {
         headers: openRouterHeaders,
         body: JSON.stringify({
           model: 'anthropic/claude-sonnet-4',
-          max_tokens: 32768,
+          max_tokens: 16384,
           messages: [
             { role: 'system', content: fullPrompt },
             {
