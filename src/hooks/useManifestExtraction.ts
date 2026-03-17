@@ -5,6 +5,12 @@ import { triggerEmbedding } from '../lib/rag';
 import type { SectionInfo } from './useFrameworks';
 import { computeMergeStats, mergeShortSections } from '../lib/mergeSections';
 import type { MergeStats } from '../lib/mergeSections';
+import {
+  MANIFEST_SUMMARY_COLUMNS,
+  MANIFEST_DECLARATION_COLUMNS,
+  MANIFEST_ACTION_STEP_COLUMNS,
+  AI_FRAMEWORK_PRINCIPLE_COLUMNS,
+} from '../lib/types';
 import type {
   ManifestSummary,
   ManifestDeclaration,
@@ -105,7 +111,7 @@ export function useManifestExtraction() {
     if (!user) return;
     const { data, error: fetchErr } = await supabase
       .from('manifest_summaries')
-      .select('*')
+      .select(MANIFEST_SUMMARY_COLUMNS)
       .eq('manifest_item_id', manifestItemId)
       .eq('user_id', user.id)
       .eq('is_deleted', false)
@@ -123,7 +129,7 @@ export function useManifestExtraction() {
     if (!user) return;
     const { data, error: fetchErr } = await supabase
       .from('manifest_declarations')
-      .select('*')
+      .select(MANIFEST_DECLARATION_COLUMNS)
       .eq('manifest_item_id', manifestItemId)
       .eq('user_id', user.id)
       .eq('is_deleted', false)
@@ -141,7 +147,7 @@ export function useManifestExtraction() {
     if (!user) return;
     const { data, error: fetchErr } = await supabase
       .from('manifest_action_steps')
-      .select('*')
+      .select(MANIFEST_ACTION_STEP_COLUMNS)
       .eq('manifest_item_id', manifestItemId)
       .eq('user_id', user.id)
       .eq('is_deleted', false)
@@ -1275,28 +1281,28 @@ export function useManifestExtraction() {
     const [summaryRes, declRes, principleRes, actionStepRes] = await Promise.all([
       supabase
         .from('manifest_summaries')
-        .select('*')
+        .select(MANIFEST_SUMMARY_COLUMNS)
         .eq('user_id', user.id)
         .eq('is_hearted', true)
         .eq('is_deleted', false)
         .order('created_at', { ascending: false }),
       supabase
         .from('manifest_declarations')
-        .select('*')
+        .select(MANIFEST_DECLARATION_COLUMNS)
         .eq('user_id', user.id)
         .eq('is_hearted', true)
         .eq('is_deleted', false)
         .order('created_at', { ascending: false }),
       supabase
         .from('ai_framework_principles')
-        .select('*')
+        .select(AI_FRAMEWORK_PRINCIPLE_COLUMNS)
         .eq('user_id', user.id)
         .eq('is_hearted', true)
         .eq('is_deleted', false)
         .order('created_at', { ascending: false }),
       supabase
         .from('manifest_action_steps')
-        .select('*')
+        .select(MANIFEST_ACTION_STEP_COLUMNS)
         .eq('user_id', user.id)
         .eq('is_hearted', true)
         .eq('is_deleted', false)

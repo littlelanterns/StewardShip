@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuthContext } from '../contexts/AuthContext';
 import { searchManifest } from '../lib/rag';
+import { MAST_ENTRY_COLUMNS } from '../lib/types';
 import type {
   RhythmType,
   RhythmCardStatus,
@@ -427,7 +428,7 @@ export function useRhythmCards() {
       // Get Mast entries — faith or vision types for reading
       const { data: mastEntries } = await supabase
         .from('mast_entries')
-        .select('*')
+        .select(MAST_ENTRY_COLUMNS)
         .eq('user_id', user.id)
         .is('archived_at', null)
         .in('type', ['faith_foundation', 'scripture_quote', 'value', 'vision']);

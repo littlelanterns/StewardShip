@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useTagUsage } from '../../hooks/useTagUsage';
 import type { ManifestItem, ManifestSummary, ManifestDeclaration, ManifestActionStep, AIFrameworkPrinciple, BookGenre } from '../../lib/types';
-import { DECLARATION_STYLE_LABELS, ACTION_STEP_CONTENT_TYPE_LABELS } from '../../lib/types';
+import { DECLARATION_STYLE_LABELS, ACTION_STEP_CONTENT_TYPE_LABELS, MANIFEST_SUMMARY_COLUMNS, MANIFEST_DECLARATION_COLUMNS, MANIFEST_ACTION_STEP_COLUMNS, AI_FRAMEWORK_PRINCIPLE_COLUMNS } from '../../lib/types';
 import type { ActionStepContentType } from '../../lib/types';
 import type { BookExtractionGroup } from '../../lib/exportExtractions';
 import { ExportDialog } from './ExportDialog';
@@ -300,7 +300,7 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
         const [summaryRes, declRes, principleRes, actionStepRes] = await Promise.all([
           supabase
             .from('manifest_summaries')
-            .select('*')
+            .select(MANIFEST_SUMMARY_COLUMNS)
             .eq('user_id', user.id)
             .eq('is_deleted', false)
             .in('manifest_item_id', batchIds)
@@ -310,7 +310,7 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
             .limit(10000),
           supabase
             .from('manifest_declarations')
-            .select('*')
+            .select(MANIFEST_DECLARATION_COLUMNS)
             .eq('user_id', user.id)
             .eq('is_deleted', false)
             .in('manifest_item_id', batchIds)
@@ -320,7 +320,7 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
             .limit(10000),
           supabase
             .from('ai_framework_principles')
-            .select('*, ai_frameworks!inner(manifest_item_id, name, tags)')
+            .select(`${AI_FRAMEWORK_PRINCIPLE_COLUMNS}, ai_frameworks!inner(manifest_item_id, name, tags)`)
             .eq('user_id', user.id)
             .eq('is_deleted', false)
             .in('ai_frameworks.manifest_item_id', batchIds)
@@ -328,7 +328,7 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
             .limit(10000),
           supabase
             .from('manifest_action_steps')
-            .select('*')
+            .select(MANIFEST_ACTION_STEP_COLUMNS)
             .eq('user_id', user.id)
             .eq('is_deleted', false)
             .in('manifest_item_id', batchIds)

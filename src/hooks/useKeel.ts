@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuthContext } from '../contexts/AuthContext';
 import type { KeelEntry, KeelCategory } from '../lib/types';
-import { KEEL_CATEGORY_ORDER } from '../lib/types';
+import { KEEL_CATEGORY_ORDER, KEEL_ENTRY_COLUMNS } from '../lib/types';
 
 export function useKeel() {
   const { user } = useAuthContext();
@@ -21,7 +21,7 @@ export function useKeel() {
     try {
       const { data, error: err } = await supabase
         .from('keel_entries')
-        .select('*')
+        .select(KEEL_ENTRY_COLUMNS)
         .eq('user_id', user.id)
         .is('archived_at', null)
         .order('category')
@@ -42,7 +42,7 @@ export function useKeel() {
     try {
       const { data, error: err } = await supabase
         .from('keel_entries')
-        .select('*')
+        .select(KEEL_ENTRY_COLUMNS)
         .eq('user_id', user.id)
         .not('archived_at', 'is', null)
         .order('archived_at', { ascending: false });

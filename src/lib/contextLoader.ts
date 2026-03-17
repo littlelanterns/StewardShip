@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 import type { MastEntry, KeelEntry, JournalEntry, Victory, CompassTask, GuidedMode, GuidedSubtype, HelmMessage, WheelInstance, LifeInventoryArea, RiggingPlan, Person, SpouseInsight, SphereEntity, ManifestSearchResult, Meeting, CrewNote, MeetingAgendaItem, MeetingTemplateSection } from './types';
-import { SPOKE_LABELS, PLANNING_FRAMEWORK_LABELS, CREW_NOTE_CATEGORY_LABELS } from './types';
+import { SPOKE_LABELS, PLANNING_FRAMEWORK_LABELS, CREW_NOTE_CATEGORY_LABELS, MAST_ENTRY_COLUMNS, KEEL_ENTRY_COLUMNS, JOURNAL_ENTRY_COLUMNS, AI_FRAMEWORK_PRINCIPLE_COLUMNS } from './types';
 import { searchManifest, searchManifestContent, searchPersonalContext } from './rag';
 import type { ManifestContentMatch, PersonalContextMatch } from './rag';
 import {
@@ -73,7 +73,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
       .maybeSingle(),
     supabase
       .from('mast_entries')
-      .select('*')
+      .select(MAST_ENTRY_COLUMNS)
       .eq('user_id', userId)
       .is('archived_at', null)
       .order('sort_order', { ascending: true }),
@@ -160,7 +160,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
   const keelPromise = needKeel
     ? supabase
         .from('keel_entries')
-        .select('*')
+        .select(KEEL_ENTRY_COLUMNS)
         .eq('user_id', userId)
         .is('archived_at', null)
         .order('sort_order', { ascending: true })
@@ -172,7 +172,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
   const journalPromise = needJournal
     ? supabase
         .from('journal_entries')
-        .select('*')
+        .select(JOURNAL_ENTRY_COLUMNS)
         .eq('user_id', userId)
         .is('archived_at', null)
         .gte('created_at', sevenDaysAgo.toISOString())
@@ -288,7 +288,7 @@ export async function loadContext(options: LoadContextOptions): Promise<SystemPr
   const frameworksPromise = needFrameworks
     ? supabase
         .from('ai_frameworks')
-        .select('*, ai_framework_principles(*)')
+        .select(`*, ai_framework_principles(${AI_FRAMEWORK_PRINCIPLE_COLUMNS})`)
         .eq('user_id', userId)
         .eq('is_active', true)
         .is('archived_at', null)

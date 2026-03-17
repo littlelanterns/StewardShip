@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuthContext } from '../contexts/AuthContext';
 import { generateJournalPDF, formatDateRangeFilename } from '../lib/journalExport';
+import { JOURNAL_ENTRY_COLUMNS } from '../lib/types';
 import type { JournalEntry } from '../lib/types';
 
 export interface ExportFilters {
@@ -58,7 +59,7 @@ export function useJournalExport() {
     try {
       let query = supabase
         .from('journal_entries')
-        .select('*')
+        .select(JOURNAL_ENTRY_COLUMNS)
         .eq('user_id', user.id)
         .is('archived_at', null)
         .order('created_at', { ascending: true });

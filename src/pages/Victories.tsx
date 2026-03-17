@@ -9,7 +9,7 @@ import { useAuthContext } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { celebrateCollection } from '../lib/ai';
 import type { Victory, MastEntry } from '../lib/types';
-import { LIFE_AREA_LABELS, COMPASS_LIFE_AREA_LABELS } from '../lib/types';
+import { LIFE_AREA_LABELS, COMPASS_LIFE_AREA_LABELS, MAST_ENTRY_COLUMNS } from '../lib/types';
 import { EmptyState, FloatingActionButton, FeatureGuide, SparkleOverlay } from '../components/shared';
 import { FEATURE_GUIDES } from '../lib/featureGuides';
 import { VictoryDetail } from '../components/victories/VictoryDetail';
@@ -83,7 +83,7 @@ export default function Victories() {
     if (!user) return;
     supabase
       .from('mast_entries')
-      .select('*')
+      .select(MAST_ENTRY_COLUMNS)
       .eq('user_id', user.id)
       .is('archived_at', null)
       .then(({ data }) => {

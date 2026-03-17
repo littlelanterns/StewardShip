@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuthContext } from '../contexts/AuthContext';
-import type { AIFramework } from '../lib/types';
+import { type AIFramework, AI_FRAMEWORK_PRINCIPLE_COLUMNS } from '../lib/types';
 
 export interface FrameworkExtractionResult {
   framework_name: string;
@@ -34,7 +34,7 @@ export function useFrameworks() {
     try {
       const { data, error: fetchErr } = await supabase
         .from('ai_frameworks')
-        .select('*, ai_framework_principles(*)')
+        .select(`*, ai_framework_principles(${AI_FRAMEWORK_PRINCIPLE_COLUMNS})`)
         .eq('user_id', user.id)
         .is('archived_at', null)
         .order('name');
@@ -199,7 +199,7 @@ export function useFrameworks() {
       // Fetch the full framework with principles
       const { data: result } = await supabase
         .from('ai_frameworks')
-        .select('*, ai_framework_principles(*)')
+        .select(`*, ai_framework_principles(${AI_FRAMEWORK_PRINCIPLE_COLUMNS})`)
         .eq('id', frameworkId)
         .single();
 

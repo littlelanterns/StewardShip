@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuthContext } from '../contexts/AuthContext';
 import { searchManifest } from '../lib/rag';
+import { MAST_ENTRY_COLUMNS } from '../lib/types';
 import type {
   DailyRhythmStatus,
   UserSettings,
@@ -283,7 +284,7 @@ export function useRhythms() {
       const [mastResult, tasksResult, recurringResult, trackersResult, meetingSchedulesResult] = await Promise.all([
         supabase
           .from('mast_entries')
-          .select('*')
+          .select(MAST_ENTRY_COLUMNS)
           .eq('user_id', user.id)
           .is('archived_at', null),
         supabase
@@ -520,7 +521,7 @@ export function useRhythms() {
       ] = await Promise.all([
         supabase
           .from('mast_entries')
-          .select('*')
+          .select(MAST_ENTRY_COLUMNS)
           .eq('user_id', user.id)
           .is('archived_at', null),
         supabase

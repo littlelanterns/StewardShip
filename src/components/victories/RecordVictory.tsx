@@ -4,7 +4,7 @@ import { useAuthContext } from '../../contexts/AuthContext';
 import { celebrateVictory, type CelebrateVictoryItem } from '../../lib/ai';
 import { supabase } from '../../lib/supabase';
 import type { VictorySource, MastEntry } from '../../lib/types';
-import { LIFE_AREA_LABELS } from '../../lib/types';
+import { LIFE_AREA_LABELS, MAST_ENTRY_COLUMNS } from '../../lib/types';
 import { Button } from '../shared/Button';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
 import { SparkleOverlay } from '../shared/SparkleOverlay';
@@ -54,7 +54,7 @@ export function RecordVictory({ onSave, onClose, prefill }: RecordVictoryProps) 
     if (!user) return;
     supabase
       .from('mast_entries')
-      .select('*')
+      .select(MAST_ENTRY_COLUMNS)
       .eq('user_id', user.id)
       .is('archived_at', null)
       .then(({ data }) => {

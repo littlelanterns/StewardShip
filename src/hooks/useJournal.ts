@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuthContext } from '../contexts/AuthContext';
+import { JOURNAL_ENTRY_COLUMNS } from '../lib/types';
 import type { JournalEntry, JournalEntryType, JournalSource, JournalFilters } from '../lib/types';
 
 const PAGE_SIZE = 20;
@@ -45,7 +46,7 @@ export function useJournal() {
     try {
       let query = supabase
         .from('journal_entries')
-        .select('*')
+        .select(JOURNAL_ENTRY_COLUMNS)
         .eq('user_id', user.id)
         .is('archived_at', null)
         .order('created_at', { ascending: false })
@@ -103,7 +104,7 @@ export function useJournal() {
     try {
       const { data, error: err } = await supabase
         .from('journal_entries')
-        .select('*')
+        .select(JOURNAL_ENTRY_COLUMNS)
         .eq('id', entryId)
         .eq('user_id', user.id)
         .single();
@@ -247,7 +248,7 @@ export function useJournal() {
     try {
       const { data, error: err } = await supabase
         .from('journal_entries')
-        .select('*')
+        .select(JOURNAL_ENTRY_COLUMNS)
         .eq('user_id', user.id)
         .not('archived_at', 'is', null)
         .order('archived_at', { ascending: false });

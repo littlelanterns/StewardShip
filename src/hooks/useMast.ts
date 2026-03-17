@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuthContext } from '../contexts/AuthContext';
 import type { MastEntry, MastEntryType } from '../lib/types';
-import { MAST_TYPE_ORDER } from '../lib/types';
+import { MAST_TYPE_ORDER, MAST_ENTRY_COLUMNS } from '../lib/types';
 
 export function useMast() {
   const { user } = useAuthContext();
@@ -21,7 +21,7 @@ export function useMast() {
     try {
       const { data, error: err } = await supabase
         .from('mast_entries')
-        .select('*')
+        .select(MAST_ENTRY_COLUMNS)
         .eq('user_id', user.id)
         .is('archived_at', null)
         .order('type')
@@ -42,7 +42,7 @@ export function useMast() {
     try {
       const { data, error: err } = await supabase
         .from('mast_entries')
-        .select('*')
+        .select(MAST_ENTRY_COLUMNS)
         .eq('user_id', user.id)
         .not('archived_at', 'is', null)
         .order('archived_at', { ascending: false });

@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuthContext } from '../contexts/AuthContext';
+import { JOURNAL_ENTRY_COLUMNS } from '../lib/types';
 import type {
   WheelInstance,
   WheelRimEntry,
@@ -256,7 +257,7 @@ export function useWheel() {
       // Primary: entries explicitly linked via related_wheel_id
       const { data: linked, error: err1 } = await supabase
         .from('journal_entries')
-        .select('*')
+        .select(JOURNAL_ENTRY_COLUMNS)
         .eq('user_id', user.id)
         .eq('related_wheel_id', wheelId)
         .is('archived_at', null)
@@ -272,7 +273,7 @@ export function useWheel() {
 
         const { data: related, error: err2 } = await supabase
           .from('journal_entries')
-          .select('*')
+          .select(JOURNAL_ENTRY_COLUMNS)
           .eq('user_id', user.id)
           .is('archived_at', null)
           .is('related_wheel_id', null)

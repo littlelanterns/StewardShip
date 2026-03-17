@@ -4,7 +4,7 @@ import { ChevronLeft, Download, Heart, Trash2, Anchor, Compass, Sparkles, Sticky
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../contexts/AuthContext';
 import type { ManifestSummary, ManifestDeclaration, ManifestActionStep, AIFrameworkPrinciple } from '../../lib/types';
-import { ACTION_STEP_CONTENT_TYPE_LABELS, DECLARATION_STYLE_LABELS } from '../../lib/types';
+import { ACTION_STEP_CONTENT_TYPE_LABELS, DECLARATION_STYLE_LABELS, MANIFEST_SUMMARY_COLUMNS, MANIFEST_DECLARATION_COLUMNS, MANIFEST_ACTION_STEP_COLUMNS, AI_FRAMEWORK_PRINCIPLE_COLUMNS } from '../../lib/types';
 import type { ActionStepContentType } from '../../lib/types';
 import type { BookExtractionGroup } from '../../lib/exportExtractions';
 import { ExportDialog } from './ExportDialog';
@@ -46,7 +46,7 @@ export function HeartedItemsView({ onBack }: HeartedItemsViewProps) {
       const [summaryRes, declRes, principleRes, actionStepRes] = await Promise.all([
         supabase
           .from('manifest_summaries')
-          .select('*')
+          .select(MANIFEST_SUMMARY_COLUMNS)
           .eq('user_id', user.id)
           .eq('is_hearted', true)
           .eq('is_deleted', false)
@@ -55,7 +55,7 @@ export function HeartedItemsView({ onBack }: HeartedItemsViewProps) {
           .limit(10000),
         supabase
           .from('manifest_declarations')
-          .select('*')
+          .select(MANIFEST_DECLARATION_COLUMNS)
           .eq('user_id', user.id)
           .eq('is_hearted', true)
           .eq('is_deleted', false)
@@ -64,7 +64,7 @@ export function HeartedItemsView({ onBack }: HeartedItemsViewProps) {
           .limit(10000),
         supabase
           .from('ai_framework_principles')
-          .select('*, ai_frameworks!inner(manifest_item_id, name)')
+          .select(`${AI_FRAMEWORK_PRINCIPLE_COLUMNS}, ai_frameworks!inner(manifest_item_id, name)`)
           .eq('user_id', user.id)
           .eq('is_hearted', true)
           .eq('is_deleted', false)
@@ -72,7 +72,7 @@ export function HeartedItemsView({ onBack }: HeartedItemsViewProps) {
           .limit(10000),
         supabase
           .from('manifest_action_steps')
-          .select('*')
+          .select(MANIFEST_ACTION_STEP_COLUMNS)
           .eq('user_id', user.id)
           .eq('is_hearted', true)
           .eq('is_deleted', false)

@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuthContext } from '../contexts/AuthContext';
+import { JOURNAL_ENTRY_COLUMNS } from '../lib/types';
 import type {
   RiggingPlan,
   RiggingPlanStatus,
@@ -347,7 +348,7 @@ export function useRigging() {
     try {
       const { data, error: err } = await supabase
         .from('journal_entries')
-        .select('*')
+        .select(JOURNAL_ENTRY_COLUMNS)
         .eq('user_id', user.id)
         .eq('related_rigging_plan_id', planId)
         .is('archived_at', null)

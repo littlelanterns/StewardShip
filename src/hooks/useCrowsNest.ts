@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuthContext } from '../contexts/AuthContext';
+import { MAST_ENTRY_COLUMNS } from '../lib/types';
 import type { MastEntry, Victory, StreakInfo, CompassTask, WheelInstance, Reminder } from '../lib/types';
 
 interface DashboardData {
@@ -116,7 +117,7 @@ export function useCrowsNest() {
         // Random Mast thought
         supabase
           .from('mast_entries')
-          .select('*')
+          .select(MAST_ENTRY_COLUMNS)
           .eq('user_id', user.id)
           .is('archived_at', null),
         // Active Wheels
