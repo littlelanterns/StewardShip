@@ -62,7 +62,7 @@ interface ManifestItemDetailProps {
   onSetSelectedSectionIndices: (indices: number[]) => void;
   onUpdateSectionTitle?: (index: number, title: string) => void;
   discoveringSections: boolean;
-  extractionProgress: { current: number; total: number; currentType: 'summary' | 'framework' | 'mast_content' | 'action_steps' } | null;
+  extractionProgress: { current: number; total: number; currentType: 'summary' | 'framework' | 'mast_content' | 'action_steps' | 'questions' } | null;
   failedSections: Array<{ sectionIndex: number; title: string; retrying?: boolean }>;
   onRetrySection: (sectionIndex: number) => Promise<boolean>;
   onClearExtractions: (itemId: string) => Promise<void>;

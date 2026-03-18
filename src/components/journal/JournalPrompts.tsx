@@ -20,7 +20,6 @@ export default function JournalPrompts({ onBack, onUsePrompt }: JournalPromptsPr
     getRandomPrompt,
     searchPrompts,
     bookTitles,
-    filterByBook,
   } = useJournalPrompts();
 
   const [searchQuery, setSearchQuery] = useState('');
