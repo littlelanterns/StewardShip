@@ -795,7 +795,7 @@ export function useManifestExtraction() {
     } finally {
       setExtracting(false);
     }
-  }, [user, sections, saveSummaryResults, saveDeclarationResults, saveActionStepResults, fetchSummaries, fetchDeclarations, fetchActionSteps, callExtract, updateExtractionStatus, syncExtractionsToAdmin, triggerSemanticEmbeddings]);
+  }, [user, sections, saveSummaryResults, saveDeclarationResults, saveActionStepResults, saveQuestionResults, fetchSummaries, fetchDeclarations, fetchActionSteps, fetchQuestions, callExtract, updateExtractionStatus, syncExtractionsToAdmin, triggerSemanticEmbeddings]);
 
   // --- Retry a single failed section ---
 
@@ -861,7 +861,7 @@ export function useManifestExtraction() {
       );
       return false;
     }
-  }, [user, failedSections, callExtract, saveSummaryResults, saveDeclarationResults, saveActionStepResults, fetchSummaries, fetchDeclarations, fetchActionSteps, triggerSemanticEmbeddings]);
+  }, [user, failedSections, callExtract, saveSummaryResults, saveDeclarationResults, saveActionStepResults, saveQuestionResults, fetchSummaries, fetchDeclarations, fetchActionSteps, fetchQuestions, triggerSemanticEmbeddings]);
 
   // --- Multi-part helpers: stateless versions for orchestrating across parts ---
 
@@ -941,7 +941,7 @@ export function useManifestExtraction() {
       await updateExtractionStatus(manifestItemId, 'failed');
       return false;
     }
-  }, [user, callExtract, saveSummaryResults, saveDeclarationResults, saveActionStepResults, updateExtractionStatus, syncExtractionsToAdmin, triggerSemanticEmbeddings]);
+  }, [user, callExtract, saveSummaryResults, saveDeclarationResults, saveActionStepResults, saveQuestionResults, updateExtractionStatus, syncExtractionsToAdmin, triggerSemanticEmbeddings]);
 
   // --- Go Deeper: extract additional content for a specific tab/section ---
 
