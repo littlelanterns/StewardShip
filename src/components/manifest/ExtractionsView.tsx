@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Heart, Download, ChevronDown, ChevronRight, Trash2, Anchor, Compass, RefreshCw, Sparkles, LayoutList, BookOpen, StickyNote, Search } from 'lucide-react';
+import { ChevronLeft, Heart, Download, ChevronDown, ChevronRight, Trash2, Anchor, Compass, MessageCircle, RefreshCw, Sparkles, LayoutList, BookOpen, StickyNote, Search } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useTagUsage } from '../../hooks/useTagUsage';
-import type { ManifestItem, ManifestSummary, ManifestDeclaration, ManifestActionStep, AIFrameworkPrinciple, BookGenre } from '../../lib/types';
-import { DECLARATION_STYLE_LABELS, ACTION_STEP_CONTENT_TYPE_LABELS, MANIFEST_SUMMARY_COLUMNS, MANIFEST_DECLARATION_COLUMNS, MANIFEST_ACTION_STEP_COLUMNS, AI_FRAMEWORK_PRINCIPLE_COLUMNS } from '../../lib/types';
-import type { ActionStepContentType } from '../../lib/types';
+import type { ManifestItem, ManifestSummary, ManifestDeclaration, ManifestActionStep, ManifestQuestion, AIFrameworkPrinciple, BookGenre } from '../../lib/types';
+import { DECLARATION_STYLE_LABELS, ACTION_STEP_CONTENT_TYPE_LABELS, QUESTION_CONTENT_TYPE_LABELS, MANIFEST_SUMMARY_COLUMNS, MANIFEST_DECLARATION_COLUMNS, MANIFEST_ACTION_STEP_COLUMNS, MANIFEST_QUESTION_COLUMNS, AI_FRAMEWORK_PRINCIPLE_COLUMNS } from '../../lib/types';
+import type { ActionStepContentType, QuestionContentType } from '../../lib/types';
 import type { BookExtractionGroup } from '../../lib/exportExtractions';
 import { ExportDialog } from './ExportDialog';
 import { Button, TagPills } from '../shared';
@@ -20,7 +20,7 @@ interface ExtractionsViewProps {
   collectionName?: string;
 }
 
-type TabType = 'summary' | 'frameworks' | 'action_steps' | 'mast_content';
+type TabType = 'summary' | 'frameworks' | 'action_steps' | 'mast_content' | 'questions';
 type FilterMode = 'all' | 'hearted';
 type ViewMode = 'tabs' | 'chapters' | 'notes';
 
@@ -31,6 +31,7 @@ interface BookExtractions {
   summaries: ManifestSummary[];
   declarations: ManifestDeclaration[];
   actionSteps: ManifestActionStep[];
+  questions: ManifestQuestion[];
   principles: (AIFrameworkPrinciple & { framework_name?: string })[];
   frameworkTags: string[];
 }
@@ -70,6 +71,7 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
   const [confirmReRun, setConfirmReRun] = useState<string | null>(null); // bookId or null
   const [sendingToMast, setSendingToMast] = useState<Set<string>>(new Set());
   const [sendingToCompass, setSendingToCompass] = useState<Set<string>>(new Set());
+  const [sendingToPrompts, setSendingToPrompts] = useState<Set<string>>(new Set());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
   const [notingId, setNotingId] = useState<string | null>(null);
@@ -294,10 +296,11 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
       const allDeclarations: ManifestDeclaration[] = [];
       const allPrinciples: Array<AIFrameworkPrinciple & { ai_frameworks: { manifest_item_id: string; name: string; tags: string[] | null } }> = [];
       const allActionSteps: ManifestActionStep[] = [];
+      const allQuestions: ManifestQuestion[] = [];
 
       for (let i = 0; i < ids.length; i += BATCH_SIZE) {
         const batchIds = ids.slice(i, i + BATCH_SIZE);
-        const [summaryRes, declRes, principleRes, actionStepRes] = await Promise.all([
+        const [summaryRes, declRes, principleRes, actionStepRes, questionRes] = await Promise.all([
           supabase
             .from('manifest_summaries')
             .select(MANIFEST_SUMMARY_COLUMNS)
@@ -336,11 +339,22 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
             .order('section_index', { ascending: true })
             .order('sort_order', { ascending: true })
             .limit(10000),
+          supabase
+            .from('manifest_questions')
+            .select(MANIFEST_QUESTION_COLUMNS)
+            .eq('user_id', user.id)
+            .eq('is_deleted', false)
+            .in('manifest_item_id', batchIds)
+            .order('manifest_item_id')
+            .order('section_index', { ascending: true })
+            .order('sort_order', { ascending: true })
+            .limit(10000),
         ]);
         allSummaries.push(...(summaryRes.data || []) as ManifestSummary[]);
         allDeclarations.push(...(declRes.data || []) as ManifestDeclaration[]);
         allPrinciples.push(...(principleRes.data || []) as unknown as typeof allPrinciples);
         allActionSteps.push(...(actionStepRes.data || []) as ManifestActionStep[]);
+        allQuestions.push(...(questionRes.data || []) as ManifestQuestion[]);
       }
 
       const newData = new Map<string, BookExtractions>();
@@ -359,6 +373,7 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
           summaries: allSummaries.filter((s) => s.manifest_item_id === id),
           declarations: allDeclarations.filter((d) => d.manifest_item_id === id),
           actionSteps: allActionSteps.filter((a) => a.manifest_item_id === id),
+          questions: allQuestions.filter((q) => q.manifest_item_id === id),
           principles: bookPrinciples.map((p) => ({ ...p, framework_name: p.ai_frameworks.name })),
           frameworkTags: Array.from(tagSet),
         });
@@ -395,13 +410,15 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
       for (const p of book.principles) allSectionKeys.add(p.section_title || '__general__');
       for (const a of book.actionSteps) allSectionKeys.add(a.section_title || '__full_book__');
       for (const d of book.declarations) allSectionKeys.add(d.section_title || '__full_book__');
+      for (const q of book.questions) allSectionKeys.add(q.section_title || '__full_book__');
 
       if (allSectionKeys.size > 1) {
-        const tabTypes = ['summary', 'frameworks', 'action_steps', 'mast_content'] as const;
+        const tabTypes = ['summary', 'frameworks', 'action_steps', 'mast_content', 'questions'] as const;
         for (const tab of tabTypes) {
           const items = tab === 'summary' ? book.summaries
             : tab === 'frameworks' ? book.principles
             : tab === 'action_steps' ? book.actionSteps
+            : tab === 'questions' ? book.questions
             : book.declarations;
           const tabSectionKeys = new Set(items.map((i: { section_title: string | null }) => i.section_title || (tab === 'frameworks' ? '__general__' : '__full_book__')));
           for (const sk of tabSectionKeys) {
@@ -558,6 +575,23 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
     await toggleHeart('manifest_action_steps', id, currentVal);
   }, [toggleHeart]);
 
+  const handleHeartQuestion = useCallback(async (id: string, currentVal: boolean) => {
+    setBookData((prev) => {
+      const next = new Map(prev);
+      for (const [bookId, book] of next) {
+        const idx = book.questions.findIndex((q) => q.id === id);
+        if (idx >= 0) {
+          const updated = { ...book, questions: [...book.questions] };
+          updated.questions[idx] = { ...updated.questions[idx], is_hearted: !currentVal };
+          next.set(bookId, updated);
+          break;
+        }
+      }
+      return next;
+    });
+    await toggleHeart('manifest_questions', id, currentVal);
+  }, [toggleHeart]);
+
   // --- Animated delete ---
   const handleDeleteItem = useCallback(async (table: string, id: string) => {
     if (!user) return;
@@ -571,6 +605,7 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
           updated.summaries = book.summaries.filter((s) => s.id !== id);
           updated.declarations = book.declarations.filter((d) => d.id !== id);
           updated.actionSteps = book.actionSteps.filter((a) => a.id !== id);
+          updated.questions = book.questions.filter((q) => q.id !== id);
           updated.principles = book.principles.filter((p) => p.id !== id);
           next.set(bookId, updated);
         }
@@ -681,6 +716,57 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
     }
   }, [user, bookData]);
 
+  // --- Send to Prompts ---
+  const handleSendToPrompts = useCallback(async (questionId: string) => {
+    if (!user) return;
+    setSendingToPrompts((prev) => new Set(prev).add(questionId));
+    try {
+      let questionData: ManifestQuestion | undefined;
+      let bookTitle: string | undefined;
+      for (const book of bookData.values()) {
+        questionData = book.questions.find((q) => q.id === questionId);
+        if (questionData) { bookTitle = book.bookTitle; break; }
+      }
+      if (!questionData) return;
+
+      const { data: prompt } = await supabase
+        .from('journal_prompts')
+        .insert({
+          user_id: user.id,
+          prompt_text: questionData.text,
+          source: 'manifest_extraction',
+          source_reference_id: questionData.id,
+          source_book_title: bookTitle || null,
+          tags: [],
+          sort_order: 0,
+        })
+        .select('id')
+        .single();
+
+      if (prompt) {
+        await supabase.from('manifest_questions')
+          .update({ sent_to_prompts: true, journal_prompt_id: prompt.id })
+          .eq('id', questionId).eq('user_id', user.id);
+
+        setBookData((prev) => {
+          const next = new Map(prev);
+          for (const [bookId, book] of next) {
+            const idx = book.questions.findIndex((q) => q.id === questionId);
+            if (idx >= 0) {
+              const updated = { ...book, questions: [...book.questions] };
+              updated.questions[idx] = { ...updated.questions[idx], sent_to_prompts: true, journal_prompt_id: prompt.id };
+              next.set(bookId, updated);
+              break;
+            }
+          }
+          return next;
+        });
+      }
+    } finally {
+      setSendingToPrompts((prev) => { const n = new Set(prev); n.delete(questionId); return n; });
+    }
+  }, [user, bookData]);
+
   // --- Inline Edit ---
   const startEditing = useCallback((id: string, text: string) => {
     setEditingId(id);
@@ -697,6 +783,7 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
         updated.summaries = book.summaries.map((s) => s.id === id ? { ...s, [field]: editingText.trim() } : s);
         updated.principles = book.principles.map((p) => p.id === id ? { ...p, [field]: editingText.trim() } : p);
         updated.actionSteps = book.actionSteps.map((a) => a.id === id ? { ...a, [field]: editingText.trim() } : a);
+        updated.questions = book.questions.map((q) => q.id === id ? { ...q, [field]: editingText.trim() } : q);
         updated.declarations = book.declarations.map((d) => d.id === id ? { ...d, [field]: editingText.trim() } : d);
         next.set(bookId, updated);
       }
@@ -727,6 +814,7 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
         updated.summaries = book.summaries.map((s) => s.id === id ? { ...s, user_note: noteVal } : s);
         updated.principles = book.principles.map((p) => p.id === id ? { ...p, user_note: noteVal } : p);
         updated.actionSteps = book.actionSteps.map((a) => a.id === id ? { ...a, user_note: noteVal } : a);
+        updated.questions = book.questions.map((q) => q.id === id ? { ...q, user_note: noteVal } : q);
         updated.declarations = book.declarations.map((d) => d.id === id ? { ...d, user_note: noteVal } : d);
         next.set(bookId, updated);
       }
@@ -738,7 +826,7 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
   // --- Go Deeper ---
   const handleGoDeeper = useCallback(async (
     bookId: string,
-    tabType: 'summary' | 'mast_content' | 'action_steps',
+    tabType: 'summary' | 'mast_content' | 'action_steps' | 'questions',
     sectionTitle: string | undefined,
     existingItems: string[],
     sectionIndex?: number,
@@ -751,7 +839,7 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
     setExtractingBookTab(key);
 
     try {
-      const extractionType = tabType === 'summary' ? 'summary' : tabType === 'action_steps' ? 'action_steps' : 'mast_content';
+      const extractionType = tabType === 'summary' ? 'summary' : tabType === 'action_steps' ? 'action_steps' : tabType === 'questions' ? 'questions' : 'mast_content';
       const body: Record<string, unknown> = {
         manifest_item_id: bookId,
         extraction_type: extractionType,
@@ -795,6 +883,19 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
             is_from_go_deeper: true,
           }));
           await supabase.from('manifest_action_steps').insert(records);
+        } else if (tabType === 'questions') {
+          const VALID_QUESTION_TYPES = ['reflection', 'implementation', 'recognition', 'self_examination', 'discussion', 'scenario'];
+          const records = items.map((item: { content_type: string; text: string; sort_order: number }, idx: number) => ({
+            user_id: user.id,
+            manifest_item_id: bookId,
+            section_title: sectionTitle || null,
+            section_index: sectionIndex ?? 0,
+            content_type: VALID_QUESTION_TYPES.includes(item.content_type) ? item.content_type : 'reflection',
+            text: item.text,
+            sort_order: item.sort_order ?? idx,
+            is_from_go_deeper: true,
+          }));
+          await supabase.from('manifest_questions').insert(records);
         } else {
           const VALID_STYLES = ['choosing_committing', 'recognizing_awakening', 'claiming_stepping_into', 'learning_striving', 'resolute_unashamed'];
           const records = items.map((item: { value_name?: string; declaration_text: string; declaration_style: string; sort_order: number }, idx: number) => ({
@@ -820,7 +921,7 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
   }, [user, bookData, selectedIds, fetchExtractions]);
 
   // --- Re-run ---
-  const handleReRun = useCallback(async (bookId: string, tabType: 'summary' | 'mast_content' | 'action_steps') => {
+  const handleReRun = useCallback(async (bookId: string, tabType: 'summary' | 'mast_content' | 'action_steps' | 'questions') => {
     if (!user) return;
     const book = bookData.get(bookId);
     if (!book) return;
@@ -830,7 +931,7 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
     setConfirmReRun(null);
 
     try {
-      const table = tabType === 'summary' ? 'manifest_summaries' : tabType === 'action_steps' ? 'manifest_action_steps' : 'manifest_declarations';
+      const table = tabType === 'summary' ? 'manifest_summaries' : tabType === 'action_steps' ? 'manifest_action_steps' : tabType === 'questions' ? 'manifest_questions' : 'manifest_declarations';
 
       // Soft-delete all items for this book + tab
       await supabase.from(table)
@@ -839,7 +940,7 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
         .eq('user_id', user.id);
 
       // Re-extract from whole document
-      const extractionType = tabType === 'summary' ? 'summary' : tabType === 'action_steps' ? 'action_steps' : 'mast_content';
+      const extractionType = tabType === 'summary' ? 'summary' : tabType === 'action_steps' ? 'action_steps' : tabType === 'questions' ? 'questions' : 'mast_content';
       const { data, error } = await supabase.functions.invoke('manifest-extract', {
         body: {
           manifest_item_id: bookId,
@@ -877,6 +978,19 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
               is_from_go_deeper: false,
             }));
             await supabase.from('manifest_action_steps').insert(records);
+          } else if (tabType === 'questions') {
+            const VALID_QUESTION_TYPES = ['reflection', 'implementation', 'recognition', 'self_examination', 'discussion', 'scenario'];
+            const records = items.map((item: { content_type: string; text: string; sort_order: number }, idx: number) => ({
+              user_id: user.id,
+              manifest_item_id: bookId,
+              section_title: null,
+              section_index: 0,
+              content_type: VALID_QUESTION_TYPES.includes(item.content_type) ? item.content_type : 'reflection',
+              text: item.text,
+              sort_order: item.sort_order ?? idx,
+              is_from_go_deeper: false,
+            }));
+            await supabase.from('manifest_questions').insert(records);
           } else {
             const VALID_STYLES = ['choosing_committing', 'recognizing_awakening', 'claiming_stepping_into', 'learning_striving', 'resolute_unashamed'];
             const records = items.map((item: { value_name?: string; declaration_text: string; declaration_style: string; sort_order: number }, idx: number) => ({
@@ -924,6 +1038,7 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
         d.summaries.some((s) => s.is_hearted) ||
         d.principles.some((p) => p.is_hearted) ||
         d.actionSteps.some((a) => a.is_hearted) ||
+        d.questions.some((q) => q.is_hearted) ||
         d.declarations.some((dc) => dc.is_hearted)
       );
     }
@@ -939,19 +1054,21 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
   // Counts that reflect what's actually displayed (respects filter mode + tag)
   const displayCounts = useMemo(() => {
     const useHearted = favoritesMode || filterMode === 'hearted';
-    let summaries = 0, frameworks = 0, declarations = 0, actionSteps = 0, notes = 0;
+    let summaries = 0, frameworks = 0, declarations = 0, actionSteps = 0, questions = 0, notes = 0;
     for (const d of visibleData) {
       const vs = useHearted ? d.summaries.filter((s) => s.is_hearted) : d.summaries;
       const vp = useHearted ? d.principles.filter((p) => p.is_hearted) : d.principles;
       const va = useHearted ? d.actionSteps.filter((a) => a.is_hearted) : d.actionSteps;
+      const vq = useHearted ? d.questions.filter((q) => q.is_hearted) : d.questions;
       const vd = useHearted ? d.declarations.filter((dc) => dc.is_hearted) : d.declarations;
       summaries += vs.length;
       frameworks += vp.length;
       actionSteps += va.length;
+      questions += vq.length;
       declarations += vd.length;
-      notes += vs.filter((s) => s.user_note).length + vp.filter((p) => p.user_note).length + va.filter((a) => a.user_note).length + vd.filter((dc) => dc.user_note).length;
+      notes += vs.filter((s) => s.user_note).length + vp.filter((p) => p.user_note).length + va.filter((a) => a.user_note).length + vq.filter((q) => q.user_note).length + vd.filter((dc) => dc.user_note).length;
     }
-    return { summaries, frameworks, declarations, actionSteps, notes };
+    return { summaries, frameworks, declarations, actionSteps, questions, notes };
   }, [favoritesMode, filterMode, visibleData]);
 
   // --- Export ---
@@ -986,6 +1103,7 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
             summaries: [],
             declarations: [],
             actionSteps: [],
+            questions: [],
             principles: [],
           });
           order.push(key);
@@ -994,6 +1112,7 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
         group.summaries.push(...d.summaries);
         group.declarations.push(...d.declarations);
         (group.actionSteps ??= []).push(...d.actionSteps);
+        (group.questions ??= []).push(...d.questions);
         group.principles.push(...d.principles);
       } else {
         // Single book — add directly
@@ -1003,6 +1122,7 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
           summaries: d.summaries,
           declarations: d.declarations,
           actionSteps: d.actionSteps,
+          questions: d.questions,
           principles: d.principles,
         });
         order.push(key);
@@ -1570,6 +1690,159 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
     );
   };
 
+  const renderQuestionsSection = (book: BookExtractions) => {
+    const visible = filterMode === 'hearted'
+      ? book.questions.filter((q) => q.is_hearted)
+      : book.questions;
+
+    if (visible.length === 0) {
+      return <div className="extraction-tab__empty"><p>{filterMode === 'hearted' ? 'No hearted questions.' : 'No questions extracted.'}</p></div>;
+    }
+
+    const sections = groupBySection(visible);
+    const isExtracting = extractingBookTab === `${book.bookId}-questions`;
+
+    return (
+      <div className="extraction-tab">
+        {!favoritesMode && isExtracting && (
+          <div className="extraction-tab__progress">
+            <div className="extraction-tab__progress-bar" />
+            <span>Extracting...</span>
+          </div>
+        )}
+
+        {!favoritesMode && (
+          <div className="extraction-tab__toolbar">
+            {confirmReRun === `${book.bookId}-questions` ? (
+              <div className="extraction-tab__confirm">
+                <span>Replace all questions with fresh extraction?</span>
+                <Button size="sm" onClick={() => handleReRun(book.bookId, 'questions')}>Re-run</Button>
+                <Button size="sm" variant="text" onClick={() => setConfirmReRun(null)}>Cancel</Button>
+              </div>
+            ) : (
+              <button type="button" className="extraction-tab__rerun-btn" onClick={() => setConfirmReRun(`${book.bookId}-questions`)} disabled={isExtracting}>
+                <RefreshCw size={12} /> Re-run
+              </button>
+            )}
+          </div>
+        )}
+
+        {sections.map(([sectionKey, items]) => {
+          const collapseKey = `${book.bookId}-questions-${sectionKey}`;
+          const isCollapsed = collapsedSections.has(collapseKey);
+          const label = sectionKey === '__full_book__' ? 'Full Book' : sectionKey;
+
+          return (
+            <div key={sectionKey} className="extraction-tab__section">
+              <button type="button" className="extraction-tab__section-header" onClick={() => toggleSection(collapseKey)}>
+                {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+                <span className="extraction-tab__section-title">{label}</span>
+                <span className="extraction-tab__section-count">{items.length}</span>
+              </button>
+
+              {!isCollapsed && (
+                <div className="extraction-tab__section-items">
+                  {items.map((item) => (
+                    <div key={item.id} className={`extraction-item${item.is_from_go_deeper ? ' extraction-item--deeper' : ''}${deletingIds.has(item.id) ? ' extraction-item--deleting' : ''}`}>
+                      <div className="extraction-item__type-badge">
+                        {QUESTION_CONTENT_TYPE_LABELS[item.content_type as QuestionContentType] || item.content_type.replace(/_/g, ' ')}
+                      </div>
+                      {editingId === item.id ? (
+                        <textarea
+                          className="extraction-item__edit-textarea"
+                          value={editingText}
+                          onChange={(e) => setEditingText(e.target.value)}
+                          onBlur={() => handleSaveEdit('manifest_questions', item.id, 'text')}
+                          onKeyDown={(e) => { if (e.key === 'Escape') cancelEditing(); }}
+                          autoFocus
+                        />
+                      ) : (
+                        <p className="extraction-item__text extraction-item__text--editable" onClick={() => startEditing(item.id, item.text)}>
+                          {item.is_from_go_deeper && <Sparkles size={12} className="extraction-item__deeper-icon" />}
+                          {item.text}
+                        </p>
+                      )}
+                      <div className="extraction-item__actions">
+                        <button
+                          type="button"
+                          className={`extraction-item__heart${item.is_hearted ? ' extraction-item__heart--active' : ''}`}
+                          onClick={() => handleHeartQuestion(item.id, item.is_hearted)}
+                          title={item.is_hearted ? 'Remove heart' : 'Heart this'}
+                        >
+                          <Heart size={14} fill={item.is_hearted ? 'currentColor' : 'none'} />
+                        </button>
+                        <button
+                          type="button"
+                          className={`extraction-item__note-btn${item.user_note ? ' extraction-item__note-btn--active' : ''}`}
+                          onClick={() => notingId === item.id ? handleSaveNote('manifest_questions', item.id) : startNoting(item.id, item.user_note)}
+                          title={item.user_note ? 'Edit note' : 'Add note'}
+                        >
+                          <StickyNote size={14} />
+                        </button>
+                        {item.sent_to_prompts ? (
+                          <span className="extraction-item__compass-sent">In Prompts</span>
+                        ) : (
+                          <button
+                            type="button"
+                            className="extraction-item__send-compass"
+                            onClick={() => handleSendToPrompts(item.id)}
+                            disabled={sendingToPrompts.has(item.id)}
+                            title="Send to Journal Prompts"
+                          >
+                            <MessageCircle size={14} />
+                            {sendingToPrompts.has(item.id) ? 'Sending...' : 'Send to Prompts'}
+                          </button>
+                        )}
+                        <button type="button" className="extraction-item__delete" onClick={() => handleDeleteItem('manifest_questions', item.id)} title="Delete">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+
+                      {notingId === item.id ? (
+                        <textarea
+                          className="extraction-item__note-textarea"
+                          value={noteDraft}
+                          onChange={(e) => setNoteDraft(e.target.value)}
+                          onBlur={() => handleSaveNote('manifest_questions', item.id)}
+                          onKeyDown={(e) => { if (e.key === 'Escape') setNotingId(null); }}
+                          autoFocus
+                          rows={2}
+                          placeholder="Add a note..."
+                        />
+                      ) : item.user_note ? (
+                        <div className="extraction-item__note" onClick={() => startNoting(item.id, item.user_note)}>
+                          <span className="extraction-item__note-label">NOTE</span>
+                          {item.user_note}
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
+
+                  {!favoritesMode && (
+                    <button
+                      type="button"
+                      className="extraction-tab__go-deeper"
+                      onClick={() => handleGoDeeper(
+                        book.bookId,
+                        'questions',
+                        sectionKey === '__full_book__' ? undefined : sectionKey,
+                        items.map((i) => i.text),
+                        items[0]?.section_index,
+                      )}
+                      disabled={isExtracting}
+                    >
+                      Go Deeper
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
     <div className="extractions-view">
       <div className="extractions-view__header">
@@ -1745,6 +2018,13 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
                   >
                     Mast {displayCounts.declarations > 0 && <span className="extractions-view__tab-count">{displayCounts.declarations}</span>}
                   </button>
+                  <button
+                    type="button"
+                    className={`extractions-view__tab${activeTab === 'questions' ? ' extractions-view__tab--active' : ''}`}
+                    onClick={() => setActiveTab('questions')}
+                  >
+                    Questions {displayCounts.questions > 0 && <span className="extractions-view__tab-count">{displayCounts.questions}</span>}
+                  </button>
                 </div>
 
                 <div className="extractions-view__controls-row">
@@ -1811,6 +2091,7 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
                       ...group.summaries.filter((s) => s.user_note).map((s) => ({ id: s.id, type: 'summary' as const, text: s.text, note: s.user_note!, badge: s.content_type.replace(/_/g, ' '), section: s.section_title, table: 'manifest_summaries' })),
                       ...group.principles.filter((p) => p.user_note).map((p) => ({ id: p.id, type: 'framework' as const, text: p.text, note: p.user_note!, badge: 'framework', section: p.section_title, table: 'ai_framework_principles' })),
                       ...group.actionSteps.filter((a) => a.user_note).map((a) => ({ id: a.id, type: 'action_step' as const, text: a.text, note: a.user_note!, badge: ACTION_STEP_CONTENT_TYPE_LABELS[a.content_type as ActionStepContentType] || a.content_type.replace(/_/g, ' '), section: a.section_title, table: 'manifest_action_steps' })),
+                      ...group.questions.filter((q) => q.user_note).map((q) => ({ id: q.id, type: 'question' as const, text: q.text, note: q.user_note!, badge: QUESTION_CONTENT_TYPE_LABELS[q.content_type as QuestionContentType] || q.content_type.replace(/_/g, ' '), section: q.section_title, table: 'manifest_questions' })),
                       ...group.declarations.filter((d) => d.user_note).map((d) => ({ id: d.id, type: 'declaration' as const, text: d.declaration_text, note: d.user_note!, badge: DECLARATION_STYLE_LABELS[d.declaration_style], section: d.section_title, table: 'manifest_declarations' })),
                     ];
                     if (noted.length === 0) return null;
@@ -1884,12 +2165,14 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
                           summaries: group.summaries.filter((s) => s.is_hearted),
                           principles: group.principles.filter((p) => p.is_hearted),
                           actionSteps: group.actionSteps.filter((a) => a.is_hearted),
+                          questions: group.questions.filter((q) => q.is_hearted),
                           declarations: group.declarations.filter((d) => d.is_hearted),
                         }
                       : group;
                     addSections(allItems.summaries);
                     addSections(allItems.principles.map((p) => ({ ...p, section_title: p.section_title || null })));
                     addSections(allItems.actionSteps);
+                    addSections(allItems.questions);
                     addSections(allItems.declarations);
                     const sortedSections = Array.from(sectionMap.entries()).sort((a, b) => a[1].index - b[1].index);
 
@@ -1911,6 +2194,7 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
                           const secSummaries = allItems.summaries.filter((s) => (s.section_title || '__full_book__') === sectionKey);
                           const secPrinciples = allItems.principles.filter((p) => ((p.section_title as string | null) || '__full_book__') === sectionKey);
                           const secActions = allItems.actionSteps.filter((a) => (a.section_title || '__full_book__') === sectionKey);
+                          const secQuestions = allItems.questions.filter((q) => (q.section_title || '__full_book__') === sectionKey);
                           const secDeclarations = allItems.declarations.filter((d) => (d.section_title || '__full_book__') === sectionKey);
 
                           return (
@@ -2044,6 +2328,53 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
                                       ))}
                                     </div>
                                   )}
+                                  {secQuestions.length > 0 && (
+                                    <div className="chapter-view__type-group">
+                                      <h5 className="chapter-view__type-heading">Questions</h5>
+                                      {secQuestions.map((q) => (
+                                        <div key={q.id} className={`extraction-item${q.is_from_go_deeper ? ' extraction-item--deeper' : ''}${deletingIds.has(q.id) ? ' extraction-item--deleting' : ''}`}>
+                                          <div className="extraction-item__type-badge">
+                                            {QUESTION_CONTENT_TYPE_LABELS[q.content_type as QuestionContentType] || q.content_type.replace(/_/g, ' ')}
+                                          </div>
+                                          {editingId === q.id ? (
+                                            <textarea
+                                              className="extraction-item__edit-textarea"
+                                              value={editingText}
+                                              onChange={(e) => setEditingText(e.target.value)}
+                                              onBlur={() => handleSaveEdit('manifest_questions', q.id, 'text')}
+                                              onKeyDown={(e) => { if (e.key === 'Escape') cancelEditing(); }}
+                                              autoFocus
+                                            />
+                                          ) : (
+                                            <p className="extraction-item__text extraction-item__text--editable" onClick={() => startEditing(q.id, q.text)}>{q.text}</p>
+                                          )}
+                                          <div className="extraction-item__actions">
+                                            <button type="button" className={`extraction-item__heart${q.is_hearted ? ' extraction-item__heart--active' : ''}`} onClick={() => handleHeartQuestion(q.id, q.is_hearted)}>
+                                              <Heart size={14} fill={q.is_hearted ? 'currentColor' : 'none'} />
+                                            </button>
+                                            <button type="button"
+                                              className={`extraction-item__note-btn${q.user_note ? ' extraction-item__note-btn--active' : ''}`}
+                                              onClick={() => notingId === q.id ? handleSaveNote('manifest_questions', q.id) : startNoting(q.id, q.user_note)}
+                                              title={q.user_note ? 'Edit note' : 'Add note'}
+                                            ><StickyNote size={14} /></button>
+                                            {q.sent_to_prompts ? (
+                                              <span className="extraction-item__compass-sent">In Prompts</span>
+                                            ) : (
+                                              <button type="button" className="extraction-item__send-compass" onClick={() => handleSendToPrompts(q.id)} disabled={sendingToPrompts.has(q.id)}>
+                                                <MessageCircle size={14} /> {sendingToPrompts.has(q.id) ? '...' : 'Prompts'}
+                                              </button>
+                                            )}
+                                            <button type="button" className="extraction-item__delete" onClick={() => handleDeleteItem('manifest_questions', q.id)}><Trash2 size={14} /></button>
+                                          </div>
+                                          {notingId === q.id ? (
+                                            <textarea className="extraction-item__note-textarea" value={noteDraft} onChange={(e) => setNoteDraft(e.target.value)} onBlur={() => handleSaveNote('manifest_questions', q.id)} onKeyDown={(e) => { if (e.key === 'Escape') setNotingId(null); }} autoFocus rows={2} placeholder="Add a note..." />
+                                          ) : q.user_note ? (
+                                            <div className="extraction-item__note" onClick={() => startNoting(q.id, q.user_note)}><span className="extraction-item__note-label">NOTE</span>{q.user_note}</div>
+                                          ) : null}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
                                   {secDeclarations.length > 0 && (
                                     <div className="chapter-view__type-group">
                                       <h5 className="chapter-view__type-heading">Mast Content</h5>
@@ -2120,6 +2451,7 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
                           {activeTab === 'frameworks' && renderFrameworksSection(group)}
                           {activeTab === 'action_steps' && renderActionStepsSection(group)}
                           {activeTab === 'mast_content' && renderMastContentSection(group)}
+                          {activeTab === 'questions' && renderQuestionsSection(group)}
                         </>
                       )}
                     </div>

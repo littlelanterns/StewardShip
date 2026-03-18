@@ -163,11 +163,11 @@ Rules:
 - For exercises explicitly described in the text, preserve the author's method faithfully.
 - For concepts without explicit exercises, CREATE practical action steps that embody the principle. These should be concrete, not generic.
 - Include brief CONTEXT for why this action matters (1 sentence before or after the action).
+- IMPORTANT: Action steps must be ACTIONS, not questions. Do NOT include journaling prompts, reflection questions, or "write about..." items here — those belong in the Questions extraction. Every item should start with a verb describing something to DO (practice, set, schedule, create, build, track, etc.), not something to think about or write about.
 - Label each with its content_type:
   - "exercise" — A structured activity described in the text
   - "practice" — An ongoing behavioral discipline to adopt
   - "habit" — A repeatable daily/weekly routine to build
-  - "reflection_prompt" — A question or journaling prompt for self-reflection
   - "conversation_starter" — Something to discuss with a spouse, friend, or mentor
   - "project" — A larger undertaking (multi-day or multi-week)
   - "daily_action" — Something small to do each day
@@ -183,10 +183,50 @@ Return ONLY a JSON object:
   ]
 }
 
-Valid content_type values: "exercise", "practice", "habit", "reflection_prompt", "conversation_starter", "project", "daily_action", "weekly_practice"
+Valid content_type values: "exercise", "practice", "habit", "conversation_starter", "project", "daily_action", "weekly_practice"
 No markdown backticks, no preamble.`;
 
-const COMBINED_SECTION_PROMPT = `You are an expert at extracting the essential content from books and documents. Given a section of text, perform FOUR extraction tasks simultaneously and return all results in a single JSON response.
+const QUESTIONS_EXTRACTION_PROMPT = `You are an expert at crafting reflective questions that help readers deeply internalize and apply what they read. Given a section of text, extract and create thoughtful questions that guide personal growth.
+
+The questions should help the reader:
+- REFLECT on how the content connects to their own life and experiences
+- RECOGNIZE ways the teachings have already had an effect in their lives
+- IMPLEMENT the wisdom by identifying concrete next steps
+- EXAMINE their own patterns, beliefs, and behaviors in light of the content
+- DISCUSS the ideas meaningfully with others (book club, colloquium, mentor, spouse)
+- EXPLORE hypothetical scenarios that deepen understanding
+
+Rules:
+- Questions must be OPEN-ENDED — never yes/no. They should invite genuine reflection, not simple recall.
+- Each question should STAND ALONE — someone reading just the question should be able to reflect meaningfully, even without having read the book. Include enough context in the question itself.
+- COHESION RULE: A multi-part reflection sequence is ONE item. If a question naturally has a follow-up ("...and if so, how has that changed you?"), keep them together.
+- Use section length as a rough guide: ~1-2 questions per 2,000-3,000 characters of input. A short section may produce 2-5 questions, a long one 8-15.
+- Questions should be PERSONAL and INVITING — use "you/your" language. Not clinical or academic.
+- For fiction/allegory/memoir, ask about character decisions, moral dilemmas, and parallels to the reader's own life.
+- For non-fiction, ask about applying principles, recognizing patterns, and identifying growth areas.
+- For scripture/sacred texts, ask about spiritual application, personal relevance, and lived experience.
+- Avoid surface-level comprehension questions ("What did the author say about X?"). Every question should prompt self-examination or life application.
+- Label each with its content_type:
+  - "reflection" — Inward-looking: How does this connect to who you are or want to become?
+  - "implementation" — Forward-looking: How could you apply this teaching starting today?
+  - "recognition" — Backward-looking: Where has this principle already shown up in your life?
+  - "self_examination" — Pattern-seeking: What does this reveal about your habits, beliefs, or tendencies?
+  - "discussion" — Outward-looking: A question for a book club, colloquium, mentor conversation, or family discussion
+  - "scenario" — Hypothetical: "What would you do if..." or "Imagine that..." to deepen understanding
+
+Return ONLY a JSON object:
+{
+  "items": [
+    { "content_type": "reflection", "text": "When you think about [concept from text], what area of your life comes to mind first — and what does that tell you about where you are right now?", "sort_order": 0 },
+    { "content_type": "implementation", "text": "The author describes [specific practice]. What would it look like to try this in your own context this week?", "sort_order": 1 },
+    { "content_type": "discussion", "text": "If you were discussing [theme] with a group, what personal example would you share to illustrate its importance?", "sort_order": 2 }
+  ]
+}
+
+Valid content_type values: "reflection", "implementation", "recognition", "self_examination", "discussion", "scenario"
+No markdown backticks, no preamble.`;
+
+const COMBINED_SECTION_PROMPT = `You are an expert at extracting the essential content from books and documents. Given a section of text, perform FIVE extraction tasks simultaneously and return all results in a single JSON response.
 
 === TASK 1: SUMMARIES ===
 Extract the key concepts, stories, metaphors, lessons, and insights that capture the essence of this content.
@@ -246,11 +286,30 @@ Extract concrete, actionable steps, exercises, practices, and activities that a 
 - For exercises explicitly described in the text, preserve the author's method faithfully.
 - For concepts without explicit exercises, CREATE practical action steps that embody the principle.
 - Include brief context for why the action matters (1 sentence).
+- IMPORTANT: Action steps must be ACTIONS, not questions. Do NOT include journaling prompts, reflection questions, or "write about..." items — those belong in Task 5 (Questions). Every item should start with a verb describing something to DO (practice, set, schedule, create, build, track, etc.).
 - For fiction/allegory/memoir, derive steps from the character's lessons, mistakes, or growth moments.
-- Label each with its content_type: "exercise", "practice", "habit", "reflection_prompt", "conversation_starter", "project", "daily_action", "weekly_practice"
+- Label each with its content_type: "exercise", "practice", "habit", "conversation_starter", "project", "daily_action", "weekly_practice"
 - Avoid generic self-help platitudes. Every step should trace back to a SPECIFIC insight from this section.
 
-Return ONLY a JSON object with all four sections:
+=== TASK 5: QUESTIONS ===
+Create reflective questions that help the reader deeply internalize and apply the content. Questions should help the reader reflect on their own life, recognize existing growth, plan implementation, examine patterns, and discuss ideas meaningfully with others.
+- Questions must be OPEN-ENDED — never yes/no. They should invite genuine reflection, not simple recall.
+- Each question should STAND ALONE — include enough context that someone can reflect meaningfully without having read the book.
+- Use "you/your" language — personal and inviting, not clinical or academic.
+- COHESION RULE: A multi-part reflection sequence is ONE item.
+- Extract 3-8 questions depending on content richness.
+- For fiction/allegory/memoir, ask about character decisions, moral dilemmas, and parallels to the reader's own life.
+- For scripture/sacred texts, ask about spiritual application, personal relevance, and lived experience.
+- Avoid surface-level comprehension questions. Every question should prompt self-examination or life application.
+- Label each with its content_type:
+  - "reflection" — Inward-looking: How does this connect to who you are or want to become?
+  - "implementation" — Forward-looking: How could you apply this starting today?
+  - "recognition" — Backward-looking: Where has this principle already shown up in your life?
+  - "self_examination" — Pattern-seeking: What does this reveal about your habits, beliefs, or tendencies?
+  - "discussion" — Outward-looking: For book clubs, colloquiums, mentor conversations, or family discussions
+  - "scenario" — Hypothetical: "What would you do if..." to deepen understanding
+
+Return ONLY a JSON object with all five sections:
 {
   "summaries": [
     { "content_type": "key_concept", "text": "Clear explanation...", "sort_order": 0 },
@@ -268,6 +327,10 @@ Return ONLY a JSON object with all four sections:
   ],
   "declarations": [
     { "value_name": "Intentional Presence", "declaration_text": "I choose to...", "declaration_style": "choosing_committing", "sort_order": 0 }
+  ],
+  "questions": [
+    { "content_type": "reflection", "text": "When you consider [concept], what area of your life comes to mind first?", "sort_order": 0 },
+    { "content_type": "discussion", "text": "If discussing [theme] with a group, what personal example would you share?", "sort_order": 1 }
   ]
 }
 
@@ -685,7 +748,7 @@ serve(async (req: Request) => {
         headers: openRouterHeaders,
         body: JSON.stringify({
           model: 'anthropic/claude-sonnet-4',
-          max_tokens: 16384,
+          max_tokens: 20480,
           messages: [
             { role: 'system', content: fullPrompt },
             {
@@ -729,10 +792,11 @@ serve(async (req: Request) => {
         ? (((resultObj.framework as Record<string, unknown>).principles) as unknown[]).length : 0;
       const actionCount = Array.isArray(resultObj?.action_steps) ? (resultObj.action_steps as unknown[]).length : 0;
       const declCount = Array.isArray(resultObj?.declarations) ? (resultObj.declarations as unknown[]).length : 0;
-      console.log(`[manifest-extract] combined_section parsed: summaries=${summaryCount}, principles=${principleCount}, action_steps=${actionCount}, declarations=${declCount}`);
+      const questionCount = Array.isArray(resultObj?.questions) ? (resultObj.questions as unknown[]).length : 0;
+      console.log(`[manifest-extract] combined_section parsed: summaries=${summaryCount}, principles=${principleCount}, action_steps=${actionCount}, declarations=${declCount}, questions=${questionCount}`);
 
-      if (finishReason === 'length' && (actionCount === 0 || declCount === 0)) {
-        console.warn(`[manifest-extract] combined_section LIKELY TRUNCATED — missing action_steps (${actionCount}) or declarations (${declCount}) for section="${section_title}"`);
+      if (finishReason === 'length' && (actionCount === 0 || declCount === 0 || questionCount === 0)) {
+        console.warn(`[manifest-extract] combined_section LIKELY TRUNCATED — missing action_steps (${actionCount}), declarations (${declCount}), or questions (${questionCount}) for section="${section_title}"`);
       }
 
       // Sanitize declaration_style on declarations
@@ -754,7 +818,7 @@ serve(async (req: Request) => {
 
     // --- Per-Section extraction types (framework_section, summary_section, mast_content_section) ---
     // Used for Go Deeper and Re-run (single tab at a time)
-    const sectionTypes = ['framework_section', 'summary_section', 'mast_content_section', 'action_steps_section'];
+    const sectionTypes = ['framework_section', 'summary_section', 'mast_content_section', 'action_steps_section', 'questions_section'];
     if (sectionTypes.includes(extraction_type)) {
       if (section_start == null || section_end == null) {
         return new Response(
@@ -779,6 +843,8 @@ serve(async (req: Request) => {
         basePrompt = SUMMARY_EXTRACTION_PROMPT;
       } else if (extraction_type === 'action_steps_section') {
         basePrompt = ACTION_STEPS_EXTRACTION_PROMPT;
+      } else if (extraction_type === 'questions_section') {
+        basePrompt = QUESTIONS_EXTRACTION_PROMPT;
       } else {
         basePrompt = MAST_CONTENT_EXTRACTION_PROMPT;
       }
@@ -860,9 +926,12 @@ serve(async (req: Request) => {
       case 'action_steps':
         systemPrompt = ACTION_STEPS_EXTRACTION_PROMPT;
         break;
+      case 'questions':
+        systemPrompt = QUESTIONS_EXTRACTION_PROMPT;
+        break;
       default:
         return new Response(
-          JSON.stringify({ error: 'Invalid extraction_type. Must be: framework, mast, summary, mast_content, action_steps, discover_sections, framework_section, summary_section, mast_content_section, action_steps_section, combined_section' }),
+          JSON.stringify({ error: 'Invalid extraction_type. Must be: framework, mast, summary, mast_content, action_steps, questions, discover_sections, framework_section, summary_section, mast_content_section, action_steps_section, questions_section, combined_section' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         );
     }

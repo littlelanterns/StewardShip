@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Download, Heart, Trash2, Anchor, Compass, Sparkles, StickyNote } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../contexts/AuthContext';
-import type { ManifestSummary, ManifestDeclaration, ManifestActionStep, AIFrameworkPrinciple } from '../../lib/types';
-import { ACTION_STEP_CONTENT_TYPE_LABELS, DECLARATION_STYLE_LABELS, MANIFEST_SUMMARY_COLUMNS, MANIFEST_DECLARATION_COLUMNS, MANIFEST_ACTION_STEP_COLUMNS, AI_FRAMEWORK_PRINCIPLE_COLUMNS } from '../../lib/types';
-import type { ActionStepContentType } from '../../lib/types';
+import type { ManifestSummary, ManifestDeclaration, ManifestActionStep, ManifestQuestion, AIFrameworkPrinciple } from '../../lib/types';
+import { ACTION_STEP_CONTENT_TYPE_LABELS, QUESTION_CONTENT_TYPE_LABELS, DECLARATION_STYLE_LABELS, MANIFEST_SUMMARY_COLUMNS, MANIFEST_DECLARATION_COLUMNS, MANIFEST_ACTION_STEP_COLUMNS, MANIFEST_QUESTION_COLUMNS, AI_FRAMEWORK_PRINCIPLE_COLUMNS } from '../../lib/types';
+import type { ActionStepContentType, QuestionContentType } from '../../lib/types';
 import type { BookExtractionGroup } from '../../lib/exportExtractions';
 import { ExportDialog } from './ExportDialog';
 import './HeartedItemsView.css';
@@ -21,6 +21,7 @@ interface BookGroup {
   summaries: ManifestSummary[];
   declarations: ManifestDeclaration[];
   actionSteps: ManifestActionStep[];
+  questions: ManifestQuestion[];
   principles: (AIFrameworkPrinciple & { framework_name?: string })[];
 }
 
@@ -43,7 +44,7 @@ export function HeartedItemsView({ onBack }: HeartedItemsViewProps) {
     if (!user) return;
     setLoading(true);
     try {
-      const [summaryRes, declRes, principleRes, actionStepRes] = await Promise.all([
+      const [summaryRes, declRes, principleRes, actionStepRes, questionRes] = await Promise.all([
         supabase
           .from('manifest_summaries')
           .select(MANIFEST_SUMMARY_COLUMNS)
@@ -79,18 +80,29 @@ export function HeartedItemsView({ onBack }: HeartedItemsViewProps) {
           .order('manifest_item_id')
           .order('sort_order', { ascending: true })
           .limit(10000),
+        supabase
+          .from('manifest_questions')
+          .select(MANIFEST_QUESTION_COLUMNS)
+          .eq('user_id', user.id)
+          .eq('is_hearted', true)
+          .eq('is_deleted', false)
+          .order('manifest_item_id')
+          .order('sort_order', { ascending: true })
+          .limit(10000),
       ]);
 
       const summaries = (summaryRes.data || []) as ManifestSummary[];
       const declarations = (declRes.data || []) as ManifestDeclaration[];
       const rawPrinciples = (principleRes.data || []) as unknown as Array<AIFrameworkPrinciple & { ai_frameworks: { manifest_item_id: string; name: string } }>;
       const actionSteps = (actionStepRes.data || []) as ManifestActionStep[];
+      const questions = (questionRes.data || []) as ManifestQuestion[];
 
       const itemIds = new Set<string>();
       summaries.forEach((s) => itemIds.add(s.manifest_item_id));
       declarations.forEach((d) => itemIds.add(d.manifest_item_id));
       rawPrinciples.forEach((p) => itemIds.add(p.ai_frameworks.manifest_item_id));
       actionSteps.forEach((a) => itemIds.add(a.manifest_item_id));
+      questions.forEach((q) => itemIds.add(q.manifest_item_id));
 
       const { data: items } = await supabase
         .from('manifest_items')
@@ -107,11 +119,12 @@ export function HeartedItemsView({ onBack }: HeartedItemsViewProps) {
           summaries: summaries.filter((s) => s.manifest_item_id === bookId),
           declarations: declarations.filter((d) => d.manifest_item_id === bookId),
           actionSteps: actionSteps.filter((a) => a.manifest_item_id === bookId),
+          questions: questions.filter((q) => q.manifest_item_id === bookId),
           principles: rawPrinciples
             .filter((p) => p.ai_frameworks.manifest_item_id === bookId)
             .map((p) => ({ ...p, framework_name: p.ai_frameworks.name })),
         };
-        if (group.summaries.length > 0 || group.declarations.length > 0 || group.principles.length > 0 || group.actionSteps.length > 0) {
+        if (group.summaries.length > 0 || group.declarations.length > 0 || group.principles.length > 0 || group.actionSteps.length > 0 || group.questions.length > 0) {
           groups.push(group);
         }
       }
@@ -128,7 +141,7 @@ export function HeartedItemsView({ onBack }: HeartedItemsViewProps) {
 
   const totalCount = useMemo(() => {
     return bookGroups.reduce(
-      (sum, g) => sum + g.summaries.length + g.declarations.length + g.principles.length + g.actionSteps.length,
+      (sum, g) => sum + g.summaries.length + g.declarations.length + g.principles.length + g.actionSteps.length + g.questions.length,
       0,
     );
   }, [bookGroups]);
@@ -143,8 +156,9 @@ export function HeartedItemsView({ onBack }: HeartedItemsViewProps) {
         summaries: g.summaries.filter((s) => s.id !== id),
         declarations: g.declarations.filter((d) => d.id !== id),
         actionSteps: g.actionSteps.filter((a) => a.id !== id),
+        questions: g.questions.filter((q) => q.id !== id),
         principles: g.principles.filter((p) => p.id !== id),
-      })).filter((g) => g.summaries.length > 0 || g.declarations.length > 0 || g.actionSteps.length > 0 || g.principles.length > 0),
+      })).filter((g) => g.summaries.length > 0 || g.declarations.length > 0 || g.actionSteps.length > 0 || g.questions.length > 0 || g.principles.length > 0),
     );
     await supabase.from(table).update({ is_hearted: false }).eq('id', id).eq('user_id', user.id);
   }, [user]);
@@ -161,8 +175,9 @@ export function HeartedItemsView({ onBack }: HeartedItemsViewProps) {
           summaries: g.summaries.filter((s) => s.id !== id),
           declarations: g.declarations.filter((d) => d.id !== id),
           actionSteps: g.actionSteps.filter((a) => a.id !== id),
+          questions: g.questions.filter((q) => q.id !== id),
           principles: g.principles.filter((p) => p.id !== id),
-        })).filter((g) => g.summaries.length > 0 || g.declarations.length > 0 || g.actionSteps.length > 0 || g.principles.length > 0),
+        })).filter((g) => g.summaries.length > 0 || g.declarations.length > 0 || g.actionSteps.length > 0 || g.questions.length > 0 || g.principles.length > 0),
       );
       setDeletingIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
     }, 300);
@@ -183,6 +198,7 @@ export function HeartedItemsView({ onBack }: HeartedItemsViewProps) {
         summaries: g.summaries.map((s) => s.id === id ? { ...s, [field]: editingText.trim() } : s),
         declarations: g.declarations.map((d) => d.id === id ? { ...d, [field]: editingText.trim() } : d),
         actionSteps: g.actionSteps.map((a) => a.id === id ? { ...a, [field]: editingText.trim() } : a),
+        questions: g.questions.map((q) => q.id === id ? { ...q, [field]: editingText.trim() } : q),
         principles: g.principles.map((p) => p.id === id ? { ...p, [field]: editingText.trim() } : p),
       })),
     );
@@ -210,6 +226,7 @@ export function HeartedItemsView({ onBack }: HeartedItemsViewProps) {
         summaries: g.summaries.map((s) => s.id === id ? { ...s, user_note: noteVal } : s),
         declarations: g.declarations.map((d) => d.id === id ? { ...d, user_note: noteVal } : d),
         actionSteps: g.actionSteps.map((a) => a.id === id ? { ...a, user_note: noteVal } : a),
+        questions: g.questions.map((q) => q.id === id ? { ...q, user_note: noteVal } : q),
         principles: g.principles.map((p) => p.id === id ? { ...p, user_note: noteVal } : p),
       })),
     );
@@ -307,6 +324,7 @@ export function HeartedItemsView({ onBack }: HeartedItemsViewProps) {
       summaries: g.summaries,
       declarations: g.declarations,
       actionSteps: g.actionSteps,
+      questions: g.questions,
       principles: g.principles,
     }));
   }, [bookGroups]);
@@ -546,6 +564,68 @@ export function HeartedItemsView({ onBack }: HeartedItemsViewProps) {
                       <div className="extraction-item__note" onClick={() => startNoting(a.id, a.user_note)}>
                         <span className="extraction-item__note-label">NOTE</span>
                         {a.user_note}
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </>
+            )}
+
+            {group.questions.length > 0 && (
+              <>
+                <div className="hearted-items__type-label">Questions</div>
+                {group.questions.map((q) => (
+                  <div key={q.id} className={`extraction-item${q.is_from_go_deeper ? ' extraction-item--deeper' : ''}${deletingIds.has(q.id) ? ' extraction-item--deleting' : ''}`}>
+                    <span className="extraction-item__type-badge">
+                      {QUESTION_CONTENT_TYPE_LABELS[q.content_type as QuestionContentType] || q.content_type.replace(/_/g, ' ')}
+                    </span>
+                    {editingId === q.id ? (
+                      <textarea
+                        className="extraction-item__edit-textarea"
+                        value={editingText}
+                        onChange={(e) => setEditingText(e.target.value)}
+                        onBlur={() => handleSaveEdit('manifest_questions', q.id, 'text')}
+                        onKeyDown={(e) => { if (e.key === 'Escape') cancelEditing(); }}
+                        autoFocus
+                      />
+                    ) : (
+                      <p className="extraction-item__text extraction-item__text--editable" onClick={() => startEditing(q.id, q.text)}>
+                        {q.is_from_go_deeper && <Sparkles size={12} className="extraction-item__deeper-icon" />}
+                        {q.text}
+                      </p>
+                    )}
+                    <div className="extraction-item__actions">
+                      <button type="button" className="extraction-item__heart extraction-item__heart--active" onClick={() => handleUnheart('manifest_questions', q.id)} title="Remove heart">
+                        <Heart size={14} fill="currentColor" />
+                      </button>
+                      <button
+                        type="button"
+                        className={`extraction-item__note-btn${q.user_note ? ' extraction-item__note-btn--active' : ''}`}
+                        onClick={() => notingId === q.id ? handleSaveNote('manifest_questions', q.id) : startNoting(q.id, q.user_note)}
+                        title={q.user_note ? 'Edit note' : 'Add note'}
+                      >
+                        <StickyNote size={14} />
+                      </button>
+                      <button type="button" className="extraction-item__delete" onClick={() => handleDelete('manifest_questions', q.id)} title="Delete">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+
+                    {notingId === q.id ? (
+                      <textarea
+                        className="extraction-item__note-textarea"
+                        value={noteDraft}
+                        onChange={(e) => setNoteDraft(e.target.value)}
+                        onBlur={() => handleSaveNote('manifest_questions', q.id)}
+                        onKeyDown={(e) => { if (e.key === 'Escape') setNotingId(null); }}
+                        autoFocus
+                        rows={2}
+                        placeholder="Add a note..."
+                      />
+                    ) : q.user_note ? (
+                      <div className="extraction-item__note" onClick={() => startNoting(q.id, q.user_note)}>
+                        <span className="extraction-item__note-label">NOTE</span>
+                        {q.user_note}
                       </div>
                     ) : null}
                   </div>

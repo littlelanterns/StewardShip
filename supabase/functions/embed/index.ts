@@ -32,6 +32,10 @@ const TABLE_CONFIG: Record<string, TableConfig> = {
     textColumns: ['text'],
     activeFilter: 'is_deleted',
   },
+  manifest_questions: {
+    textColumns: ['text'],
+    activeFilter: 'is_deleted',
+  },
   mast_entries: {
     textColumns: ['text'],
     activeFilter: 'archived_at',

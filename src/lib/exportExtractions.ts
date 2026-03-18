@@ -1,7 +1,7 @@
 import JSZip from 'jszip';
-import type { ManifestSummary, ManifestDeclaration, ManifestActionStep, AIFrameworkPrinciple } from './types';
-import { DECLARATION_STYLE_LABELS, ACTION_STEP_CONTENT_TYPE_LABELS } from './types';
-import type { ActionStepContentType } from './types';
+import type { ManifestSummary, ManifestDeclaration, ManifestActionStep, ManifestQuestion, AIFrameworkPrinciple } from './types';
+import { DECLARATION_STYLE_LABELS, ACTION_STEP_CONTENT_TYPE_LABELS, QUESTION_CONTENT_TYPE_LABELS } from './types';
+import type { ActionStepContentType, QuestionContentType } from './types';
 
 // --- Shared types ---
 
@@ -10,6 +10,7 @@ export interface BookExtractionGroup {
   summaries: ManifestSummary[];
   declarations: ManifestDeclaration[];
   actionSteps?: ManifestActionStep[];
+  questions?: ManifestQuestion[];
   principles: (AIFrameworkPrinciple & { framework_name?: string })[];
 }
 
@@ -17,6 +18,7 @@ export interface ExportTabFilter {
   summary?: boolean;
   frameworks?: boolean;
   action_steps?: boolean;
+  questions?: boolean;
   mast_content?: boolean;
 }
 
@@ -83,6 +85,11 @@ export function actionStepLabel(type: string): string {
   return ACTION_STEP_CONTENT_TYPE_LABELS[type as ActionStepContentType] || type.replace(/_/g, ' ').toUpperCase();
 }
 
+/** Format question content_type to display label */
+export function questionLabel(type: string): string {
+  return QUESTION_CONTENT_TYPE_LABELS[type as QuestionContentType] || type.replace(/_/g, ' ').toUpperCase();
+}
+
 /** Format user note for markdown export */
 function mdNote(note: string | null | undefined): string {
   if (!note) return '';
@@ -109,6 +116,7 @@ export interface ChapterData {
   summaries: ManifestSummary[];
   principles: (AIFrameworkPrinciple & { framework_name?: string })[];
   actionSteps: ManifestActionStep[];
+  questions: ManifestQuestion[];
   declarations: ManifestDeclaration[];
 }
 
@@ -129,6 +137,7 @@ export function collectChapters(group: BookExtractionGroup, tabs?: ExportTabFilt
         summaries: [],
         principles: [],
         actionSteps: [],
+        questions: [],
         declarations: [],
       });
     }
@@ -146,6 +155,9 @@ export function collectChapters(group: BookExtractionGroup, tabs?: ExportTabFilt
   }
   if (tabEnabled(tabs, 'action_steps') && group.actionSteps) {
     for (const a of group.actionSteps) getOrCreate(a.section_title, a.section_index).actionSteps.push(a);
+  }
+  if (tabEnabled(tabs, 'questions') && group.questions) {
+    for (const q of group.questions) getOrCreate(q.section_title, q.section_index).questions.push(q);
   }
   if (tabEnabled(tabs, 'mast_content')) {
     for (const d of group.declarations) getOrCreate(d.section_title, d.section_index).declarations.push(d);
@@ -204,6 +216,17 @@ function buildBookMarkdown(group: BookExtractionGroup, headingLevel: '#' | '##',
         const heartPrefix = a.is_hearted ? '\u2764\uFE0F ' : '';
         lines.push(`${heartPrefix}**${actionStepLabel(a.content_type)}** \u2014 ${cleanText(a.text)}`, '');
         const note = mdNote(a.user_note);
+        if (note) lines.push(note);
+      }
+    }
+
+    // Questions for this chapter
+    if (chapter.questions.length > 0) {
+      lines.push(`${contentSub} Questions`, '');
+      for (const q of chapter.questions) {
+        const heartPrefix = q.is_hearted ? '\u2764\uFE0F ' : '';
+        lines.push(`${heartPrefix}**${questionLabel(q.content_type)}** \u2014 ${cleanText(q.text)}`, '');
+        const note = mdNote(q.user_note);
         if (note) lines.push(note);
       }
     }
@@ -301,6 +324,18 @@ function buildBookTxt(group: BookExtractionGroup, isTopLevel: boolean, tabs?: Ex
         const heartPrefix = a.is_hearted ? '[hearted] ' : '';
         lines.push(`${heartPrefix}${actionStepLabel(a.content_type)}: ${cleanText(a.text)}`);
         const note = txtNote(a.user_note);
+        if (note) lines.push(note);
+        lines.push('');
+      }
+    }
+
+    // Questions for this chapter
+    if (chapter.questions.length > 0) {
+      lines.push('--- QUESTIONS ---', '');
+      for (const q of chapter.questions) {
+        const heartPrefix = q.is_hearted ? '[hearted] ' : '';
+        lines.push(`${heartPrefix}${questionLabel(q.content_type)}: ${cleanText(q.text)}`);
+        const note = txtNote(q.user_note);
         if (note) lines.push(note);
         lines.push('');
       }
@@ -415,6 +450,21 @@ function buildDocxParagraphs(groups: BookExtractionGroup[], isMultiBook: boolean
             cleanText(a.text),
           ));
           const note = docxNoteParagraph(a.user_note);
+          if (note) paras.push(note);
+        }
+        paras.push(docxSpacer());
+      }
+
+      // Questions for this chapter
+      if (chapter.questions.length > 0) {
+        paras.push(docxHeading('Questions', contentHeading));
+        for (const q of chapter.questions) {
+          const heartPrefix = q.is_hearted ? '\u2764\uFE0F ' : '';
+          paras.push(docxBoldPrefixParagraph(
+            `${heartPrefix}${questionLabel(q.content_type)}`,
+            cleanText(q.text),
+          ));
+          const note = docxNoteParagraph(q.user_note);
           if (note) paras.push(note);
         }
         paras.push(docxSpacer());
@@ -589,7 +639,7 @@ export async function exportHeartedDocx(groups: BookExtractionGroup[]): Promise<
 // ============================================================
 
 interface NotedItem {
-  type: 'summary' | 'framework' | 'action_step' | 'declaration';
+  type: 'summary' | 'framework' | 'action_step' | 'question' | 'declaration';
   text: string;
   note: string;
   badge: string;
@@ -608,6 +658,11 @@ function collectNotedItems(group: BookExtractionGroup): NotedItem[] {
   if (group.actionSteps) {
     for (const a of group.actionSteps) {
       if (a.user_note) items.push({ type: 'action_step', text: a.text, note: a.user_note, badge: actionStepLabel(a.content_type), sectionTitle: a.section_title, sectionIndex: a.section_index });
+    }
+  }
+  if (group.questions) {
+    for (const q of group.questions) {
+      if (q.user_note) items.push({ type: 'question', text: q.text, note: q.user_note, badge: questionLabel(q.content_type), sectionTitle: q.section_title, sectionIndex: q.section_index });
     }
   }
   for (const d of group.declarations) {

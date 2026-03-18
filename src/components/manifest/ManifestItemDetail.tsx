@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { ChevronLeft, FileText, FileCode, Mic, Image, StickyNote, RefreshCw, BookOpen, Wand2, MessageSquare, Target, HelpCircle, CheckSquare, BarChart3, Users, ChevronRight, AlertTriangle, Tags } from 'lucide-react';
-import type { ManifestItem, ManifestSummary, ManifestDeclaration, ManifestActionStep, AIFrameworkPrinciple, BookGenre, DiscussionType } from '../../lib/types';
+import type { ManifestItem, ManifestSummary, ManifestDeclaration, ManifestActionStep, ManifestQuestion, AIFrameworkPrinciple, BookGenre, DiscussionType } from '../../lib/types';
 import { MANIFEST_FILE_TYPE_LABELS, MANIFEST_STATUS_LABELS } from '../../lib/types';
 import type { SectionInfo } from '../../hooks/useManifestExtraction';
 import type { MergeStats } from '../../lib/mergeSections';
@@ -93,6 +93,16 @@ interface ManifestItemDetailProps {
   onSendActionStepToCompass: (id: string) => void;
   onActionStepGoDeeper: (sectionTitle: string | undefined, existingItems: string[], sectionIndex?: number) => void;
   onActionStepReRun: (sectionTitle?: string) => void;
+  // Question actions
+  questions: ManifestQuestion[];
+  onFetchQuestions: (manifestItemId: string) => Promise<void>;
+  onToggleQuestionHeart: (id: string) => void;
+  onDeleteQuestion: (id: string) => void;
+  onUpdateQuestionText: (id: string, text: string) => void;
+  onUpdateQuestionNote: (id: string, note: string | null) => void;
+  onSendQuestionToPrompts: (id: string) => void;
+  onQuestionGoDeeper: (sectionTitle: string | undefined, existingItems: string[], sectionIndex?: number) => void;
+  onQuestionReRun: (sectionTitle?: string) => void;
   // Notes
   onUpdateSummaryNote?: (id: string, note: string | null) => void;
   onUpdatePrincipleNote?: (id: string, note: string | null) => void;
@@ -178,6 +188,15 @@ export function ManifestItemDetail({
   onSendActionStepToCompass,
   onActionStepGoDeeper,
   onActionStepReRun,
+  questions,
+  onFetchQuestions,
+  onToggleQuestionHeart,
+  onDeleteQuestion,
+  onUpdateQuestionText,
+  onUpdateQuestionNote,
+  onSendQuestionToPrompts,
+  onQuestionGoDeeper,
+  onQuestionReRun,
   onUpdateSummaryNote,
   onUpdatePrincipleNote,
   onUpdateActionStepNote,
@@ -244,8 +263,9 @@ export function ManifestItemDetail({
       onFetchSummaries(item.id);
       onFetchDeclarations(item.id);
       onFetchActionSteps(item.id);
+      onFetchQuestions(item.id);
     }
-  }, [item.id, isProcessed, onFetchSummaries, onFetchDeclarations, onFetchActionSteps]);
+  }, [item.id, isProcessed, onFetchSummaries, onFetchDeclarations, onFetchActionSteps, onFetchQuestions]);
 
   const saveTitle = useCallback(() => {
     if (titleDraft.trim() && titleDraft.trim() !== item.title) {
@@ -1250,6 +1270,14 @@ export function ManifestItemDetail({
             onUpdatePrincipleNote={onUpdatePrincipleNote || (() => {})}
             onUpdateActionStepNote={onUpdateActionStepNote || (() => {})}
             onUpdateDeclarationNote={onUpdateDeclarationNote || (() => {})}
+            questions={questions}
+            onToggleQuestionHeart={onToggleQuestionHeart}
+            onDeleteQuestion={onDeleteQuestion}
+            onUpdateQuestionText={onUpdateQuestionText}
+            onUpdateQuestionNote={onUpdateQuestionNote}
+            onSendQuestionToPrompts={onSendQuestionToPrompts}
+            onQuestionGoDeeper={onQuestionGoDeeper}
+            onQuestionReRun={onQuestionReRun}
             extractionProgress={extractionProgress}
             onFrameworkReRun={onFrameworkReRun}
           />

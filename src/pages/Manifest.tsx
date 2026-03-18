@@ -527,6 +527,27 @@ export default function Manifest() {
     extraction.reRunTab(selectedItem.id, 'action_steps', selectedItem.genres || [], sectionTitle, offsets?.start, offsets?.end, offsets?.index);
   }, [selectedItem, extraction]);
 
+  const handleQuestionGoDeeper = useCallback((sectionTitle: string | undefined, existingItems: string[], sectionIndex?: number) => {
+    if (!selectedItem) return;
+    const offsets = sectionTitle ? extraction.getSectionOffsets(sectionTitle) : null;
+    extraction.goDeeper(selectedItem.id, 'questions', selectedItem.genres || [], sectionTitle, existingItems, {
+      sectionIndex: sectionIndex ?? offsets?.index,
+      sectionStart: offsets?.start,
+      sectionEnd: offsets?.end,
+    });
+  }, [selectedItem, extraction]);
+
+  const handleQuestionReRun = useCallback((sectionTitle?: string) => {
+    if (!selectedItem) return;
+    const offsets = sectionTitle ? extraction.getSectionOffsets(sectionTitle) : null;
+    extraction.reRunTab(selectedItem.id, 'questions', selectedItem.genres || [], sectionTitle, offsets?.start, offsets?.end, offsets?.index);
+  }, [selectedItem, extraction]);
+
+  const handleSendQuestionToPrompts = useCallback(async (questionId: string) => {
+    if (!selectedItem) return;
+    await extraction.sendQuestionToPrompts(questionId, selectedItem.title);
+  }, [selectedItem, extraction]);
+
   const handleFrameworkReRun = useCallback(async () => {
     if (!selectedItem) return;
     // Soft-delete existing principles first
@@ -813,6 +834,16 @@ export default function Manifest() {
           onSendActionStepToCompass={extraction.sendActionStepToCompass}
           onActionStepGoDeeper={handleActionStepGoDeeper}
           onActionStepReRun={handleActionStepReRun}
+          // Question actions
+          questions={extraction.questions}
+          onFetchQuestions={extraction.fetchQuestions}
+          onToggleQuestionHeart={extraction.toggleQuestionHeart}
+          onDeleteQuestion={extraction.deleteQuestion}
+          onUpdateQuestionText={extraction.updateQuestionText}
+          onUpdateQuestionNote={extraction.updateQuestionNote}
+          onSendQuestionToPrompts={handleSendQuestionToPrompts}
+          onQuestionGoDeeper={handleQuestionGoDeeper}
+          onQuestionReRun={handleQuestionReRun}
           // Notes
           onUpdateSummaryNote={extraction.updateSummaryNote}
           onUpdatePrincipleNote={extraction.updatePrincipleNote}

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Download, Plus } from 'lucide-react';
+import { Download, Plus, BookOpen } from 'lucide-react';
 import { usePageContext } from '../hooks/usePageContext';
 import { useJournal } from '../hooks/useJournal';
 import type { JournalFilters, JournalEntryType, JournalEntry } from '../lib/types';
@@ -12,9 +12,10 @@ import CreateEntry from '../components/journal/CreateEntry';
 import EntryDetail from '../components/journal/EntryDetail';
 import JournalArchivedView from '../components/journal/JournalArchivedView';
 import JournalExportModal from '../components/journal/JournalExportModal';
+import JournalPrompts from '../components/journal/JournalPrompts';
 import './Journal.css';
 
-type JournalView = 'list' | 'create' | 'detail' | 'archived';
+type JournalView = 'list' | 'create' | 'detail' | 'archived' | 'prompts';
 
 const DEFAULT_FILTERS: JournalFilters = {
   entryType: null,
@@ -54,6 +55,7 @@ export default function Journal() {
   const [filters, setFilters] = useState<JournalFilters>(DEFAULT_FILTERS);
   const [createType, setCreateType] = useState<JournalEntryType | undefined>(undefined);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [promptInspiration, setPromptInspiration] = useState<string | undefined>(undefined);
 
   // Auto-open export modal from deep link (?export=true)
   useEffect(() => {
@@ -102,9 +104,10 @@ export default function Journal() {
       <div className="page journal-page">
         <CreateEntry
           initialType={createType}
+          initialPrompt={promptInspiration}
           onSave={handleSave}
           onRouted={handleRouted}
-          onBack={handleBackToList}
+          onBack={() => { setPromptInspiration(undefined); handleBackToList(); }}
         />
       </div>
     );
@@ -120,6 +123,21 @@ export default function Journal() {
           onDelete={permanentlyDelete}
           onRouted={handleRouted}
           onBack={handleBackToList}
+        />
+      </div>
+    );
+  }
+
+  if (view === 'prompts') {
+    return (
+      <div className="page journal-page">
+        <JournalPrompts
+          onBack={handleBackToList}
+          onUsePrompt={(promptText) => {
+            setPromptInspiration(promptText);
+            setCreateType('reflection');
+            setView('create');
+          }}
         />
       </div>
     );
@@ -148,15 +166,26 @@ export default function Journal() {
             <h1 className="journal-page__title">The Journal</h1>
             <p className="journal-page__subtitle">Your personal writings and collected wisdom.</p>
           </div>
-          <button
-            type="button"
-            className="journal-page__export-btn"
-            onClick={() => setShowExportModal(true)}
-            aria-label="Export journal as PDF"
-            title="Export as PDF"
-          >
-            <Download size={20} strokeWidth={1.5} />
-          </button>
+          <div className="journal-page__header-actions">
+            <button
+              type="button"
+              className="journal-page__header-btn"
+              onClick={() => setView('prompts')}
+              aria-label="Journal Prompts"
+              title="Journal Prompts"
+            >
+              <BookOpen size={20} strokeWidth={1.5} />
+            </button>
+            <button
+              type="button"
+              className="journal-page__header-btn"
+              onClick={() => setShowExportModal(true)}
+              aria-label="Export journal as PDF"
+              title="Export as PDF"
+            >
+              <Download size={20} strokeWidth={1.5} />
+            </button>
+          </div>
         </div>
       </div>
 

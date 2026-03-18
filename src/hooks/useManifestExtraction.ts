@@ -9,12 +9,14 @@ import {
   MANIFEST_SUMMARY_COLUMNS,
   MANIFEST_DECLARATION_COLUMNS,
   MANIFEST_ACTION_STEP_COLUMNS,
+  MANIFEST_QUESTION_COLUMNS,
   AI_FRAMEWORK_PRINCIPLE_COLUMNS,
 } from '../lib/types';
 import type {
   ManifestSummary,
   ManifestDeclaration,
   ManifestActionStep,
+  ManifestQuestion,
   AIFrameworkPrinciple,
   BookGenre,
   ManifestExtractionStatus,
@@ -44,6 +46,12 @@ interface ActionStepExtractionItem {
   sort_order: number;
 }
 
+interface QuestionExtractionItem {
+  content_type: string;
+  text: string;
+  sort_order: number;
+}
+
 interface FrameworkExtractionResult {
   framework_name: string;
   principles: Array<{ text: string; sort_order: number }>;
@@ -56,8 +64,9 @@ export function useManifestExtraction() {
   const [summaries, setSummaries] = useState<ManifestSummary[]>([]);
   const [declarations, setDeclarations] = useState<ManifestDeclaration[]>([]);
   const [actionSteps, setActionSteps] = useState<ManifestActionStep[]>([]);
+  const [questions, setQuestions] = useState<ManifestQuestion[]>([]);
   const [extracting, setExtracting] = useState(false);
-  const [extractingTab, setExtractingTab] = useState<'summary' | 'framework' | 'mast_content' | 'action_steps' | null>(null);
+  const [extractingTab, setExtractingTab] = useState<'summary' | 'framework' | 'mast_content' | 'action_steps' | 'questions' | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Section discovery state
@@ -67,7 +76,7 @@ export function useManifestExtraction() {
   const [extractionProgress, setExtractionProgress] = useState<{
     current: number;
     total: number;
-    currentType: 'summary' | 'framework' | 'mast_content' | 'action_steps';
+    currentType: 'summary' | 'framework' | 'mast_content' | 'action_steps' | 'questions';
   } | null>(null);
 
   // Merge sections state
@@ -85,7 +94,7 @@ export function useManifestExtraction() {
   // --- Fire-and-forget: generate semantic embeddings for newly extracted content ---
   const triggerSemanticEmbeddings = useCallback(() => {
     // Process each table that extractions write to — fire-and-forget, non-blocking
-    const tables = ['manifest_summaries', 'manifest_declarations', 'ai_framework_principles', 'manifest_action_steps'];
+    const tables = ['manifest_summaries', 'manifest_declarations', 'ai_framework_principles', 'manifest_action_steps', 'manifest_questions'];
     for (const table of tables) {
       triggerEmbedding({ table, batchSize: 100 }).catch((err) => {
         console.warn(`[triggerSemanticEmbeddings] Non-fatal error for ${table}:`, err);
@@ -159,6 +168,24 @@ export function useManifestExtraction() {
       return;
     }
     setActionSteps(data || []);
+  }, [user]);
+
+  const fetchQuestions = useCallback(async (manifestItemId: string) => {
+    if (!user) return;
+    const { data, error: fetchErr } = await supabase
+      .from('manifest_questions')
+      .select(MANIFEST_QUESTION_COLUMNS)
+      .eq('manifest_item_id', manifestItemId)
+      .eq('user_id', user.id)
+      .eq('is_deleted', false)
+      .order('section_index', { ascending: true })
+      .order('sort_order', { ascending: true });
+
+    if (fetchErr) {
+      console.error('fetchQuestions error:', fetchErr);
+      return;
+    }
+    setQuestions(data || []);
   }, [user]);
 
   // --- Update extraction status on manifest_items ---
@@ -409,6 +436,38 @@ export function useManifestExtraction() {
     }
   }, [user]);
 
+  // --- Save question extraction results to DB ---
+
+  const saveQuestionResults = useCallback(async (
+    manifestItemId: string,
+    items: QuestionExtractionItem[],
+    sectionTitle?: string,
+    sectionIndex: number = 0,
+    isFromGoDeeper: boolean = false,
+  ) => {
+    if (!user || items.length === 0) return;
+
+    const records = items.map((item, idx) => ({
+      user_id: user.id,
+      manifest_item_id: manifestItemId,
+      section_title: sectionTitle || null,
+      section_index: sectionIndex,
+      content_type: item.content_type,
+      text: item.text,
+      sort_order: item.sort_order ?? idx,
+      is_from_go_deeper: isFromGoDeeper,
+    }));
+
+    const { error: insertErr } = await supabase
+      .from('manifest_questions')
+      .insert(records);
+
+    if (insertErr) {
+      console.error('saveQuestionResults error:', insertErr);
+      throw insertErr;
+    }
+  }, [user]);
+
   // --- Extract Summary ---
 
   const extractSummary = useCallback(async (
@@ -541,6 +600,50 @@ export function useManifestExtraction() {
     }
   }, [user, callExtract, saveActionStepResults, fetchActionSteps]);
 
+  // --- Extract Questions ---
+
+  const extractQuestions = useCallback(async (
+    manifestItemId: string,
+    genres: BookGenre[],
+    options?: {
+      sectionTitle?: string;
+      sectionStart?: number;
+      sectionEnd?: number;
+      goDeeper?: boolean;
+      existingItems?: string[];
+      sectionIndex?: number;
+    },
+  ): Promise<boolean> => {
+    if (!user) return false;
+    setExtractingTab('questions');
+    setError(null);
+    try {
+      const isSection = options?.sectionStart != null;
+      const type = isSection ? 'questions_section' : 'questions';
+
+      const result = await callExtract(manifestItemId, type, genres, options);
+      const resultObj = result as { items?: QuestionExtractionItem[] };
+      const items = resultObj?.items || (Array.isArray(result) ? result : []);
+
+      if (items.length > 0) {
+        await saveQuestionResults(
+          manifestItemId,
+          items,
+          options?.sectionTitle,
+          options?.sectionIndex ?? 0,
+          options?.goDeeper ?? false,
+        );
+        await fetchQuestions(manifestItemId);
+      }
+      return true;
+    } catch (err) {
+      setError((err as Error).message);
+      return false;
+    } finally {
+      setExtractingTab(null);
+    }
+  }, [user, callExtract, saveQuestionResults, fetchQuestions]);
+
   // --- Extract All: fires summary + framework + mast_content in parallel ---
 
   const extractAll = useCallback(async (
@@ -597,6 +700,7 @@ export function useManifestExtraction() {
     framework?: FrameworkExtractionResult;
     action_steps?: ActionStepExtractionItem[];
     declarations?: DeclarationExtractionItem[];
+    questions?: QuestionExtractionItem[];
   }
 
   // --- Extract All Sections: one combined API call per section ---
@@ -636,7 +740,7 @@ export function useManifestExtraction() {
           });
 
           const combined = rawResult as CombinedSectionResult;
-          console.log(`[extractAllSections] Combined result for "${cleanTitle}": summaries=${combined?.summaries?.length || 0}, principles=${combined?.framework?.principles?.length || 0}, action_steps=${combined?.action_steps?.length || 0}, declarations=${combined?.declarations?.length || 0}`);
+          console.log(`[extractAllSections] Combined result for "${cleanTitle}": summaries=${combined?.summaries?.length || 0}, principles=${combined?.framework?.principles?.length || 0}, action_steps=${combined?.action_steps?.length || 0}, declarations=${combined?.declarations?.length || 0}, questions=${combined?.questions?.length || 0}`);
 
           // Save summaries
           if (combined?.summaries && combined.summaries.length > 0) {
@@ -659,6 +763,12 @@ export function useManifestExtraction() {
           if (combined?.declarations && combined.declarations.length > 0) {
             await saveDeclarationResults(manifestItemId, combined.declarations, cleanTitle, secIdx);
             await fetchDeclarations(manifestItemId);
+          }
+
+          // Save questions
+          if (combined?.questions && combined.questions.length > 0) {
+            await saveQuestionResults(manifestItemId, combined.questions, cleanTitle, secIdx);
+            await fetchQuestions(manifestItemId);
           }
         } catch (err) {
           console.error(`[extractAllSections] Combined extraction failed for section "${cleanTitle}":`, err);
@@ -727,12 +837,16 @@ export function useManifestExtraction() {
       if (combined?.declarations && combined.declarations.length > 0) {
         await saveDeclarationResults(manifestItemId, combined.declarations, failed.title, sectionIndex);
       }
+      if (combined?.questions && combined.questions.length > 0) {
+        await saveQuestionResults(manifestItemId, combined.questions, failed.title, sectionIndex);
+      }
 
       // Re-fetch all extraction data so UI updates
       await Promise.all([
         fetchSummaries(manifestItemId),
         fetchDeclarations(manifestItemId),
         fetchActionSteps(manifestItemId),
+        fetchQuestions(manifestItemId),
       ]);
 
       // Remove from failed list
@@ -810,6 +924,9 @@ export function useManifestExtraction() {
           if (combined?.declarations?.length) {
             await saveDeclarationResults(manifestItemId, combined.declarations, cleanTitle, secIdx);
           }
+          if (combined?.questions?.length) {
+            await saveQuestionResults(manifestItemId, combined.questions, cleanTitle, secIdx);
+          }
         } catch (err) {
           console.error(`[extractSectionsForPart] Failed for "${cleanTitle}":`, err);
         }
@@ -830,7 +947,7 @@ export function useManifestExtraction() {
 
   const goDeeper = useCallback(async (
     manifestItemId: string,
-    tabType: 'summary' | 'framework' | 'mast_content' | 'action_steps',
+    tabType: 'summary' | 'framework' | 'mast_content' | 'action_steps' | 'questions',
     genres: BookGenre[],
     sectionTitle: string | undefined,
     existingItems: string[],
@@ -858,6 +975,8 @@ export function useManifestExtraction() {
       ok = await extractSummary(manifestItemId, genres, extractOptions);
     } else if (tabType === 'action_steps') {
       ok = await extractActionSteps(manifestItemId, genres, extractOptions);
+    } else if (tabType === 'questions') {
+      ok = await extractQuestions(manifestItemId, genres, extractOptions);
     } else if (tabType === 'mast_content') {
       ok = await extractDeclarations(manifestItemId, genres, extractOptions);
     } else if (tabType === 'framework') {
@@ -885,7 +1004,7 @@ export function useManifestExtraction() {
 
   const reRunTab = useCallback(async (
     manifestItemId: string,
-    tabType: 'summary' | 'mast_content' | 'action_steps',
+    tabType: 'summary' | 'mast_content' | 'action_steps' | 'questions',
     genres: BookGenre[],
     sectionTitle?: string,
     sectionStart?: number,
@@ -900,7 +1019,9 @@ export function useManifestExtraction() {
         ? 'manifest_summaries'
         : tabType === 'action_steps'
           ? 'manifest_action_steps'
-          : 'manifest_declarations';
+          : tabType === 'questions'
+            ? 'manifest_questions'
+            : 'manifest_declarations';
 
       // Soft-delete: scoped to section if provided, otherwise all
       let query = supabase
@@ -920,6 +1041,8 @@ export function useManifestExtraction() {
         ok = await extractSummary(manifestItemId, genres, options);
       } else if (tabType === 'action_steps') {
         ok = await extractActionSteps(manifestItemId, genres, options);
+      } else if (tabType === 'questions') {
+        ok = await extractQuestions(manifestItemId, genres, options);
       } else {
         ok = await extractDeclarations(manifestItemId, genres, options);
       }
@@ -929,7 +1052,7 @@ export function useManifestExtraction() {
       setError((err as Error).message);
       return false;
     }
-  }, [user, extractSummary, extractDeclarations, extractActionSteps, triggerSemanticEmbeddings]);
+  }, [user, extractSummary, extractDeclarations, extractActionSteps, extractQuestions, triggerSemanticEmbeddings]);
 
   // --- Re-run Frameworks: discovers sections, extracts only frameworks per section ---
 
@@ -1242,6 +1365,107 @@ export function useManifestExtraction() {
     return task.id;
   }, [user, actionSteps]);
 
+  // --- CRUD: Question items ---
+
+  const updateQuestionText = useCallback(async (questionId: string, text: string) => {
+    if (!user) return;
+    const { error: updateErr } = await supabase
+      .from('manifest_questions')
+      .update({ text })
+      .eq('id', questionId)
+      .eq('user_id', user.id);
+    if (updateErr) {
+      setError(updateErr.message);
+      return;
+    }
+    setQuestions((prev) => prev.map((q) => q.id === questionId ? { ...q, text } : q));
+  }, [user]);
+
+  const toggleQuestionHeart = useCallback(async (questionId: string) => {
+    if (!user) return;
+    const item = questions.find((q) => q.id === questionId);
+    if (!item) return;
+    const newVal = !item.is_hearted;
+    const { error: updateErr } = await supabase
+      .from('manifest_questions')
+      .update({ is_hearted: newVal })
+      .eq('id', questionId)
+      .eq('user_id', user.id);
+    if (updateErr) {
+      setError(updateErr.message);
+      return;
+    }
+    setQuestions((prev) => prev.map((q) => q.id === questionId ? { ...q, is_hearted: newVal } : q));
+  }, [user, questions]);
+
+  const deleteQuestion = useCallback(async (questionId: string) => {
+    if (!user) return;
+    setQuestions((prev) => prev.filter((q) => q.id !== questionId));
+    const { error: updateErr } = await supabase
+      .from('manifest_questions')
+      .update({ is_deleted: true })
+      .eq('id', questionId)
+      .eq('user_id', user.id);
+    if (updateErr) {
+      setError(updateErr.message);
+    }
+  }, [user]);
+
+  // --- Send Question to Journal Prompts ---
+
+  const sendQuestionToPrompts = useCallback(async (
+    questionId: string,
+    bookTitle?: string,
+  ): Promise<string | null> => {
+    if (!user) return null;
+    const question = questions.find((q) => q.id === questionId);
+    if (!question) return null;
+
+    // Create a journal prompt
+    const { data: prompt, error: promptErr } = await supabase
+      .from('journal_prompts')
+      .insert({
+        user_id: user.id,
+        prompt_text: question.text,
+        source: 'manifest_extraction',
+        source_reference_id: questionId,
+        source_book_title: bookTitle || null,
+      })
+      .select('id')
+      .single();
+
+    if (promptErr || !prompt) {
+      setError(promptErr?.message || 'Failed to create journal prompt');
+      return null;
+    }
+
+    // Mark question as sent
+    await supabase
+      .from('manifest_questions')
+      .update({ sent_to_prompts: true, journal_prompt_id: prompt.id })
+      .eq('id', questionId)
+      .eq('user_id', user.id);
+
+    setQuestions((prev) =>
+      prev.map((q) => q.id === questionId
+        ? { ...q, sent_to_prompts: true, journal_prompt_id: prompt.id }
+        : q),
+    );
+
+    return prompt.id;
+  }, [user, questions]);
+
+  const updateQuestionNote = useCallback(async (questionId: string, note: string | null) => {
+    if (!user) return;
+    setQuestions((prev) => prev.map((q) => q.id === questionId ? { ...q, user_note: note } : q));
+    const { error: updateErr } = await supabase
+      .from('manifest_questions')
+      .update({ user_note: note })
+      .eq('id', questionId)
+      .eq('user_id', user.id);
+    if (updateErr) setError(updateErr.message);
+  }, [user]);
+
   // --- CRUD: Framework principle heart/delete (extends existing ai_framework_principles) ---
 
   const togglePrincipleHeart = useCallback(async (principleId: string) => {
@@ -1275,10 +1499,11 @@ export function useManifestExtraction() {
     declarations: ManifestDeclaration[];
     principles: AIFrameworkPrinciple[];
     actionSteps: ManifestActionStep[];
+    questions: ManifestQuestion[];
   }> => {
-    if (!user) return { summaries: [], declarations: [], principles: [], actionSteps: [] };
+    if (!user) return { summaries: [], declarations: [], principles: [], actionSteps: [], questions: [] };
 
-    const [summaryRes, declRes, principleRes, actionStepRes] = await Promise.all([
+    const [summaryRes, declRes, principleRes, actionStepRes, questionRes] = await Promise.all([
       supabase
         .from('manifest_summaries')
         .select(MANIFEST_SUMMARY_COLUMNS)
@@ -1307,6 +1532,13 @@ export function useManifestExtraction() {
         .eq('is_hearted', true)
         .eq('is_deleted', false)
         .order('created_at', { ascending: false }),
+      supabase
+        .from('manifest_questions')
+        .select(MANIFEST_QUESTION_COLUMNS)
+        .eq('user_id', user.id)
+        .eq('is_hearted', true)
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: false }),
     ]);
 
     return {
@@ -1314,6 +1546,7 @@ export function useManifestExtraction() {
       declarations: declRes.data || [],
       principles: principleRes.data || [],
       actionSteps: actionStepRes.data || [],
+      questions: questionRes.data || [],
     };
   }, [user]);
 
@@ -1332,11 +1565,12 @@ export function useManifestExtraction() {
       await supabase.from('ai_framework_principles').delete().eq('framework_id', fw.id).eq('user_id', user.id);
       await supabase.from('ai_frameworks').delete().eq('id', fw.id).eq('user_id', user.id);
     }
-    // Delete summaries, declarations, and action steps
+    // Delete summaries, declarations, action steps, and questions
     await Promise.all([
       supabase.from('manifest_summaries').delete().eq('manifest_item_id', manifestItemId).eq('user_id', user.id),
       supabase.from('manifest_declarations').delete().eq('manifest_item_id', manifestItemId).eq('user_id', user.id),
       supabase.from('manifest_action_steps').delete().eq('manifest_item_id', manifestItemId).eq('user_id', user.id),
+      supabase.from('manifest_questions').delete().eq('manifest_item_id', manifestItemId).eq('user_id', user.id),
     ]);
     // Reset extraction status and genres
     await supabase.from('manifest_items').update({
@@ -1346,6 +1580,7 @@ export function useManifestExtraction() {
     setSummaries([]);
     setDeclarations([]);
     setActionSteps([]);
+    setQuestions([]);
     setSections([]);
     setOriginalSections([]);
     setIsMergeActive(false);
@@ -1366,6 +1601,7 @@ export function useManifestExtraction() {
         supabase.from('manifest_summaries').delete().eq('user_id', user.id),
         supabase.from('manifest_declarations').delete().eq('user_id', user.id),
         supabase.from('manifest_action_steps').delete().eq('user_id', user.id),
+        supabase.from('manifest_questions').delete().eq('user_id', user.id),
       ]);
 
       // Delete framework principles then frameworks
@@ -1408,6 +1644,7 @@ export function useManifestExtraction() {
       setSummaries([]);
       setDeclarations([]);
       setActionSteps([]);
+      setQuestions([]);
       setSections([]);
       setSelectedSectionIndices([]);
       setExtractionProgress(null);
@@ -1466,6 +1703,7 @@ export function useManifestExtraction() {
     summaries,
     declarations,
     actionSteps,
+    questions,
     extracting,
     extractingTab,
     error,
@@ -1485,6 +1723,7 @@ export function useManifestExtraction() {
     fetchSummaries,
     fetchDeclarations,
     fetchActionSteps,
+    fetchQuestions,
     fetchHeartedItems,
     // Extraction
     extractAll,
@@ -1493,6 +1732,7 @@ export function useManifestExtraction() {
     extractSummary,
     extractDeclarations,
     extractActionSteps,
+    extractQuestions,
     goDeeper,
     reRunTab,
     reRunFrameworks,
@@ -1517,6 +1757,12 @@ export function useManifestExtraction() {
     toggleActionStepHeart,
     deleteActionStep,
     sendActionStepToCompass,
+    // Question CRUD
+    updateQuestionText,
+    toggleQuestionHeart,
+    deleteQuestion,
+    sendQuestionToPrompts,
+    updateQuestionNote,
     // Framework principle heart/delete
     togglePrincipleHeart,
     deletePrinciple,

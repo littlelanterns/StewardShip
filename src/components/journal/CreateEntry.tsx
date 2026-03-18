@@ -13,6 +13,7 @@ import './CreateEntry.css';
 
 interface CreateEntryProps {
   initialType?: JournalEntryType;
+  initialPrompt?: string;
   onSave: (text: string, type: JournalEntryType, tags: string[]) => Promise<JournalEntry | null>;
   onRouted: (entryId: string, target: string, referenceId: string) => void;
   onBack: () => void;
@@ -31,7 +32,7 @@ function getHeuristicTags(type: JournalEntryType): string[] {
   return [];
 }
 
-export default function CreateEntry({ initialType, onSave, onRouted, onBack }: CreateEntryProps) {
+export default function CreateEntry({ initialType, initialPrompt, onSave, onRouted, onBack }: CreateEntryProps) {
   const { user } = useAuthContext();
   const [text, setText] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -42,7 +43,7 @@ export default function CreateEntry({ initialType, onSave, onRouted, onBack }: C
   const [saving, setSaving] = useState(false);
   const [tagsLoading, setTagsLoading] = useState(false);
 
-  const prompt = TYPE_PROMPTS[entryType];
+  const prompt = initialPrompt || TYPE_PROMPTS[entryType];
 
   const handleTranscription = useCallback((transcribedText: string) => {
     setText(prev => {

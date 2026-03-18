@@ -12,7 +12,13 @@
   justify-content: space-between;
 }
 
-.journal-page__export-btn {
+.journal-page__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.journal-page__header-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -26,7 +32,7 @@
   transition: color var(--transition-fast), background-color var(--transition-fast);
 }
 
-.journal-page__export-btn:hover {
+.journal-page__header-btn:hover {
   color: var(--color-text-primary);
   background-color: var(--color-bg-secondary);
 }

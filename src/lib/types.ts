@@ -204,6 +204,8 @@ export const AI_FRAMEWORK_PRINCIPLE_COLUMNS = 'id, user_id, framework_id, text, 
 export const MANIFEST_SUMMARY_COLUMNS = 'id, user_id, manifest_item_id, section_title, section_index, content_type, text, sort_order, is_hearted, is_deleted, is_from_go_deeper, user_note, created_at';
 export const MANIFEST_DECLARATION_COLUMNS = 'id, user_id, manifest_item_id, section_title, section_index, value_name, declaration_text, declaration_style, is_hearted, is_deleted, sent_to_mast, mast_entry_id, sort_order, is_from_go_deeper, user_note, created_at';
 export const MANIFEST_ACTION_STEP_COLUMNS = 'id, user_id, manifest_item_id, section_title, section_index, content_type, text, sort_order, is_hearted, is_deleted, is_from_go_deeper, user_note, sent_to_compass, compass_task_id, created_at';
+export const MANIFEST_QUESTION_COLUMNS = 'id, user_id, manifest_item_id, section_title, section_index, content_type, text, sort_order, is_hearted, is_deleted, is_from_go_deeper, user_note, sent_to_prompts, journal_prompt_id, created_at';
+export const JOURNAL_PROMPT_COLUMNS = 'id, user_id, prompt_text, source, source_reference_id, source_book_title, tags, sort_order, archived_at, created_at, updated_at';
 
 export const MAST_TYPE_LABELS: Record<MastEntryType, string> = {
   value: 'Values',
@@ -1530,6 +1532,57 @@ export interface ManifestActionStep {
   sent_to_compass: boolean;
   compass_task_id: string | null;
   created_at: string;
+}
+
+// PRD-24+: Questions (5th extraction tab)
+export type QuestionContentType =
+  | 'reflection'
+  | 'implementation'
+  | 'recognition'
+  | 'self_examination'
+  | 'discussion'
+  | 'scenario';
+
+export const QUESTION_CONTENT_TYPE_LABELS: Record<QuestionContentType, string> = {
+  reflection: 'Reflection',
+  implementation: 'Implementation',
+  recognition: 'Recognition',
+  self_examination: 'Self-Examination',
+  discussion: 'Discussion',
+  scenario: 'Scenario',
+};
+
+export interface ManifestQuestion {
+  id: string;
+  user_id: string;
+  manifest_item_id: string;
+  section_title: string | null;
+  section_index: number;
+  content_type: QuestionContentType;
+  text: string;
+  sort_order: number;
+  is_hearted: boolean;
+  is_deleted: boolean;
+  is_from_go_deeper: boolean;
+  user_note: string | null;
+  sent_to_prompts: boolean;
+  journal_prompt_id: string | null;
+  created_at: string;
+}
+
+// Journal Prompts
+export interface JournalPrompt {
+  id: string;
+  user_id: string;
+  prompt_text: string;
+  source: string;
+  source_reference_id: string | null;
+  source_book_title: string | null;
+  tags: string[];
+  sort_order: number;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 // Manifest Collections

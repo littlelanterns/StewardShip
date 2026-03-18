@@ -4,15 +4,16 @@ import type {
   ManifestSummary,
   ManifestDeclaration,
   ManifestActionStep,
+  ManifestQuestion,
   AIFrameworkPrinciple,
   BookGenre,
 } from '../../lib/types';
-import { DECLARATION_STYLE_LABELS, ACTION_STEP_CONTENT_TYPE_LABELS } from '../../lib/types';
-import type { ActionStepContentType } from '../../lib/types';
+import { DECLARATION_STYLE_LABELS, ACTION_STEP_CONTENT_TYPE_LABELS, QUESTION_CONTENT_TYPE_LABELS } from '../../lib/types';
+import type { ActionStepContentType, QuestionContentType } from '../../lib/types';
 import { Button, LoadingSpinner } from '../shared';
 import './ExtractionTabs.css';
 
-type TabType = 'summary' | 'frameworks' | 'action_steps' | 'mast_content';
+type TabType = 'summary' | 'frameworks' | 'action_steps' | 'mast_content' | 'questions';
 type FilterMode = 'all' | 'hearted';
 type ViewMode = 'tabs' | 'chapters';
 
@@ -21,7 +22,7 @@ type ViewMode = 'tabs' | 'chapters';
 interface ExtractionProgressInfo {
   current: number;
   total: number;
-  currentType: 'summary' | 'framework' | 'mast_content' | 'action_steps';
+  currentType: 'summary' | 'framework' | 'mast_content' | 'action_steps' | 'questions';
 }
 
 interface SummaryTabProps {
@@ -1076,6 +1077,296 @@ function MastContentTab({
   );
 }
 
+// --- Questions Tab ---
+
+interface QuestionsTabProps {
+  questions: ManifestQuestion[];
+  extractingTab: string | null;
+  genres: BookGenre[];
+  manifestItemId: string;
+  onToggleHeart: (id: string) => void;
+  onDelete: (id: string) => void;
+  onUpdateText: (id: string, text: string) => void;
+  onUpdateNote: (id: string, note: string | null) => void;
+  onSendToPrompts: (id: string) => void;
+  onGoDeeper: (sectionTitle: string | undefined, existingItems: string[], sectionIndex?: number) => void;
+  onReRun: (sectionTitle?: string) => void;
+  filterMode: FilterMode;
+  extractionProgress?: ExtractionProgressInfo | null;
+}
+
+function QuestionsTab({
+  questions,
+  extractingTab,
+  onToggleHeart,
+  onDelete,
+  onUpdateText,
+  onUpdateNote,
+  onSendToPrompts,
+  onGoDeeper,
+  onReRun,
+  filterMode,
+  extractionProgress,
+}: QuestionsTabProps) {
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState('');
+  const [notingId, setNotingId] = useState<string | null>(null);
+  const [noteDraft, setNoteDraft] = useState('');
+  const [confirmReRun, setConfirmReRun] = useState(false);
+  const [sendingToPrompts, setSendingToPrompts] = useState<Set<string>>(new Set());
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+
+  const handleAnimatedDelete = useCallback((id: string) => {
+    setDeletingIds((prev) => new Set(prev).add(id));
+    setTimeout(() => {
+      onDelete(id);
+      setDeletingIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
+    }, 300);
+  }, [onDelete]);
+
+  const visible = useMemo(() => {
+    let items = questions.filter((q) => !q.is_deleted);
+    if (filterMode === 'hearted') items = items.filter((q) => q.is_hearted);
+    return items;
+  }, [questions, filterMode]);
+
+  const sections = useMemo(() => {
+    const map = new Map<string, ManifestQuestion[]>();
+    for (const q of visible) {
+      const key = q.section_title || '__full_book__';
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(q);
+    }
+    return Array.from(map.entries()).sort((a, b) => {
+      const aIdx = a[1][0]?.section_index ?? 0;
+      const bIdx = b[1][0]?.section_index ?? 0;
+      return aIdx - bIdx;
+    });
+  }, [visible]);
+
+  // Default chapters to collapsed when there are multiple sections
+  const qInitRef = useRef(false);
+  useEffect(() => {
+    if (!qInitRef.current && sections.length > 1) {
+      qInitRef.current = true;
+      setCollapsedSections(new Set(sections.map(([key]) => key)));
+    }
+  }, [sections]);
+
+  const toggleSection = (key: string) => {
+    setCollapsedSections((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  };
+
+  const startEdit = (item: ManifestQuestion) => {
+    setEditingId(item.id);
+    setEditDraft(item.text);
+  };
+
+  const saveEdit = () => {
+    if (editingId && editDraft.trim()) {
+      onUpdateText(editingId, editDraft.trim());
+    }
+    setEditingId(null);
+  };
+
+  const startNote = (item: ManifestQuestion) => {
+    setNotingId(item.id);
+    setNoteDraft(item.user_note || '');
+  };
+
+  const saveNote = () => {
+    if (notingId) {
+      onUpdateNote(notingId, noteDraft.trim() || null);
+    }
+    setNotingId(null);
+  };
+
+  const handleSendToPrompts = useCallback(async (id: string) => {
+    setSendingToPrompts((prev) => new Set(prev).add(id));
+    await onSendToPrompts(id);
+    setSendingToPrompts((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  }, [onSendToPrompts]);
+
+  if (extractingTab === 'questions' && visible.length === 0) {
+    return (
+      <div className="extraction-tab__loading">
+        <LoadingSpinner />
+        <p>Extracting questions...</p>
+      </div>
+    );
+  }
+
+  if (visible.length === 0) {
+    return (
+      <div className="extraction-tab__empty">
+        <p>No questions yet. Click Extract above to analyze this book.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="extraction-tab">
+      {extractingTab === 'questions' && (
+        <div className="extraction-tab__progress">
+          <div className="extraction-tab__progress-bar" />
+          <span>
+            {extractionProgress
+              ? `Extracting section ${extractionProgress.current + 1} of ${extractionProgress.total} (Questions)...`
+              : 'Extracting...'}
+          </span>
+        </div>
+      )}
+
+      <div className="extraction-tab__toolbar">
+        {confirmReRun ? (
+          <div className="extraction-tab__confirm">
+            <span>Replace all questions with fresh extraction?</span>
+            <Button size="sm" onClick={() => { onReRun(); setConfirmReRun(false); }}>Re-run</Button>
+            <Button size="sm" variant="text" onClick={() => setConfirmReRun(false)}>Cancel</Button>
+          </div>
+        ) : (
+          <button type="button" className="extraction-tab__rerun-btn" onClick={() => setConfirmReRun(true)}>
+            <RefreshCw size={12} /> Re-run
+          </button>
+        )}
+      </div>
+
+      {sections.map(([sectionKey, items]) => {
+        const isCollapsed = collapsedSections.has(sectionKey);
+        const label = sectionKey === '__full_book__' ? 'Full Book' : sectionKey;
+        return (
+          <div key={sectionKey} className="extraction-tab__section">
+            <button
+              type="button"
+              className="extraction-tab__section-header"
+              onClick={() => toggleSection(sectionKey)}
+            >
+              {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+              <span className="extraction-tab__section-title">{label}</span>
+              <span className="extraction-tab__section-count">{items.length}</span>
+            </button>
+
+            {!isCollapsed && (
+              <div className="extraction-tab__section-items">
+                {items.map((item) => (
+                  <div key={item.id} className={`extraction-item${item.is_from_go_deeper ? ' extraction-item--deeper' : ''}${deletingIds.has(item.id) ? ' extraction-item--deleting' : ''}`}>
+                    <div className="extraction-item__type-badge">
+                      {QUESTION_CONTENT_TYPE_LABELS[item.content_type as QuestionContentType] || item.content_type.replace(/_/g, ' ')}
+                    </div>
+
+                    {editingId === item.id ? (
+                      <textarea
+                        className="extraction-item__edit-textarea"
+                        value={editDraft}
+                        onChange={(e) => setEditDraft(e.target.value)}
+                        onBlur={saveEdit}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Escape') setEditingId(null);
+                        }}
+                        autoFocus
+                        rows={3}
+                      />
+                    ) : (
+                      <p
+                        className="extraction-item__text"
+                        onClick={() => startEdit(item)}
+                        title="Click to edit"
+                      >
+                        {item.is_from_go_deeper && <Sparkles size={12} className="extraction-item__deeper-icon" />}
+                        {item.text}
+                      </p>
+                    )}
+
+                    <div className="extraction-item__actions">
+                      <button
+                        type="button"
+                        className={`extraction-item__heart${item.is_hearted ? ' extraction-item__heart--active' : ''}`}
+                        onClick={() => onToggleHeart(item.id)}
+                        title={item.is_hearted ? 'Remove heart' : 'Heart this'}
+                      >
+                        <Heart size={14} fill={item.is_hearted ? 'currentColor' : 'none'} />
+                      </button>
+                      <button
+                        type="button"
+                        className={`extraction-item__note-btn${item.user_note ? ' extraction-item__note-btn--active' : ''}`}
+                        onClick={() => notingId === item.id ? saveNote() : startNote(item)}
+                        title={item.user_note ? 'Edit note' : 'Add note'}
+                      >
+                        <StickyNote size={14} />
+                      </button>
+
+                      {item.sent_to_prompts ? (
+                        <span className="extraction-item__compass-sent">Added to Prompts</span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="extraction-item__send-compass"
+                          onClick={() => handleSendToPrompts(item.id)}
+                          disabled={sendingToPrompts.has(item.id)}
+                          title="Add to Journal Prompts"
+                        >
+                          <BookOpen size={14} />
+                          {sendingToPrompts.has(item.id) ? 'Sending...' : 'Add to Journal Prompts'}
+                        </button>
+                      )}
+
+                      <button type="button" className="extraction-item__delete" onClick={() => handleAnimatedDelete(item.id)}>
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+
+                    {notingId === item.id ? (
+                      <textarea
+                        className="extraction-item__note-textarea"
+                        value={noteDraft}
+                        onChange={(e) => setNoteDraft(e.target.value)}
+                        onBlur={saveNote}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Escape') setNotingId(null);
+                        }}
+                        autoFocus
+                        rows={2}
+                        placeholder="Add a note..."
+                      />
+                    ) : item.user_note ? (
+                      <div className="extraction-item__note" onClick={() => startNote(item)}>
+                        <span className="extraction-item__note-label">NOTE</span>
+                        {item.user_note}
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+
+                <button
+                  type="button"
+                  className="extraction-tab__go-deeper"
+                  onClick={() => onGoDeeper(
+                    sectionKey === '__full_book__' ? undefined : sectionKey,
+                    items.map((i) => i.text),
+                    items[0]?.section_index,
+                  )}
+                  disabled={extractingTab === 'questions'}
+                >
+                  Go Deeper
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // --- Main ExtractionTabs ---
 
 interface ExtractionTabsProps {
@@ -1116,6 +1407,15 @@ interface ExtractionTabsProps {
   onSendDeclarationToMast: (id: string) => void;
   onDeclarationGoDeeper: (sectionTitle: string | undefined, existingItems: string[], sectionIndex?: number) => void;
   onDeclarationReRun: (sectionTitle?: string) => void;
+  // Question actions
+  questions: ManifestQuestion[];
+  onToggleQuestionHeart: (id: string) => void;
+  onDeleteQuestion: (id: string) => void;
+  onUpdateQuestionText: (id: string, text: string) => void;
+  onUpdateQuestionNote: (id: string, note: string | null) => void;
+  onSendQuestionToPrompts: (id: string) => void;
+  onQuestionGoDeeper: (sectionTitle: string | undefined, existingItems: string[], sectionIndex?: number) => void;
+  onQuestionReRun: (sectionTitle?: string) => void;
 }
 
 export function ExtractionTabs({
@@ -1152,6 +1452,14 @@ export function ExtractionTabs({
   onSendDeclarationToMast,
   onDeclarationGoDeeper,
   onDeclarationReRun,
+  questions,
+  onToggleQuestionHeart,
+  onDeleteQuestion,
+  onUpdateQuestionText,
+  onUpdateQuestionNote,
+  onSendQuestionToPrompts,
+  onQuestionGoDeeper,
+  onQuestionReRun,
 }: ExtractionTabsProps) {
   const [activeTab, setActiveTab] = useState<TabType>('summary');
   const [filterMode, setFilterMode] = useState<FilterMode>('all');
@@ -1161,6 +1469,7 @@ export function ExtractionTabs({
   const frameworkCount = principles.filter((p) => !p.is_deleted).length;
   const actionStepCount = actionSteps.filter((a) => !a.is_deleted).length;
   const declarationCount = declarations.filter((d) => !d.is_deleted).length;
+  const questionCount = questions.filter((q) => !q.is_deleted).length;
 
   return (
     <div className="extraction-tabs">
@@ -1193,6 +1502,13 @@ export function ExtractionTabs({
           onClick={() => setActiveTab('mast_content')}
         >
           Mast {declarationCount > 0 && <span className="extraction-tabs__tab-count">{declarationCount}</span>}
+        </button>
+        <button
+          type="button"
+          className={`extraction-tabs__tab${activeTab === 'questions' ? ' extraction-tabs__tab--active' : ''}`}
+          onClick={() => setActiveTab('questions')}
+        >
+          Questions {questionCount > 0 && <span className="extraction-tabs__tab-count">{questionCount}</span>}
         </button>
       </div>
 
@@ -1292,6 +1608,23 @@ export function ExtractionTabs({
                 extractionProgress={extractionProgress}
               />
             )}
+            {activeTab === 'questions' && (
+              <QuestionsTab
+                questions={questions}
+                extractingTab={extractingTab}
+                genres={genres}
+                manifestItemId={manifestItemId}
+                onToggleHeart={onToggleQuestionHeart}
+                onDelete={onDeleteQuestion}
+                onUpdateText={onUpdateQuestionText}
+                onUpdateNote={onUpdateQuestionNote}
+                onSendToPrompts={onSendQuestionToPrompts}
+                onGoDeeper={onQuestionGoDeeper}
+                onReRun={onQuestionReRun}
+                filterMode={filterMode}
+                extractionProgress={extractionProgress}
+              />
+            )}
           </>
         ) : (
           <ChapterView
@@ -1299,12 +1632,14 @@ export function ExtractionTabs({
             principles={principles}
             actionSteps={actionSteps}
             declarations={declarations}
+            questions={questions}
             filterMode={filterMode}
             onUpdateNote={(id, note, type) => {
               if (type === 'summary') onUpdateSummaryNote(id, note);
               else if (type === 'principle') onUpdatePrincipleNote(id, note);
               else if (type === 'action_step') onUpdateActionStepNote(id, note);
               else if (type === 'declaration') onUpdateDeclarationNote(id, note);
+              else if (type === 'question') onUpdateQuestionNote(id, note);
             }}
           />
         )}
@@ -1320,15 +1655,16 @@ interface ChapterViewProps {
   principles: AIFrameworkPrinciple[];
   actionSteps: ManifestActionStep[];
   declarations: ManifestDeclaration[];
+  questions: ManifestQuestion[];
   filterMode: FilterMode;
-  onUpdateNote: (id: string, note: string | null, type: 'summary' | 'declaration' | 'action_step' | 'principle') => void;
+  onUpdateNote: (id: string, note: string | null, type: 'summary' | 'declaration' | 'action_step' | 'principle' | 'question') => void;
 }
 
-function ChapterView({ summaries, principles, actionSteps, declarations, filterMode, onUpdateNote }: ChapterViewProps) {
+function ChapterView({ summaries, principles, actionSteps, declarations, questions, filterMode, onUpdateNote }: ChapterViewProps) {
   const [collapsedChapters, setCollapsedChapters] = useState<Set<string>>(new Set());
   const [notingId, setNotingId] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState('');
-  const [notingType, setNotingType] = useState<'summary' | 'declaration' | 'action_step' | 'principle'>('summary');
+  const [notingType, setNotingType] = useState<'summary' | 'declaration' | 'action_step' | 'principle' | 'question'>('summary');
 
   // Collect all unique section titles and their indexes across all data
   const chapters = useMemo(() => {
@@ -1345,11 +1681,12 @@ function ChapterView({ summaries, principles, actionSteps, declarations, filterM
     for (const p of principles) if (!p.is_deleted && (filterMode !== 'hearted' || p.is_hearted)) addItem(p.section_title, 0);
     for (const a of actionSteps) if (!a.is_deleted && (filterMode !== 'hearted' || a.is_hearted)) addItem(a.section_title, a.section_index ?? 0);
     for (const d of declarations) if (!d.is_deleted && (filterMode !== 'hearted' || d.is_hearted)) addItem(d.section_title, d.section_index ?? 0);
+    for (const q of questions) if (!q.is_deleted && (filterMode !== 'hearted' || q.is_hearted)) addItem(q.section_title, q.section_index ?? 0);
 
     return Array.from(sectionMap.entries())
       .sort((a, b) => a[1] - b[1])
       .map(([key]) => key);
-  }, [summaries, principles, actionSteps, declarations, filterMode]);
+  }, [summaries, principles, actionSteps, declarations, questions, filterMode]);
 
   // Default chapters to collapsed when there are multiple
   const cvInitRef = useRef(false);
@@ -1374,7 +1711,7 @@ function ChapterView({ summaries, principles, actionSteps, declarations, filterM
     });
   };
 
-  const startNote = (id: string, currentNote: string | null, type: 'summary' | 'declaration' | 'action_step' | 'principle') => {
+  const startNote = (id: string, currentNote: string | null, type: 'summary' | 'declaration' | 'action_step' | 'principle' | 'question') => {
     setNotingId(id);
     setNoteDraft(currentNote || '');
     setNotingType(type);
@@ -1406,7 +1743,8 @@ function ChapterView({ summaries, principles, actionSteps, declarations, filterM
         const chPrinciples = filterItems(principles.filter((p) => (p.section_title || null) === matchTitle));
         const chActionSteps = filterItems(actionSteps.filter((a) => (a.section_title || null) === matchTitle));
         const chDeclarations = filterItems(declarations.filter((d) => (d.section_title || null) === matchTitle));
-        const totalCount = chSummaries.length + chPrinciples.length + chActionSteps.length + chDeclarations.length;
+        const chQuestions = filterItems(questions.filter((q) => (q.section_title || null) === matchTitle));
+        const totalCount = chSummaries.length + chPrinciples.length + chActionSteps.length + chDeclarations.length + chQuestions.length;
 
         if (totalCount === 0) return null;
 
@@ -1599,6 +1937,53 @@ function ChapterView({ summaries, principles, actionSteps, declarations, filterM
                           />
                         ) : item.user_note ? (
                           <div className="extraction-item__note" onClick={() => startNote(item.id, item.user_note, 'declaration')}>
+                            <span className="extraction-item__note-label">NOTE</span>
+                            {item.user_note}
+                          </div>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {chQuestions.length > 0 && (
+                  <div className="chapter-view__type-group">
+                    <div className="chapter-view__type-label">Questions</div>
+                    {chQuestions.map((item) => (
+                      <div key={item.id} className={`extraction-item${item.is_from_go_deeper ? ' extraction-item--deeper' : ''}`}>
+                        <div className="extraction-item__type-badge">
+                          {QUESTION_CONTENT_TYPE_LABELS[item.content_type as QuestionContentType] || item.content_type.replace(/_/g, ' ')}
+                        </div>
+                        <p className="extraction-item__text">
+                          {item.is_from_go_deeper && <Sparkles size={12} className="extraction-item__deeper-icon" />}
+                          {item.text}
+                        </p>
+                        <div className="extraction-item__actions">
+                          {item.is_hearted && <Heart size={12} className="chapter-view__hearted-icon" fill="currentColor" />}
+                          <button
+                            type="button"
+                            className={`extraction-item__note-btn${item.user_note ? ' extraction-item__note-btn--active' : ''}`}
+                            onClick={() => notingId === item.id ? saveNote() : startNote(item.id, item.user_note, 'question')}
+                            title={item.user_note ? 'Edit note' : 'Add note'}
+                          >
+                            <StickyNote size={14} />
+                          </button>
+                        </div>
+                        {notingId === item.id ? (
+                          <textarea
+                            className="extraction-item__note-textarea"
+                            value={noteDraft}
+                            onChange={(e) => setNoteDraft(e.target.value)}
+                            onBlur={saveNote}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Escape') setNotingId(null);
+                            }}
+                            autoFocus
+                            rows={2}
+                            placeholder="Add a note..."
+                          />
+                        ) : item.user_note ? (
+                          <div className="extraction-item__note" onClick={() => startNote(item.id, item.user_note, 'question')}>
                             <span className="extraction-item__note-label">NOTE</span>
                             {item.user_note}
                           </div>
