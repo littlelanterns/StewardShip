@@ -91,13 +91,12 @@ serve(async (req: Request) => {
         const arrayBuffer = await fileData.arrayBuffer();
         fullText = await extractCleanTextFromPDF(new Uint8Array(arrayBuffer));
 
-        // Vision fallback for scanned/image-only PDFs
+        // Note: Vision fallback is NOT available for PDFs — Claude's vision API
+        // only accepts image formats (PNG, JPEG, WEBP), not PDF files.
+        // Scanned/image-only PDFs with <50 chars extracted will proceed with
+        // whatever text was extracted (may be empty).
         if (!fullText || fullText.trim().length < 50) {
-          console.log(`PDF text extraction yielded ${fullText.trim().length} chars — trying vision fallback`);
-          const visionText = await extractViaVision(supabase, item.storage_path, 'manifest-files');
-          if (visionText) {
-            fullText = visionText;
-          }
+          console.log(`PDF text extraction yielded ${fullText.trim().length} chars — vision fallback not available for PDFs`);
         }
 
         await supabase
@@ -960,14 +959,40 @@ async function extractViaVision(
   }
 
   try {
-    const { data: signedData } = await supabase.storage
+    // Download file bytes and convert to base64 data URI
+    const { data: fileData, error: downloadErr } = await supabase.storage
       .from(bucket)
-      .createSignedUrl(storagePath, 600); // 10 min expiry
+      .download(storagePath);
 
-    if (!signedData?.signedUrl) {
-      console.error('Failed to create signed URL for vision fallback');
+    if (downloadErr || !fileData) {
+      console.error('Failed to download file for vision fallback:', downloadErr?.message);
       return null;
     }
+
+    // Determine MIME type from file extension
+    const ext = storagePath.split('.').pop()?.toLowerCase() || '';
+    const mimeMap: Record<string, string> = {
+      'png': 'image/png',
+      'jpg': 'image/jpeg',
+      'jpeg': 'image/jpeg',
+      'webp': 'image/webp',
+    };
+    const mimeType = mimeMap[ext];
+    if (!mimeType) {
+      console.error(`Vision fallback: unsupported image format "${ext}" — only PNG, JPG, WEBP supported`);
+      return null;
+    }
+
+    const arrayBuffer = await fileData.arrayBuffer();
+    const bytes = new Uint8Array(arrayBuffer);
+    // Encode in chunks to avoid stack overflow on large files
+    let binary = '';
+    const chunkSize = 8192;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+    }
+    const base64 = btoa(binary);
+    const dataUri = `data:${mimeType};base64,${base64}`;
 
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -988,7 +1013,7 @@ async function extractViaVision(
                 type: 'text',
                 text: 'Extract all text, data, and information from this image. If it contains a chart or graph, describe the data points, axes, labels, values, and trends in structured plain text. If it contains a table, reproduce the table data. If it contains handwritten or printed text, transcribe it. Return only the extracted content as plain text, structured for readability. Do not add commentary or interpretation.',
               },
-              { type: 'image_url', image_url: { url: signedData.signedUrl } },
+              { type: 'image_url', image_url: { url: dataUri } },
             ],
           },
         ],
