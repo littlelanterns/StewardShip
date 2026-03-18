@@ -86,6 +86,14 @@
   font-weight: 600;
 }
 
+.manifest-card__fail-detail {
+  font-size: var(--font-size-xs);
+  color: var(--color-slate-gray);
+  font-weight: 400;
+  margin: 0.25rem 0 0;
+  line-height: 1.4;
+}
+
 .manifest-card__spinner {
   animation: manifest-spin 1.2s linear infinite;
 }

@@ -161,7 +161,12 @@ export function ManifestItemCard({ item, onClick, compact, selectable, selected,
             </div>
           )}
           {isFailed && (
-            <span className="manifest-card__status manifest-card__status--failed">Failed</span>
+            <div className="manifest-card__status manifest-card__status--failed">
+              <span>Failed</span>
+              {item.processing_detail && (
+                <p className="manifest-card__fail-detail">{item.processing_detail}</p>
+              )}
+            </div>
           )}
         </div>
 

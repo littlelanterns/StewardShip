@@ -363,13 +363,16 @@ serve(async (req: Request) => {
         storage_path: item.storage_path,
         has_text_content: !!item.text_content,
       });
+      const failMessage = item.file_type === 'pdf'
+        ? 'This PDF appears to be scanned or image-only — no text could be extracted. Try uploading an EPUB or text version instead.'
+        : 'No text content could be extracted from this file.';
       await supabase
         .from('manifest_items')
-        .update({ processing_status: 'failed' })
+        .update({ processing_status: 'failed', processing_detail: failMessage })
         .eq('id', manifest_item_id);
       return new Response(
         JSON.stringify({
-          error: 'No text content could be extracted from this file. It may be a scanned/image-only PDF, or use an unsupported encoding.',
+          error: failMessage,
           file_type: item.file_type,
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
