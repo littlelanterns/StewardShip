@@ -408,20 +408,10 @@ serve(async (req: Request) => {
       );
     }
 
-    // 5. Generate embeddings for each chunk
+    // 5. Save chunks to DB (without embeddings — embed function handles those async)
     const openaiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openaiKey) {
-      await supabase
-        .from('manifest_items')
-        .update({ processing_status: 'failed' })
-        .eq('id', manifest_item_id);
-      return new Response(
-        JSON.stringify({ error: 'OpenAI API key not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
-    }
 
-    // Release text extraction memory before starting embeddings
+    // Release text extraction memory before chunk insertion
     fullText = '';
 
     // Delete any existing chunks FIRST (in case of re-processing)
@@ -430,66 +420,27 @@ serve(async (req: Request) => {
       .delete()
       .eq('manifest_item_id', manifest_item_id);
 
-    // Embed and insert batch-by-batch to keep peak memory low.
-    // Each batch: embed → build records → insert → release.
-    // Smaller batches (100) use less memory than accumulating 500+ embeddings.
-    const BATCH_SIZE = 100;
-    const totalBatches = Math.ceil(chunks.length / BATCH_SIZE);
+    // Insert chunks in batches — WITHOUT embeddings to avoid CPU timeout.
+    // The manifest-embed Edge Function will backfill embeddings asynchronously.
+    const INSERT_BATCH = 200;
     let totalChunksInserted = 0;
     let totalTokens = 0;
 
-    for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
-      const batchNum = Math.floor(i / BATCH_SIZE) + 1;
-      await setDetail(`Embedding & saving (batch ${batchNum} of ${totalBatches})...`);
-      const batch = chunks.slice(i, i + BATCH_SIZE);
-      const texts = batch.map((c) => c.text);
+    for (let i = 0; i < chunks.length; i += INSERT_BATCH) {
+      const batchNum = Math.floor(i / INSERT_BATCH) + 1;
+      const totalBatches = Math.ceil(chunks.length / INSERT_BATCH);
+      await setDetail(`Saving chunks (batch ${batchNum} of ${totalBatches})...`);
+      const batch = chunks.slice(i, i + INSERT_BATCH);
 
-      const embResponse = await fetch('https://api.openai.com/v1/embeddings', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openaiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'text-embedding-ada-002',
-          input: texts,
-        }),
-      });
-
-      if (!embResponse.ok) {
-        const errBody = await embResponse.text();
-        console.error('Embedding batch failed:', errBody);
-        // Partial progress is still saved — don't delete what we've inserted
-        await supabase
-          .from('manifest_items')
-          .update({
-            processing_status: totalChunksInserted > 0 ? 'completed' : 'failed',
-            chunk_count: totalChunksInserted,
-            processing_detail: totalChunksInserted > 0
-              ? `Partial: ${totalChunksInserted} of ${chunks.length} chunks (embedding failed at batch ${batchNum})`
-              : null,
-          })
-          .eq('id', manifest_item_id);
-        return new Response(
-          JSON.stringify({ error: `Embedding failed at batch ${batchNum}: ${errBody}`, partial_chunks: totalChunksInserted }),
-          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-        );
-      }
-
-      const embData = await embResponse.json();
-
-      // Build records for this batch only
-      const batchRecords = batch.map((chunk, j) => ({
+      const batchRecords = batch.map((chunk) => ({
         user_id: userId,
         manifest_item_id,
         chunk_index: chunk.index,
         chunk_text: chunk.text,
         token_count: chunk.tokenCount,
-        embedding: embData.data[j].embedding,
         metadata: {},
       }));
 
-      // Insert immediately — don't accumulate
       const { error: insertErr } = await supabase
         .from('manifest_chunks')
         .insert(batchRecords);
@@ -500,10 +451,23 @@ serve(async (req: Request) => {
         totalChunksInserted += batchRecords.length;
         totalTokens += batchRecords.reduce((sum, c) => sum + c.token_count, 0);
       }
-      // batchRecords and embData go out of scope → GC can reclaim
     }
 
-    // 6. Update manifest item status (clear processing_detail on completion)
+    // 6. Generate embeddings asynchronously via manifest-embed Edge Function
+    // This runs in a separate invocation so we don't hit CPU time limits
+    if (openaiKey && totalChunksInserted > 0) {
+      await setDetail('Generating embeddings...');
+      try {
+        await supabase.functions.invoke('manifest-embed', {
+          body: { manifest_item_id },
+        });
+      } catch (embedErr) {
+        // Non-fatal — chunks are saved, embeddings can be generated later
+        console.warn('Async embedding invocation failed (non-fatal):', embedErr);
+      }
+    }
+
+    // 7. Update manifest item status (clear processing_detail on completion)
     await supabase
       .from('manifest_items')
       .update({
