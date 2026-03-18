@@ -575,11 +575,16 @@ export function useManifest() {
     // Process sequentially to avoid overwhelming Edge Functions
     for (const part of stuckParts) {
       try {
-        const { error: invokeErr } = await supabase.functions.invoke('manifest-process', {
+        const { data, error: invokeErr } = await supabase.functions.invoke('manifest-process', {
           body: { manifest_item_id: part.id, user_id: user.id },
         });
         if (invokeErr) {
           console.error(`[processChildParts] Failed for "${part.title}":`, invokeErr);
+        } else if (data?.needs_chunking) {
+          // Phase 2: chunking in separate call
+          await supabase.functions.invoke('manifest-process', {
+            body: { manifest_item_id: part.id, user_id: user.id, phase: 'chunk' },
+          });
         }
       } catch (err) {
         console.error(`[processChildParts] Error for "${part.title}":`, err);
@@ -807,10 +812,9 @@ export function useManifest() {
         .invoke('manifest-process', {
           body: { manifest_item_id: item.id, user_id: user.id },
         })
-        .then(({ error: invokeErr }) => {
+        .then(({ data, error: invokeErr }) => {
           if (invokeErr) {
             console.error(`[queue] manifest-process failed for "${item.title}":`, invokeErr);
-            // Mark as failed so the queue doesn't retry infinitely
             supabase
               .from('manifest_items')
               .update({ processing_status: 'failed', processing_detail: `Edge Function error: ${invokeErr.message || 'unknown'}` })
@@ -823,6 +827,28 @@ export function useManifest() {
                       : i,
                   ),
                 );
+              });
+            return;
+          }
+          // Phase 1 returned — text extracted, now call phase 2 for chunking
+          if (data?.needs_chunking) {
+            console.log(`[queue] Phase 1 done for "${item.title}" (${data.text_length} chars), starting chunking phase...`);
+            supabase.functions
+              .invoke('manifest-process', {
+                body: { manifest_item_id: item.id, user_id: user.id, phase: 'chunk' },
+              })
+              .then(({ error: chunkErr }) => {
+                if (chunkErr) {
+                  console.error(`[queue] Chunking phase failed for "${item.title}":`, chunkErr);
+                  // Text is saved — mark as completed with a note about missing chunks
+                  supabase
+                    .from('manifest_items')
+                    .update({ processing_status: 'completed', processing_detail: 'Text extracted but chunking failed. Try reprocessing.' })
+                    .eq('id', item.id);
+                }
+              })
+              .catch((err) => {
+                console.error(`[queue] Chunking phase invoke error for "${item.title}":`, err);
               });
           }
         })

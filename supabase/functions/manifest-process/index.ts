@@ -35,7 +35,7 @@ serve(async (req: Request) => {
     }
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 
-    const { manifest_item_id } = await req.json();
+    const { manifest_item_id, phase } = await req.json();
 
     if (!manifest_item_id) {
       return new Response(
@@ -355,6 +355,44 @@ serve(async (req: Request) => {
     }
     // text_note: fullText already populated from item.text_content
     // audio: TODO — Whisper transcription (post-MVP)
+
+    // --- After text extraction: if this was phase 1 (default), save text and return ---
+    // The client will call back with phase='chunk' to do chunking in a separate CPU budget.
+    if (phase !== 'chunk' && fullText && fullText.trim().length > 0) {
+      await supabase.from('manifest_items').update({
+        processing_detail: 'Text extracted. Chunking...',
+      }).eq('id', manifest_item_id);
+
+      return new Response(
+        JSON.stringify({ success: true, needs_chunking: true, text_length: fullText.trim().length }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    // --- Phase 2: Chunking only (text already in DB) ---
+    if (phase === 'chunk') {
+      // Read text_content from DB (already saved in phase 1)
+      const { data: freshItem } = await supabase
+        .from('manifest_items')
+        .select('text_content')
+        .eq('id', manifest_item_id)
+        .eq('user_id', userId)
+        .single();
+
+      if (!freshItem?.text_content) {
+        await supabase.from('manifest_items').update({
+          processing_status: 'failed',
+          processing_detail: 'No text content found for chunking.',
+        }).eq('id', manifest_item_id);
+        return new Response(
+          JSON.stringify({ error: 'No text content to chunk' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+
+      fullText = freshItem.text_content;
+      // Fall through to chunking below
+    }
 
     if (!fullText || fullText.trim().length === 0) {
       console.error('Empty text extraction:', {
