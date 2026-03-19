@@ -9,6 +9,7 @@ import { DECLARATION_STYLE_LABELS, ACTION_STEP_CONTENT_TYPE_LABELS, QUESTION_CON
 import type { ActionStepContentType, QuestionContentType } from '../../lib/types';
 import type { BookExtractionGroup } from '../../lib/exportExtractions';
 import { ExportDialog } from './ExportDialog';
+import { ChapterJumpOverlay } from './ChapterJumpOverlay';
 import { Button, TagPills } from '../shared';
 import './ExtractionsView.css';
 import './ExtractionTabs.css';
@@ -2336,6 +2337,32 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName, 
                   </button>
                 )}
               </div>
+
+              {/* Chapter jump overlay (mobile) — computed from visible sections */}
+              {(() => {
+                const jumpSections: Array<{ key: string; title: string; itemCount: number }> = [];
+                for (const group of visibleData) {
+                  const tabItems = activeTab === 'summary' ? group.summaries
+                    : activeTab === 'frameworks' ? group.principles
+                    : activeTab === 'action_steps' ? group.actionSteps
+                    : activeTab === 'mast_content' ? group.declarations
+                    : group.questions;
+                  const sectionMap = new Map<string, number>();
+                  for (const item of tabItems) {
+                    const key = ('section_title' in item && (item as { section_title?: string | null }).section_title) || '__full_book__';
+                    sectionMap.set(key, (sectionMap.get(key) || 0) + 1);
+                  }
+                  // For multi-book, prefix with book title
+                  const prefix = visibleData.length > 1 ? `${group.bookTitle}: ` : '';
+                  for (const [key, count] of sectionMap.entries()) {
+                    jumpSections.push({ key: `${group.bookId}-${key}`, title: `${prefix}${key === '__full_book__' ? 'Full Book' : key}`, itemCount: count });
+                  }
+                }
+                const headerSelector = viewMode === 'chapters'
+                  ? '.chapter-view__chapter-header'
+                  : '.extraction-tab__section-header';
+                return <ChapterJumpOverlay sections={jumpSections} headerSelector={headerSelector} />;
+              })()}
 
               {/* Desktop chapter sidebar + content layout */}
               <div className="extractions-view__with-sidebar">
