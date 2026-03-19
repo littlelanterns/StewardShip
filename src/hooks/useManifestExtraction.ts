@@ -268,6 +268,27 @@ export function useManifestExtraction() {
     setError(null);
     console.log('[discoverSections] Starting discovery for', manifestItemId);
     try {
+      // Check DB cache first
+      const { data: cachedItem } = await supabase
+        .from('manifest_items')
+        .select('discovered_sections')
+        .eq('id', manifestItemId)
+        .single();
+      if (cachedItem?.discovered_sections && Array.isArray(cachedItem.discovered_sections) && cachedItem.discovered_sections.length > 0) {
+        console.log(`[discoverSections] Using cached sections (${cachedItem.discovered_sections.length} sections)`);
+        const cached = cachedItem.discovered_sections as SectionInfo[];
+        setSections(cached);
+        setOriginalSections(cached);
+        setIsMergeActive(false);
+        const defaultSelected = cached
+          .map((s: SectionInfo, i: number) => ({ index: i, title: s.title }))
+          .filter(({ title }: { title: string }) => !title.startsWith('[NON-CONTENT]'))
+          .map(({ index }: { index: number }) => index);
+        setSelectedSectionIndices(defaultSelected);
+        setDiscoveringSections(false);
+        return cached;
+      }
+
       const { data, error: invokeErr } = await supabase.functions.invoke('manifest-extract', {
         body: { manifest_item_id: manifestItemId, extraction_type: 'discover_sections' },
       });
@@ -283,6 +304,10 @@ export function useManifestExtraction() {
       setSections(discovered);
       setOriginalSections(discovered);
       setIsMergeActive(false);
+      // Cache to DB so it survives reloads
+      await supabase.from('manifest_items')
+        .update({ discovered_sections: discovered })
+        .eq('id', manifestItemId);
       // Auto-select content sections, skip [NON-CONTENT]
       const defaultSelected = discovered
         .map((s, i) => ({ index: i, title: s.title }))
@@ -870,11 +895,29 @@ export function useManifestExtraction() {
     manifestItemId: string,
   ): Promise<SectionInfo[] | null> => {
     try {
+      // Check DB cache first
+      const { data: item } = await supabase
+        .from('manifest_items')
+        .select('discovered_sections')
+        .eq('id', manifestItemId)
+        .single();
+      if (item?.discovered_sections && Array.isArray(item.discovered_sections) && item.discovered_sections.length > 0) {
+        console.log(`[discoverSectionsRaw] Using cached sections for ${manifestItemId} (${item.discovered_sections.length} sections)`);
+        return item.discovered_sections as SectionInfo[];
+      }
+
       const { data, error: invokeErr } = await supabase.functions.invoke('manifest-extract', {
         body: { manifest_item_id: manifestItemId, extraction_type: 'discover_sections' },
       });
       if (invokeErr || data?.error) return null;
-      return data.sections || [];
+      const discovered = data.sections || [];
+      // Cache to DB
+      if (discovered.length > 0) {
+        await supabase.from('manifest_items')
+          .update({ discovered_sections: discovered })
+          .eq('id', manifestItemId);
+      }
+      return discovered;
     } catch {
       return null;
     }
@@ -1062,13 +1105,13 @@ export function useManifestExtraction() {
     tabType: 'action_steps' | 'questions',
     genres: BookGenre[],
   ): Promise<boolean> => {
-    if (!user || sections.length === 0) return false;
+    if (!user) return false;
     setExtracting(true);
     setExtractingTab(tabType);
     setError(null);
 
     try {
-      // Find which sections already have content for this tab (from DB, not local state)
+      // 1. Get section titles that already have this tab (from DB)
       const table = tabType === 'action_steps' ? 'manifest_action_steps' : 'manifest_questions';
       const { data: existing } = await supabase
         .from(table)
@@ -1078,43 +1121,96 @@ export function useManifestExtraction() {
         .eq('is_deleted', false);
       const existingTitles = new Set((existing || []).map((e: { section_title: string | null }) => e.section_title).filter(Boolean));
 
-      // Filter to non-[NON-CONTENT] sections that don't already have this tab
-      const missingSections = sections.filter((s) => {
-        if (s.title.startsWith('[NON-CONTENT]')) return false;
-        const clean = s.title.replace(/^\[NON-CONTENT\]\s*/i, '');
-        return !existingTitles.has(clean);
-      });
+      // 2. Get ALL section titles from existing extractions (DB source of truth)
+      //    These are sections we know were extracted — use them even if discovery doesn't find them again
+      const [{ data: dbSummaries }, { data: dbDeclarations }, { data: dbActionSteps }] = await Promise.all([
+        supabase.from('manifest_summaries')
+          .select('section_title, section_index')
+          .eq('manifest_item_id', manifestItemId)
+          .eq('user_id', user.id)
+          .eq('is_deleted', false),
+        supabase.from('manifest_declarations')
+          .select('section_title, section_index')
+          .eq('manifest_item_id', manifestItemId)
+          .eq('user_id', user.id)
+          .eq('is_deleted', false),
+        supabase.from('manifest_action_steps')
+          .select('section_title, section_index')
+          .eq('manifest_item_id', manifestItemId)
+          .eq('user_id', user.id)
+          .eq('is_deleted', false),
+      ]);
 
-      if (missingSections.length === 0) {
-        // Nothing to extract — all sections already have this tab
+      // Build a map of section_title → section_index from existing extractions
+      const knownSections = new Map<string, number>();
+      for (const row of [...(dbSummaries || []), ...(dbDeclarations || []), ...(dbActionSteps || [])]) {
+        if (row.section_title && !knownSections.has(row.section_title)) {
+          knownSections.set(row.section_title, row.section_index);
+        }
+      }
+
+      // 3. Find missing section titles
+      const missingSectionTitles = [...knownSections.entries()]
+        .filter(([title]) => !existingTitles.has(title))
+        .sort((a, b) => a[1] - b[1]); // sort by section_index
+
+      if (missingSectionTitles.length === 0) {
         setExtracting(false);
         setExtractingTab(null);
         return true;
       }
 
-      const extractFn = tabType === 'action_steps' ? extractActionSteps : extractQuestions;
-
-      for (let i = 0; i < missingSections.length; i++) {
-        if (i > 0) await new Promise((r) => setTimeout(r, 1500));
-        const section = missingSections[i];
-        const clean = section.title.replace(/^\[NON-CONTENT\]\s*/i, '');
-        const sectionIndex = sections.indexOf(section);
-
-        setExtractionProgress({ current: i, total: missingSections.length, currentType: tabType });
-
-        try {
-          await extractFn(manifestItemId, genres, {
-            sectionTitle: clean,
-            sectionStart: section.start_char,
-            sectionEnd: section.end_char,
-            sectionIndex,
-          });
-        } catch (err) {
-          console.error(`[extractMissingTab] Failed for "${clean}":`, err);
+      // 4. We need char offsets for each section. Try discovered sections first, then re-discover.
+      let sectionList = sections.length > 0 ? sections : null;
+      if (!sectionList) {
+        const discovered = await discoverSectionsRaw(manifestItemId);
+        if (discovered && discovered.length > 0) {
+          sectionList = discovered;
+          setSections(discovered);
+          setOriginalSections(discovered);
         }
       }
 
-      triggerSemanticEmbeddings();
+      // 5. Match missing titles to section offsets
+      const extractFn = tabType === 'action_steps' ? extractActionSteps : extractQuestions;
+      let extracted = 0;
+
+      for (let i = 0; i < missingSectionTitles.length; i++) {
+        if (i > 0) await new Promise((r) => setTimeout(r, 1500));
+        const [title, sectionIndex] = missingSectionTitles[i];
+
+        setExtractionProgress({ current: i, total: missingSectionTitles.length, currentType: tabType });
+
+        // Find matching section in discovered list for char offsets
+        const matchedSection = sectionList?.find((s) => {
+          const clean = s.title.replace(/^\[NON-CONTENT\]\s*/i, '');
+          return clean === title;
+        });
+
+        try {
+          if (matchedSection) {
+            // Have char offsets — section-specific extraction
+            await extractFn(manifestItemId, genres, {
+              sectionTitle: title,
+              sectionStart: matchedSection.start_char,
+              sectionEnd: matchedSection.end_char,
+              sectionIndex,
+            });
+          } else {
+            // No char offsets — fall back to whole-doc extraction tagged with this section title
+            console.warn(`[extractMissingTab] No char offsets for "${title}" — using whole-doc extraction`);
+            await extractFn(manifestItemId, genres, {
+              sectionTitle: title,
+              sectionIndex,
+            });
+          }
+          extracted++;
+        } catch (err) {
+          console.error(`[extractMissingTab] Failed for "${title}":`, err);
+        }
+      }
+
+      if (extracted > 0) triggerSemanticEmbeddings();
       setExtractionProgress(null);
       return true;
     } catch (err) {
@@ -1125,7 +1221,7 @@ export function useManifestExtraction() {
       setExtracting(false);
       setExtractingTab(null);
     }
-  }, [user, sections, extractActionSteps, extractQuestions, triggerSemanticEmbeddings]);
+  }, [user, sections, discoverSectionsRaw, extractActionSteps, extractQuestions, triggerSemanticEmbeddings]);
 
   // --- Re-run Frameworks: discovers sections, extracts only frameworks per section ---
 

@@ -1401,6 +1401,7 @@ export interface ManifestItem {
   parent_manifest_item_id: string | null;
   part_number: number | null;
   part_count: number | null;
+  discovered_sections: Array<{ title: string; start_char: number; end_char: number; description: string }> | null;
   archived_at: string | null;
   created_at: string;
   updated_at: string;
