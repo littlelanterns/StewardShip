@@ -237,10 +237,10 @@ Rules:
 - Use section length as a rough guide: ~1-2 questions per 2,000-3,000 characters of input. A short section may produce 2-5 questions, a long one 8-15.
 - Questions should be PERSONAL and INVITING — use "you/your" language. Not clinical or academic.
 - GENRE-WEIGHTED MIX: Aim for a natural distribution of content_types weighted toward the book's genre. A parenting book produces more implementation and discussion questions. A spiritual memoir produces more reflection and self_examination. A leadership book produces more scenario and implementation. Let the content guide the balance — don't force equal distribution across types.
-- For fiction/allegory/memoir, ask about character decisions, moral dilemmas, and parallels to the reader's own life.
-- For non-fiction, ask about applying principles, recognizing patterns, and identifying growth areas.
-- For scripture/sacred texts, ask about spiritual application, personal relevance, and lived experience.
-- Avoid surface-level comprehension questions ("What did the author say about X?"). Every question should prompt self-examination or life application.
+- NOT A READING QUIZ: These are journal prompts for personal growth, NOT comprehension questions. Never ask about characters, plot points, or what the author said as if testing whether the reader did the homework. BAD: "How did Character X demonstrate courage?" GOOD: "Think of a time you had to act before you felt ready. What gave you the push — and what held you back?" The book's ideas should inspire the question's theme, but the question itself should be about the READER'S life, not the book's content.
+- For fiction/allegory/memoir: extract the underlying human theme (courage, forgiveness, identity, sacrifice) and ask about THAT — not about the characters. The reader should never need to remember who did what in the story.
+- For non-fiction: ask about applying principles to the reader's own context, recognizing patterns in their life, and identifying growth areas — not about restating what the author taught.
+- For scripture/sacred texts: ask about spiritual application, personal relevance, and lived experience.
 - Label each with its content_type:
   - "reflection" — Inward-looking: How does this connect to who you are or want to become?
   - "implementation" — Forward-looking: How could you apply this teaching starting today?
@@ -344,7 +344,7 @@ Create reflective questions that help the reader deeply internalize and apply th
 - COHESION RULE: A multi-part reflection sequence is ONE item.
 - Extract 3-8 questions depending on content richness.
 - GENRE-WEIGHTED MIX: Weight content_types toward the book's genre — parenting → more implementation/discussion, spiritual memoir → more reflection/self_examination, leadership → more scenario/implementation. Let the content guide the balance.
-- For fiction/allegory/memoir, ask about character decisions, moral dilemmas, and parallels to the reader's own life.
+- NOT A READING QUIZ: Journal prompts for personal growth, NOT comprehension questions. Never reference characters, plot, or what the author said. Extract the underlying human theme and ask about the READER'S life. For fiction: ask about the theme (courage, forgiveness, identity), not the characters.
 - For scripture/sacred texts, ask about spiritual application, personal relevance, and lived experience.
 - Avoid surface-level comprehension questions. Every question should prompt self-examination or life application.
 - Label each with its content_type:
