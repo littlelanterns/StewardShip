@@ -156,6 +156,30 @@
   background: var(--color-bg-secondary);
 }
 
+/* Abridged "See more" / "Show key points only" button */
+.extraction-tab__see-more {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: none;
+  border: 1px dashed var(--color-border, var(--color-slate-gray));
+  border-radius: var(--radius-sm, 4px);
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary, var(--color-slate-gray));
+  margin-top: var(--spacing-xs);
+  transition: all 0.15s ease;
+  width: 100%;
+  justify-content: center;
+}
+
+.extraction-tab__see-more:hover {
+  border-color: var(--color-mid-teal);
+  color: var(--color-mid-teal);
+  border-style: solid;
+}
+
 .extraction-tabs__filter {
   display: flex;
   align-items: center;

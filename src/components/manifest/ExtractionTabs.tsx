@@ -78,6 +78,18 @@ interface ExtractionProgressInfo {
   currentType: 'summary' | 'framework' | 'mast_content' | 'action_steps' | 'questions';
 }
 
+/** Abridged section info — passed to sub-tabs for "See more" buttons */
+interface AbridgedSectionInfo {
+  /** Map of sectionKey → number of hidden items in that section */
+  hiddenCounts: Map<string, number>;
+  /** Callback to expand a section */
+  onExpand: (sectionKey: string) => void;
+  /** Whether a section is expanded */
+  isExpanded: (sectionKey: string) => boolean;
+  /** Whether abridged mode is active */
+  active: boolean;
+}
+
 interface SummaryTabProps {
   summaries: ManifestSummary[];
   extractingTab: string | null;
@@ -91,6 +103,7 @@ interface SummaryTabProps {
   onReRun: (sectionTitle?: string) => void;
   filterMode: FilterMode;
   extractionProgress?: ExtractionProgressInfo | null;
+  abridgedInfo?: AbridgedSectionInfo;
 }
 
 function SummaryTab({
@@ -104,6 +117,7 @@ function SummaryTab({
   onReRun,
   filterMode,
   extractionProgress,
+  abridgedInfo,
 }: SummaryTabProps) {
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -320,6 +334,23 @@ function SummaryTab({
                   </div>
                 ))}
 
+                {/* Abridged "See more" button */}
+                {abridgedInfo?.active && (() => {
+                  const hidden = abridgedInfo.hiddenCounts.get(`summary-${sectionKey}`) || 0;
+                  const expanded = abridgedInfo.isExpanded(`summary-${sectionKey}`);
+                  if (hidden > 0 && !expanded) return (
+                    <button type="button" className="extraction-tab__see-more" onClick={() => abridgedInfo.onExpand(`summary-${sectionKey}`)}>
+                      <ChevronDown size={12} /> See {hidden} more item{hidden !== 1 ? 's' : ''}
+                    </button>
+                  );
+                  if (expanded) return (
+                    <button type="button" className="extraction-tab__see-more" onClick={() => abridgedInfo.onExpand(`summary-${sectionKey}`)}>
+                      <ChevronRight size={12} /> Show key points only
+                    </button>
+                  );
+                  return null;
+                })()}
+
                 <button
                   type="button"
                   className="extraction-tab__go-deeper"
@@ -352,6 +383,7 @@ interface FrameworksTabProps {
   onReRun?: () => Promise<void>;
   filterMode: FilterMode;
   hasFramework: boolean;
+  abridgedInfo?: AbridgedSectionInfo;
 }
 
 function FrameworksTab({
@@ -563,6 +595,7 @@ interface ActionStepsTabProps {
   onReRun: (sectionTitle?: string) => void;
   filterMode: FilterMode;
   extractionProgress?: ExtractionProgressInfo | null;
+  abridgedInfo?: AbridgedSectionInfo;
 }
 
 function ActionStepsTab({
@@ -853,6 +886,7 @@ interface MastContentTabProps {
   onReRun: (sectionTitle?: string) => void;
   filterMode: FilterMode;
   extractionProgress?: ExtractionProgressInfo | null;
+  abridgedInfo?: AbridgedSectionInfo;
 }
 
 function MastContentTab({
@@ -1147,6 +1181,7 @@ interface QuestionsTabProps {
   onReRun: (sectionTitle?: string) => void;
   filterMode: FilterMode;
   extractionProgress?: ExtractionProgressInfo | null;
+  abridgedInfo?: AbridgedSectionInfo;
 }
 
 function QuestionsTab({
@@ -1557,45 +1592,99 @@ export function ExtractionTabs({
   // In-book text search
   const [itemSearch, setItemSearch] = useState('');
   const searchQ = itemSearch.trim().toLowerCase();
-  const abridgedFilter = <T extends { is_key_point?: boolean; is_hearted?: boolean }>(items: T[]): T[] =>
-    abridged ? items.filter((i) => i.is_key_point || i.is_hearted) : items;
+
+  // Per-section expansion when in abridged mode (tracks which sections show all items)
+  const [expandedAbridgedSections, setExpandedAbridgedSections] = useState<Set<string>>(new Set());
+  const toggleAbridgedSection = useCallback((sectionKey: string) => {
+    setExpandedAbridgedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(sectionKey)) next.delete(sectionKey); else next.add(sectionKey);
+      return next;
+    });
+  }, []);
+  // Reset expanded sections when toggling abridged off
+  const origToggleAbridged = toggleAbridged;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const toggleAbridgedWrapped = useCallback(() => { origToggleAbridged(); setExpandedAbridgedSections(new Set()); }, [origToggleAbridged]);
+
+  // Abridged filter: respects per-section expansion
+  const abridgedFilterSection = <T extends { is_key_point?: boolean; is_hearted?: boolean; section_title?: string | null }>(
+    items: T[], tab: string
+  ): T[] => {
+    if (!abridged) return items;
+    return items.filter((i) => {
+      const secKey = `${tab}-${i.section_title || '__full_book__'}`;
+      if (expandedAbridgedSections.has(secKey)) return true; // section expanded — show all
+      return i.is_key_point || i.is_hearted;
+    });
+  };
 
   const filteredSummaries = useMemo(() => {
     let base = summaries.filter((s) => !s.is_deleted);
-    base = abridgedFilter(base);
+    base = abridgedFilterSection(base, 'summary');
     if (!searchQ) return base;
     return base.filter((s) => s.text.toLowerCase().includes(searchQ) || s.user_note?.toLowerCase().includes(searchQ));
-  }, [summaries, searchQ, abridged]);
+  }, [summaries, searchQ, abridged, expandedAbridgedSections]);
   const filteredPrinciples = useMemo(() => {
     let base = principles.filter((p) => !p.is_deleted);
-    base = abridgedFilter(base);
+    base = abridgedFilterSection(base, 'frameworks');
     if (!searchQ) return base;
     return base.filter((p) => p.text.toLowerCase().includes(searchQ) || p.user_note?.toLowerCase().includes(searchQ));
-  }, [principles, searchQ, abridged]);
+  }, [principles, searchQ, abridged, expandedAbridgedSections]);
   const filteredActionSteps = useMemo(() => {
     let base = actionSteps.filter((a) => !a.is_deleted);
-    base = abridgedFilter(base);
+    base = abridgedFilterSection(base, 'action_steps');
     if (!searchQ) return base;
     return base.filter((a) => a.text.toLowerCase().includes(searchQ) || a.user_note?.toLowerCase().includes(searchQ));
-  }, [actionSteps, searchQ, abridged]);
+  }, [actionSteps, searchQ, abridged, expandedAbridgedSections]);
   const filteredDeclarations = useMemo(() => {
     let base = declarations.filter((d) => !d.is_deleted);
-    base = abridgedFilter(base);
+    base = abridgedFilterSection(base, 'mast_content');
     if (!searchQ) return base;
     return base.filter((d) => d.declaration_text.toLowerCase().includes(searchQ) || d.user_note?.toLowerCase().includes(searchQ));
-  }, [declarations, searchQ, abridged]);
+  }, [declarations, searchQ, abridged, expandedAbridgedSections]);
   const filteredQuestions = useMemo(() => {
     let base = questions.filter((q) => !q.is_deleted);
-    base = abridgedFilter(base);
+    base = abridgedFilterSection(base, 'questions');
     if (!searchQ) return base;
     return base.filter((q) => q.text.toLowerCase().includes(searchQ) || q.user_note?.toLowerCase().includes(searchQ));
-  }, [questions, searchQ, abridged]);
+  }, [questions, searchQ, abridged, expandedAbridgedSections]);
 
   const summaryCount = filteredSummaries.length;
   const frameworkCount = filteredPrinciples.length;
   const actionStepCount = filteredActionSteps.length;
   const declarationCount = filteredDeclarations.length;
   const questionCount = filteredQuestions.length;
+
+  // Compute hidden counts per section for abridged "See more" buttons
+  const abridgedInfo: AbridgedSectionInfo = useMemo(() => {
+    const hiddenCounts = new Map<string, number>();
+    if (abridged) {
+      const computeHidden = <T extends { is_deleted?: boolean; is_key_point?: boolean; is_hearted?: boolean; section_title?: string | null }>(
+        allItems: T[], tab: string
+      ) => {
+        const active = allItems.filter((i) => !i.is_deleted);
+        for (const item of active) {
+          const secKey = `${tab}-${item.section_title || '__full_book__'}`;
+          if (expandedAbridgedSections.has(secKey)) continue;
+          if (!item.is_key_point && !item.is_hearted) {
+            hiddenCounts.set(secKey, (hiddenCounts.get(secKey) || 0) + 1);
+          }
+        }
+      };
+      computeHidden(summaries, 'summary');
+      computeHidden(principles as Array<{ is_deleted?: boolean; is_key_point?: boolean; is_hearted?: boolean; section_title?: string | null }>, 'frameworks');
+      computeHidden(actionSteps, 'action_steps');
+      computeHidden(declarations, 'mast_content');
+      computeHidden(questions, 'questions');
+    }
+    return {
+      hiddenCounts,
+      onExpand: toggleAbridgedSection,
+      isExpanded: (key: string) => expandedAbridgedSections.has(key),
+      active: abridged,
+    };
+  }, [abridged, expandedAbridgedSections, summaries, principles, actionSteps, declarations, questions, toggleAbridgedSection]);
 
   // --- Scroll position persistence ---
   const scrollKeyRef = useRef(`manifest-scroll-${manifestItemId}-${activeTab}-${viewMode}`);
@@ -1744,7 +1833,7 @@ export function ExtractionTabs({
         <button
           type="button"
           className={`extraction-tabs__filter-btn${abridged ? ' extraction-tabs__filter-btn--active' : ''}`}
-          onClick={toggleAbridged}
+          onClick={toggleAbridgedWrapped}
           title={abridged ? 'Show all items' : 'Show key points only'}
         >
           <Sparkles size={12} />
@@ -1788,6 +1877,7 @@ export function ExtractionTabs({
                 onReRun={onSummaryReRun}
                 filterMode={filterMode}
                 extractionProgress={extractionProgress}
+                abridgedInfo={abridgedInfo}
               />
             )}
             {activeTab === 'frameworks' && (
@@ -1800,6 +1890,7 @@ export function ExtractionTabs({
                 onReRun={onFrameworkReRun}
                 filterMode={filterMode}
                 hasFramework={hasFramework}
+                abridgedInfo={abridgedInfo}
               />
             )}
             {activeTab === 'action_steps' && (
@@ -1817,6 +1908,7 @@ export function ExtractionTabs({
                 onReRun={onActionStepReRun}
                 filterMode={filterMode}
                 extractionProgress={extractionProgress}
+                abridgedInfo={abridgedInfo}
               />
             )}
             {activeTab === 'mast_content' && (
@@ -1834,6 +1926,7 @@ export function ExtractionTabs({
                 onReRun={onDeclarationReRun}
                 filterMode={filterMode}
                 extractionProgress={extractionProgress}
+                abridgedInfo={abridgedInfo}
               />
             )}
             {activeTab === 'questions' && (
@@ -1851,6 +1944,7 @@ export function ExtractionTabs({
                 onReRun={onQuestionReRun}
                 filterMode={filterMode}
                 extractionProgress={extractionProgress}
+                abridgedInfo={abridgedInfo}
               />
             )}
           </>
