@@ -29,7 +29,7 @@ import './Manifest.css';
 
 type ViewMode = 'list' | 'detail' | 'upload';
 type LibraryLayout = 'compact' | 'grid';
-type SortOption = 'newest' | 'oldest' | 'name_asc' | 'name_desc' | 'has_extractions';
+type SortOption = 'newest' | 'oldest' | 'name_asc' | 'name_desc' | 'has_extractions' | 'recently_viewed' | 'most_annotated';
 type GroupMode = 'by_folder' | 'all_books';
 
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
@@ -38,6 +38,8 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: 'name_asc', label: 'Name A-Z' },
   { value: 'name_desc', label: 'Name Z-A' },
   { value: 'has_extractions', label: 'Has Extractions' },
+  { value: 'recently_viewed', label: 'Recently Viewed' },
+  { value: 'most_annotated', label: 'Most Annotated' },
 ];
 
 // --- sessionStorage helpers (safe for incognito / storage-disabled browsers) ---
@@ -321,6 +323,8 @@ export default function Manifest() {
     setViewMode('detail');
     ssSet('manifest-selected-item', resolvedItem.id);
     ssSet('manifest-selected-title', resolvedItem.title);
+    // Update last_viewed_at for "Recently Viewed" sort (fire-and-forget)
+    supabase.from('manifest_items').update({ last_viewed_at: new Date().toISOString() }).eq('id', resolvedItem.id).then();
     // Fetch child parts if this is a parent with parts
     if ((resolvedItem.part_count ?? 0) > 0) {
       const parts = await fetchParts(resolvedItem.id);
@@ -682,6 +686,19 @@ export default function Manifest() {
           const aHasExtraction = (a.extraction_status === 'completed' || a.extraction_status === 'failed' || (partExtractionMap.get(a.id)?.extracted ?? 0) > 0) ? 0 : 1;
           const bHasExtraction = (b.extraction_status === 'completed' || b.extraction_status === 'failed' || (partExtractionMap.get(b.id)?.extracted ?? 0) > 0) ? 0 : 1;
           if (aHasExtraction !== bHasExtraction) return aHasExtraction - bHasExtraction;
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        }
+        case 'recently_viewed': {
+          const aViewed = a.last_viewed_at ? new Date(a.last_viewed_at).getTime() : 0;
+          const bViewed = b.last_viewed_at ? new Date(b.last_viewed_at).getTime() : 0;
+          if (aViewed !== bViewed) return bViewed - aViewed;
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        }
+        case 'most_annotated': {
+          // Approximate engagement: books with extractions and hearts rank higher
+          const aScore = (a.extraction_status === 'completed' ? 1 : 0);
+          const bScore = (b.extraction_status === 'completed' ? 1 : 0);
+          if (aScore !== bScore) return bScore - aScore;
           return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
         }
         case 'newest':

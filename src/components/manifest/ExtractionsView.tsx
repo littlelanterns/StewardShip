@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Heart, Download, ChevronDown, ChevronRight, Trash2, Anchor, Compass, MessageCircle, RefreshCw, Sparkles, LayoutList, BookOpen, StickyNote, Search } from 'lucide-react';
+import { ChevronLeft, Heart, Download, ChevronDown, ChevronRight, Trash2, Anchor, Compass, MessageCircle, RefreshCw, Sparkles, LayoutList, BookOpen, StickyNote, Search, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useTagUsage } from '../../hooks/useTagUsage';
@@ -108,6 +108,7 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
   const [notingId, setNotingId] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState('');
   const [activeTags, setActiveTags] = useState<Set<string>>(new Set());
+  const [extractionSearch, setExtractionSearch] = useState('');
   const [bookSearch, setBookSearch] = useState('');
   const [activeBookTags, setActiveBookTags] = useState<Set<string>>(new Set());
   const [booksExpanded, setBooksExpanded] = useState(true);
@@ -1079,8 +1080,21 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
       data = data.filter((d) => Array.from(activeTags).some((t) => d.frameworkTags.includes(t)));
     }
 
+    // Text search filter — filter items within each book group
+    if (extractionSearch.trim()) {
+      const q = extractionSearch.trim().toLowerCase();
+      data = data.map((d) => ({
+        ...d,
+        summaries: d.summaries.filter((s) => s.text.toLowerCase().includes(q) || s.user_note?.toLowerCase().includes(q)),
+        principles: d.principles.filter((p) => p.text.toLowerCase().includes(q) || p.user_note?.toLowerCase().includes(q)),
+        actionSteps: d.actionSteps.filter((a) => a.text.toLowerCase().includes(q) || a.user_note?.toLowerCase().includes(q)),
+        questions: d.questions.filter((qn) => qn.text.toLowerCase().includes(q) || qn.user_note?.toLowerCase().includes(q)),
+        declarations: d.declarations.filter((dc) => dc.declaration_text.toLowerCase().includes(q) || dc.user_note?.toLowerCase().includes(q)),
+      })).filter((d) => d.summaries.length > 0 || d.principles.length > 0 || d.actionSteps.length > 0 || d.questions.length > 0 || d.declarations.length > 0);
+    }
+
     return data;
-  }, [favoritesMode, activeTags, selectedData]);
+  }, [favoritesMode, activeTags, extractionSearch, selectedData]);
 
   // Counts that reflect what's actually displayed (respects filter mode + tag)
   const displayCounts = useMemo(() => {
@@ -2096,6 +2110,23 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
                     </button>
                   </div>
                 </div>
+              </div>
+
+              {/* Extraction text search */}
+              <div className="extractions-view__search-bar">
+                <Search size={14} className="extractions-view__search-icon" />
+                <input
+                  type="text"
+                  className="extractions-view__search-input"
+                  placeholder="Search extractions..."
+                  value={extractionSearch}
+                  onChange={(e) => setExtractionSearch(e.target.value)}
+                />
+                {extractionSearch && (
+                  <button type="button" className="extractions-view__search-clear" onClick={() => setExtractionSearch('')}>
+                    <X size={12} />
+                  </button>
+                )}
               </div>
 
               {/* Content */}

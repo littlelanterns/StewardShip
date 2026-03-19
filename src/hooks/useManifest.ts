@@ -32,7 +32,7 @@ export function useManifest() {
     try {
       const { data, error: fetchErr } = await supabase
         .from('manifest_items')
-        .select('id, user_id, title, file_type, file_name, storage_path, file_size_bytes, usage_designations, tags, folder_group, processing_status, processing_detail, chunk_count, intake_completed, ai_summary, author, isbn, extraction_status, genres, source_manifest_item_id, parent_manifest_item_id, part_number, part_count, archived_at, created_at, updated_at')
+        .select('id, user_id, title, file_type, file_name, storage_path, file_size_bytes, usage_designations, tags, folder_group, processing_status, processing_detail, chunk_count, intake_completed, ai_summary, author, isbn, extraction_status, genres, source_manifest_item_id, parent_manifest_item_id, part_number, part_count, last_viewed_at, archived_at, created_at, updated_at')
         .eq('user_id', user.id)
         .is('archived_at', null)
         .is('parent_manifest_item_id', null)
@@ -533,7 +533,7 @@ export function useManifest() {
     if (!user) return [];
     const { data, error: fetchErr } = await supabase
       .from('manifest_items')
-      .select('id, user_id, title, file_type, file_name, storage_path, file_size_bytes, usage_designations, tags, folder_group, processing_status, processing_detail, chunk_count, intake_completed, ai_summary, author, isbn, extraction_status, genres, source_manifest_item_id, parent_manifest_item_id, part_number, part_count, archived_at, created_at, updated_at')
+      .select('id, user_id, title, file_type, file_name, storage_path, file_size_bytes, usage_designations, tags, folder_group, processing_status, processing_detail, chunk_count, intake_completed, ai_summary, author, isbn, extraction_status, genres, source_manifest_item_id, parent_manifest_item_id, part_number, part_count, last_viewed_at, archived_at, created_at, updated_at')
       .eq('parent_manifest_item_id', parentItemId)
       .eq('user_id', user.id)
       .is('archived_at', null)
