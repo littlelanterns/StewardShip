@@ -580,6 +580,37 @@ export function ManifestItemDetail({
         {isPart && parentItem ? `Back to ${parentItem.title}` : 'Back'}
       </button>
 
+      {/* Lateral part navigation */}
+      {isPart && childParts && childParts.length > 1 && onSelectPart && (() => {
+        const sortedParts = [...childParts].sort((a, b) => (a.part_number ?? 0) - (b.part_number ?? 0));
+        const currentIdx = sortedParts.findIndex((p) => p.id === item.id);
+        const prevPart = currentIdx > 0 ? sortedParts[currentIdx - 1] : null;
+        const nextPart = currentIdx < sortedParts.length - 1 ? sortedParts[currentIdx + 1] : null;
+        return (
+          <div className="manifest-detail__part-nav">
+            <button
+              type="button"
+              className="manifest-detail__part-nav-btn"
+              disabled={!prevPart}
+              onClick={() => prevPart && onSelectPart(prevPart)}
+            >
+              <ChevronLeft size={14} /> Prev
+            </button>
+            <span className="manifest-detail__part-nav-label">
+              Part {item.part_number ?? currentIdx + 1} of {sortedParts.length}
+            </span>
+            <button
+              type="button"
+              className="manifest-detail__part-nav-btn"
+              disabled={!nextPart}
+              onClick={() => nextPart && onSelectPart(nextPart)}
+            >
+              Next <ChevronRight size={14} />
+            </button>
+          </div>
+        );
+      })()}
+
       {/* Header */}
       <div className="manifest-detail__header">
         <div className="manifest-detail__icon-wrap">
