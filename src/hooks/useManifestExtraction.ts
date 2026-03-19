@@ -1068,7 +1068,7 @@ export function useManifestExtraction() {
     setError(null);
 
     try {
-      // Find which sections already have content for this tab
+      // Find which sections already have content for this tab (from DB, not local state)
       const table = tabType === 'action_steps' ? 'manifest_action_steps' : 'manifest_questions';
       const { data: existing } = await supabase
         .from(table)
@@ -1078,15 +1078,11 @@ export function useManifestExtraction() {
         .eq('is_deleted', false);
       const existingTitles = new Set((existing || []).map((e: { section_title: string | null }) => e.section_title).filter(Boolean));
 
-      // Find sections that have OTHER extraction content but are missing this tab
-      const allExtractedTitles = new Set<string>();
-      for (const s of summaries) if (s.section_title) allExtractedTitles.add(s.section_title);
-      for (const d of declarations) if (d.section_title) allExtractedTitles.add(d.section_title);
-      for (const a of actionSteps) if (a.section_title) allExtractedTitles.add(a.section_title);
-
+      // Filter to non-[NON-CONTENT] sections that don't already have this tab
       const missingSections = sections.filter((s) => {
+        if (s.title.startsWith('[NON-CONTENT]')) return false;
         const clean = s.title.replace(/^\[NON-CONTENT\]\s*/i, '');
-        return allExtractedTitles.has(clean) && !existingTitles.has(clean);
+        return !existingTitles.has(clean);
       });
 
       if (missingSections.length === 0) {
@@ -1129,7 +1125,7 @@ export function useManifestExtraction() {
       setExtracting(false);
       setExtractingTab(null);
     }
-  }, [user, sections, summaries, declarations, actionSteps, extractActionSteps, extractQuestions, triggerSemanticEmbeddings]);
+  }, [user, sections, extractActionSteps, extractQuestions, triggerSemanticEmbeddings]);
 
   // --- Re-run Frameworks: discovers sections, extracts only frameworks per section ---
 
