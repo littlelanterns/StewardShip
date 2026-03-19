@@ -52,9 +52,6 @@ export default function HatchInlinePickerOverlay({
   const { user } = useAuthContext();
   const [items, setItems] = useState<PickerItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedMastType, setSelectedMastType] = useState<MastEntryType>('value');
-  const [selectedKeelCategory, setSelectedKeelCategory] = useState<KeelCategory>('general');
-  const [selectedJournalType, setSelectedJournalType] = useState<JournalEntryType>('journal_entry');
   const [showCommonplaceTooltip, setShowCommonplaceTooltip] = useState(false);
 
   // Agenda: meeting type + person picker state
@@ -124,18 +121,6 @@ export default function HatchInlinePickerOverlay({
     }
   }, [user]);
 
-  const handleMastConfirm = useCallback(() => {
-    onRoute('mast', { mastType: selectedMastType });
-  }, [onRoute, selectedMastType]);
-
-  const handleKeelConfirm = useCallback(() => {
-    onRoute('keel', { keelCategory: selectedKeelCategory });
-  }, [onRoute, selectedKeelCategory]);
-
-  const handleJournalConfirm = useCallback(() => {
-    onRoute('journal', { journalEntryType: selectedJournalType });
-  }, [onRoute, selectedJournalType]);
-
   // Agenda: select meeting type
   const handleAgendaTypeSelect = useCallback((meetingType: MeetingType) => {
     if (PERSON_MEETING_TYPES.includes(meetingType)) {
@@ -203,20 +188,12 @@ export default function HatchInlinePickerOverlay({
             <button
               key={type}
               type="button"
-              className={`hatch-picker__option ${selectedMastType === type ? 'hatch-picker__option--selected' : ''}`}
-              onClick={() => setSelectedMastType(type)}
+              className="hatch-picker__option"
+              onClick={() => onRoute('mast', { mastType: type })}
             >
               {MAST_TYPE_LABELS[type]}
             </button>
           ))}
-          <button
-            type="button"
-            className="hatch-picker__option"
-            style={{ marginTop: 'var(--spacing-sm)', fontWeight: 'var(--font-weight-medium)', color: 'var(--color-cognac)' }}
-            onClick={handleMastConfirm}
-          >
-            Save to Mast
-          </button>
         </div>
       )}
 
@@ -227,20 +204,12 @@ export default function HatchInlinePickerOverlay({
             <button
               key={cat}
               type="button"
-              className={`hatch-picker__option ${selectedKeelCategory === cat ? 'hatch-picker__option--selected' : ''}`}
-              onClick={() => setSelectedKeelCategory(cat)}
+              className="hatch-picker__option"
+              onClick={() => onRoute('keel', { keelCategory: cat })}
             >
               {KEEL_CATEGORY_LABELS[cat]}
             </button>
           ))}
-          <button
-            type="button"
-            className="hatch-picker__option"
-            style={{ marginTop: 'var(--spacing-sm)', fontWeight: 'var(--font-weight-medium)', color: 'var(--color-cognac)' }}
-            onClick={handleKeelConfirm}
-          >
-            Save to Keel
-          </button>
         </div>
       )}
 
@@ -259,8 +228,8 @@ export default function HatchInlinePickerOverlay({
             <div key={type} style={{ position: 'relative' }}>
               <button
                 type="button"
-                className={`hatch-picker__option ${selectedJournalType === type ? 'hatch-picker__option--selected' : ''}`}
-                onClick={() => setSelectedJournalType(type)}
+                className="hatch-picker__option"
+                onClick={() => onRoute('journal', { journalEntryType: type })}
                 onMouseEnter={() => type === 'commonplace' && setShowCommonplaceTooltip(true)}
                 onMouseLeave={() => type === 'commonplace' && setShowCommonplaceTooltip(false)}
               >
@@ -273,14 +242,6 @@ export default function HatchInlinePickerOverlay({
               )}
             </div>
           ))}
-          <button
-            type="button"
-            className="hatch-picker__option"
-            style={{ marginTop: 'var(--spacing-sm)', fontWeight: 'var(--font-weight-medium)', color: 'var(--color-cognac)' }}
-            onClick={handleJournalConfirm}
-          >
-            Save to Journal
-          </button>
         </div>
       )}
 
