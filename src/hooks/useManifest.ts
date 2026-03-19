@@ -607,6 +607,56 @@ export function useManifest() {
     }, 5000);
   }, [user, fetchParts, pollProcessingStatus]);
 
+  // Reprocess a single child part (reset + re-run both phases)
+  const reprocessSinglePart = useCallback(async (
+    parentItemId: string,
+    partId: string,
+    allParts: ManifestItem[],
+    onPartsUpdated: (updatedParts: ManifestItem[]) => void,
+  ): Promise<void> => {
+    if (!user) return;
+
+    // Reset this part to pending
+    await supabase
+      .from('manifest_items')
+      .update({ processing_status: 'pending', chunk_count: 0, processing_detail: null })
+      .eq('id', partId)
+      .eq('user_id', user.id);
+
+    // Optimistic UI update
+    onPartsUpdated(allParts.map((p) =>
+      p.id === partId
+        ? { ...p, processing_status: 'processing' as const, chunk_count: 0, processing_detail: 'Restarting...' }
+        : p,
+    ));
+
+    // Run both phases
+    try {
+      const { data, error: invokeErr } = await supabase.functions.invoke('manifest-process', {
+        body: { manifest_item_id: partId, user_id: user.id },
+      });
+      if (invokeErr) {
+        console.error(`[reprocessSinglePart] Phase 1 failed:`, invokeErr);
+      } else if (data?.needs_chunking) {
+        await supabase.functions.invoke('manifest-process', {
+          body: { manifest_item_id: partId, user_id: user.id, phase: 'chunk' },
+        });
+      }
+    } catch (err) {
+      console.error(`[reprocessSinglePart] Error:`, err);
+    }
+
+    // Poll until this part is done
+    const poll = setInterval(async () => {
+      const freshParts = await fetchParts(parentItemId);
+      onPartsUpdated(freshParts);
+      const thisPart = freshParts.find((p) => p.id === partId);
+      if (thisPart && (thisPart.processing_status === 'completed' || thisPart.processing_status === 'failed')) {
+        clearInterval(poll);
+      }
+    }, 5000);
+  }, [user, fetchParts]);
+
   // Generate AI summary (and optionally regenerate tags) for a manifest item
   const enrichItem = useCallback(async (
     itemId: string,
@@ -951,6 +1001,7 @@ export function useManifest() {
     fetchItemDetail,
     fetchParts,
     processChildParts,
+    reprocessSinglePart,
     checkDuplicate,
     enrichItem,
     autoIntakeItem,

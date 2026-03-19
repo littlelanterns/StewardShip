@@ -60,6 +60,7 @@ export default function Manifest() {
     autoIntakeItem,
     fetchParts,
     processChildParts,
+    reprocessSinglePart,
     getQueuePosition,
   } = useManifest();
 
@@ -907,6 +908,9 @@ export default function Manifest() {
           onBackToParent={handleBackToParent}
           onProcessParts={(parentId, parts) => {
             processChildParts(parentId, parts, setChildParts);
+          }}
+          onReprocessSinglePart={(parentId, partId, allParts) => {
+            reprocessSinglePart(parentId, partId, allParts, setChildParts);
           }}
           // Multi-part extraction
           onDiscoverSectionsRaw={extraction.discoverSectionsRaw}

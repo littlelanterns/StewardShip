@@ -26,6 +26,7 @@ interface ManifestItemDetailProps {
   onSelectPart?: (part: ManifestItem) => void;
   onBackToParent?: () => void;
   onProcessParts?: (parentId: string, parts: ManifestItem[]) => void;
+  onReprocessSinglePart?: (parentId: string, partId: string, allParts: ManifestItem[]) => void;
   // Multi-part extraction
   onDiscoverSectionsRaw?: (itemId: string) => Promise<SectionInfo[] | null>;
   onExtractSectionsForPart?: (
@@ -212,6 +213,7 @@ export function ManifestItemDetail({
   onSelectPart,
   onBackToParent,
   onProcessParts,
+  onReprocessSinglePart,
   onDiscoverSectionsRaw,
   onExtractSectionsForPart,
   onSaveFrameworkForPart,
@@ -901,6 +903,19 @@ export function ManifestItemDetail({
                       {partExtracted && <span className="manifest-detail__part-badge manifest-detail__part-badge--extracted">Extracted</span>}
                       {part.processing_status === 'completed' && !partExtracted && (
                         <span className="manifest-detail__part-badge manifest-detail__part-badge--ready">Ready</span>
+                      )}
+                      {(partProcessing || partFailed) && onReprocessSinglePart && (
+                        <button
+                          type="button"
+                          className="manifest-detail__part-restart"
+                          title="Restart processing for this part"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onReprocessSinglePart(item.id, part.id, childParts);
+                          }}
+                        >
+                          <RefreshCw size={14} />
+                        </button>
                       )}
                     </div>
                     <ChevronRight size={16} className="manifest-detail__part-chevron" />

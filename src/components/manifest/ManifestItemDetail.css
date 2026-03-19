@@ -506,6 +506,23 @@
   color: var(--color-text-secondary);
 }
 
+.manifest-detail__part-restart {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1px solid var(--color-slate-gray);
+  border-radius: 4px;
+  padding: 2px 6px;
+  cursor: pointer;
+  color: var(--color-mid-teal);
+  transition: background 0.15s;
+}
+
+.manifest-detail__part-restart:hover {
+  background: var(--color-warm-sand);
+}
+
 .manifest-detail__part-chevron {
   flex-shrink: 0;
   color: var(--color-slate-gray);
