@@ -506,7 +506,12 @@
   color: var(--color-text-secondary);
 }
 
-.manifest-detail__part-restart {
+.manifest-detail__part-card-wrapper {
+  display: contents;
+}
+
+.manifest-detail__part-restart,
+.manifest-detail__part-delete {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -517,10 +522,40 @@
   cursor: pointer;
   color: var(--color-mid-teal);
   transition: background 0.15s;
+  flex-shrink: 0;
 }
 
-.manifest-detail__part-restart:hover {
+.manifest-detail__part-restart:hover,
+.manifest-detail__part-delete:hover {
   background: var(--color-warm-sand);
+}
+
+.manifest-detail__part-delete {
+  color: var(--color-cognac);
+  border-color: var(--color-cognac);
+  opacity: 0.5;
+}
+
+.manifest-detail__part-delete:hover {
+  opacity: 1;
+}
+
+.manifest-detail__part-delete-confirm {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  padding: 0.75rem 1rem;
+  background: #f5e6dc;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: var(--color-navy);
+}
+
+.manifest-detail__part-delete-actions {
+  display: flex;
+  gap: var(--spacing-xs);
+  flex-shrink: 0;
 }
 
 .manifest-detail__part-chevron {

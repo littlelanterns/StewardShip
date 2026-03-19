@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { ChevronLeft, FileText, FileCode, Mic, Image, StickyNote, RefreshCw, BookOpen, Wand2, MessageSquare, Target, HelpCircle, CheckSquare, BarChart3, Users, ChevronRight, AlertTriangle, Tags } from 'lucide-react';
+import { ChevronLeft, FileText, FileCode, Mic, Image, StickyNote, RefreshCw, BookOpen, Wand2, MessageSquare, Target, HelpCircle, CheckSquare, BarChart3, Users, ChevronRight, AlertTriangle, Tags, Trash2 } from 'lucide-react';
 import type { ManifestItem, ManifestSummary, ManifestDeclaration, ManifestActionStep, ManifestQuestion, AIFrameworkPrinciple, BookGenre, DiscussionType } from '../../lib/types';
 import { MANIFEST_FILE_TYPE_LABELS, MANIFEST_STATUS_LABELS } from '../../lib/types';
 import type { SectionInfo } from '../../hooks/useManifestExtraction';
@@ -27,6 +27,7 @@ interface ManifestItemDetailProps {
   onBackToParent?: () => void;
   onProcessParts?: (parentId: string, parts: ManifestItem[]) => void;
   onReprocessSinglePart?: (parentId: string, partId: string, allParts: ManifestItem[]) => void;
+  onDeletePart?: (partId: string) => Promise<boolean>;
   // Multi-part extraction
   onDiscoverSectionsRaw?: (itemId: string) => Promise<SectionInfo[] | null>;
   onExtractSectionsForPart?: (
@@ -214,6 +215,7 @@ export function ManifestItemDetail({
   onBackToParent,
   onProcessParts,
   onReprocessSinglePart,
+  onDeletePart,
   onDiscoverSectionsRaw,
   onExtractSectionsForPart,
   onSaveFrameworkForPart,
@@ -232,6 +234,8 @@ export function ManifestItemDetail({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [reprocessing, setReprocessing] = useState(false);
   const [enriching, setEnriching] = useState(false);
+  const [confirmDeletePartId, setConfirmDeletePartId] = useState<string | null>(null);
+  const [deletingPartId, setDeletingPartId] = useState<string | null>(null);
 
   // Genre state — local copy synced to item
   const [selectedGenres, setSelectedGenres] = useState<BookGenre[]>(item.genres || []);
@@ -875,51 +879,86 @@ export function ManifestItemDetail({
                 const partProcessing = part.processing_status === 'pending' || part.processing_status === 'processing';
                 const partFailed = part.processing_status === 'failed';
                 const partExtracted = part.extraction_status === 'completed' || part.extraction_status === 'failed';
+                const isConfirmingDelete = confirmDeletePartId === part.id;
+                const isDeleting = deletingPartId === part.id;
                 return (
-                  <button
-                    key={part.id}
-                    type="button"
-                    className="manifest-detail__part-card"
-                    onClick={() => onSelectPart?.(part)}
-                  >
-                    <div className="manifest-detail__part-info">
-                      <span className="manifest-detail__part-title">
-                        {part.part_number ? `Part ${part.part_number}: ` : ''}
-                        {part.title.replace(`${item.title} — `, '')}
-                      </span>
-                      {part.chunk_count > 0 && (
-                        <span className="manifest-detail__part-meta">
-                          {part.chunk_count} chunks indexed
-                        </span>
-                      )}
-                    </div>
-                    <div className="manifest-detail__part-status">
-                      {partProcessing && (
-                        <span className="manifest-detail__part-badge manifest-detail__part-badge--processing">
-                          {part.processing_detail || 'Processing'}
-                        </span>
-                      )}
-                      {partFailed && <span className="manifest-detail__part-badge manifest-detail__part-badge--failed">Failed</span>}
-                      {partExtracted && <span className="manifest-detail__part-badge manifest-detail__part-badge--extracted">Extracted</span>}
-                      {part.processing_status === 'completed' && !partExtracted && (
-                        <span className="manifest-detail__part-badge manifest-detail__part-badge--ready">Ready</span>
-                      )}
-                      {(partProcessing || partFailed) && onReprocessSinglePart && (
-                        <button
-                          type="button"
-                          className="manifest-detail__part-restart"
-                          title="Restart processing for this part"
-                          onClick={(e) => {
+                  <div key={part.id} className="manifest-detail__part-card-wrapper">
+                    {isConfirmingDelete ? (
+                      <div className="manifest-detail__part-delete-confirm">
+                        <span>Delete this part and all its extractions?</span>
+                        <div className="manifest-detail__part-delete-actions">
+                          <Button size="sm" variant="secondary" onClick={() => setConfirmDeletePartId(null)} disabled={isDeleting}>Cancel</Button>
+                          <Button size="sm" disabled={isDeleting} onClick={async (e) => {
                             e.stopPropagation();
-                            onReprocessSinglePart(item.id, part.id, childParts);
-                          }}
-                        >
-                          <RefreshCw size={14} />
-                        </button>
-                      )}
-                    </div>
-                    <ChevronRight size={16} className="manifest-detail__part-chevron" />
-                  </button>
+                            if (!onDeletePart) return;
+                            setDeletingPartId(part.id);
+                            await onDeletePart(part.id);
+                            setConfirmDeletePartId(null);
+                            setDeletingPartId(null);
+                          }}>
+                            {isDeleting ? 'Deleting...' : 'Delete'}
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        className="manifest-detail__part-card"
+                        onClick={() => onSelectPart?.(part)}
+                      >
+                        <div className="manifest-detail__part-info">
+                          <span className="manifest-detail__part-title">
+                            {part.part_number ? `Part ${part.part_number}: ` : ''}
+                            {part.title.replace(`${item.title} — `, '')}
+                          </span>
+                          {part.chunk_count > 0 && (
+                            <span className="manifest-detail__part-meta">
+                              {part.chunk_count} chunks indexed
+                            </span>
+                          )}
+                        </div>
+                        <div className="manifest-detail__part-status">
+                          {partProcessing && (
+                            <span className="manifest-detail__part-badge manifest-detail__part-badge--processing">
+                              {part.processing_detail || 'Processing'}
+                            </span>
+                          )}
+                          {partFailed && <span className="manifest-detail__part-badge manifest-detail__part-badge--failed">Failed</span>}
+                          {partExtracted && <span className="manifest-detail__part-badge manifest-detail__part-badge--extracted">Extracted</span>}
+                          {part.processing_status === 'completed' && !partExtracted && (
+                            <span className="manifest-detail__part-badge manifest-detail__part-badge--ready">Ready</span>
+                          )}
+                          {(partProcessing || partFailed) && onReprocessSinglePart && (
+                            <button
+                              type="button"
+                              className="manifest-detail__part-restart"
+                              title="Restart processing for this part"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onReprocessSinglePart(item.id, part.id, childParts);
+                              }}
+                            >
+                              <RefreshCw size={14} />
+                            </button>
+                          )}
+                        </div>
+                        {onDeletePart && (
+                          <button
+                            type="button"
+                            className="manifest-detail__part-delete"
+                            title="Delete this part"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setConfirmDeletePartId(part.id);
+                            }}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                        <ChevronRight size={16} className="manifest-detail__part-chevron" />
+                      </button>
+                    )}
+                  </div>
                 );
               })}
             </div>

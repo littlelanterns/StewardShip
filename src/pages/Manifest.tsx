@@ -912,6 +912,20 @@ export default function Manifest() {
           onReprocessSinglePart={(parentId, partId, allParts) => {
             reprocessSinglePart(parentId, partId, allParts, setChildParts);
           }}
+          onDeletePart={async (partId) => {
+            const success = await deleteItem(partId);
+            if (success && selectedItem) {
+              // Refresh parts list
+              const freshParts = await fetchParts(selectedItem.id);
+              setChildParts(freshParts);
+              // Update parent's part_count to match remaining parts
+              await supabase.from('manifest_items')
+                .update({ part_count: freshParts.length })
+                .eq('id', selectedItem.id);
+              setSelectedItem({ ...selectedItem, part_count: freshParts.length });
+            }
+            return success;
+          }}
           // Multi-part extraction
           onDiscoverSectionsRaw={extraction.discoverSectionsRaw}
           onExtractSectionsForPart={extraction.extractSectionsForPart}
