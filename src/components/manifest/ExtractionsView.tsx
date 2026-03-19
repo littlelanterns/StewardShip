@@ -1251,7 +1251,7 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
 
           return (
             <div key={sectionKey} className="extraction-tab__section">
-              <button type="button" className="extraction-tab__section-header" onClick={() => toggleSection(collapseKey)}>
+              <button type="button" id={`ev-section-${book.bookId}-${sectionKey}`} className="extraction-tab__section-header" onClick={() => toggleSection(collapseKey)}>
                 {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
                 <span className="extraction-tab__section-title">{label}</span>
                 <span className="extraction-tab__section-count">{items.length}</span>
@@ -1367,7 +1367,7 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
 
           return (
             <div key={sectionKey} className="extraction-tab__section">
-              <button type="button" className="extraction-tab__section-header" onClick={() => toggleSection(collapseKey)}>
+              <button type="button" id={`ev-section-${book.bookId}-${sectionKey}`} className="extraction-tab__section-header" onClick={() => toggleSection(collapseKey)}>
                 {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
                 <span className="extraction-tab__section-title">{label}</span>
                 <span className="extraction-tab__section-count">{items.length}</span>
@@ -1485,7 +1485,7 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
 
           return (
             <div key={sectionKey} className="extraction-tab__section">
-              <button type="button" className="extraction-tab__section-header" onClick={() => toggleSection(collapseKey)}>
+              <button type="button" id={`ev-section-${book.bookId}-${sectionKey}`} className="extraction-tab__section-header" onClick={() => toggleSection(collapseKey)}>
                 {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
                 <span className="extraction-tab__section-title">{label}</span>
                 <span className="extraction-tab__section-count">{items.length}</span>
@@ -1637,7 +1637,7 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
 
           return (
             <div key={sectionKey} className="extraction-tab__section">
-              <button type="button" className="extraction-tab__section-header" onClick={() => toggleSection(collapseKey)}>
+              <button type="button" id={`ev-section-${book.bookId}-${sectionKey}`} className="extraction-tab__section-header" onClick={() => toggleSection(collapseKey)}>
                 {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
                 <span className="extraction-tab__section-title">{label}</span>
                 <span className="extraction-tab__section-count">{items.length}</span>
@@ -1789,7 +1789,7 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
 
           return (
             <div key={sectionKey} className="extraction-tab__section">
-              <button type="button" className="extraction-tab__section-header" onClick={() => toggleSection(collapseKey)}>
+              <button type="button" id={`ev-section-${book.bookId}-${sectionKey}`} className="extraction-tab__section-header" onClick={() => toggleSection(collapseKey)}>
                 {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
                 <span className="extraction-tab__section-title">{label}</span>
                 <span className="extraction-tab__section-count">{items.length}</span>
@@ -2138,7 +2138,55 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
                 )}
               </div>
 
+              {/* Desktop chapter sidebar + content layout */}
+              <div className="extractions-view__with-sidebar">
+
+              {/* Chapter sidebar (desktop only) */}
+              {visibleData.length > 0 && (
+                <nav className="extractions-view__chapter-sidebar">
+                  {visibleData.map((group) => {
+                    // Collect section titles from the active tab's items
+                    const tabItems = activeTab === 'summary' ? group.summaries
+                      : activeTab === 'frameworks' ? group.principles
+                      : activeTab === 'action_steps' ? group.actionSteps
+                      : activeTab === 'mast_content' ? group.declarations
+                      : group.questions;
+                    const sections = new Map<string, number>();
+                    for (const item of tabItems) {
+                      const key = ('section_title' in item && item.section_title) || '__full_book__';
+                      sections.set(key, (sections.get(key) || 0) + 1);
+                    }
+                    if (sections.size === 0) return null;
+                    return (
+                      <div key={group.bookId} className="extractions-view__sidebar-book">
+                        {visibleData.length > 1 && (
+                          <div className="extractions-view__sidebar-book-title">{group.bookTitle}</div>
+                        )}
+                        {Array.from(sections.entries()).map(([key, count]) => (
+                          <button
+                            key={key}
+                            type="button"
+                            className="extractions-view__sidebar-chapter"
+                            onClick={() => {
+                              // Find and scroll to the section header
+                              const id = `ev-section-${group.bookId}-${key}`;
+                              document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }}
+                          >
+                            <span className="extractions-view__sidebar-chapter-title">
+                              {key === '__full_book__' ? 'Full Book' : key}
+                            </span>
+                            <span className="extractions-view__sidebar-chapter-count">{count}</span>
+                          </button>
+                        ))}
+                      </div>
+                    );
+                  })}
+                </nav>
+              )}
+
               {/* Content */}
+              <div className="extractions-view__content-area">
               {loading ? (
                 <div className="extractions-view__loading">Loading {favoritesMode ? 'favorites' : 'extractions'}...</div>
               ) : favoritesMode && visibleData.length === 0 ? (
@@ -2529,6 +2577,8 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
                   ))}
                 </div>
               )}
+              </div>
+              </div>
             </>
           )}
         </>
