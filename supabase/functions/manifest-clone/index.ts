@@ -19,7 +19,7 @@ async function cloneExtractionsForItem(
   forceUpdate: boolean,
 ): Promise<boolean> {
   // Fetch source extraction data
-  const [summariesRes, frameworksRes, declarationsRes, actionStepsRes] = await Promise.all([
+  const [summariesRes, frameworksRes, declarationsRes, actionStepsRes, questionsRes] = await Promise.all([
     supabase
       .from('manifest_summaries')
       .select('*')
@@ -44,6 +44,12 @@ async function cloneExtractionsForItem(
       .eq('manifest_item_id', sourceItemId)
       .eq('user_id', sourceUserId)
       .eq('is_deleted', false),
+    supabase
+      .from('manifest_questions')
+      .select('*')
+      .eq('manifest_item_id', sourceItemId)
+      .eq('user_id', sourceUserId)
+      .eq('is_deleted', false),
   ]);
 
   // deno-lint-ignore no-explicit-any
@@ -54,9 +60,11 @@ async function cloneExtractionsForItem(
   const sourceDeclarations = (declarationsRes.data || []) as Record<string, any>[];
   // deno-lint-ignore no-explicit-any
   const sourceActionSteps = (actionStepsRes.data || []) as Record<string, any>[];
+  // deno-lint-ignore no-explicit-any
+  const sourceQuestions = (questionsRes.data || []) as Record<string, any>[];
 
   const hasExtractions = sourceSummaries.length > 0 || sourceFrameworks.length > 0 ||
-    sourceDeclarations.length > 0 || sourceActionSteps.length > 0;
+    sourceDeclarations.length > 0 || sourceActionSteps.length > 0 || sourceQuestions.length > 0;
 
   if (!hasExtractions) return false;
 
@@ -74,10 +82,10 @@ async function cloneExtractionsForItem(
       return false;
     }
     // Curation-aware merge
-    await mergeExtractions(supabase, targetUserId, clonedItemId, sourceSummaries, sourceFrameworks, sourceDeclarations, sourceActionSteps);
+    await mergeExtractions(supabase, targetUserId, clonedItemId, sourceSummaries, sourceFrameworks, sourceDeclarations, sourceActionSteps, sourceQuestions);
   } else {
     // Fresh clone
-    await freshCloneExtractions(supabase, targetUserId, clonedItemId, sourceSummaries, sourceFrameworks, sourceDeclarations, sourceActionSteps);
+    await freshCloneExtractions(supabase, targetUserId, clonedItemId, sourceSummaries, sourceFrameworks, sourceDeclarations, sourceActionSteps, sourceQuestions);
   }
 
   return true;
@@ -96,6 +104,8 @@ async function freshCloneExtractions(
   sourceDeclarations: Record<string, any>[],
   // deno-lint-ignore no-explicit-any
   sourceActionSteps: Record<string, any>[],
+  // deno-lint-ignore no-explicit-any
+  sourceQuestions: Record<string, any>[] = [],
 ): Promise<boolean> {
   let hasErrors = false;
 
@@ -205,6 +215,28 @@ async function freshCloneExtractions(
     }
   }
 
+  // Clone questions
+  if (sourceQuestions.length > 0) {
+    const records = sourceQuestions.map((q) => ({
+      user_id: targetUserId,
+      manifest_item_id: clonedItemId,
+      section_title: q.section_title,
+      section_index: q.section_index,
+      content_type: q.content_type,
+      text: q.text,
+      sort_order: q.sort_order,
+      is_hearted: false,
+      is_deleted: false,
+      is_from_go_deeper: q.is_from_go_deeper || false,
+      sent_to_prompts: false,
+    }));
+    const { error: qErr } = await supabase.from('manifest_questions').insert(records);
+    if (qErr) {
+      console.error(`[clone] Failed to insert ${records.length} questions for ${clonedItemId}:`, qErr.message);
+      hasErrors = true;
+    }
+  }
+
   if (hasErrors) {
     console.warn(`[clone] freshCloneExtractions completed with errors for item ${clonedItemId}`);
   }
@@ -224,6 +256,8 @@ async function mergeExtractions(
   sourceDeclarations: Record<string, any>[],
   // deno-lint-ignore no-explicit-any
   sourceActionSteps: Record<string, any>[],
+  // deno-lint-ignore no-explicit-any
+  sourceQuestions: Record<string, any>[] = [],
 ) {
   console.log(`[manifest-clone] Curation-aware merge for user ${targetUserId}, item ${clonedItemId}`);
 
@@ -439,6 +473,52 @@ async function mergeExtractions(
   if (newActionSteps.length > 0) {
     const { error: actErr } = await supabase.from('manifest_action_steps').insert(newActionSteps);
     if (actErr) console.error(`[clone] merge: Failed to insert ${newActionSteps.length} action steps for ${clonedItemId}:`, actErr.message);
+  }
+
+  // --- Questions merge ---
+  if (sourceQuestions.length > 0) {
+    const { data: targetQuestions } = await supabase
+      .from('manifest_questions')
+      .select('id, text, section_title, section_index, is_hearted, is_deleted, sent_to_prompts, user_note')
+      .eq('manifest_item_id', clonedItemId)
+      .eq('user_id', targetUserId);
+
+    const preservedQuestionKeys = new Set(
+      (targetQuestions || [])
+        .filter((q: Record<string, unknown>) => q.is_hearted || q.sent_to_prompts || q.user_note)
+        .map((q: Record<string, unknown>) => `${q.text}||${q.section_title}||${q.section_index}`),
+    );
+
+    // Delete neutral questions
+    await supabase
+      .from('manifest_questions')
+      .delete()
+      .eq('manifest_item_id', clonedItemId)
+      .eq('user_id', targetUserId)
+      .eq('is_hearted', false)
+      .eq('is_deleted', false)
+      .eq('sent_to_prompts', false)
+      .is('user_note', null);
+
+    const newQuestions = sourceQuestions
+      .filter((q) => !preservedQuestionKeys.has(`${q.text}||${q.section_title}||${q.section_index}`))
+      .map((q) => ({
+        user_id: targetUserId,
+        manifest_item_id: clonedItemId,
+        section_title: q.section_title,
+        section_index: q.section_index,
+        content_type: q.content_type,
+        text: q.text,
+        sort_order: q.sort_order,
+        is_hearted: false,
+        is_deleted: false,
+        is_from_go_deeper: q.is_from_go_deeper || false,
+        sent_to_prompts: false,
+      }));
+    if (newQuestions.length > 0) {
+      const { error: qErr } = await supabase.from('manifest_questions').insert(newQuestions);
+      if (qErr) console.error(`[clone] merge: Failed to insert ${newQuestions.length} questions for ${clonedItemId}:`, qErr.message);
+    }
   }
 }
 
