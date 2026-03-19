@@ -1095,29 +1095,45 @@ export function ManifestItemDetail({
               <Button size="sm" variant="secondary" onClick={handleExtract} disabled={extracting}>
                 Re-extract All
               </Button>
-              {questions.length === 0 && onExtractMissingTab && (
-                <Button size="sm" variant="secondary" onClick={async () => {
-                  // Need sections loaded first
-                  if (sections.length === 0) {
-                    await onDiscoverSections(item.id);
-                  }
-                  await onExtractMissingTab('questions', selectedGenres);
-                }} disabled={extracting}>
-                  <HelpCircle size={14} />
-                  Extract Questions
-                </Button>
-              )}
-              {actionSteps.length === 0 && onExtractMissingTab && (
-                <Button size="sm" variant="secondary" onClick={async () => {
-                  if (sections.length === 0) {
-                    await onDiscoverSections(item.id);
-                  }
-                  await onExtractMissingTab('action_steps', selectedGenres);
-                }} disabled={extracting}>
-                  <Target size={14} />
-                  Extract Action Steps
-                </Button>
-              )}
+              {onExtractMissingTab && (() => {
+                // Check which sections have any extraction content
+                const sectionsWithContent = new Set<string>();
+                for (const s of summaries) if (s.section_title) sectionsWithContent.add(s.section_title);
+                for (const p of principles) if (p.section_title) sectionsWithContent.add(p.section_title);
+                for (const d of declarations) if (d.section_title) sectionsWithContent.add(d.section_title);
+                for (const a of actionSteps) if (a.section_title) sectionsWithContent.add(a.section_title);
+                // Check which of those are missing questions/action steps
+                const sectionsWithQuestions = new Set(questions.map((q) => q.section_title).filter(Boolean));
+                const sectionsWithActionSteps = new Set(actionSteps.map((a) => a.section_title).filter(Boolean));
+                const missingQuestions = [...sectionsWithContent].some((t) => !sectionsWithQuestions.has(t));
+                const missingActionSteps = [...sectionsWithContent].some((t) => !sectionsWithActionSteps.has(t));
+                return (
+                  <>
+                    {missingQuestions && (
+                      <Button size="sm" variant="secondary" onClick={async () => {
+                        if (sections.length === 0) {
+                          await onDiscoverSections(item.id);
+                        }
+                        await onExtractMissingTab('questions', selectedGenres);
+                      }} disabled={extracting}>
+                        <HelpCircle size={14} />
+                        Extract Questions{questions.length > 0 ? ' (remaining)' : ''}
+                      </Button>
+                    )}
+                    {missingActionSteps && (
+                      <Button size="sm" variant="secondary" onClick={async () => {
+                        if (sections.length === 0) {
+                          await onDiscoverSections(item.id);
+                        }
+                        await onExtractMissingTab('action_steps', selectedGenres);
+                      }} disabled={extracting}>
+                        <Target size={14} />
+                        Extract Action Steps{actionSteps.length > 0 ? ' (remaining)' : ''}
+                      </Button>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           )}
 
