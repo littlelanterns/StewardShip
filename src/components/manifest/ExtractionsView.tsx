@@ -121,6 +121,23 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName, 
     const stored = evSsGet('manifest-ev-abridged');
     return stored === null ? true : stored === 'true';
   });
+  // In abridged mode, default all sections to expanded
+  useEffect(() => {
+    if (evAbridged) {
+      setCollapsedSections(new Set());
+      setCollapsedBooks(new Set());
+    }
+  }, [evAbridged]);
+
+  // Per-section expansion when in abridged mode on ExtractionsView
+  const [evExpandedSections, setEvExpandedSections] = useState<Set<string>>(new Set());
+  const toggleEvAbridgedSection = useCallback((key: string) => {
+    setEvExpandedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }, []);
   const [refreshingKeyPoints, setRefreshingKeyPoints] = useState(false);
   const [refreshProgress, setRefreshProgress] = useState('');
   const [bookSearch, setBookSearch] = useState('');
@@ -1140,8 +1157,9 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName, 
     }
 
     // Abridged filter — keep key points + hearted, fallback to first 2 per section
+    // Respects per-section expansion via evExpandedSections
     if (evAbridged) {
-      const abridgeArray = <T extends { is_key_point?: boolean; is_hearted?: boolean; section_title?: string | null }>(items: T[]): T[] => {
+      const abridgeArray = <T extends { is_key_point?: boolean; is_hearted?: boolean; section_title?: string | null }>(items: T[], bookId: string, tab: string): T[] => {
         const sectionMap = new Map<string, T[]>();
         for (const item of items) {
           const key = item.section_title || '__full_book__';
@@ -1149,26 +1167,62 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName, 
           sectionMap.get(key)!.push(item);
         }
         const result: T[] = [];
-        for (const [, sectionItems] of sectionMap.entries()) {
-          const keyItems = sectionItems.filter((i) => i.is_key_point || i.is_hearted);
-          result.push(...(keyItems.length > 0 ? keyItems : sectionItems.slice(0, 2)));
+        for (const [sectionTitle, sectionItems] of sectionMap.entries()) {
+          const expandKey = `${bookId}-${tab}-${sectionTitle}`;
+          if (evExpandedSections.has(expandKey)) {
+            result.push(...sectionItems); // expanded — show all
+          } else {
+            const keyItems = sectionItems.filter((i) => i.is_key_point || i.is_hearted);
+            result.push(...(keyItems.length > 0 ? keyItems : sectionItems.slice(0, 2)));
+          }
         }
         return result;
       };
       data = data.map((d) => ({
         ...d,
-        summaries: abridgeArray(d.summaries),
-        principles: abridgeArray(d.principles),
-        actionSteps: abridgeArray(d.actionSteps),
-        questions: abridgeArray(d.questions),
-        declarations: abridgeArray(d.declarations),
+        summaries: abridgeArray(d.summaries, d.bookId, 'summary'),
+        principles: abridgeArray(d.principles, d.bookId, 'frameworks'),
+        actionSteps: abridgeArray(d.actionSteps, d.bookId, 'action_steps'),
+        questions: abridgeArray(d.questions, d.bookId, 'questions'),
+        declarations: abridgeArray(d.declarations, d.bookId, 'mast_content'),
       }));
     }
 
     return data;
-  }, [favoritesMode, activeTags, extractionSearch, evAbridged, selectedData]);
+  }, [favoritesMode, activeTags, extractionSearch, evAbridged, evExpandedSections, selectedData]);
 
   // Counts that reflect what's actually displayed (respects filter mode + tag)
+  // Hidden counts per book+tab+section for "See more" buttons
+  const evHiddenCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    if (!evAbridged) return counts;
+    for (const d of selectedData) {
+      const computeForTab = <T extends { is_deleted?: boolean; is_key_point?: boolean; is_hearted?: boolean; section_title?: string | null }>(items: T[], tab: string) => {
+        const sectionMap = new Map<string, T[]>();
+        for (const item of items) {
+          if ((item as { is_deleted?: boolean }).is_deleted) continue;
+          const key = item.section_title || '__full_book__';
+          if (!sectionMap.has(key)) sectionMap.set(key, []);
+          sectionMap.get(key)!.push(item);
+        }
+        for (const [sectionTitle, sectionItems] of sectionMap.entries()) {
+          const expandKey = `${d.bookId}-${tab}-${sectionTitle}`;
+          if (evExpandedSections.has(expandKey)) continue;
+          const keyItems = sectionItems.filter((i) => i.is_key_point || i.is_hearted);
+          const visibleCount = keyItems.length > 0 ? keyItems.length : Math.min(2, sectionItems.length);
+          const hidden = sectionItems.length - visibleCount;
+          if (hidden > 0) counts.set(expandKey, hidden);
+        }
+      };
+      computeForTab(d.summaries, 'summary');
+      computeForTab(d.principles as Array<{ is_deleted?: boolean; is_key_point?: boolean; is_hearted?: boolean; section_title?: string | null }>, 'frameworks');
+      computeForTab(d.actionSteps, 'action_steps');
+      computeForTab(d.declarations, 'mast_content');
+      computeForTab(d.questions, 'questions');
+    }
+    return counts;
+  }, [evAbridged, evExpandedSections, selectedData]);
+
   const displayCounts = useMemo(() => {
     const useHearted = favoritesMode || filterMode === 'hearted';
     let summaries = 0, frameworks = 0, declarations = 0, actionSteps = 0, questions = 0, notes = 0;
@@ -1379,6 +1433,15 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName, 
                     </div>
                   ))}
 
+                  {evAbridged && (() => {
+                    const expandKey = `${book.bookId}-summary-${sectionKey}`;
+                    const hidden = evHiddenCounts.get(expandKey) || 0;
+                    const expanded = evExpandedSections.has(expandKey);
+                    if (hidden > 0 && !expanded) return (<button type="button" className="extraction-tab__see-more" onClick={() => toggleEvAbridgedSection(expandKey)}><ChevronDown size={12} /> See {hidden} more</button>);
+                    if (expanded) return (<button type="button" className="extraction-tab__see-more" onClick={() => toggleEvAbridgedSection(expandKey)}><ChevronRight size={12} /> Key points only</button>);
+                    return null;
+                  })()}
+
                   {!favoritesMode && (
                     <button
                       type="button"
@@ -1402,6 +1465,17 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName, 
         })}
       </div>
     );
+  };
+
+  // Reusable "See more" button for abridged mode in ExtractionsView
+  const renderSeeMore = (bookId: string, tab: string, sectionKey: string) => {
+    if (!evAbridged) return null;
+    const expandKey = `${bookId}-${tab}-${sectionKey}`;
+    const hidden = evHiddenCounts.get(expandKey) || 0;
+    const expanded = evExpandedSections.has(expandKey);
+    if (hidden > 0 && !expanded) return (<button type="button" className="extraction-tab__see-more" onClick={() => toggleEvAbridgedSection(expandKey)}><ChevronDown size={12} /> See {hidden} more</button>);
+    if (expanded) return (<button type="button" className="extraction-tab__see-more" onClick={() => toggleEvAbridgedSection(expandKey)}><ChevronRight size={12} /> Key points only</button>);
+    return null;
   };
 
   const renderFrameworksSection = (book: BookExtractions) => {
@@ -1492,6 +1566,7 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName, 
                       ) : null}
                     </div>
                   ))}
+                  {renderSeeMore(book.bookId, 'frameworks', sectionKey)}
                 </div>
               )}
             </div>
@@ -1627,6 +1702,8 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName, 
                       ) : null}
                     </div>
                   ))}
+
+                  {renderSeeMore(book.bookId, 'action_steps', sectionKey)}
 
                   {!favoritesMode && (
                     <button
@@ -1780,6 +1857,8 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName, 
                     </div>
                   ))}
 
+                  {renderSeeMore(book.bookId, 'mast_content', sectionKey)}
+
                   {!favoritesMode && (
                     <button
                       type="button"
@@ -1931,6 +2010,8 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName, 
                       ) : null}
                     </div>
                   ))}
+
+                  {renderSeeMore(book.bookId, 'questions', sectionKey)}
 
                   {!favoritesMode && (
                     <button
