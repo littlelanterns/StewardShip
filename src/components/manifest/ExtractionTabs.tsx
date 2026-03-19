@@ -1649,11 +1649,15 @@ export function ExtractionTabs({
   const setViewMode = useCallback((vm: ViewMode) => { setViewModeRaw(vm); ssSet('manifest-extraction-view', vm); }, []);
 
   // Abridged view — show only key points + hearted items
-  const [abridged, setAbridged] = useState(() => ssGet('manifest-abridged') === 'true');
+  const [abridged, setAbridged] = useState(() => {
+    const stored = ssGet('manifest-abridged-v2');
+    // Default to abridged (true) unless user explicitly switched to full
+    return stored === null ? true : stored === 'true';
+  });
   const toggleAbridged = useCallback(() => {
     setAbridged((prev) => {
       const next = !prev;
-      ssSet('manifest-abridged', String(next));
+      ssSet('manifest-abridged-v2', String(next));
       return next;
     });
   }, []);
@@ -1906,7 +1910,7 @@ export function ExtractionTabs({
           title={abridged ? 'Show all items' : 'Show only key points and hearted items'}
         >
           <Sparkles size={12} />
-          {abridged ? 'Abridged' : 'Abridged'}
+          {abridged ? 'Abridged' : 'Full Content'}
         </button>
         <div className="extraction-tabs__view-toggle">
           <button
