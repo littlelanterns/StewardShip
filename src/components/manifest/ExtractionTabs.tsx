@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { Heart, Trash2, ChevronDown, ChevronRight, Anchor, Compass, RefreshCw, Sparkles, LayoutList, BookOpen, StickyNote } from 'lucide-react';
+import { Heart, Trash2, ChevronDown, ChevronRight, Anchor, Compass, RefreshCw, Sparkles, LayoutList, BookOpen, StickyNote, Lightbulb, Quote, Eye, Wrench, Users, CheckCircle, type LucideIcon } from 'lucide-react';
+import { ChapterJumpOverlay } from './ChapterJumpOverlay';
 import type {
   ManifestSummary,
   ManifestDeclaration,
@@ -15,7 +16,47 @@ import './ExtractionTabs.css';
 
 type TabType = 'summary' | 'frameworks' | 'action_steps' | 'mast_content' | 'questions';
 type FilterMode = 'all' | 'hearted';
-type ViewMode = 'tabs' | 'chapters';
+type ViewMode = 'tabs' | 'chapters' | 'notes';
+
+// Content type → icon mapping for visual differentiation (Phase 4A)
+const CONTENT_TYPE_ICON: Record<string, LucideIcon> = {
+  key_concept: Lightbulb, insight: Lightbulb, theme: Lightbulb,
+  story: BookOpen, metaphor: BookOpen, character_insight: BookOpen,
+  lesson: Compass, principle: Compass, exercise: CheckCircle,
+  quote: Quote,
+  reflection: Eye, self_examination: Eye, recognition: Eye,
+  implementation: Wrench, scenario: Wrench, project: Wrench,
+  discussion: Users, conversation_starter: Users,
+  practice: CheckCircle, habit: CheckCircle, daily_action: CheckCircle, weekly_practice: CheckCircle,
+  // Declarations use Anchor (already imported)
+  declaration: Anchor,
+  // Frameworks use Compass
+  framework: Compass,
+};
+
+function getTypeIcon(contentType: string): LucideIcon | null {
+  return CONTENT_TYPE_ICON[contentType] || null;
+}
+
+/** Build extraction-item className with content type and hearted state */
+function itemClass(contentType: string, isDeeper: boolean, isDeleting: boolean, isHearted: boolean): string {
+  let cls = `extraction-item extraction-item--type-${contentType}`;
+  if (isDeeper) cls += ' extraction-item--deeper';
+  if (isDeleting) cls += ' extraction-item--deleting';
+  if (isHearted) cls += ' extraction-item--hearted';
+  return cls;
+}
+
+/** Render type badge with icon */
+function TypeBadge({ contentType, label }: { contentType: string; label: string }) {
+  const Icon = getTypeIcon(contentType);
+  return (
+    <div className="extraction-item__type-badge">
+      {Icon && <Icon size={12} className="extraction-item__type-icon" />}
+      {label}
+    </div>
+  );
+}
 
 // --- Summary Tab ---
 
@@ -191,8 +232,9 @@ function SummaryTab({
             {!isCollapsed && (
               <div className="extraction-tab__section-items">
                 {items.map((item) => (
-                  <div key={item.id} className={`extraction-item${item.is_from_go_deeper ? ' extraction-item--deeper' : ''}${deletingIds.has(item.id) ? ' extraction-item--deleting' : ''}`}>
-                    <div className="extraction-item__type-badge">{item.content_type.replace(/_/g, ' ')}</div>
+                  <div key={item.id} className={itemClass(item.content_type, !!item.is_from_go_deeper, deletingIds.has(item.id), !!item.is_hearted)}>
+                    <TypeBadge contentType={item.content_type} label={item.content_type.replace(/_/g, ' ')} />
+                    {item.is_from_go_deeper && <Sparkles size={12} className="extraction-item__deeper-badge" />}
 
                     {editingId === item.id ? (
                       <textarea
@@ -212,7 +254,6 @@ function SummaryTab({
                         onClick={() => startEdit(item)}
                         title="Click to edit"
                       >
-                        {item.is_from_go_deeper && <Sparkles size={12} className="extraction-item__deeper-icon" />}
                         {item.text}
                       </p>
                     )}
@@ -1538,8 +1579,42 @@ export function ExtractionTabs({
     });
   }, [manifestItemId, activeTab, viewMode, setViewMode]);
 
+  // Compute chapter sections for jump overlay (used in both tabs and chapters view)
+  const chapterSections = useMemo(() => {
+    const currentItems = activeTab === 'summary' ? summaries.filter((s) => !s.is_deleted)
+      : activeTab === 'action_steps' ? actionSteps.filter((a) => !a.is_deleted)
+      : activeTab === 'mast_content' ? declarations.filter((d) => !d.is_deleted)
+      : activeTab === 'questions' ? questions.filter((q) => !q.is_deleted)
+      : [];
+    // Group by section_title
+    const sectionMap = new Map<string, number>();
+    for (const item of currentItems) {
+      const key = ('section_title' in item && item.section_title) || '__full_book__';
+      sectionMap.set(key, (sectionMap.get(key) || 0) + 1);
+    }
+    // For frameworks, count principles
+    if (activeTab === 'frameworks') {
+      const fwItems = principles.filter((p) => !p.is_deleted);
+      for (const p of fwItems) {
+        const key = p.section_title || '__full_book__';
+        sectionMap.set(key, (sectionMap.get(key) || 0) + 1);
+      }
+    }
+    return Array.from(sectionMap.entries()).map(([key, count]) => ({
+      key,
+      title: key === '__full_book__' ? 'Full Book' : key,
+      itemCount: count,
+    }));
+  }, [activeTab, summaries, actionSteps, declarations, questions, principles]);
+
+  const jumpHeaderSelector = viewMode === 'chapters'
+    ? '.chapter-view__chapter-header'
+    : '.extraction-tab__section-header';
+
   return (
     <div className="extraction-tabs">
+      {/* Chapter jump overlay */}
+      <ChapterJumpOverlay sections={chapterSections} headerSelector={jumpHeaderSelector} />
       {/* Tab bar */}
       <div className="extraction-tabs__bar">
         <button

@@ -247,13 +247,17 @@
   align-items: center;
   gap: var(--spacing-xs);
   width: 100%;
-  padding: var(--spacing-sm) 0;
-  background: none;
+  padding: var(--spacing-sm) var(--spacing-xs);
+  background: var(--color-bg-primary, var(--color-cream));
   border: none;
   border-bottom: 1px solid var(--color-bg-secondary);
   cursor: pointer;
   text-align: left;
   color: var(--color-text-primary);
+  /* Sticky header */
+  position: sticky;
+  top: 0;
+  z-index: 5;
 }
 
 .extraction-tab__section-title {
@@ -308,6 +312,7 @@
   border-radius: var(--radius-md);
   background: var(--color-bg-card);
   border: 1px solid var(--color-bg-secondary);
+  border-left: 3px solid var(--color-slate-gray);
   transition: border-color var(--transition-fast);
 }
 
@@ -315,18 +320,78 @@
   border-color: var(--color-slate-gray);
 }
 
+/* Content type left border colors */
+.extraction-item--type-key_concept,
+.extraction-item--type-insight,
+.extraction-item--type-theme,
+.extraction-item--type-reflection,
+.extraction-item--type-self_examination,
+.extraction-item--type-recognition {
+  border-left-color: var(--color-mid-teal);
+}
+
+.extraction-item--type-story,
+.extraction-item--type-metaphor,
+.extraction-item--type-character_insight,
+.extraction-item--type-declaration {
+  border-left-color: var(--color-cognac);
+}
+
+.extraction-item--type-lesson,
+.extraction-item--type-principle,
+.extraction-item--type-exercise,
+.extraction-item--type-practice,
+.extraction-item--type-habit,
+.extraction-item--type-daily_action,
+.extraction-item--type-weekly_practice,
+.extraction-item--type-implementation,
+.extraction-item--type-scenario,
+.extraction-item--type-project,
+.extraction-item--type-framework {
+  border-left-color: var(--color-dark-teal);
+}
+
+.extraction-item--type-quote {
+  border-left-color: var(--color-slate-gray);
+}
+
+.extraction-item--type-discussion,
+.extraction-item--type-conversation_starter {
+  border-left-color: var(--color-slate-gray);
+}
+
+/* Go Deeper items — sparkle icon instead of border override */
 .extraction-item--deeper {
-  border-left: 3px solid var(--color-cognac);
+  position: relative;
+}
+
+.extraction-item--deeper .extraction-item__deeper-badge {
+  position: absolute;
+  top: var(--spacing-xs);
+  right: var(--spacing-xs);
+  color: var(--color-cognac);
+}
+
+/* Hearted item emphasis in "All" view */
+.extraction-item--hearted {
+  background: color-mix(in srgb, var(--color-cognac) 5%, var(--color-bg-card, transparent));
 }
 
 .extraction-item__type-badge {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--color-text-secondary);
   margin-bottom: var(--spacing-xs);
   font-weight: var(--font-weight-medium);
+}
+
+.extraction-item__type-icon {
+  flex-shrink: 0;
+  opacity: 0.7;
 }
 
 .extraction-item__text {
@@ -636,13 +701,17 @@
   align-items: center;
   gap: var(--spacing-xs);
   width: 100%;
-  padding: var(--spacing-sm) 0;
-  background: none;
+  padding: var(--spacing-sm) var(--spacing-xs);
+  background: var(--color-bg-primary, var(--color-cream));
   border: none;
   border-bottom: 2px solid var(--color-bg-secondary);
   cursor: pointer;
   text-align: left;
   color: var(--color-text-primary);
+  /* Sticky header */
+  position: sticky;
+  top: 0;
+  z-index: 5;
 }
 
 .chapter-view__chapter-title {
