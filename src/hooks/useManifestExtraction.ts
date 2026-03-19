@@ -1589,6 +1589,30 @@ export function useManifestExtraction() {
     setError(null);
   }, [user]);
 
+  // --- Reset extraction status without clearing content (unstick frozen extractions) ---
+
+  const resetExtractionStatus = useCallback(async (manifestItemId: string) => {
+    if (!user) return;
+    // Check if there's any extracted content — if so, mark completed; if not, mark none
+    const [{ count: sCount }, { count: dCount }, { count: aCount }, { count: qCount }] = await Promise.all([
+      supabase.from('manifest_summaries').select('id', { count: 'exact', head: true }).eq('manifest_item_id', manifestItemId).eq('user_id', user.id),
+      supabase.from('manifest_declarations').select('id', { count: 'exact', head: true }).eq('manifest_item_id', manifestItemId).eq('user_id', user.id),
+      supabase.from('manifest_action_steps').select('id', { count: 'exact', head: true }).eq('manifest_item_id', manifestItemId).eq('user_id', user.id),
+      supabase.from('manifest_questions').select('id', { count: 'exact', head: true }).eq('manifest_item_id', manifestItemId).eq('user_id', user.id),
+    ]);
+    const hasContent = ((sCount ?? 0) + (dCount ?? 0) + (aCount ?? 0) + (qCount ?? 0)) > 0;
+    const newStatus: ManifestExtractionStatus = hasContent ? 'completed' : 'none';
+
+    await supabase.from('manifest_items').update({ extraction_status: newStatus }).eq('id', manifestItemId).eq('user_id', user.id);
+
+    // Reset local state
+    setExtracting(false);
+    setExtractingTab(null);
+    setExtractionProgress(null);
+    setFailedSections([]);
+    setError(null);
+  }, [user]);
+
   // --- Reset All Extractions (Fresh Start) ---
 
   const resetAllExtractions = useCallback(async (options?: { removeClones?: boolean }) => {
@@ -1771,8 +1795,9 @@ export function useManifestExtraction() {
     updateDeclarationNote,
     updateActionStepNote,
     updatePrincipleNote,
-    // Clear all
+    // Clear / reset
     clearExtractions,
     resetAllExtractions,
+    resetExtractionStatus,
   };
 }

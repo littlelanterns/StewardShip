@@ -184,6 +184,7 @@ export function useManifest() {
       .from('manifest_items')
       .update({
         processing_status: 'pending',
+        processing_detail: null,
         chunk_count: 0,
         isbn: null,
         author: null,
@@ -201,7 +202,7 @@ export function useManifest() {
     setItems((prev) =>
       prev.map((item) =>
         item.id === id
-          ? { ...item, processing_status: 'pending' as const, chunk_count: 0, isbn: null, author: null, ai_summary: null }
+          ? { ...item, processing_status: 'pending' as const, processing_detail: null, chunk_count: 0, isbn: null, author: null, ai_summary: null }
           : item,
       ),
     );

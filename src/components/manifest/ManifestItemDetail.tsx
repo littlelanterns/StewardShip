@@ -66,6 +66,7 @@ interface ManifestItemDetailProps {
   failedSections: Array<{ sectionIndex: number; title: string; retrying?: boolean }>;
   onRetrySection: (sectionIndex: number) => Promise<boolean>;
   onClearExtractions: (itemId: string) => Promise<void>;
+  onResetExtractionStatus?: (itemId: string) => Promise<void>;
   // Merge sections
   isMergeActive?: boolean;
   mergeStats?: MergeStats;
@@ -166,6 +167,7 @@ export function ManifestItemDetail({
   failedSections,
   onRetrySection,
   onClearExtractions,
+  onResetExtractionStatus,
   isMergeActive,
   mergeStats,
   onToggleMerge,
@@ -352,8 +354,9 @@ export function ManifestItemDetail({
     for (const p of principles) if (p.section_title) titles.add(p.section_title);
     for (const a of actionSteps) if (a.section_title) titles.add(a.section_title);
     for (const d of declarations) if (d.section_title) titles.add(d.section_title);
+    for (const q of questions) if (q.section_title) titles.add(q.section_title);
     return titles;
-  }, [summaries, principles, actionSteps, declarations]);
+  }, [summaries, principles, actionSteps, declarations, questions]);
 
   const handleExtract = useCallback(async () => {
     if (selectedGenres.length === 0) {
@@ -1168,6 +1171,28 @@ export function ManifestItemDetail({
               {extractionProgress
                 ? `Extracting section ${extractionProgress.current + 1} of ${extractionProgress.total}...`
                 : 'Extracting content...'}
+            </div>
+          )}
+
+          {/* Stuck extraction reset — shows when DB says extracting but this session isn't running it */}
+          {item.extraction_status === 'extracting' && !extracting && extractionPhase === 'idle' && onResetExtractionStatus && (
+            <div className="manifest-detail__stuck-reset">
+              <p>Extraction appears stuck. Already-extracted content is preserved.</p>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={async () => {
+                  await onResetExtractionStatus(item.id);
+                  // Re-fetch to update item status in UI
+                  if (summaries.length === 0) await onFetchSummaries(item.id);
+                  if (declarations.length === 0) await onFetchDeclarations(item.id);
+                  if (actionSteps.length === 0) await onFetchActionSteps(item.id);
+                  if (questions.length === 0) await onFetchQuestions(item.id);
+                }}
+              >
+                <RefreshCw size={14} />
+                Reset Extraction Status
+              </Button>
             </div>
           )}
 

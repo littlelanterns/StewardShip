@@ -868,6 +868,22 @@
   padding-top: var(--spacing-xs);
 }
 
+.manifest-detail__stuck-reset {
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  background: var(--color-warm-sand);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.manifest-detail__stuck-reset p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-navy);
+}
+
 .manifest-detail__clear-section {
   margin-top: var(--spacing-sm);
   padding-top: var(--spacing-sm);

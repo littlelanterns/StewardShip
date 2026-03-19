@@ -301,6 +301,7 @@ export default function Manifest() {
       extraction.fetchSummaries(item.id);
       extraction.fetchDeclarations(item.id);
       extraction.fetchActionSteps(item.id);
+      extraction.fetchQuestions(item.id);
     }
   }, [fetchItemDetail, extraction, fetchParts]);
 
@@ -324,6 +325,7 @@ export default function Manifest() {
       extraction.fetchSummaries(part.id);
       extraction.fetchDeclarations(part.id);
       extraction.fetchActionSteps(part.id);
+      extraction.fetchQuestions(part.id);
     }
   }, [selectedItem, fetchItemDetail, extraction]);
 
@@ -892,6 +894,7 @@ export default function Manifest() {
             await extraction.clearExtractions(itemId);
             fetchFrameworks();
           }}
+          onResetExtractionStatus={extraction.resetExtractionStatus}
           // Discussion
           onOpenDiscussion={handleOpenDiscussionFromDetail}
           // Generate Tags
