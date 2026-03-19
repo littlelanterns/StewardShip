@@ -125,29 +125,62 @@ Declarations are NOT affirmations. An affirmation claims a finished state ("I am
 
 THE HONESTY TEST: Can every part of the reader say "yes, that's true" RIGHT NOW? Not about some future self. Not if they squint. True in the act of declaring it. "I am patient" fails on a hard day. "I choose to respond with patience, even when everything in me wants to react" — the choosing is immediately true.
 
-FIVE DECLARATION STYLES (use the style that best fits each insight — mix them freely):
-1. "choosing_committing" — The truth is in the decision. "I choose courage over comfort, knowing that brave hearts change the world." / "I am committed to becoming someone my children feel safe with." / "When I feel anger rising, I will pause before I speak."
-2. "recognizing_awakening" — Honors growth already happening. "I notice I am becoming someone who listens before reacting." / "I recognize that something in me is awakening — a hunger for depth over distraction." / "I see myself growing, even when the progress feels invisible."
-3. "claiming_stepping_into" — Bold identity claims that become true the moment you decide to own them. "I carry dignity with calm strength." / "I hold fast to hope, a light that endures even when shadows fall." / "I claim the courage that has always been in me, waiting for permission to rise."
-4. "learning_striving" — Respects the messy middle. "I am learning to sit with discomfort instead of running from it." / "I pursue wisdom like a hidden treasure, listening for truth in story, in study, and in stillness." / "I take steps to become a wise financial steward."
-5. "resolute_unashamed" — Burns with conviction. A vow, a battle cry. "I will not look back, let up, slow down, or be still." / "I cannot be bought, compromised, detoured, or delayed." / "I do hard things until hard things become easy."
+FIVE DECLARATION STYLES (use the style that best fits each insight — mix them freely so the collection feels like a portrait, not a checklist):
+1. "choosing_committing" — The truth lives in the decision itself. The reader hasn't arrived — they've chosen. "I choose courage over comfort, knowing that brave hearts change the world." / "I choose presence over perfection. My family doesn't need me flawless. They need me here." / "I choose to lead with curiosity instead of control."
+2. "recognizing_awakening" — Honors growth the reader can actually see happening. The awareness is the truth. "I notice I am becoming someone who listens before reacting — and I'm proud of that shift." / "I recognize that something in me is awakening — a hunger for depth over distraction." / "I see myself growing, even when the progress feels invisible to everyone else."
+3. "claiming_stepping_into" — Bold identity claims — not earned through performance, but owned through decision. Often connects to worth, belonging, purpose. "I carry dignity with calm strength, knowing I belong to the King." / "I hold fast to hope, a light that endures even when shadows fall." / "I am a seeker of deeper truths, attuned to the whispers hidden in story, in nature, and in the quiet corners of ordinary life."
+4. "learning_striving" — Respects the messy middle. The learning IS the truth. The pursuit IS the truth. "I pursue wisdom like a hidden treasure, listening for truth in story, in study, and in stillness." / "I am learning to sit with discomfort instead of running from it or numbing it away." / "I act with discernment, tuning my heart to both the whisper within and the enduring truths beyond me."
+5. "resolute_unashamed" — Burns with conviction. A line in the sand, a vow, a battle cry. The fire IS the truth. "I cannot be bought, compromised, detoured, lured away, divided, or delayed." / "I do hard things until hard things become easy. And then I find harder things." / "Legacy is the quiet story my life tells. I plant seeds for trees I may never sit beneath, believing they will one day offer shade to others."
+
+THREE RICHNESS LEVELS (generate a mix across all three — aim for roughly a third of each, though the book's content and tone should guide the natural balance):
+
+RICH (Multi-Sentence, Layered) — Weaves together an identity claim, a grounding conviction, and an embodiment statement. Poetic, textured, deeply affirming.
+Examples:
+- "I am redeemed. I am deeply known and deeply beloved. My story is shaped by grace — every part molded into something meaningful. Redemption restores who I truly am and invites me to keep becoming."
+- "I wear responsibility as a mark of strength and trust. I take ownership of my words, my actions, and the impact they leave behind — with resolve and a conviction that what must be done often begins with me."
+- "I am lit by the flame of curiosity, eager to ask, seek, and explore. I believe the pursuit of truth begins with a question — and I am brave enough to follow it."
+
+MEDIUM (One Strong Sentence with Grounding) — A single powerful statement with a phrase that grounds it in honesty or conviction.
+Examples:
+- "I choose to respond with patience, even when everything in me wants to react."
+- "I claim the courage that has always been in me, waiting for permission to rise."
+- "I recognize that my sensitivity is not a weakness — it is how I feel the world."
+
+CONCISE (Short, Punchy, Direct) — Brief declarations that land with impact. Can serve as seeds a reader expands through personal editing.
+Examples:
+- "I choose courage over comfort."
+- "My face is set. My mission is clear."
+- "I refuse to let fear write the story that faith has already authored."
 
 CRITICAL RULES:
 - AVOID THE "I AM + FINISHED STATE" TRAP: Never produce declarations like "I am patient" or "I am confident" that claim an arrived state. The truth must live in the choosing, the claiming, the recognizing, the learning, or the resolve — not in a performance claim the reader's discernment will reject.
+- VARY SENTENCE OPENINGS: Never produce a wall of "I am..." or "I choose..." statements. Mix voices and structures so each declaration has its own rhythm and personality.
 - STANDALONE RULE: Each declaration must make complete sense on its own, without having read the book. Someone reading just the declaration should understand what it means and why it matters.
 - PERSONALITY RULE: Declarations should sound like a real person wrote them — not a self-help template. Include details, imagery, and language that give each one its own rhythm and voice. "I choose courage over comfort" has more soul than "I am brave."
 - VARIETY RULE: Use DIFFERENT styles across your extractions. Don't default to just one style. The most powerful creeds draw from all five voices — a mix of gentle and fierce, choosing and standing firm.
+- LET SOME BE FIERCE: Not every declaration should be gentle. Some should roar. The Resolute & Unashamed voice exists because conviction IS honesty.
+- LET SOME BE TENDER: The Recognizing & Awakening voice exists because noticing growth is its own kind of brave. Both fierceness and tenderness belong.
 - COHESION RULE: Don't create multiple declarations about the same idea from different angles — but distinct values or insights each deserve their own declaration.
+- GENRE AWARENESS: Fiction and allegory produce declarations grounded in character themes and narrative truths. Scriptures produce declarations grounded in faith identity. Workbooks produce declarations grounded in practical commitment. Adjust tone and source material accordingly.
 - Extract 3-10 declarations depending on content richness. It is better to offer a declaration the user can delete than to miss one that would have resonated.
 - Each declaration should connect to a genuine value or insight from the content
 - Include an optional value_name (1-3 words) that names the underlying value: e.g., "Patience", "Courage Under Pressure", "Active Listening"
 - Faith-connected declarations are appropriate when the source material has spiritual depth
+- Use direct construction over passive progressive: "I choose" not "I am choosing." "I carry" not "I am carrying." Present tense, active voice, direct.
+
+NEVER GENERATE:
+- "I am patient." / "I am wealthy." / "I am enough." (Finished-state affirmations — fail the honesty test)
+- "Every day in every way I am getting better." (Formulaic, no personality, no grounding)
+- "I will try to..." (Trying is not declaring)
+- Declarations requiring external validation ("People see me as...")
+- Goals dressed as identity statements ("I am someone who exercises 5 days a week")
 
 Return ONLY a JSON object:
 {
   "items": [
     { "value_name": "Intentional Presence", "declaration_text": "I choose to be fully present in conversations, putting down my phone and making eye contact, because the people in front of me deserve my attention.", "declaration_style": "choosing_committing", "sort_order": 0 },
-    { "value_name": "Embracing Discomfort", "declaration_text": "I am learning to sit with discomfort instead of rushing to fix it, trusting that growth happens in the tension.", "declaration_style": "learning_striving", "sort_order": 1 }
+    { "value_name": "Embracing Discomfort", "declaration_text": "I am learning to sit with discomfort instead of rushing to fix it, trusting that growth happens in the tension.", "declaration_style": "learning_striving", "sort_order": 1 },
+    { "value_name": "Unwavering Resolve", "declaration_text": "My face is set. My mission is clear.", "declaration_style": "resolute_unashamed", "sort_order": 2 }
   ]
 }
 
@@ -263,19 +296,28 @@ IMPORTANT: This section is the MOST VALUABLE extraction. Users rely on these pri
 Distill the wisdom into personal declarations — honest commitment statements someone could live by.
 Declarations are NOT affirmations. Never claim a finished state ("I am patient"). Claim a present truth ("I choose to respond with patience, even when it's hard"). The truth lives in the choosing, the claiming, the recognizing, the learning, or the resolve.
 HONESTY TEST: Can every part of the reader say "yes, that's true" RIGHT NOW, in the act of declaring it? If not, reword it.
-FIVE DECLARATION STYLES (mix freely — don't default to just one):
-1. "choosing_committing" — The truth is in the decision: "I choose courage over comfort, knowing that brave hearts change the world." / "I am committed to becoming someone my children feel safe with."
-2. "recognizing_awakening" — Honors growth happening: "I notice I am becoming someone who listens before reacting." / "I recognize that something in me is awakening."
-3. "claiming_stepping_into" — Bold identity claims true the moment you own them: "I carry dignity with calm strength." / "I hold fast to hope, a light that endures even when shadows fall."
-4. "learning_striving" — Respects the messy middle: "I am learning to sit with discomfort instead of running from it." / "I pursue wisdom like a hidden treasure."
-5. "resolute_unashamed" — Burns with conviction, a vow: "I will not look back, let up, slow down, or be still." / "I do hard things until hard things become easy."
+FIVE DECLARATION STYLES (mix freely so the collection feels like a portrait, not a checklist):
+1. "choosing_committing" — The truth lives in the decision: "I choose courage over comfort, knowing that brave hearts change the world." / "I choose presence over perfection. My family doesn't need me flawless. They need me here." / "I choose to lead with curiosity instead of control."
+2. "recognizing_awakening" — Honors growth happening: "I notice I am becoming someone who listens before reacting — and I'm proud of that shift." / "I recognize that something in me is awakening — a hunger for depth over distraction." / "I see myself growing, even when the progress feels invisible to everyone else."
+3. "claiming_stepping_into" — Bold identity claims owned through decision, not performance: "I carry dignity with calm strength, knowing I belong to the King." / "I hold fast to hope, a light that endures even when shadows fall." / "I am a seeker of deeper truths, attuned to the whispers hidden in story, in nature, and in the quiet corners of ordinary life."
+4. "learning_striving" — Respects the messy middle: "I pursue wisdom like a hidden treasure, listening for truth in story, in study, and in stillness." / "I am learning to sit with discomfort instead of running from it or numbing it away." / "I act with discernment, tuning my heart to both the whisper within and the enduring truths beyond me."
+5. "resolute_unashamed" — Burns with conviction, a line in the sand: "I cannot be bought, compromised, detoured, lured away, divided, or delayed." / "I do hard things until hard things become easy. And then I find harder things." / "Legacy is the quiet story my life tells. I plant seeds for trees I may never sit beneath."
+THREE RICHNESS LEVELS (aim for roughly a third of each — let the book's content guide the natural balance):
+- RICH: Multi-sentence, layered (identity + conviction + embodiment). "I wear responsibility as a mark of strength and trust. I take ownership of my words, my actions, and the impact they leave behind."
+- MEDIUM: One strong sentence with grounding. "I choose to respond with patience, even when everything in me wants to react."
+- CONCISE: Short, punchy, direct. "My face is set. My mission is clear." / "I choose courage over comfort."
 - AVOID THE "I AM + FINISHED STATE" TRAP: Never produce "I am patient" or "I am confident" — these claim an arrived state the reader's discernment will reject.
+- VARY SENTENCE OPENINGS: Never produce a wall of "I am..." or "I choose..." statements. Mix voices and structures so each has its own rhythm.
+- LET SOME BE FIERCE (conviction IS honesty) and LET SOME BE TENDER (noticing growth is its own kind of brave).
 - PERSONALITY RULE: Each declaration should sound like a real person wrote it — details, imagery, its own rhythm. Not a self-help template.
 - COHESION RULE: Don't create multiple declarations about the same idea from different angles — but distinct values or insights each deserve their own declaration.
+- GENRE AWARENESS: Fiction → character themes. Scriptures → faith identity. Workbooks → practical commitment.
 - Extract 3-10 declarations depending on content richness. It is better to offer a declaration the user can delete than to miss one that would have resonated.
 - STANDALONE RULE: Each declaration must make complete sense on its own
 - Include an optional value_name (1-3 words) that names the underlying value
+- Use direct construction: "I choose" not "I am choosing." Present tense, active voice.
 - Faith-connected declarations are appropriate when the source material has spiritual depth
+- NEVER GENERATE: "I am enough" / "Every day in every way..." / "I will try to..." / declarations requiring external validation / goals dressed as identity statements
 
 === TASK 4: ACTION STEPS ===
 Extract concrete, actionable steps, exercises, practices, and activities that a reader can carry out to apply what they've learned from this section.
