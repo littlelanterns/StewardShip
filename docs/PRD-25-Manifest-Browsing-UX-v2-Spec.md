@@ -662,6 +662,28 @@ openSearch({ defaultQuery: 'communicating with teens', scope: 'books' });
 // Render SearchPanel in your component tree
 ```
 
+### 14.4.1 Dual-Layer Search: RAG Chunks vs Extractions
+
+Two complementary search layers exist:
+
+| Layer | Source | What it returns | Best for |
+|-------|--------|----------------|----------|
+| **RAG chunks** (`match_manifest_chunks`) | Raw book text, chunked and embedded (ada-002) | Exact passages/quotes from the book | "What specific exercises does the book recommend?", verbatim quotes, author's actual words |
+| **Extractions** (`match_manifest_content`) | AI-distilled key concepts, frameworks, action steps, etc. (text-embedding-3-small) | Refined principles and structured insights | "What's the framework for IEP advocacy?", browsable action steps, scannable key points |
+
+**Both layers are already built and functional.** The Helm chat already runs dual search (RAG + extracted content) in parallel on every message.
+
+For the `SemanticSearchPanel`, v2 should offer a scope toggle:
+- **"Book passages"** — RAG chunk search (author's exact words)
+- **"Extracted insights"** — extraction search (distilled principles, action steps, questions)
+- **"Both"** (default) — merged results from both layers, deduplicated by similarity
+
+A book that has been uploaded and processed but NEVER extracted is still fully searchable via RAG chunks. Extractions add the browsing/scanning/abridged experience on top — but the raw book is always accessible.
+
+### 14.4.2 v2 Naming
+
+In MyAIM Family v2, the Manifest is renamed **BookShelf** (PRD-23). All architecture in this spec applies to BookShelf. See `docs/MyAIM_Family_Feature_Glossary.md` for the complete StewardShip → v2 name mapping.
+
 ### 14.5 Abridged View — Complete Rules
 
 **Default state:** Abridged ON (first visit). Persisted to sessionStorage.
