@@ -2,10 +2,10 @@
 
 .chapter-jump__trigger {
   position: fixed;
-  bottom: calc(var(--spacing-lg, 24px) + 130px);
-  right: var(--spacing-md, 16px);
-  width: 44px;
-  height: 44px;
+  bottom: calc(var(--nav-height, 60px) + var(--spacing-sm, 8px));
+  left: var(--spacing-md, 16px);
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   background: var(--color-mid-teal);
   color: var(--color-white);
