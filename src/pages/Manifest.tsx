@@ -675,7 +675,10 @@ export default function Manifest() {
       const q = titleSearch.trim().toLowerCase();
       result = result.filter((item) =>
         item.title.toLowerCase().includes(q) ||
-        (item.author && item.author.toLowerCase().includes(q))
+        (item.author && item.author.toLowerCase().includes(q)) ||
+        (item.tags || []).some((t) => t.toLowerCase().includes(q)) ||
+        (item.ai_summary && item.ai_summary.toLowerCase().includes(q)) ||
+        (item.genres || []).some((g) => g.replace(/_/g, ' ').toLowerCase().includes(q))
       );
     }
     return result;
@@ -852,14 +855,7 @@ export default function Manifest() {
       .filter((i): i is ManifestItem => i !== undefined);
   }, [collectionExtractionsId, getItemIdsForCollection, items]);
 
-  // Semantic search view
-  if (showSemanticSearch) {
-    return (
-      <div className="page manifest-page">
-        <SemanticSearch onClose={() => setShowSemanticSearch(false)} />
-      </div>
-    );
-  }
+  // Semantic search is now a modal overlay (rendered at end of component)
 
   // Upload view
   if (viewMode === 'upload') {
@@ -1270,7 +1266,7 @@ export default function Manifest() {
             <input
               type="text"
               className="manifest-page__search-input"
-              placeholder="Search by title or author..."
+              placeholder="Search by title, author, or topic..."
               value={titleSearch}
               onChange={(e) => setTitleSearch(e.target.value)}
             />
@@ -1339,10 +1335,21 @@ export default function Manifest() {
                   message="Upload books, articles, notes, and transcripts. The AI draws from your library to give you advice grounded in the wisdom you trust."
                 />
               ) : filteredItems.length === 0 ? (
-                <EmptyState
-                  heading="No matching items"
-                  message="Try adjusting your filters to see more items."
-                />
+                <div>
+                  <EmptyState
+                    heading="No matching items"
+                    message="Try adjusting your filters to see more items."
+                  />
+                  {titleSearch.trim() && (
+                    <button
+                      type="button"
+                      className="manifest-page__deep-search-hint"
+                      onClick={() => setShowSemanticSearch(true)}
+                    >
+                      Search inside all books for "{titleSearch.trim()}"
+                    </button>
+                  )}
+                </div>
               ) : groupMode === 'all_books' || folderGroups.length === 1 ? (
                 <div className={libraryLayout === 'compact' ? 'manifest-page__compact-list' : 'manifest-page__item-list'}>
                   {sortedItems.map((item) => (
@@ -1681,6 +1688,15 @@ export default function Manifest() {
           />
         );
       })()}
+
+      {/* Semantic Search Modal Overlay */}
+      {showSemanticSearch && (
+        <div className="manifest-page__search-modal-backdrop" onClick={() => setShowSemanticSearch(false)}>
+          <div className="manifest-page__search-modal" onClick={(e) => e.stopPropagation()}>
+            <SemanticSearch onClose={() => setShowSemanticSearch(false)} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

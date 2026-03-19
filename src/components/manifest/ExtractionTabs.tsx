@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { Heart, Trash2, ChevronDown, ChevronRight, Anchor, Compass, RefreshCw, Sparkles, LayoutList, BookOpen, StickyNote, Lightbulb, Quote, Eye, Wrench, Users, CheckCircle, type LucideIcon } from 'lucide-react';
+import { Heart, Trash2, ChevronDown, ChevronRight, Anchor, Compass, RefreshCw, Sparkles, LayoutList, BookOpen, StickyNote, Lightbulb, Quote, Eye, Wrench, Users, CheckCircle, Search, X, type LucideIcon } from 'lucide-react';
 import { ChapterJumpOverlay } from './ChapterJumpOverlay';
 import type {
   ManifestSummary,
@@ -1544,11 +1544,40 @@ export function ExtractionTabs({
   }, []);
   const setViewMode = useCallback((vm: ViewMode) => { setViewModeRaw(vm); ssSet('manifest-extraction-view', vm); }, []);
 
-  const summaryCount = summaries.filter((s) => !s.is_deleted).length;
-  const frameworkCount = principles.filter((p) => !p.is_deleted).length;
-  const actionStepCount = actionSteps.filter((a) => !a.is_deleted).length;
-  const declarationCount = declarations.filter((d) => !d.is_deleted).length;
-  const questionCount = questions.filter((q) => !q.is_deleted).length;
+  // In-book text search
+  const [itemSearch, setItemSearch] = useState('');
+  const searchQ = itemSearch.trim().toLowerCase();
+  const filteredSummaries = useMemo(() => {
+    const base = summaries.filter((s) => !s.is_deleted);
+    if (!searchQ) return base;
+    return base.filter((s) => s.text.toLowerCase().includes(searchQ) || s.user_note?.toLowerCase().includes(searchQ));
+  }, [summaries, searchQ]);
+  const filteredPrinciples = useMemo(() => {
+    const base = principles.filter((p) => !p.is_deleted);
+    if (!searchQ) return base;
+    return base.filter((p) => p.text.toLowerCase().includes(searchQ) || p.user_note?.toLowerCase().includes(searchQ));
+  }, [principles, searchQ]);
+  const filteredActionSteps = useMemo(() => {
+    const base = actionSteps.filter((a) => !a.is_deleted);
+    if (!searchQ) return base;
+    return base.filter((a) => a.text.toLowerCase().includes(searchQ) || a.user_note?.toLowerCase().includes(searchQ));
+  }, [actionSteps, searchQ]);
+  const filteredDeclarations = useMemo(() => {
+    const base = declarations.filter((d) => !d.is_deleted);
+    if (!searchQ) return base;
+    return base.filter((d) => d.declaration_text.toLowerCase().includes(searchQ) || d.user_note?.toLowerCase().includes(searchQ));
+  }, [declarations, searchQ]);
+  const filteredQuestions = useMemo(() => {
+    const base = questions.filter((q) => !q.is_deleted);
+    if (!searchQ) return base;
+    return base.filter((q) => q.text.toLowerCase().includes(searchQ) || q.user_note?.toLowerCase().includes(searchQ));
+  }, [questions, searchQ]);
+
+  const summaryCount = filteredSummaries.length;
+  const frameworkCount = filteredPrinciples.length;
+  const actionStepCount = filteredActionSteps.length;
+  const declarationCount = filteredDeclarations.length;
+  const questionCount = filteredQuestions.length;
 
   // --- Scroll position persistence ---
   const scrollKeyRef = useRef(`manifest-scroll-${manifestItemId}-${activeTab}-${viewMode}`);
@@ -1667,6 +1696,23 @@ export function ExtractionTabs({
         </button>
       </div>
 
+      {/* Search within this book */}
+      <div className="extraction-tabs__search">
+        <Search size={14} className="extraction-tabs__search-icon" />
+        <input
+          type="text"
+          className="extraction-tabs__search-input"
+          placeholder="Search this book..."
+          value={itemSearch}
+          onChange={(e) => setItemSearch(e.target.value)}
+        />
+        {itemSearch && (
+          <button type="button" className="extraction-tabs__search-clear" onClick={() => setItemSearch('')}>
+            <X size={12} />
+          </button>
+        )}
+      </div>
+
       {/* Filter + view mode toggle */}
       <div className="extraction-tabs__filter">
         <button
@@ -1703,7 +1749,7 @@ export function ExtractionTabs({
           <>
             {activeTab === 'summary' && (
               <SummaryTab
-                summaries={summaries}
+                summaries={filteredSummaries}
                 extractingTab={extractingTab}
                 genres={genres}
                 manifestItemId={manifestItemId}
@@ -1719,7 +1765,7 @@ export function ExtractionTabs({
             )}
             {activeTab === 'frameworks' && (
               <FrameworksTab
-                principles={principles}
+                principles={filteredPrinciples}
                 extractingTab={extractingTab}
                 onToggleHeart={onTogglePrincipleHeart}
                 onDelete={onDeletePrinciple}
@@ -1731,7 +1777,7 @@ export function ExtractionTabs({
             )}
             {activeTab === 'action_steps' && (
               <ActionStepsTab
-                actionSteps={actionSteps}
+                actionSteps={filteredActionSteps}
                 extractingTab={extractingTab}
                 genres={genres}
                 manifestItemId={manifestItemId}
@@ -1748,7 +1794,7 @@ export function ExtractionTabs({
             )}
             {activeTab === 'mast_content' && (
               <MastContentTab
-                declarations={declarations}
+                declarations={filteredDeclarations}
                 extractingTab={extractingTab}
                 genres={genres}
                 manifestItemId={manifestItemId}
@@ -1765,7 +1811,7 @@ export function ExtractionTabs({
             )}
             {activeTab === 'questions' && (
               <QuestionsTab
-                questions={questions}
+                questions={filteredQuestions}
                 extractingTab={extractingTab}
                 genres={genres}
                 manifestItemId={manifestItemId}
@@ -1783,11 +1829,11 @@ export function ExtractionTabs({
           </>
         ) : (
           <ChapterView
-            summaries={summaries}
-            principles={principles}
-            actionSteps={actionSteps}
-            declarations={declarations}
-            questions={questions}
+            summaries={filteredSummaries}
+            principles={filteredPrinciples}
+            actionSteps={filteredActionSteps}
+            declarations={filteredDeclarations}
+            questions={filteredQuestions}
             filterMode={filterMode}
             onUpdateNote={(id, note, type) => {
               if (type === 'summary') onUpdateSummaryNote(id, note);
