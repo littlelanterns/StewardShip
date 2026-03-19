@@ -8,6 +8,7 @@ import { useAuthContext } from '../../contexts/AuthContext';
 import { TrackerPrompts } from './TrackerPrompts';
 import { ReminderBatchSection } from '../reminders/ReminderBatchSection';
 import { FridayOverview } from '../rhythms/FridayOverview';
+import { ManifestResurfacingCard } from '../reveille/ManifestResurfacingCard';
 import { MonthlyReviewCard } from '../rhythms/MonthlyReviewCard';
 import { QuarterlyInventoryCard } from '../rhythms/QuarterlyInventoryCard';
 import { MAST_TYPE_LABELS, MEETING_TYPE_LABELS } from '../../lib/types';
@@ -210,6 +211,9 @@ export function ReveilleScreen() {
             <div className="manifest-reading__source">{reveilleData.manifestReading.source}</div>
           </div>
         )}
+
+        {/* Section 3B: Hearted items resurfacing */}
+        <ManifestResurfacingCard />
 
         {/* Section 4: Today's Priorities */}
         {hasTasks && (

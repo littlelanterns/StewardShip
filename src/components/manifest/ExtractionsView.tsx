@@ -1047,13 +1047,17 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
     }
   }, [user, bookData, selectedIds, fetchExtractions]);
 
-  // Derive sorted tag list from all selected books' frameworks (most-used first)
+  // Derive sorted tag list from all selected books — framework tags + extraction item tags
   const allTags = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const d of selectedData) {
-      d.frameworkTags.forEach((tag) => {
-        counts[tag] = (counts[tag] || 0) + 1;
-      });
+      // Framework-level tags
+      d.frameworkTags.forEach((tag) => { counts[tag] = (counts[tag] || 0) + 1; });
+      // Item-level tags from all extraction types
+      for (const s of d.summaries) { (s.tags || []).forEach((t) => { counts[t] = (counts[t] || 0) + 1; }); }
+      for (const a of d.actionSteps) { (a.tags || []).forEach((t) => { counts[t] = (counts[t] || 0) + 1; }); }
+      for (const q of d.questions) { (q.tags || []).forEach((t) => { counts[t] = (counts[t] || 0) + 1; }); }
+      for (const dc of d.declarations) { (dc.tags || []).forEach((t) => { counts[t] = (counts[t] || 0) + 1; }); }
     }
     return Object.entries(counts)
       .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
@@ -1077,7 +1081,15 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
 
     // Filter by active tags (books whose frameworks include any selected tag)
     if (activeTags.size > 0) {
-      data = data.filter((d) => Array.from(activeTags).some((t) => d.frameworkTags.includes(t)));
+      const tagArr = Array.from(activeTags);
+      data = data.map((d) => ({
+        ...d,
+        summaries: d.summaries.filter((s) => (s.tags || []).some((t) => tagArr.includes(t)) || d.frameworkTags.some((t) => tagArr.includes(t))),
+        principles: d.principles, // framework principles don't have item-level tags — keep if framework tags match
+        actionSteps: d.actionSteps.filter((a) => (a.tags || []).some((t) => tagArr.includes(t)) || d.frameworkTags.some((t) => tagArr.includes(t))),
+        questions: d.questions.filter((q) => (q.tags || []).some((t) => tagArr.includes(t)) || d.frameworkTags.some((t) => tagArr.includes(t))),
+        declarations: d.declarations.filter((dc) => (dc.tags || []).some((t) => tagArr.includes(t)) || d.frameworkTags.some((t) => tagArr.includes(t))),
+      })).filter((d) => d.summaries.length > 0 || d.principles.length > 0 || d.actionSteps.length > 0 || d.questions.length > 0 || d.declarations.length > 0);
     }
 
     // Text search filter — filter items within each book group

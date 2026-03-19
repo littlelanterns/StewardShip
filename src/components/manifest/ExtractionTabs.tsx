@@ -58,6 +58,18 @@ function TypeBadge({ contentType, label }: { contentType: string; label: string 
   );
 }
 
+/** Render tag chips on an extraction item */
+function ItemTags({ tags }: { tags?: string[] }) {
+  if (!tags || tags.length === 0) return null;
+  return (
+    <div className="extraction-item__tags">
+      {tags.map((tag) => (
+        <span key={tag} className="extraction-item__tag">{tag}</span>
+      ))}
+    </div>
+  );
+}
+
 // --- Summary Tab ---
 
 interface ExtractionProgressInfo {
@@ -257,6 +269,7 @@ function SummaryTab({
                         {item.text}
                       </p>
                     )}
+                    <ItemTags tags={item.tags} />
 
                     <div className="extraction-item__actions">
                       <button

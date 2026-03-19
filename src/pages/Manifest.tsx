@@ -21,6 +21,7 @@ import { CollectionSidebar } from '../components/manifest/CollectionSidebar';
 import { CollectionModal } from '../components/manifest/CollectionModal';
 import { ExtractionsView } from '../components/manifest/ExtractionsView';
 import { SemanticSearch } from '../components/manifest/SemanticSearch';
+import { ManifestSidebar } from '../components/manifest/ManifestSidebar';
 import { useManifestCollections } from '../hooks/useManifestCollections';
 import { CollapsibleGroup } from '../components/shared/CollapsibleGroup';
 import { FloatingActionButton } from '../components/shared/FloatingActionButton';
@@ -118,6 +119,16 @@ export default function Manifest() {
   const [titleSearch, setTitleSearch] = useState('');
   const [continueDismissed, setContinueDismissed] = useState(false);
   const [showSemanticSearch, setShowSemanticSearch] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try { return sessionStorage.getItem('manifest-sidebar-collapsed') === 'true'; } catch { return false; }
+  });
+  const handleToggleSidebar = useCallback(() => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try { sessionStorage.setItem('manifest-sidebar-collapsed', String(next)); } catch { /* */ }
+      return next;
+    });
+  }, []);
   const [folderToDelete, setFolderToDelete] = useState<string | null>(null);
 
   // Parent/child parts state for split books
@@ -858,7 +869,15 @@ export default function Manifest() {
   // Detail view
   if (viewMode === 'detail' && currentSelectedItem) {
     return (
-      <div className="page manifest-page">
+      <div className="page manifest-page manifest-page--detail">
+        <ManifestSidebar
+          items={items}
+          selectedItemId={currentSelectedItem.id}
+          onSelectItem={handleSelectItem}
+          onBackToLibrary={handleBack}
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={handleToggleSidebar}
+        />
         <ManifestItemDetail
           item={currentSelectedItem}
           onBack={handleBack}

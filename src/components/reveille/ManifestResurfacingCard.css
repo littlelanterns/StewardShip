@@ -1,0 +1,80 @@
+/* Manifest Resurfacing Card — Reveille "From Your Library" */
+
+.manifest-resurfacing {
+  padding: var(--spacing-md);
+  background: var(--color-bg-card, var(--color-white));
+  border: 1px solid var(--color-bg-secondary);
+  border-radius: var(--radius-md, 8px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.manifest-resurfacing__title {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-family: var(--font-heading, Georgia, serif);
+  font-size: var(--font-size-sm);
+  color: var(--color-cognac);
+  margin: 0;
+  font-weight: 600;
+}
+
+.manifest-resurfacing__items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.manifest-resurfacing__item {
+  padding: var(--spacing-sm);
+  border-left: 3px solid var(--color-mid-teal);
+  background: var(--color-bg-primary, var(--color-cream));
+  border-radius: 0 var(--radius-sm, 4px) var(--radius-sm, 4px) 0;
+}
+
+.manifest-resurfacing__type {
+  display: inline-block;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary, var(--color-slate-gray));
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.manifest-resurfacing__text {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+  color: var(--color-text-primary, var(--color-navy));
+}
+
+.manifest-resurfacing__book {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: var(--spacing-xs);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary, var(--color-slate-gray));
+  font-style: italic;
+}
+
+.manifest-resurfacing__see-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-mid-teal);
+  font-size: var(--font-size-sm);
+  padding: var(--spacing-xs) 0;
+}
+
+.manifest-resurfacing__see-more:hover {
+  color: var(--color-dark-teal);
+  text-decoration: underline;
+}

@@ -986,6 +986,20 @@
   padding-left: var(--spacing-sm);
 }
 
+/* Detail page layout with sidebar on desktop */
+@media (min-width: 768px) {
+  .manifest-page--detail {
+    display: flex;
+    gap: 0;
+    max-width: 1100px;
+  }
+
+  .manifest-page--detail .manifest-detail {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
 /* Continue where you left off banner */
 .manifest-page__continue-banner {
   display: flex;
