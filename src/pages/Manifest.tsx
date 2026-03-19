@@ -273,11 +273,14 @@ export default function Manifest() {
     fetchItems();
   }, [items, updateItem, fetchItems]);
 
+  // Fetch items first (shows book list), defer secondary data
   useEffect(() => {
-    fetchItems();
-    fetchFrameworks();
-    fetchDiscussions();
-    fetchCollections();
+    fetchItems().then(() => {
+      // Load secondary data after books are visible
+      fetchFrameworks();
+      fetchDiscussions();
+      fetchCollections();
+    });
   }, [fetchItems, fetchFrameworks, fetchDiscussions, fetchCollections]);
 
   // Fetch extraction status for child parts of multi-part books
