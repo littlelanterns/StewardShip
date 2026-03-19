@@ -855,6 +855,15 @@ export default function Manifest() {
       .filter((i): i is ManifestItem => i !== undefined);
   }, [collectionExtractionsId, getItemIdsForCollection, items]);
 
+  // Collection info for ExtractionsView collection chips
+  const collectionsForExtractions = useMemo(() => {
+    return collections.map((c) => ({
+      id: c.id,
+      name: c.name,
+      itemIds: getItemIdsForCollection(c.id),
+    }));
+  }, [collections, getItemIdsForCollection]);
+
   // Semantic search is now a modal overlay (rendered at end of component)
 
   // Upload view
@@ -1315,6 +1324,8 @@ export default function Manifest() {
           items={collectionExtractionsItems}
           onBack={() => setCollectionExtractionsId(null)}
           collectionName={collectionExtractionsName}
+          collections={collectionsForExtractions}
+          onSelectCollection={handleViewCollectionExtractions}
         />
       ) : (
       /* Content — wrapped in DndContext when sidebar is open */

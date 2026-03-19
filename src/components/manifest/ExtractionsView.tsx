@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Heart, Download, ChevronDown, ChevronRight, Trash2, Anchor, Compass, MessageCircle, RefreshCw, Sparkles, LayoutList, BookOpen, StickyNote, Search, X } from 'lucide-react';
+import { ChevronLeft, Heart, Download, ChevronDown, ChevronRight, Trash2, Anchor, Compass, MessageCircle, RefreshCw, Sparkles, LayoutList, BookOpen, StickyNote, Search, X, Library } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useTagUsage } from '../../hooks/useTagUsage';
@@ -13,11 +13,19 @@ import { Button, TagPills } from '../shared';
 import './ExtractionsView.css';
 import './ExtractionTabs.css';
 
+interface CollectionInfo {
+  id: string;
+  name: string;
+  itemIds: string[];
+}
+
 interface ExtractionsViewProps {
   items: ManifestItem[];
   onBack?: () => void;
   favoritesMode?: boolean;
   collectionName?: string;
+  collections?: CollectionInfo[];
+  onSelectCollection?: (collectionId: string) => void;
 }
 
 type TabType = 'summary' | 'frameworks' | 'action_steps' | 'mast_content' | 'questions';
@@ -58,7 +66,7 @@ function groupBySection<T extends { section_title: string | null; section_index?
 const evSsGet = (key: string): string | null => { try { return sessionStorage.getItem(key); } catch { return null; } };
 const evSsSet = (key: string, v: string) => { try { sessionStorage.setItem(key, v); } catch { /* */ } };
 
-export function ExtractionsView({ items, onBack, favoritesMode, collectionName }: ExtractionsViewProps) {
+export function ExtractionsView({ items, onBack, favoritesMode, collectionName, collections, onSelectCollection }: ExtractionsViewProps) {
   const navigate = useNavigate();
   const { user } = useAuthContext();
   const handleBack = onBack || (() => navigate('/manifest'));
@@ -1915,6 +1923,45 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
         </div>
       ) : (
         <>
+          {/* Collection quick-select chips */}
+          {collections && collections.length > 0 && (
+            <div className="extractions-view__collections">
+              <span className="extractions-view__collections-label">Collections:</span>
+              {collections.map((col) => {
+                // Check if this collection's books are currently all selected
+                const colBookIds = col.itemIds.filter((id) => extractedItems.some((ei) => ei.id === id));
+                const allSelected = colBookIds.length > 0 && colBookIds.every((id) => selectedIds.has(id));
+                return (
+                  <button
+                    key={col.id}
+                    type="button"
+                    className={`extractions-view__collection-chip${allSelected ? ' extractions-view__collection-chip--active' : ''}`}
+                    onClick={() => {
+                      if (onSelectCollection) {
+                        onSelectCollection(col.id);
+                      } else {
+                        // Toggle: select all books in this collection
+                        setSelectedIds((prev) => {
+                          const next = new Set(prev);
+                          if (allSelected) {
+                            colBookIds.forEach((id) => next.delete(id));
+                          } else {
+                            colBookIds.forEach((id) => next.add(id));
+                          }
+                          return next;
+                        });
+                      }
+                    }}
+                    title={`${col.name} (${colBookIds.length} books)`}
+                  >
+                    <Library size={12} />
+                    {col.name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           {/* Book selector */}
           <div className="extractions-view__books">
             <button

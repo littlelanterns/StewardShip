@@ -555,6 +555,48 @@
   color: var(--color-text-primary, var(--color-navy));
 }
 
+/* Collection quick-select chips */
+.extractions-view__collections {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  flex-wrap: wrap;
+  padding: var(--spacing-xs) 0;
+  margin-bottom: var(--spacing-xs);
+}
+
+.extractions-view__collections-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary, var(--color-slate-gray));
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.extractions-view__collection-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-border, var(--color-slate-gray));
+  border-radius: var(--radius-full, 999px);
+  background: none;
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary, var(--color-slate-gray));
+  transition: all 0.15s ease;
+}
+
+.extractions-view__collection-chip:hover {
+  border-color: var(--color-mid-teal);
+  color: var(--color-mid-teal);
+}
+
+.extractions-view__collection-chip--active {
+  background: var(--color-mid-teal);
+  border-color: var(--color-mid-teal);
+  color: var(--color-white);
+}
+
 /* Sidebar + content layout for desktop */
 .extractions-view__with-sidebar {
   display: flex;
