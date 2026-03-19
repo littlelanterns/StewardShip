@@ -9,7 +9,46 @@
 .extractions-view__header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--spacing-md);
+}
+
+.extractions-view__header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  min-width: 0;
+}
+
+.extractions-view__discuss-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  background: none;
+  border: 1px solid var(--color-mid-teal);
+  border-radius: var(--radius-md, 8px);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  cursor: pointer;
+  color: var(--color-mid-teal);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.extractions-view__discuss-btn:hover {
+  background: var(--color-mid-teal);
+  color: var(--color-white);
+}
+
+.extractions-view__discuss-label {
+  display: none;
+}
+
+@media (min-width: 480px) {
+  .extractions-view__discuss-label {
+    display: inline;
+  }
 }
 
 .extractions-view__back {

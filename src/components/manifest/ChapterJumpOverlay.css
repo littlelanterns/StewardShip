@@ -2,7 +2,7 @@
 
 .chapter-jump__trigger {
   position: fixed;
-  bottom: calc(var(--nav-height, 60px) + var(--spacing-sm, 8px));
+  bottom: calc(var(--nav-height, 60px) + 24px);
   left: var(--spacing-md, 16px);
   width: 40px;
   height: 40px;

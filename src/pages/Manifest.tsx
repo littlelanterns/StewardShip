@@ -1366,6 +1366,11 @@ export default function Manifest() {
           collectionName={collectionExtractionsName}
           collections={collectionsForExtractions}
           onSelectCollection={handleViewCollectionExtractions}
+          onDiscussBooks={(bookIds) => {
+            ensureSecondaryData();
+            const titles = bookIds.map((id) => items.find((i) => i.id === id)?.title || 'Unknown');
+            setDiscussionModal({ bookTitles: titles, manifestItemIds: bookIds, discussionType: 'discuss' });
+          }}
         />
       ) : (
       /* Content — wrapped in DndContext when sidebar is open */

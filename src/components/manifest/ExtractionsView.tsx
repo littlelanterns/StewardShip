@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Heart, Download, ChevronDown, ChevronRight, Trash2, Anchor, Compass, MessageCircle, RefreshCw, Sparkles, LayoutList, BookOpen, StickyNote, Search, X, Library, Loader } from 'lucide-react';
+import { ChevronLeft, Heart, Download, ChevronDown, ChevronRight, Trash2, Anchor, Compass, MessageCircle, MessageSquare, RefreshCw, Sparkles, LayoutList, BookOpen, StickyNote, Search, X, Library, Loader } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useTagUsage } from '../../hooks/useTagUsage';
@@ -27,6 +27,7 @@ interface ExtractionsViewProps {
   collectionName?: string;
   collections?: CollectionInfo[];
   onSelectCollection?: (collectionId: string) => void;
+  onDiscussBooks?: (bookIds: string[]) => void;
 }
 
 type TabType = 'summary' | 'frameworks' | 'action_steps' | 'mast_content' | 'questions';
@@ -67,7 +68,7 @@ function groupBySection<T extends { section_title: string | null; section_index?
 const evSsGet = (key: string): string | null => { try { return sessionStorage.getItem(key); } catch { return null; } };
 const evSsSet = (key: string, v: string) => { try { sessionStorage.setItem(key, v); } catch { /* */ } };
 
-export function ExtractionsView({ items, onBack, favoritesMode, collectionName, collections, onSelectCollection }: ExtractionsViewProps) {
+export function ExtractionsView({ items, onBack, favoritesMode, collectionName, collections, onSelectCollection, onDiscussBooks }: ExtractionsViewProps) {
   const navigate = useNavigate();
   const { user } = useAuthContext();
   const handleBack = onBack || (() => navigate('/manifest'));
@@ -2042,11 +2043,24 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName, 
   return (
     <div className="extractions-view">
       <div className="extractions-view__header">
-        <button type="button" className="extractions-view__back" onClick={handleBack}>
-          <ChevronLeft size={16} />
-          {favoritesMode ? 'Back' : 'Back to Library'}
-        </button>
-        <h2 className="extractions-view__title">{favoritesMode ? 'Favorites' : 'Extractions'}</h2>
+        <div className="extractions-view__header-left">
+          <button type="button" className="extractions-view__back" onClick={handleBack}>
+            <ChevronLeft size={16} />
+            {favoritesMode ? 'Back' : 'Back to Library'}
+          </button>
+          <h2 className="extractions-view__title">{favoritesMode ? 'Favorites' : 'Extractions'}</h2>
+        </div>
+        {onDiscussBooks && selectedIds.size > 0 && (
+          <button
+            type="button"
+            className="extractions-view__discuss-btn"
+            onClick={() => onDiscussBooks(Array.from(selectedIds))}
+            title="Discuss selected books"
+          >
+            <MessageSquare size={16} />
+            <span className="extractions-view__discuss-label">Discuss</span>
+          </button>
+        )}
       </div>
 
       {extractedItems.length === 0 ? (
