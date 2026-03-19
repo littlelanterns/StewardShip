@@ -232,9 +232,11 @@ The questions should help the reader:
 Rules:
 - Questions must be OPEN-ENDED — never yes/no. They should invite genuine reflection, not simple recall.
 - Each question should STAND ALONE — someone reading just the question should be able to reflect meaningfully, even without having read the book. Include enough context in the question itself.
+- TIMELESS RULE: Questions should still make sense and still provoke thought six months after reading the book. They should be relevant to the content but not dependent on having it fresh in mind. A reader scrolling through their prompt library long after finishing the book should find every question immediately usable.
 - COHESION RULE: A multi-part reflection sequence is ONE item. If a question naturally has a follow-up ("...and if so, how has that changed you?"), keep them together.
 - Use section length as a rough guide: ~1-2 questions per 2,000-3,000 characters of input. A short section may produce 2-5 questions, a long one 8-15.
 - Questions should be PERSONAL and INVITING — use "you/your" language. Not clinical or academic.
+- GENRE-WEIGHTED MIX: Aim for a natural distribution of content_types weighted toward the book's genre. A parenting book produces more implementation and discussion questions. A spiritual memoir produces more reflection and self_examination. A leadership book produces more scenario and implementation. Let the content guide the balance — don't force equal distribution across types.
 - For fiction/allegory/memoir, ask about character decisions, moral dilemmas, and parallels to the reader's own life.
 - For non-fiction, ask about applying principles, recognizing patterns, and identifying growth areas.
 - For scripture/sacred texts, ask about spiritual application, personal relevance, and lived experience.
@@ -337,9 +339,11 @@ Extract concrete, actionable steps, exercises, practices, and activities that a 
 Create reflective questions that help the reader deeply internalize and apply the content. Questions should help the reader reflect on their own life, recognize existing growth, plan implementation, examine patterns, and discuss ideas meaningfully with others.
 - Questions must be OPEN-ENDED — never yes/no. They should invite genuine reflection, not simple recall.
 - Each question should STAND ALONE — include enough context that someone can reflect meaningfully without having read the book.
+- TIMELESS RULE: Questions should still provoke thought months after reading. Relevant to the content but not dependent on having it fresh in mind — usable when browsing a prompt library long after finishing the book.
 - Use "you/your" language — personal and inviting, not clinical or academic.
 - COHESION RULE: A multi-part reflection sequence is ONE item.
 - Extract 3-8 questions depending on content richness.
+- GENRE-WEIGHTED MIX: Weight content_types toward the book's genre — parenting → more implementation/discussion, spiritual memoir → more reflection/self_examination, leadership → more scenario/implementation. Let the content guide the balance.
 - For fiction/allegory/memoir, ask about character decisions, moral dilemmas, and parallels to the reader's own life.
 - For scripture/sacred texts, ask about spiritual application, personal relevance, and lived experience.
 - Avoid surface-level comprehension questions. Every question should prompt self-examination or life application.
