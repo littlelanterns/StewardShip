@@ -1680,16 +1680,39 @@ export function ExtractionTabs({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const toggleAbridgedWrapped = useCallback(() => { origToggleAbridged(); setExpandedAbridgedSections(new Set()); }, [origToggleAbridged]);
 
-  // Abridged filter: respects per-section expansion
+  // Abridged filter: respects per-section expansion.
+  // Guarantees every section keeps at least 2 items even if none are key_point/hearted.
   const abridgedFilterSection = <T extends { is_key_point?: boolean; is_hearted?: boolean; section_title?: string | null }>(
     items: T[], tab: string
   ): T[] => {
     if (!abridged) return items;
-    return items.filter((i) => {
-      const secKey = `${tab}-${i.section_title || '__full_book__'}`;
-      if (expandedAbridgedSections.has(secKey)) return true; // section expanded — show all
-      return i.is_key_point || i.is_hearted;
-    });
+
+    // Group by section first to ensure each section keeps at least 2 items
+    const sectionMap = new Map<string, T[]>();
+    for (const item of items) {
+      const key = item.section_title || '__full_book__';
+      if (!sectionMap.has(key)) sectionMap.set(key, []);
+      sectionMap.get(key)!.push(item);
+    }
+
+    const result: T[] = [];
+    for (const [sectionTitle, sectionItems] of sectionMap.entries()) {
+      const secKey = `${tab}-${sectionTitle}`;
+      if (expandedAbridgedSections.has(secKey)) {
+        // Section expanded — show all
+        result.push(...sectionItems);
+        continue;
+      }
+      // Filter to key points + hearted
+      const keyItems = sectionItems.filter((i) => i.is_key_point || i.is_hearted);
+      if (keyItems.length > 0) {
+        result.push(...keyItems);
+      } else {
+        // No key points in this section — show first 2 as fallback
+        result.push(...sectionItems.slice(0, 2));
+      }
+    }
+    return result;
   };
 
   const filteredSummaries = useMemo(() => {
@@ -1737,12 +1760,20 @@ export function ExtractionTabs({
         allItems: T[], tab: string
       ) => {
         const active = allItems.filter((i) => !i.is_deleted);
+        // Group by section to compute hidden per section
+        const sectionMap = new Map<string, T[]>();
         for (const item of active) {
-          const secKey = `${tab}-${item.section_title || '__full_book__'}`;
+          const key = item.section_title || '__full_book__';
+          if (!sectionMap.has(key)) sectionMap.set(key, []);
+          sectionMap.get(key)!.push(item);
+        }
+        for (const [sectionTitle, sectionItems] of sectionMap.entries()) {
+          const secKey = `${tab}-${sectionTitle}`;
           if (expandedAbridgedSections.has(secKey)) continue;
-          if (!item.is_key_point && !item.is_hearted) {
-            hiddenCounts.set(secKey, (hiddenCounts.get(secKey) || 0) + 1);
-          }
+          const keyItems = sectionItems.filter((i) => i.is_key_point || i.is_hearted);
+          const visibleCount = keyItems.length > 0 ? keyItems.length : Math.min(2, sectionItems.length);
+          const hidden = sectionItems.length - visibleCount;
+          if (hidden > 0) hiddenCounts.set(secKey, hidden);
         }
       };
       computeHidden(summaries, 'summary');
