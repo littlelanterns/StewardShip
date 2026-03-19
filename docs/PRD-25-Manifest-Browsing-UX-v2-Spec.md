@@ -543,18 +543,169 @@ In v2, ExtractionTabs and ExtractionsView should share a single `ExtractionItemR
 
 ---
 
-## 14. v2 Architecture Recommendations
+## 14. v2 Architecture: One Page, One Component
 
-1. **Single rendering component** for extraction items — shared between book detail and multi-book views. Current dual implementation (ExtractionTabs + ExtractionsView) was the #1 source of inconsistency.
+### 14.1 Eliminate the Two-View Problem
 
-2. **State management consolidation** — extraction view state (abridged, collapsed, scroll, filter) should be in a shared context or hook, not duplicated across components.
+**v1 mistake:** Separate `ExtractionTabs` (book detail) and `ExtractionsView` (multi-book) components with parallel rendering, parallel state, parallel filtering. Every feature had to be built twice and kept in sync. This was the #1 source of bugs.
 
-3. **URL-based routing for book detail** — `/manifest/:bookId` instead of in-page state, enabling deep links and proper browser back.
+**v2 solution: One page (`/manifest`), two modes:**
 
-4. **Extraction item as a standalone component** — `ExtractionItem` with all actions, visuals, and interactions. Consumed by both section renderers.
+| Mode | Trigger | What shows |
+|------|---------|-----------|
+| **Library** (default) | Navigate to `/manifest` | Book list with search, sort, collections, upload |
+| **Reading** | Click book, select multiple, click collection, click "Hearted Items" | `ExtractionBrowser` component with the selected `bookIds[]` |
 
-5. **Section renderer** — `ExtractionSection` with collapse/expand, sticky header, see more, and abridged logic. Consumed by both tab and chapter views.
+There is no `/library/extractions` route. There is no `ExtractionsView` as a separate component. There is only `ExtractionBrowser`.
+
+**`ExtractionBrowser` accepts:**
+```typescript
+interface ExtractionBrowserProps {
+  bookIds: string[];              // 1 book = single-book mode, N books = multi-book mode
+  onBack: () => void;             // returns to library mode
+  initialTab?: TabType;           // restore from sessionStorage
+  initialAbridged?: boolean;      // defaults true
+  collections?: CollectionInfo[]; // for collection chips
+  onSelectCollection?: (id: string) => void;
+  onDiscussBooks?: (ids: string[]) => void;
+}
+```
+
+**Behavior differences by `bookIds.length`:**
+- `1 book`: Header shows book title + author. "Book Info" collapsible available. Apply section with all 6 buttons. No book selector.
+- `N books`: Header shows "Extractions" + Discuss button. Book selector with checkboxes. Collection chips. Book headings in content.
+- **Everything else is identical:** Same tabs, same abridged toggle, same search, same sidebar, same chapter jump, same item actions, same see-more buttons.
+
+### 14.2 Component Hierarchy
+
+```
+ExtractionBrowser
+├── ExtractionHeader (back, title, discuss button, search)
+├── ExtractionControls (tabs, All/Hearted, Abridged/Full, view mode, Refresh Key Points)
+├── ExtractionSidebar (desktop: chapter tree, recently viewed books)
+├── ChapterJumpOverlay (mobile: bottom sheet)
+├── ExtractionContent
+│   ├── TabsView
+│   │   └── ExtractionSection[] (per chapter/section)
+│   │       └── ExtractionItem[] (per item)
+│   │           └── ItemActions (heart, note, delete, send-to)
+│   ├── ChaptersView
+│   │   └── ChapterSection[] (per chapter)
+│   │       └── TypeGroup[] (Summary, Frameworks, etc.)
+│   │           └── ExtractionItem[]
+│   └── NotesView
+│       └── ExtractionItem[] (filtered to user_note)
+├── BookSelector (multi-book mode only)
+├── CollectionChips (when collections available)
+└── ExportDialog
+```
+
+### 14.3 Shared Components (reusable across the app)
+
+**`ExtractionItem`** — One component for rendering any extraction item:
+- Accepts: item data, content type, action callbacks
+- Renders: type badge with icon, left border color, text, tags, action buttons, note, hearted emphasis
+- Used by: ExtractionBrowser, SemanticSearchPanel, ResurfacingCard, any future consumer
+
+**`ExtractionSection`** — One component for rendering a collapsible section:
+- Accepts: items[], sectionTitle, abridged state, hidden count, expand callback
+- Renders: sticky header, items, "See more" / "Key points only" button
+- Handles: collapse/expand, abridged filtering per-section
+
+**`SemanticSearchPanel`** — Reusable semantic search drawer/modal:
+- Accepts: `defaultQuery?`, `scope?` (books/personal/all), `onSelectItem?` callback
+- Can be opened from ANY page via `useSemanticSearch()` hook
+- Three modes (Any/Together/Separate), results by relevance or book, export
+
+### 14.4 SemanticSearchPanel — App-Wide Reuse
+
+The semantic search is NOT Manifest-specific. The backend (`searchManifestContent` + `searchPersonalContext`) searches across all user data. The UI panel should be accessible from:
+
+| Feature | How it's triggered | Default scope |
+|---------|-------------------|---------------|
+| **Manifest** | "Search Library" button | Books only |
+| **Helm (chat)** | Already wired (auto, no UI panel) | Books + personal |
+| **Safe Harbor** | "What have I read about this?" button | Books only |
+| **Rigging** | "Find relevant principles" button | Books only |
+| **Meetings** | Pre-meeting prep context | Books + personal |
+| **Keel** | "What books relate to this?" | Books only |
+| **Journal** | Sidebar: "Related from your library" | Books + personal |
+| **Compass** | Task detail: "What did my books say?" | Books only |
+| **Reckoning** | Already wired (resurfacing card, no search) | Books only |
+
+**`useSemanticSearch()` hook:**
+```typescript
+const { openSearch, SearchPanel } = useSemanticSearch();
+// Call from anywhere:
+openSearch({ defaultQuery: 'communicating with teens', scope: 'books' });
+// Render SearchPanel in your component tree
+```
+
+### 14.5 Abridged View — Complete Rules
+
+**Default state:** Abridged ON (first visit). Persisted to sessionStorage.
+
+**What "Abridged" means:**
+- For each section (chapter + content type), show only items where `is_key_point = true` OR `is_hearted = true`
+- If a section has NO key points AND no hearted items: show first 2 items by `sort_order` as fallback
+- Every section ALWAYS has at least 1-2 visible items — sections never disappear
+
+**Chapter/section collapse rules:**
+
+| View mode | Abridged ON | Abridged OFF (Full Content) |
+|-----------|-------------|---------------------------|
+| Tabs view | All sections **expanded** | All sections **collapsed** (user picks) |
+| Chapters view | All chapters **expanded** | All chapters **collapsed** (user picks) |
+| Notes view | N/A (flat list) | N/A (flat list) |
+
+**Toggling between Abridged ↔ Full Content:**
+- Dynamically expands or collapses ALL sections/chapters
+- Resets per-section expansion state (See more toggles)
+
+**"See more" button rules:**
+- Appears at the bottom of a section/type-group when items are hidden
+- Text: "See N more" (with ▼ chevron icon)
+- Tapping: expands ONLY that section to show all items. Other sections stay abridged.
+- Changes to: "Key points only" (with ▸ chevron icon)
+- Tapping: collapses back to key points. Other expanded sections stay expanded.
+- Each section/type-group is independent.
+- In chapters view: "See more" appears per content TYPE within each chapter (e.g., expand Frameworks in Chapter 3 while Summary stays abridged in Chapter 3).
+
+**Tab counts:** Always reflect the FILTERED count (after abridged + search + hearted filtering).
+
+### 14.6 State Management
+
+**One source of truth** via `useExtractionBrowser()` hook:
+
+```typescript
+interface ExtractionBrowserState {
+  activeTab: TabType;
+  filterMode: 'all' | 'hearted';
+  viewMode: 'tabs' | 'chapters' | 'notes';
+  abridged: boolean;
+  expandedAbridgedSections: Set<string>;  // per-section "see more" state
+  collapsedSections: Set<string>;         // manual collapse state
+  searchQuery: string;
+  scrollPositions: Map<string, number>;   // per-tab scroll position
+}
+```
+
+All persisted to sessionStorage. One hook instance shared by the entire ExtractionBrowser tree.
+
+### 14.7 URL-Based Routing
+
+```
+/manifest                           → Library view
+/manifest?book=<uuid>               → Single book reading view
+/manifest?books=<uuid1>,<uuid2>     → Multi-book reading view
+/manifest?collection=<uuid>         → Collection reading view
+/manifest?hearted=true              → Hearted items view
+```
+
+Enables: deep links, browser back/forward, share links, bookmark.
 
 ---
+
+*End of PRD-25 v2 Specification*
 
 *End of PRD-25 v2 Specification*
