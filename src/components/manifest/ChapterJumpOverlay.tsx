@@ -18,19 +18,16 @@ export function ChapterJumpOverlay({ sections, headerSelector }: ChapterJumpOver
   const [open, setOpen] = useState(false);
   const [currentSection, setCurrentSection] = useState<string | null>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
-
-  // Only show for 3+ sections
-  if (sections.length < 3) return null;
+  const shouldShow = sections.length >= 3;
 
   // Scroll spy via IntersectionObserver
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
+    if (!shouldShow) return;
     const headers = document.querySelectorAll(headerSelector);
     if (headers.length === 0) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
-        // Find the topmost visible header
         let topEntry: IntersectionObserverEntry | null = null;
         for (const entry of entries) {
           if (entry.isIntersecting) {
@@ -51,9 +48,8 @@ export function ChapterJumpOverlay({ sections, headerSelector }: ChapterJumpOver
 
     headers.forEach((h) => observer.observe(h));
     return () => observer.disconnect();
-  }, [headerSelector, sections]);
+  }, [headerSelector, sections, shouldShow]);
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const handleJump = useCallback((index: number) => {
     const headers = document.querySelectorAll(headerSelector);
     if (headers[index]) {
@@ -62,11 +58,12 @@ export function ChapterJumpOverlay({ sections, headerSelector }: ChapterJumpOver
     setOpen(false);
   }, [headerSelector]);
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const handleBackToTop = useCallback(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setOpen(false);
   }, []);
+
+  if (!shouldShow) return null;
 
   return (
     <>
