@@ -1461,15 +1461,82 @@ export function ExtractionTabs({
   onQuestionGoDeeper,
   onQuestionReRun,
 }: ExtractionTabsProps) {
-  const [activeTab, setActiveTab] = useState<TabType>('summary');
-  const [filterMode, setFilterMode] = useState<FilterMode>('all');
-  const [viewMode, setViewMode] = useState<ViewMode>('tabs');
+  // --- sessionStorage helpers ---
+  const ssGet = (key: string): string | null => { try { return sessionStorage.getItem(key); } catch { return null; } };
+  const ssSet = (key: string, v: string) => { try { sessionStorage.setItem(key, v); } catch { /* */ } };
+
+  const [activeTab, setActiveTabRaw] = useState<TabType>(() => {
+    const stored = ssGet('manifest-active-tab');
+    if (stored === 'summary' || stored === 'frameworks' || stored === 'action_steps' || stored === 'mast_content' || stored === 'questions') return stored;
+    return 'summary';
+  });
+  const [filterMode, setFilterModeRaw] = useState<FilterMode>(() => {
+    const stored = ssGet('manifest-filter-mode');
+    return stored === 'hearted' ? 'hearted' : 'all';
+  });
+  const [viewMode, setViewModeRaw] = useState<ViewMode>(() => {
+    const stored = ssGet('manifest-extraction-view');
+    if (stored === 'tabs' || stored === 'chapters' || stored === 'notes') return stored;
+    return 'tabs';
+  });
+
+  const setActiveTab = useCallback((tab: TabType) => { setActiveTabRaw(tab); ssSet('manifest-active-tab', tab); }, []);
+  const setFilterMode = useCallback((updater: FilterMode | ((prev: FilterMode) => FilterMode)) => {
+    setFilterModeRaw((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      ssSet('manifest-filter-mode', next);
+      return next;
+    });
+  }, []);
+  const setViewMode = useCallback((vm: ViewMode) => { setViewModeRaw(vm); ssSet('manifest-extraction-view', vm); }, []);
 
   const summaryCount = summaries.filter((s) => !s.is_deleted).length;
   const frameworkCount = principles.filter((p) => !p.is_deleted).length;
   const actionStepCount = actionSteps.filter((a) => !a.is_deleted).length;
   const declarationCount = declarations.filter((d) => !d.is_deleted).length;
   const questionCount = questions.filter((q) => !q.is_deleted).length;
+
+  // --- Scroll position persistence ---
+  const scrollKeyRef = useRef(`manifest-scroll-${manifestItemId}-${activeTab}-${viewMode}`);
+  scrollKeyRef.current = `manifest-scroll-${manifestItemId}-${activeTab}-${viewMode}`;
+
+  // Save scroll on unmount
+  useEffect(() => {
+    return () => { ssSet(scrollKeyRef.current, String(window.scrollY)); };
+  }, []);
+
+  // Restore scroll after data loads (once per mount)
+  const scrollRestoredRef = useRef(false);
+  useEffect(() => {
+    if (scrollRestoredRef.current) return;
+    const hasData = summaryCount > 0 || frameworkCount > 0 || actionStepCount > 0 || declarationCount > 0 || questionCount > 0;
+    if (!hasData) return;
+    scrollRestoredRef.current = true;
+    const saved = ssGet(scrollKeyRef.current);
+    if (saved) {
+      requestAnimationFrame(() => window.scrollTo(0, parseInt(saved, 10)));
+    }
+  }, [summaryCount, frameworkCount, actionStepCount, declarationCount, questionCount]);
+
+  // Wrap tab switch to save/restore scroll
+  const handleTabSwitch = useCallback((newTab: TabType) => {
+    ssSet(`manifest-scroll-${manifestItemId}-${activeTab}-${viewMode}`, String(window.scrollY));
+    setActiveTab(newTab);
+    requestAnimationFrame(() => {
+      const saved = ssGet(`manifest-scroll-${manifestItemId}-${newTab}-${viewMode}`);
+      window.scrollTo(0, saved ? parseInt(saved, 10) : 0);
+    });
+  }, [manifestItemId, activeTab, viewMode, setActiveTab]);
+
+  // Wrap view mode switch to save/restore scroll
+  const handleViewModeSwitch = useCallback((newVM: ViewMode) => {
+    ssSet(`manifest-scroll-${manifestItemId}-${activeTab}-${viewMode}`, String(window.scrollY));
+    setViewMode(newVM);
+    requestAnimationFrame(() => {
+      const saved = ssGet(`manifest-scroll-${manifestItemId}-${activeTab}-${newVM}`);
+      window.scrollTo(0, saved ? parseInt(saved, 10) : 0);
+    });
+  }, [manifestItemId, activeTab, viewMode, setViewMode]);
 
   return (
     <div className="extraction-tabs">
@@ -1478,35 +1545,35 @@ export function ExtractionTabs({
         <button
           type="button"
           className={`extraction-tabs__tab${activeTab === 'summary' ? ' extraction-tabs__tab--active' : ''}`}
-          onClick={() => setActiveTab('summary')}
+          onClick={() => handleTabSwitch('summary')}
         >
           Summary {summaryCount > 0 && <span className="extraction-tabs__tab-count">{summaryCount}</span>}
         </button>
         <button
           type="button"
           className={`extraction-tabs__tab${activeTab === 'frameworks' ? ' extraction-tabs__tab--active' : ''}`}
-          onClick={() => setActiveTab('frameworks')}
+          onClick={() => handleTabSwitch('frameworks')}
         >
           Frameworks {frameworkCount > 0 && <span className="extraction-tabs__tab-count">{frameworkCount}</span>}
         </button>
         <button
           type="button"
           className={`extraction-tabs__tab${activeTab === 'action_steps' ? ' extraction-tabs__tab--active' : ''}`}
-          onClick={() => setActiveTab('action_steps')}
+          onClick={() => handleTabSwitch('action_steps')}
         >
           Action Steps {actionStepCount > 0 && <span className="extraction-tabs__tab-count">{actionStepCount}</span>}
         </button>
         <button
           type="button"
           className={`extraction-tabs__tab${activeTab === 'mast_content' ? ' extraction-tabs__tab--active' : ''}`}
-          onClick={() => setActiveTab('mast_content')}
+          onClick={() => handleTabSwitch('mast_content')}
         >
           Mast {declarationCount > 0 && <span className="extraction-tabs__tab-count">{declarationCount}</span>}
         </button>
         <button
           type="button"
           className={`extraction-tabs__tab${activeTab === 'questions' ? ' extraction-tabs__tab--active' : ''}`}
-          onClick={() => setActiveTab('questions')}
+          onClick={() => handleTabSwitch('questions')}
         >
           Questions {questionCount > 0 && <span className="extraction-tabs__tab-count">{questionCount}</span>}
         </button>
@@ -1526,7 +1593,7 @@ export function ExtractionTabs({
           <button
             type="button"
             className={`extraction-tabs__view-btn${viewMode === 'tabs' ? ' extraction-tabs__view-btn--active' : ''}`}
-            onClick={() => setViewMode('tabs')}
+            onClick={() => handleViewModeSwitch('tabs')}
             title="View by tab"
           >
             <LayoutList size={14} />
@@ -1534,7 +1601,7 @@ export function ExtractionTabs({
           <button
             type="button"
             className={`extraction-tabs__view-btn${viewMode === 'chapters' ? ' extraction-tabs__view-btn--active' : ''}`}
-            onClick={() => setViewMode('chapters')}
+            onClick={() => handleViewModeSwitch('chapters')}
             title="View by chapter"
           >
             <BookOpen size={14} />

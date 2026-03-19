@@ -54,18 +54,49 @@ function groupBySection<T extends { section_title: string | null; section_index?
   });
 }
 
+// --- sessionStorage helpers ---
+const evSsGet = (key: string): string | null => { try { return sessionStorage.getItem(key); } catch { return null; } };
+const evSsSet = (key: string, v: string) => { try { sessionStorage.setItem(key, v); } catch { /* */ } };
+
 export function ExtractionsView({ items, onBack, favoritesMode, collectionName }: ExtractionsViewProps) {
   const navigate = useNavigate();
   const { user } = useAuthContext();
   const handleBack = onBack || (() => navigate('/manifest'));
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState<TabType>('summary');
-  const [filterMode, setFilterMode] = useState<FilterMode>(favoritesMode ? 'hearted' : 'all');
-  const [viewMode, setViewMode] = useState<ViewMode>('tabs');
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    const stored = evSsGet('manifest-ev-active-tab');
+    if (stored === 'summary' || stored === 'frameworks' || stored === 'action_steps' || stored === 'mast_content' || stored === 'questions') return stored;
+    return 'summary';
+  });
+  const [filterMode, setFilterMode] = useState<FilterMode>(() => {
+    if (favoritesMode) return 'hearted';
+    const stored = evSsGet('manifest-ev-filter-mode');
+    return stored === 'hearted' ? 'hearted' : 'all';
+  });
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    const stored = evSsGet('manifest-ev-extraction-view');
+    if (stored === 'tabs' || stored === 'chapters' || stored === 'notes') return stored;
+    return 'tabs';
+  });
   const [bookData, setBookData] = useState<Map<string, BookExtractions>>(new Map());
   const [loading, setLoading] = useState(false);
-  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
-  const [collapsedBooks, setCollapsedBooks] = useState<Set<string>>(new Set());
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(() => {
+    const stored = evSsGet('manifest-ev-collapsed-sections');
+    if (stored) { try { return new Set(JSON.parse(stored)); } catch { /* */ } }
+    return new Set();
+  });
+  const [collapsedBooks, setCollapsedBooks] = useState<Set<string>>(() => {
+    const stored = evSsGet('manifest-ev-collapsed-books');
+    if (stored) { try { return new Set(JSON.parse(stored)); } catch { /* */ } }
+    return new Set();
+  });
+  // Persist ExtractionsView state to sessionStorage on change
+  useEffect(() => { evSsSet('manifest-ev-active-tab', activeTab); }, [activeTab]);
+  useEffect(() => { evSsSet('manifest-ev-filter-mode', filterMode); }, [filterMode]);
+  useEffect(() => { evSsSet('manifest-ev-extraction-view', viewMode); }, [viewMode]);
+  useEffect(() => { evSsSet('manifest-ev-collapsed-sections', JSON.stringify([...collapsedSections])); }, [collapsedSections]);
+  useEffect(() => { evSsSet('manifest-ev-collapsed-books', JSON.stringify([...collapsedBooks])); }, [collapsedBooks]);
+
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const [extractingBookTab, setExtractingBookTab] = useState<string | null>(null);
   const [confirmReRun, setConfirmReRun] = useState<string | null>(null); // bookId or null

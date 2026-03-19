@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { ChevronLeft, FileText, FileCode, Mic, Image, StickyNote, RefreshCw, BookOpen, Wand2, MessageSquare, Target, HelpCircle, CheckSquare, BarChart3, Users, ChevronRight, AlertTriangle, Tags, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronDown, FileText, FileCode, Mic, Image, StickyNote, RefreshCw, BookOpen, Wand2, MessageSquare, Target, HelpCircle, CheckSquare, BarChart3, Users, ChevronRight, AlertTriangle, Tags, Trash2, Info } from 'lucide-react';
 import type { ManifestItem, ManifestSummary, ManifestDeclaration, ManifestActionStep, ManifestQuestion, AIFrameworkPrinciple, BookGenre, DiscussionType } from '../../lib/types';
 import { MANIFEST_FILE_TYPE_LABELS, MANIFEST_STATUS_LABELS } from '../../lib/types';
 import type { SectionInfo } from '../../hooks/useManifestExtraction';
@@ -234,6 +234,7 @@ export function ManifestItemDetail({
   const [addingTag, setAddingTag] = useState(false);
   const [tagInput, setTagInput] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [bookInfoOpen, setBookInfoOpen] = useState(false);
   const [reprocessing, setReprocessing] = useState(false);
   const [enriching, setEnriching] = useState(false);
   const [confirmDeletePartId, setConfirmDeletePartId] = useState<string | null>(null);
@@ -652,6 +653,95 @@ export function ManifestItemDetail({
         </div>
       </div>
 
+      {/* Extraction Tabs — MOVED to top for content-first layout */}
+      {isProcessed && !isParentWithParts && (hasExtraction || extracting) && (
+        <section className="manifest-detail__section">
+          <ExtractionTabs
+            manifestItemId={item.id}
+            genres={selectedGenres}
+            summaries={summaries}
+            declarations={declarations}
+            actionSteps={actionSteps}
+            principles={principles}
+            extractingTab={extractingTab}
+            hasFramework={hasFramework}
+            onToggleSummaryHeart={onToggleSummaryHeart}
+            onDeleteSummary={onDeleteSummary}
+            onUpdateSummaryText={onUpdateSummaryText}
+            onSummaryGoDeeper={onSummaryGoDeeper}
+            onSummaryReRun={onSummaryReRun}
+            onTogglePrincipleHeart={onTogglePrincipleHeart}
+            onDeletePrinciple={onDeletePrinciple}
+            onToggleDeclarationHeart={onToggleDeclarationHeart}
+            onDeleteDeclaration={onDeleteDeclaration}
+            onUpdateDeclaration={onUpdateDeclaration}
+            onSendDeclarationToMast={onSendDeclarationToMast}
+            onDeclarationGoDeeper={onDeclarationGoDeeper}
+            onDeclarationReRun={onDeclarationReRun}
+            onToggleActionStepHeart={onToggleActionStepHeart}
+            onDeleteActionStep={onDeleteActionStep}
+            onUpdateActionStepText={onUpdateActionStepText}
+            onSendActionStepToCompass={onSendActionStepToCompass}
+            onActionStepGoDeeper={onActionStepGoDeeper}
+            onActionStepReRun={onActionStepReRun}
+            onUpdateSummaryNote={onUpdateSummaryNote || (() => {})}
+            onUpdatePrincipleNote={onUpdatePrincipleNote || (() => {})}
+            onUpdateActionStepNote={onUpdateActionStepNote || (() => {})}
+            onUpdateDeclarationNote={onUpdateDeclarationNote || (() => {})}
+            questions={questions}
+            onToggleQuestionHeart={onToggleQuestionHeart}
+            onDeleteQuestion={onDeleteQuestion}
+            onUpdateQuestionText={onUpdateQuestionText}
+            onUpdateQuestionNote={onUpdateQuestionNote}
+            onSendQuestionToPrompts={onSendQuestionToPrompts}
+            onQuestionGoDeeper={onQuestionGoDeeper}
+            onQuestionReRun={onQuestionReRun}
+            extractionProgress={extractionProgress}
+            onFrameworkReRun={onFrameworkReRun}
+          />
+        </section>
+      )}
+
+      {/* Apply Section — MOVED to top, below ExtractionTabs */}
+      {isProcessed && !isParentWithParts && hasExtraction && !extracting && (
+        <section className="manifest-detail__section">
+          <div className="apply-section">
+            <h3 className="apply-section__title">Apply This</h3>
+            <div className="apply-section__buttons">
+              <button type="button" className="apply-section__btn" onClick={() => onOpenDiscussion?.('discuss')} disabled={!onOpenDiscussion}>
+                <MessageSquare size={14} /> Discuss Book
+              </button>
+              <button type="button" className="apply-section__btn" onClick={() => onOpenDiscussion?.('generate_goals')} disabled={!onOpenDiscussion}>
+                <Target size={14} /> Generate Goals
+              </button>
+              <button type="button" className="apply-section__btn" onClick={() => onOpenDiscussion?.('generate_questions')} disabled={!onOpenDiscussion}>
+                <HelpCircle size={14} /> Generate Questions
+              </button>
+              <button type="button" className="apply-section__btn" onClick={() => onOpenDiscussion?.('generate_tasks')} disabled={!onOpenDiscussion}>
+                <CheckSquare size={14} /> Generate Tasks
+              </button>
+              <button type="button" className="apply-section__btn" onClick={() => onOpenDiscussion?.('generate_tracker')} disabled={!onOpenDiscussion}>
+                <BarChart3 size={14} /> Generate Tracker
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Collapsible Book Info section */}
+      <section className="manifest-detail__section manifest-detail__book-info">
+        <button
+          type="button"
+          className="manifest-detail__book-info-toggle"
+          onClick={() => setBookInfoOpen((o) => !o)}
+        >
+          <Info size={16} />
+          <span>Book Info</span>
+          {bookInfoOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+        </button>
+        {bookInfoOpen && (
+          <div className="manifest-detail__book-info-content">
+
       {/* Tags */}
       <section className="manifest-detail__section">
         <h3 className="manifest-detail__section-title">Tags</h3>
@@ -848,6 +938,11 @@ export function ManifestItemDetail({
           )}
         </section>
       )}
+
+          </div>
+        )}
+      </section>
+      {/* End of collapsible Book Info */}
 
       {/* Parts Section — shown for parent items that have been split */}
       {isParentWithParts && childParts && childParts.length > 0 && (() => {
@@ -1352,111 +1447,6 @@ export function ManifestItemDetail({
               Retry All Failed
             </Button>
           )}
-        </section>
-      )}
-
-      {/* Extraction Tabs — shown when extractions exist or extracting (not for parents with parts) */}
-      {isProcessed && !isParentWithParts && (hasExtraction || extracting) && (
-        <section className="manifest-detail__section">
-          <ExtractionTabs
-            manifestItemId={item.id}
-            genres={selectedGenres}
-            summaries={summaries}
-            declarations={declarations}
-            actionSteps={actionSteps}
-            principles={principles}
-            extractingTab={extractingTab}
-            hasFramework={hasFramework}
-            onToggleSummaryHeart={onToggleSummaryHeart}
-            onDeleteSummary={onDeleteSummary}
-            onUpdateSummaryText={onUpdateSummaryText}
-            onSummaryGoDeeper={onSummaryGoDeeper}
-            onSummaryReRun={onSummaryReRun}
-            onTogglePrincipleHeart={onTogglePrincipleHeart}
-            onDeletePrinciple={onDeletePrinciple}
-            onToggleDeclarationHeart={onToggleDeclarationHeart}
-            onDeleteDeclaration={onDeleteDeclaration}
-            onUpdateDeclaration={onUpdateDeclaration}
-            onSendDeclarationToMast={onSendDeclarationToMast}
-            onDeclarationGoDeeper={onDeclarationGoDeeper}
-            onDeclarationReRun={onDeclarationReRun}
-            onToggleActionStepHeart={onToggleActionStepHeart}
-            onDeleteActionStep={onDeleteActionStep}
-            onUpdateActionStepText={onUpdateActionStepText}
-            onSendActionStepToCompass={onSendActionStepToCompass}
-            onActionStepGoDeeper={onActionStepGoDeeper}
-            onActionStepReRun={onActionStepReRun}
-            onUpdateSummaryNote={onUpdateSummaryNote || (() => {})}
-            onUpdatePrincipleNote={onUpdatePrincipleNote || (() => {})}
-            onUpdateActionStepNote={onUpdateActionStepNote || (() => {})}
-            onUpdateDeclarationNote={onUpdateDeclarationNote || (() => {})}
-            questions={questions}
-            onToggleQuestionHeart={onToggleQuestionHeart}
-            onDeleteQuestion={onDeleteQuestion}
-            onUpdateQuestionText={onUpdateQuestionText}
-            onUpdateQuestionNote={onUpdateQuestionNote}
-            onSendQuestionToPrompts={onSendQuestionToPrompts}
-            onQuestionGoDeeper={onQuestionGoDeeper}
-            onQuestionReRun={onQuestionReRun}
-            extractionProgress={extractionProgress}
-            onFrameworkReRun={onFrameworkReRun}
-          />
-        </section>
-      )}
-
-      {/* Apply Section — shown when extractions exist (not for parents with parts) */}
-      {isProcessed && !isParentWithParts && hasExtraction && !extracting && (
-        <section className="manifest-detail__section">
-          <div className="apply-section">
-            <h3 className="apply-section__title">Apply This</h3>
-            <div className="apply-section__buttons">
-              <button
-                type="button"
-                className="apply-section__btn"
-                onClick={() => onOpenDiscussion?.('discuss')}
-                disabled={!onOpenDiscussion}
-              >
-                <MessageSquare size={14} />
-                Discuss Book
-              </button>
-              <button
-                type="button"
-                className="apply-section__btn"
-                onClick={() => onOpenDiscussion?.('generate_goals')}
-                disabled={!onOpenDiscussion}
-              >
-                <Target size={14} />
-                Generate Goals
-              </button>
-              <button
-                type="button"
-                className="apply-section__btn"
-                onClick={() => onOpenDiscussion?.('generate_questions')}
-                disabled={!onOpenDiscussion}
-              >
-                <HelpCircle size={14} />
-                Generate Questions
-              </button>
-              <button
-                type="button"
-                className="apply-section__btn"
-                onClick={() => onOpenDiscussion?.('generate_tasks')}
-                disabled={!onOpenDiscussion}
-              >
-                <CheckSquare size={14} />
-                Generate Tasks
-              </button>
-              <button
-                type="button"
-                className="apply-section__btn"
-                onClick={() => onOpenDiscussion?.('generate_tracker')}
-                disabled={!onOpenDiscussion}
-              >
-                <BarChart3 size={14} />
-                Generate Tracker
-              </button>
-            </div>
-          </div>
         </section>
       )}
 

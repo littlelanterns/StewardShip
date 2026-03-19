@@ -1,7 +1,7 @@
 import { FileText, BookOpen, FileCode, Mic, Image, StickyNote, Loader, ChevronRight } from 'lucide-react';
 import { useDraggable } from '@dnd-kit/core';
 import type { ManifestItem } from '../../lib/types';
-import { MANIFEST_USAGE_LABELS } from '../../lib/types';
+// MANIFEST_USAGE_LABELS removed (usage designations deprecated per PRD-24)
 import { Card } from '../shared/Card';
 import './ManifestItemCard.css';
 
@@ -195,11 +195,7 @@ export function ManifestItemCard({ item, onClick, compact, selectable, selected,
               Extracted
             </span>
           ) : null}
-          {item.usage_designations.filter((u) => u !== 'general_reference' && u !== 'framework_source').slice(0, 1).map((u) => (
-            <span key={u} className="manifest-card__badge">
-              {MANIFEST_USAGE_LABELS[u]}
-            </span>
-          ))}
+          {/* Usage designations removed (DEPRECATED per PRD-24) */}
         </div>
       </div>
     </Card>

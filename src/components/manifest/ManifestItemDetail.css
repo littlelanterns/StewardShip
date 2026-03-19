@@ -1011,3 +1011,43 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Book Info collapsible section */
+.manifest-detail__book-info {
+  border: 1px solid var(--color-border, var(--color-slate-gray));
+  border-radius: var(--radius-md, 8px);
+  padding: 0;
+  overflow: hidden;
+}
+
+.manifest-detail__book-info-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-heading, Georgia, serif);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary, var(--color-slate-gray));
+  transition: color 0.15s ease;
+}
+
+.manifest-detail__book-info-toggle:hover {
+  color: var(--color-text-primary, var(--color-navy));
+}
+
+.manifest-detail__book-info-content {
+  padding: 0 var(--spacing-md) var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.manifest-detail__book-info-content .manifest-detail__section {
+  padding-top: 0;
+  border-top: none;
+}

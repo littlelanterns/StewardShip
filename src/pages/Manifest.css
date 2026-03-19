@@ -985,3 +985,75 @@
   margin-left: auto;
   padding-left: var(--spacing-sm);
 }
+
+/* Continue where you left off banner */
+.manifest-page__continue-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  background: var(--color-card-bg, var(--color-cream));
+  border: 1px solid var(--color-border, var(--color-slate-gray));
+  border-left: 3px solid var(--color-cognac);
+  border-radius: var(--radius-md, 8px);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.manifest-page__continue-banner:hover {
+  background: var(--color-warm-sand);
+}
+
+.manifest-page__continue-icon {
+  color: var(--color-cognac);
+  flex-shrink: 0;
+}
+
+.manifest-page__continue-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.manifest-page__continue-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary, var(--color-slate-gray));
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.manifest-page__continue-title {
+  font-family: var(--font-heading, Georgia, serif);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary, var(--color-navy));
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.manifest-page__continue-meta {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary, var(--color-slate-gray));
+}
+
+.manifest-page__continue-dismiss {
+  background: none;
+  border: none;
+  padding: var(--spacing-xs);
+  cursor: pointer;
+  color: var(--color-text-secondary, var(--color-slate-gray));
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.manifest-page__continue-dismiss:hover {
+  background: var(--color-warm-sand);
+  color: var(--color-text-primary, var(--color-navy));
+}

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 
-import { Upload, MessageSquare, Loader, List, LayoutGrid, CheckSquare, FolderInput, X, Plus, Folder, Trash2, Search, Library } from 'lucide-react';
+import { Upload, MessageSquare, Loader, List, LayoutGrid, CheckSquare, FolderInput, X, Plus, Folder, Trash2, Search, Library, BookOpen } from 'lucide-react';
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core';
 import { usePageContext } from '../hooks/usePageContext';
 import { useAuthContext } from '../contexts/AuthContext';
@@ -40,8 +40,42 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: 'has_extractions', label: 'Has Extractions' },
 ];
 
+// --- sessionStorage helpers (safe for incognito / storage-disabled browsers) ---
+function ssGet(key: string): string | null {
+  try { return sessionStorage.getItem(key); } catch { return null; }
+}
+function ssSet(key: string, value: string): void {
+  try { sessionStorage.setItem(key, value); } catch { /* ignored */ }
+}
+function ssRemove(key: string): void {
+  try { sessionStorage.removeItem(key); } catch { /* ignored */ }
+}
+
+const TAB_LABELS: Record<string, string> = {
+  summary: 'Summary',
+  frameworks: 'Frameworks',
+  action_steps: 'Action Steps',
+  mast_content: 'Declarations',
+  questions: 'Questions',
+};
+const VIEW_MODE_LABELS: Record<string, string> = {
+  tabs: 'Tabs',
+  chapters: 'Chapters',
+  notes: 'Notes',
+};
+
 export default function Manifest() {
   usePageContext({ page: 'manifest' });
+
+  // Swap PWA manifest so "Add to Home Screen" from /manifest creates a
+  // separate "My Library" icon with the black-S logo
+  useEffect(() => {
+    const link = document.querySelector('link[rel="manifest"]') as HTMLLinkElement | null;
+    if (link) {
+      link.href = '/manifest-library.json';
+      return () => { link.href = '/manifest.json'; };
+    }
+  }, []);
   const { user } = useAuthContext();
   const {
     items,
@@ -79,6 +113,7 @@ export default function Manifest() {
   const [selectedItem, setSelectedItem] = useState<ManifestItem | null>(null);
   const [fabExpanded, setFabExpanded] = useState(false);
   const [titleSearch, setTitleSearch] = useState('');
+  const [continueDismissed, setContinueDismissed] = useState(false);
   const [folderToDelete, setFolderToDelete] = useState<string | null>(null);
 
   // Parent/child parts state for split books
@@ -284,6 +319,8 @@ export default function Manifest() {
     const resolvedItem = detail || item;
     setSelectedItem(resolvedItem);
     setViewMode('detail');
+    ssSet('manifest-selected-item', resolvedItem.id);
+    ssSet('manifest-selected-title', resolvedItem.title);
     // Fetch child parts if this is a parent with parts
     if ((resolvedItem.part_count ?? 0) > 0) {
       const parts = await fetchParts(resolvedItem.id);
@@ -311,6 +348,8 @@ export default function Manifest() {
     setParentItem(null);
     setChildParts([]);
     setViewMode('list');
+    ssRemove('manifest-selected-item');
+    ssRemove('manifest-selected-title');
     fetchItems();
   }, [fetchItems]);
 
@@ -1027,6 +1066,52 @@ export default function Manifest() {
       </div>
 
       <FeatureGuide {...FEATURE_GUIDES.manifest} />
+
+      {/* Continue where you left off banner */}
+      {!loading && !continueDismissed && (() => {
+        const continueId = ssGet('manifest-selected-item');
+        const continueTitle = ssGet('manifest-selected-title');
+        const continueTab = ssGet('manifest-active-tab');
+        const continueView = ssGet('manifest-extraction-view');
+        if (!continueId || !continueTitle) return null;
+        const continueItem = items.find((i) => i.id === continueId);
+        if (!continueItem) return null;
+        return (
+          <div className="manifest-page__continue-banner" role="button" tabIndex={0}
+            onClick={() => handleSelectItem(continueItem)}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleSelectItem(continueItem); }}
+          >
+            <BookOpen size={18} className="manifest-page__continue-icon" />
+            <div className="manifest-page__continue-text">
+              <span className="manifest-page__continue-label">Continue reading</span>
+              <span className="manifest-page__continue-title">{continueTitle}</span>
+              {(continueTab || continueView) && (
+                <span className="manifest-page__continue-meta">
+                  {continueTab && TAB_LABELS[continueTab] ? TAB_LABELS[continueTab] : ''}
+                  {continueTab && continueView ? ' · ' : ''}
+                  {continueView && VIEW_MODE_LABELS[continueView] ? VIEW_MODE_LABELS[continueView] : ''}
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              className="manifest-page__continue-dismiss"
+              title="Dismiss"
+              onClick={(e) => {
+                e.stopPropagation();
+                setContinueDismissed(true);
+                ssRemove('manifest-selected-item');
+                ssRemove('manifest-selected-title');
+                ssRemove('manifest-active-tab');
+                ssRemove('manifest-extraction-view');
+                ssRemove('manifest-filter-mode');
+              }}
+            >
+              <X size={14} />
+            </button>
+          </div>
+        );
+      })()}
 
       {/* Action buttons */}
       {items.length > 0 && (
