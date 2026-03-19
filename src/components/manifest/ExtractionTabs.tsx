@@ -395,6 +395,7 @@ function FrameworksTab({
   onReRun,
   filterMode,
   hasFramework,
+  abridgedInfo,
 }: FrameworksTabProps) {
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const [notingId, setNotingId] = useState<string | null>(null);
@@ -570,6 +571,23 @@ function FrameworksTab({
                     ) : null}
                   </div>
                 ))}
+
+                {/* Abridged "See more" button */}
+                {abridgedInfo?.active && (() => {
+                  const hidden = abridgedInfo.hiddenCounts.get(`frameworks-${sectionKey}`) || 0;
+                  const expanded = abridgedInfo.isExpanded(`frameworks-${sectionKey}`);
+                  if (hidden > 0 && !expanded) return (
+                    <button type="button" className="extraction-tab__see-more" onClick={() => abridgedInfo.onExpand(`frameworks-${sectionKey}`)}>
+                      <ChevronDown size={12} /> See {hidden} more item{hidden !== 1 ? 's' : ''}
+                    </button>
+                  );
+                  if (expanded) return (
+                    <button type="button" className="extraction-tab__see-more" onClick={() => abridgedInfo.onExpand(`frameworks-${sectionKey}`)}>
+                      <ChevronRight size={12} /> Show key points only
+                    </button>
+                  );
+                  return null;
+                })()}
               </div>
             )}
           </div>
@@ -610,6 +628,7 @@ function ActionStepsTab({
   onReRun,
   filterMode,
   extractionProgress,
+  abridgedInfo,
 }: ActionStepsTabProps) {
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -849,6 +868,22 @@ function ActionStepsTab({
                   </div>
                 ))}
 
+                {abridgedInfo?.active && (() => {
+                  const hidden = abridgedInfo.hiddenCounts.get(`action_steps-${sectionKey}`) || 0;
+                  const expanded = abridgedInfo.isExpanded(`action_steps-${sectionKey}`);
+                  if (hidden > 0 && !expanded) return (
+                    <button type="button" className="extraction-tab__see-more" onClick={() => abridgedInfo.onExpand(`action_steps-${sectionKey}`)}>
+                      <ChevronDown size={12} /> See {hidden} more item{hidden !== 1 ? 's' : ''}
+                    </button>
+                  );
+                  if (expanded) return (
+                    <button type="button" className="extraction-tab__see-more" onClick={() => abridgedInfo.onExpand(`action_steps-${sectionKey}`)}>
+                      <ChevronRight size={12} /> Show key points only
+                    </button>
+                  );
+                  return null;
+                })()}
+
                 <button
                   type="button"
                   className="extraction-tab__go-deeper"
@@ -901,6 +936,7 @@ function MastContentTab({
   onReRun,
   filterMode,
   extractionProgress,
+  abridgedInfo,
 }: MastContentTabProps) {
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -1156,6 +1192,22 @@ function MastContentTab({
                 >
                   Go Deeper
                 </button>
+
+                {abridgedInfo?.active && (() => {
+                  const hidden = abridgedInfo.hiddenCounts.get(`mast_content-${sectionKey}`) || 0;
+                  const expanded = abridgedInfo.isExpanded(`mast_content-${sectionKey}`);
+                  if (hidden > 0 && !expanded) return (
+                    <button type="button" className="extraction-tab__see-more" onClick={() => abridgedInfo.onExpand(`mast_content-${sectionKey}`)}>
+                      <ChevronDown size={12} /> See {hidden} more item{hidden !== 1 ? 's' : ''}
+                    </button>
+                  );
+                  if (expanded) return (
+                    <button type="button" className="extraction-tab__see-more" onClick={() => abridgedInfo.onExpand(`mast_content-${sectionKey}`)}>
+                      <ChevronRight size={12} /> Show key points only
+                    </button>
+                  );
+                  return null;
+                })()}
               </div>
             )}
           </div>
@@ -1196,6 +1248,7 @@ function QuestionsTab({
   onReRun,
   filterMode,
   extractionProgress,
+  abridgedInfo,
 }: QuestionsTabProps) {
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -1447,6 +1500,22 @@ function QuestionsTab({
                 >
                   Go Deeper
                 </button>
+
+                {abridgedInfo?.active && (() => {
+                  const hidden = abridgedInfo.hiddenCounts.get(`questions-${sectionKey}`) || 0;
+                  const expanded = abridgedInfo.isExpanded(`questions-${sectionKey}`);
+                  if (hidden > 0 && !expanded) return (
+                    <button type="button" className="extraction-tab__see-more" onClick={() => abridgedInfo.onExpand(`questions-${sectionKey}`)}>
+                      <ChevronDown size={12} /> See {hidden} more item{hidden !== 1 ? 's' : ''}
+                    </button>
+                  );
+                  if (expanded) return (
+                    <button type="button" className="extraction-tab__see-more" onClick={() => abridgedInfo.onExpand(`questions-${sectionKey}`)}>
+                      <ChevronRight size={12} /> Show key points only
+                    </button>
+                  );
+                  return null;
+                })()}
               </div>
             )}
           </div>
@@ -1834,10 +1903,10 @@ export function ExtractionTabs({
           type="button"
           className={`extraction-tabs__filter-btn${abridged ? ' extraction-tabs__filter-btn--active' : ''}`}
           onClick={toggleAbridgedWrapped}
-          title={abridged ? 'Show all items' : 'Show key points only'}
+          title={abridged ? 'Show all items' : 'Show only key points and hearted items'}
         >
           <Sparkles size={12} />
-          {abridged ? 'Key Points' : 'Full'}
+          {abridged ? 'Abridged' : 'Abridged'}
         </button>
         <div className="extraction-tabs__view-toggle">
           <button
