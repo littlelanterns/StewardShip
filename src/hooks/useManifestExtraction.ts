@@ -102,6 +102,17 @@ export function useManifestExtraction() {
     }
   }, []);
 
+  // Auto-refresh key points after extraction completes — fire-and-forget
+  const triggerKeyPointsRefresh = useCallback((manifestItemId: string) => {
+    supabase.functions.invoke('manifest-key-points', {
+      body: { manifest_item_id: manifestItemId },
+    }).then(({ data }) => {
+      console.log(`[Key Points] Auto-refreshed: ${data?.key_points} key points for ${manifestItemId}`);
+    }).catch((err) => {
+      console.warn('[Key Points] Auto-refresh failed (non-fatal):', err);
+    });
+  }, []);
+
   // --- Fire-and-forget: sync extractions to admin's clone ---
   const syncExtractionsToAdmin = useCallback(async (manifestItemId: string) => {
     try {
@@ -707,6 +718,7 @@ export function useManifestExtraction() {
       if (allOk) {
         syncExtractionsToAdmin(manifestItemId);
         triggerSemanticEmbeddings();
+        triggerKeyPointsRefresh(manifestItemId);
       }
       return allOk;
     } catch (err) {
@@ -716,7 +728,7 @@ export function useManifestExtraction() {
     } finally {
       setExtracting(false);
     }
-  }, [user, extractSummary, extractDeclarations, callExtract, updateExtractionStatus, syncExtractionsToAdmin, triggerSemanticEmbeddings]);
+  }, [user, extractSummary, extractDeclarations, callExtract, updateExtractionStatus, syncExtractionsToAdmin, triggerSemanticEmbeddings, triggerKeyPointsRefresh]);
 
   // --- Combined section result shape from Edge Function ---
 
@@ -808,6 +820,7 @@ export function useManifestExtraction() {
       await updateExtractionStatus(manifestItemId, 'completed');
       syncExtractionsToAdmin(manifestItemId);
       triggerSemanticEmbeddings();
+      triggerKeyPointsRefresh(manifestItemId);
 
       setExtractionProgress(null);
       return failed.length === 0;
@@ -978,6 +991,7 @@ export function useManifestExtraction() {
       await updateExtractionStatus(manifestItemId, 'completed');
       syncExtractionsToAdmin(manifestItemId);
       triggerSemanticEmbeddings();
+      triggerKeyPointsRefresh(manifestItemId);
       return true;
     } catch (err) {
       console.error('[extractSectionsForPart] Fatal error:', err);
