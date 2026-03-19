@@ -632,6 +632,27 @@ The semantic search is NOT Manifest-specific. The backend (`searchManifestConten
 | **Journal** | Sidebar: "Related from your library" | Books + personal |
 | **Compass** | Task detail: "What did my books say?" | Books only |
 | **Reckoning** | Already wired (resurfacing card, no search) | Books only |
+| **Crew (child profile)** | "What do my books say about helping her?" | Books + personal |
+| **First Mate** | "What have I read about supporting my spouse through this?" | Books + personal |
+
+**Real-world example — parenting a child with Down syndrome:**
+
+A parent has uploaded several books about Down syndrome to the Manifest — therapy guides, IEP advocacy resources, developmental milestone references, and memoirs from other parents. Their daughter's Crew profile has `has_rich_context = true` with notes about her strengths, therapy schedule, school accommodations, and current goals.
+
+How semantic search surfaces across the app:
+
+| Moment | What happens |
+|--------|-------------|
+| **Writing in Journal** about a tough IEP meeting | Sidebar suggests: "From your library: 3 items about IEP advocacy and parent rights" — pulls action steps from the advocacy book + a framework about collaborative problem-solving |
+| **Helm conversation** "I'm frustrated that her therapy isn't progressing" | AI context automatically includes relevant excerpts about developmental plateaus, therapy adjustment strategies, and a hearted declaration about patience from the parent's Mast |
+| **Crew profile** for daughter → "What do my books say?" | SemanticSearchPanel opens with her name + "Down syndrome" pre-filled → shows frameworks about communication strategies, action steps for home exercises, questions for the next doctor visit |
+| **Meeting prep** (parent-teacher conference) | "Help me prepare" → pulls IEP frameworks, communication principles from parenting books, and the parent's own journal entries about what's been working |
+| **Safe Harbor** after a hard day | "I feel like I'm failing her" → AI loads relevant Mast principles about stewardship + hearted book content about celebrating small victories + the parent's own past journal entries about breakthroughs |
+| **Reveille morning briefing** | "From Your Library" card surfaces a hearted action step: "Practice 5 minutes of floor-time play focused on imitation games" — from a therapy techniques book, rotated so it's fresh each morning |
+| **Rigging (planning)** a new therapy goal | "Find relevant principles" → pulls frameworks about goal-setting for developmental delays, action steps for home reinforcement, questions to discuss with the therapist |
+| **Reckoning evening review** | Victory recorded: "She signed 'more' at dinner unprompted" → AI connects to the Wheel vision about communication milestones and a hearted framework about building on emerging skills |
+
+The power is that the parent's **books**, **journal entries**, **crew notes about their daughter**, **Mast principles**, and **Keel self-knowledge** all become searchable context that surfaces at the right moment — not because the parent remembered to look it up, but because the system connects the dots.
 
 **`useSemanticSearch()` hook:**
 ```typescript
