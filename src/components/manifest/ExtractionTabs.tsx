@@ -1796,6 +1796,19 @@ export function ExtractionTabs({
               else if (type === 'declaration') onUpdateDeclarationNote(id, note);
               else if (type === 'question') onUpdateQuestionNote(id, note);
             }}
+            onToggleSummaryHeart={onToggleSummaryHeart}
+            onDeleteSummary={onDeleteSummary}
+            onTogglePrincipleHeart={onTogglePrincipleHeart}
+            onDeletePrinciple={onDeletePrinciple}
+            onToggleActionStepHeart={onToggleActionStepHeart}
+            onDeleteActionStep={onDeleteActionStep}
+            onSendActionStepToCompass={onSendActionStepToCompass}
+            onToggleDeclarationHeart={onToggleDeclarationHeart}
+            onDeleteDeclaration={onDeleteDeclaration}
+            onSendDeclarationToMast={onSendDeclarationToMast}
+            onToggleQuestionHeart={onToggleQuestionHeart}
+            onDeleteQuestion={onDeleteQuestion}
+            onSendQuestionToPrompts={onSendQuestionToPrompts}
           />
         )}
       </div>
@@ -1813,9 +1826,30 @@ interface ChapterViewProps {
   questions: ManifestQuestion[];
   filterMode: FilterMode;
   onUpdateNote: (id: string, note: string | null, type: 'summary' | 'declaration' | 'action_step' | 'principle' | 'question') => void;
+  // Full action callbacks for chapter view parity
+  onToggleSummaryHeart: (id: string) => void;
+  onDeleteSummary: (id: string) => void;
+  onTogglePrincipleHeart: (id: string) => void;
+  onDeletePrinciple: (id: string) => void;
+  onToggleActionStepHeart: (id: string) => void;
+  onDeleteActionStep: (id: string) => void;
+  onSendActionStepToCompass: (id: string) => void;
+  onToggleDeclarationHeart: (id: string) => void;
+  onDeleteDeclaration: (id: string) => void;
+  onSendDeclarationToMast: (id: string) => void;
+  onToggleQuestionHeart: (id: string) => void;
+  onDeleteQuestion: (id: string) => void;
+  onSendQuestionToPrompts: (id: string) => void;
 }
 
-function ChapterView({ summaries, principles, actionSteps, declarations, questions, filterMode, onUpdateNote }: ChapterViewProps) {
+function ChapterView({
+  summaries, principles, actionSteps, declarations, questions, filterMode, onUpdateNote,
+  onToggleSummaryHeart, onDeleteSummary,
+  onTogglePrincipleHeart, onDeletePrinciple,
+  onToggleActionStepHeart, onDeleteActionStep, onSendActionStepToCompass,
+  onToggleDeclarationHeart, onDeleteDeclaration, onSendDeclarationToMast,
+  onToggleQuestionHeart, onDeleteQuestion, onSendQuestionToPrompts,
+}: ChapterViewProps) {
   const [collapsedChapters, setCollapsedChapters] = useState<Set<string>>(new Set());
   const [notingId, setNotingId] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState('');
@@ -1922,21 +1956,17 @@ function ChapterView({ summaries, principles, actionSteps, declarations, questio
                     <div className="chapter-view__type-label">Summary</div>
                     {chSummaries.map((item) => (
                       <div key={item.id} className={itemClass(item.content_type || 'framework', !!item.is_from_go_deeper, false, !!item.is_hearted)}>
-                        <div className="extraction-item__type-badge">{item.content_type.replace(/_/g, ' ')}</div>
-                        <p className="extraction-item__text">
-                          {item.is_from_go_deeper && <Sparkles size={12} className="extraction-item__deeper-icon" />}
-                          {item.text}
-                        </p>
+                        <TypeBadge contentType={item.content_type} label={item.content_type.replace(/_/g, ' ')} />
+                        <p className="extraction-item__text">{item.text}</p>
+                        <ItemTags tags={item.tags} />
                         <div className="extraction-item__actions">
-                          {item.is_hearted && <Heart size={12} className="chapter-view__hearted-icon" fill="currentColor" />}
-                          <button
-                            type="button"
-                            className={`extraction-item__note-btn${item.user_note ? ' extraction-item__note-btn--active' : ''}`}
-                            onClick={() => notingId === item.id ? saveNote() : startNote(item.id, item.user_note, 'summary')}
-                            title={item.user_note ? 'Edit note' : 'Add note'}
-                          >
+                          <button type="button" className={`extraction-item__heart${item.is_hearted ? ' extraction-item__heart--active' : ''}`} onClick={() => onToggleSummaryHeart(item.id)}>
+                            <Heart size={14} fill={item.is_hearted ? 'currentColor' : 'none'} />
+                          </button>
+                          <button type="button" className={`extraction-item__note-btn${item.user_note ? ' extraction-item__note-btn--active' : ''}`} onClick={() => notingId === item.id ? saveNote() : startNote(item.id, item.user_note, 'summary')} title={item.user_note ? 'Edit note' : 'Add note'}>
                             <StickyNote size={14} />
                           </button>
+                          <button type="button" className="extraction-item__delete" onClick={() => onDeleteSummary(item.id)} title="Delete"><Trash2 size={14} /></button>
                         </div>
                         {notingId === item.id ? (
                           <textarea
@@ -1967,20 +1997,16 @@ function ChapterView({ summaries, principles, actionSteps, declarations, questio
                     <div className="chapter-view__type-label">Frameworks</div>
                     {chPrinciples.map((item) => (
                       <div key={item.id} className={itemClass('framework', !!item.is_from_go_deeper, false, !!item.is_hearted)}>
-                        <p className="extraction-item__text">
-                          {item.is_from_go_deeper && <Sparkles size={12} className="extraction-item__deeper-icon" />}
-                          {item.text}
-                        </p>
+                        <TypeBadge contentType="framework" label="principle" />
+                        <p className="extraction-item__text">{item.text}</p>
                         <div className="extraction-item__actions">
-                          {item.is_hearted && <Heart size={12} className="chapter-view__hearted-icon" fill="currentColor" />}
-                          <button
-                            type="button"
-                            className={`extraction-item__note-btn${item.user_note ? ' extraction-item__note-btn--active' : ''}`}
-                            onClick={() => notingId === item.id ? saveNote() : startNote(item.id, item.user_note, 'principle')}
-                            title={item.user_note ? 'Edit note' : 'Add note'}
-                          >
+                          <button type="button" className={`extraction-item__heart${item.is_hearted ? ' extraction-item__heart--active' : ''}`} onClick={() => onTogglePrincipleHeart(item.id)}>
+                            <Heart size={14} fill={item.is_hearted ? 'currentColor' : 'none'} />
+                          </button>
+                          <button type="button" className={`extraction-item__note-btn${item.user_note ? ' extraction-item__note-btn--active' : ''}`} onClick={() => notingId === item.id ? saveNote() : startNote(item.id, item.user_note, 'principle')} title={item.user_note ? 'Edit note' : 'Add note'}>
                             <StickyNote size={14} />
                           </button>
+                          <button type="button" className="extraction-item__delete" onClick={() => onDeletePrinciple(item.id)} title="Delete"><Trash2 size={14} /></button>
                         </div>
                         {notingId === item.id ? (
                           <textarea
@@ -2011,23 +2037,22 @@ function ChapterView({ summaries, principles, actionSteps, declarations, questio
                     <div className="chapter-view__type-label">Action Steps</div>
                     {chActionSteps.map((item) => (
                       <div key={item.id} className={itemClass(item.content_type || 'framework', !!item.is_from_go_deeper, false, !!item.is_hearted)}>
-                        <div className="extraction-item__type-badge">
-                          {ACTION_STEP_CONTENT_TYPE_LABELS[item.content_type as ActionStepContentType] || item.content_type.replace(/_/g, ' ')}
-                        </div>
-                        <p className="extraction-item__text">
-                          {item.is_from_go_deeper && <Sparkles size={12} className="extraction-item__deeper-icon" />}
-                          {item.text}
-                        </p>
+                        <TypeBadge contentType={item.content_type} label={ACTION_STEP_CONTENT_TYPE_LABELS[item.content_type as ActionStepContentType] || item.content_type.replace(/_/g, ' ')} />
+                        <p className="extraction-item__text">{item.text}</p>
+                        <ItemTags tags={item.tags} />
                         <div className="extraction-item__actions">
-                          {item.is_hearted && <Heart size={12} className="chapter-view__hearted-icon" fill="currentColor" />}
-                          <button
-                            type="button"
-                            className={`extraction-item__note-btn${item.user_note ? ' extraction-item__note-btn--active' : ''}`}
-                            onClick={() => notingId === item.id ? saveNote() : startNote(item.id, item.user_note, 'action_step')}
-                            title={item.user_note ? 'Edit note' : 'Add note'}
-                          >
+                          <button type="button" className={`extraction-item__heart${item.is_hearted ? ' extraction-item__heart--active' : ''}`} onClick={() => onToggleActionStepHeart(item.id)}>
+                            <Heart size={14} fill={item.is_hearted ? 'currentColor' : 'none'} />
+                          </button>
+                          <button type="button" className={`extraction-item__note-btn${item.user_note ? ' extraction-item__note-btn--active' : ''}`} onClick={() => notingId === item.id ? saveNote() : startNote(item.id, item.user_note, 'action_step')} title={item.user_note ? 'Edit note' : 'Add note'}>
                             <StickyNote size={14} />
                           </button>
+                          {item.sent_to_compass ? (
+                            <span className="extraction-item__sent-label">In Compass</span>
+                          ) : (
+                            <button type="button" className="extraction-item__send-compass" onClick={() => onSendActionStepToCompass(item.id)} title="Send to Compass"><Compass size={14} /></button>
+                          )}
+                          <button type="button" className="extraction-item__delete" onClick={() => onDeleteActionStep(item.id)} title="Delete"><Trash2 size={14} /></button>
                         </div>
                         {notingId === item.id ? (
                           <textarea
@@ -2063,19 +2088,22 @@ function ChapterView({ summaries, principles, actionSteps, declarations, questio
                           <span className="extraction-item__style-label">{DECLARATION_STYLE_LABELS[item.declaration_style]}</span>
                         </div>
                         <p className="extraction-item__text extraction-item__text--declaration">
-                          {item.is_from_go_deeper && <Sparkles size={12} className="extraction-item__deeper-icon" />}
                           &ldquo;{item.declaration_text}&rdquo;
                         </p>
+                        <ItemTags tags={item.tags} />
                         <div className="extraction-item__actions">
-                          {item.is_hearted && <Heart size={12} className="chapter-view__hearted-icon" fill="currentColor" />}
-                          <button
-                            type="button"
-                            className={`extraction-item__note-btn${item.user_note ? ' extraction-item__note-btn--active' : ''}`}
-                            onClick={() => notingId === item.id ? saveNote() : startNote(item.id, item.user_note, 'declaration')}
-                            title={item.user_note ? 'Edit note' : 'Add note'}
-                          >
+                          <button type="button" className={`extraction-item__heart${item.is_hearted ? ' extraction-item__heart--active' : ''}`} onClick={() => onToggleDeclarationHeart(item.id)}>
+                            <Heart size={14} fill={item.is_hearted ? 'currentColor' : 'none'} />
+                          </button>
+                          <button type="button" className={`extraction-item__note-btn${item.user_note ? ' extraction-item__note-btn--active' : ''}`} onClick={() => notingId === item.id ? saveNote() : startNote(item.id, item.user_note, 'declaration')} title={item.user_note ? 'Edit note' : 'Add note'}>
                             <StickyNote size={14} />
                           </button>
+                          {item.sent_to_mast ? (
+                            <span className="extraction-item__sent-label">In Mast</span>
+                          ) : (
+                            <button type="button" className="extraction-item__send-mast" onClick={() => onSendDeclarationToMast(item.id)} title="Send to Mast"><Anchor size={14} /></button>
+                          )}
+                          <button type="button" className="extraction-item__delete" onClick={() => onDeleteDeclaration(item.id)} title="Delete"><Trash2 size={14} /></button>
                         </div>
                         {notingId === item.id ? (
                           <textarea
@@ -2109,20 +2137,22 @@ function ChapterView({ summaries, principles, actionSteps, declarations, questio
                         <div className="extraction-item__type-badge">
                           {QUESTION_CONTENT_TYPE_LABELS[item.content_type as QuestionContentType] || item.content_type.replace(/_/g, ' ')}
                         </div>
-                        <p className="extraction-item__text">
-                          {item.is_from_go_deeper && <Sparkles size={12} className="extraction-item__deeper-icon" />}
-                          {item.text}
-                        </p>
+                        <TypeBadge contentType={item.content_type} label={QUESTION_CONTENT_TYPE_LABELS[item.content_type as QuestionContentType] || item.content_type.replace(/_/g, ' ')} />
+                        <p className="extraction-item__text">{item.text}</p>
+                        <ItemTags tags={item.tags} />
                         <div className="extraction-item__actions">
-                          {item.is_hearted && <Heart size={12} className="chapter-view__hearted-icon" fill="currentColor" />}
-                          <button
-                            type="button"
-                            className={`extraction-item__note-btn${item.user_note ? ' extraction-item__note-btn--active' : ''}`}
-                            onClick={() => notingId === item.id ? saveNote() : startNote(item.id, item.user_note, 'question')}
-                            title={item.user_note ? 'Edit note' : 'Add note'}
-                          >
+                          <button type="button" className={`extraction-item__heart${item.is_hearted ? ' extraction-item__heart--active' : ''}`} onClick={() => onToggleQuestionHeart(item.id)}>
+                            <Heart size={14} fill={item.is_hearted ? 'currentColor' : 'none'} />
+                          </button>
+                          <button type="button" className={`extraction-item__note-btn${item.user_note ? ' extraction-item__note-btn--active' : ''}`} onClick={() => notingId === item.id ? saveNote() : startNote(item.id, item.user_note, 'question')} title={item.user_note ? 'Edit note' : 'Add note'}>
                             <StickyNote size={14} />
                           </button>
+                          {item.sent_to_prompts ? (
+                            <span className="extraction-item__sent-label">Added to Prompts</span>
+                          ) : (
+                            <button type="button" className="extraction-item__send-prompts" onClick={() => onSendQuestionToPrompts(item.id)} title="Send to Prompts"><BookOpen size={14} /></button>
+                          )}
+                          <button type="button" className="extraction-item__delete" onClick={() => onDeleteQuestion(item.id)} title="Delete"><Trash2 size={14} /></button>
                         </div>
                         {notingId === item.id ? (
                           <textarea

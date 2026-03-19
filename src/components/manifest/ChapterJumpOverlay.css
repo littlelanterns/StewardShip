@@ -2,7 +2,7 @@
 
 .chapter-jump__trigger {
   position: fixed;
-  bottom: calc(var(--spacing-lg, 24px) + 70px);
+  bottom: calc(var(--spacing-lg, 24px) + 130px);
   right: var(--spacing-md, 16px);
   width: 44px;
   height: 44px;
@@ -159,6 +159,13 @@
 .chapter-jump__back-top:hover {
   color: var(--color-text-primary, var(--color-navy));
   background: var(--color-bg-secondary);
+}
+
+/* Hide chapter jump trigger on desktop — sidebar has chapter tree */
+@media (min-width: 768px) {
+  .chapter-jump__trigger {
+    display: none;
+  }
 }
 
 /* Desktop positioning — sheet narrower */

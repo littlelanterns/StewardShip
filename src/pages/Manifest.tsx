@@ -273,15 +273,21 @@ export default function Manifest() {
     fetchItems();
   }, [items, updateItem, fetchItems]);
 
-  // Fetch items first (shows book list), defer secondary data
+  // Only fetch items on mount — show book list immediately
+  // Frameworks, discussions, collections are fetched lazily when needed
   useEffect(() => {
-    fetchItems().then(() => {
-      // Load secondary data after books are visible
-      fetchFrameworks();
-      fetchDiscussions();
-      fetchCollections();
-    });
-  }, [fetchItems, fetchFrameworks, fetchDiscussions, fetchCollections]);
+    fetchItems();
+  }, [fetchItems]);
+
+  // Lazy fetch: frameworks + discussions only when opening a book detail
+  const secondaryFetchedRef = useRef(false);
+  const ensureSecondaryData = useCallback(() => {
+    if (secondaryFetchedRef.current) return;
+    secondaryFetchedRef.current = true;
+    fetchFrameworks();
+    fetchDiscussions();
+    fetchCollections();
+  }, [fetchFrameworks, fetchDiscussions, fetchCollections]);
 
   // Fetch extraction status for child parts of multi-part books
   const [partExtractionMap, setPartExtractionMap] = useState<Map<string, { extracted: number; total: number }>>(new Map());
@@ -333,6 +339,7 @@ export default function Manifest() {
   }, [pollProcessingStatus]);
 
   const handleSelectItem = useCallback(async (item: ManifestItem) => {
+    ensureSecondaryData();
     const detail = await fetchItemDetail(item.id);
     const resolvedItem = detail || item;
     setSelectedItem(resolvedItem);
@@ -412,9 +419,10 @@ export default function Manifest() {
   }, [uploadFile, pollProcessingStatus]);
 
   const handleDiscussBooks = useCallback(() => {
+    ensureSecondaryData();
     setFabExpanded(false);
     setShowBookSelector(true);
-  }, []);
+  }, [ensureSecondaryData]);
 
   const handleBookSelectorStart = useCallback((selectedIds: string[], audience: DiscussionAudience) => {
     const titles = selectedIds.map((id) => {

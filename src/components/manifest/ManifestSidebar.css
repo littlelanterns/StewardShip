@@ -17,6 +17,10 @@
     background: var(--color-bg-primary, var(--color-cream));
     gap: var(--spacing-xs);
     -webkit-overflow-scrolling: touch;
+    /* Sticky so it stays visible while scrolling content */
+    position: sticky;
+    top: 0;
+    align-self: flex-start;
   }
 
   .manifest-sidebar--collapsed {
