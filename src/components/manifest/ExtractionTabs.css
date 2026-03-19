@@ -850,3 +850,10 @@
   opacity: 0.4;
   cursor: default;
 }
+
+.apply-section__result {
+  font-size: var(--font-size-xs);
+  color: var(--color-mid-teal);
+  text-align: center;
+  padding: var(--spacing-xs) 0;
+}

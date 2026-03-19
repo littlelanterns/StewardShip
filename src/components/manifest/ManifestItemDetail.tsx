@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { ChevronLeft, ChevronDown, FileText, FileCode, Mic, Image, StickyNote, RefreshCw, BookOpen, Wand2, MessageSquare, Target, HelpCircle, CheckSquare, BarChart3, Users, ChevronRight, AlertTriangle, Tags, Trash2, Info } from 'lucide-react';
+import { ChevronLeft, ChevronDown, FileText, FileCode, Mic, Image, StickyNote, RefreshCw, BookOpen, Wand2, MessageSquare, Target, HelpCircle, CheckSquare, BarChart3, Users, ChevronRight, AlertTriangle, Tags, Trash2, Info, Sparkles, Loader } from 'lucide-react';
 import type { ManifestItem, ManifestSummary, ManifestDeclaration, ManifestActionStep, ManifestQuestion, AIFrameworkPrinciple, BookGenre, DiscussionType } from '../../lib/types';
 import { MANIFEST_FILE_TYPE_LABELS, MANIFEST_STATUS_LABELS } from '../../lib/types';
 import type { SectionInfo } from '../../hooks/useManifestExtraction';
@@ -235,6 +235,8 @@ export function ManifestItemDetail({
   const [tagInput, setTagInput] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [bookInfoOpen, setBookInfoOpen] = useState(false);
+  const [refreshingKeyPoints, setRefreshingKeyPoints] = useState(false);
+  const [keyPointsResult, setKeyPointsResult] = useState<string | null>(null);
   const [reprocessing, setReprocessing] = useState(false);
   const [enriching, setEnriching] = useState(false);
   const [confirmDeletePartId, setConfirmDeletePartId] = useState<string | null>(null);
@@ -573,6 +575,29 @@ export function ManifestItemDetail({
     }
   }, [item.id]);
 
+  const handleRefreshKeyPoints = useCallback(async () => {
+    setRefreshingKeyPoints(true);
+    setKeyPointsResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('manifest-key-points', {
+        body: { manifest_item_id: item.id },
+      });
+      if (error) throw error;
+      setKeyPointsResult(`Updated: ${data.key_points} key points across ${data.groups} sections`);
+      // Re-fetch extractions to reflect changes
+      onFetchSummaries(item.id);
+      onFetchDeclarations(item.id);
+      onFetchActionSteps(item.id);
+      onFetchQuestions(item.id);
+      setTimeout(() => setKeyPointsResult(null), 4000);
+    } catch (err) {
+      setKeyPointsResult('Failed to refresh key points');
+      console.error('Refresh key points failed:', err);
+    } finally {
+      setRefreshingKeyPoints(false);
+    }
+  }, [item.id, onFetchSummaries, onFetchDeclarations, onFetchActionSteps, onFetchQuestions]);
+
   return (
     <div className="manifest-detail">
       <button type="button" className="manifest-detail__back" onClick={isPart && onBackToParent ? onBackToParent : onBack}>
@@ -754,7 +779,12 @@ export function ManifestItemDetail({
               <button type="button" className="apply-section__btn" onClick={() => onOpenDiscussion?.('generate_tracker')} disabled={!onOpenDiscussion}>
                 <BarChart3 size={14} /> Generate Tracker
               </button>
+              <button type="button" className="apply-section__btn" onClick={handleRefreshKeyPoints} disabled={refreshingKeyPoints}>
+                {refreshingKeyPoints ? <Loader size={14} className="spin" /> : <Sparkles size={14} />}
+                {refreshingKeyPoints ? 'Scanning...' : 'Refresh Key Points'}
+              </button>
             </div>
+            {keyPointsResult && <div className="apply-section__result">{keyPointsResult}</div>}
           </div>
         </section>
       )}
