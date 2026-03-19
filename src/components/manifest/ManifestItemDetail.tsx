@@ -53,6 +53,7 @@ interface ManifestItemDetailProps {
   hasFramework: boolean;
   onExtractAll: (genres: BookGenre[]) => Promise<boolean>;
   onExtractAllSections: (genres: BookGenre[], sectionIndices: number[]) => Promise<boolean>;
+  onExtractMissingTab?: (tabType: 'action_steps' | 'questions', genres: BookGenre[]) => Promise<boolean>;
   onUpdateGenres: (itemId: string, genres: BookGenre[]) => Promise<boolean>;
   onFetchSummaries: (itemId: string) => void;
   onFetchDeclarations: (itemId: string) => void;
@@ -155,6 +156,7 @@ export function ManifestItemDetail({
   hasFramework,
   onExtractAll: _onExtractAll,
   onExtractAllSections,
+  onExtractMissingTab,
   onUpdateGenres,
   onFetchSummaries,
   onFetchDeclarations,
@@ -1093,6 +1095,29 @@ export function ManifestItemDetail({
               <Button size="sm" variant="secondary" onClick={handleExtract} disabled={extracting}>
                 Re-extract All
               </Button>
+              {questions.length === 0 && onExtractMissingTab && (
+                <Button size="sm" variant="secondary" onClick={async () => {
+                  // Need sections loaded first
+                  if (sections.length === 0) {
+                    await onDiscoverSections(item.id);
+                  }
+                  await onExtractMissingTab('questions', selectedGenres);
+                }} disabled={extracting}>
+                  <HelpCircle size={14} />
+                  Extract Questions
+                </Button>
+              )}
+              {actionSteps.length === 0 && onExtractMissingTab && (
+                <Button size="sm" variant="secondary" onClick={async () => {
+                  if (sections.length === 0) {
+                    await onDiscoverSections(item.id);
+                  }
+                  await onExtractMissingTab('action_steps', selectedGenres);
+                }} disabled={extracting}>
+                  <Target size={14} />
+                  Extract Action Steps
+                </Button>
+              )}
             </div>
           )}
 

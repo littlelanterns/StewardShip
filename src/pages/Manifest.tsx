@@ -855,6 +855,10 @@ export default function Manifest() {
           // Section discovery props
           onDiscoverSections={handleDiscoverSections}
           onExtractAllSections={handleExtractAllSections}
+          onExtractMissingTab={async (tabType, genres) => {
+            if (!selectedItem) return false;
+            return extraction.extractMissingTab(selectedItem.id, tabType, genres);
+          }}
           sections={extraction.sections}
           selectedSectionIndices={extraction.selectedSectionIndices}
           onSetSelectedSectionIndices={extraction.setSelectedSectionIndices}
