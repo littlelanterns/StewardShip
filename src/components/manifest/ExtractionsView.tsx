@@ -117,6 +117,10 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName, 
   const [noteDraft, setNoteDraft] = useState('');
   const [activeTags, setActiveTags] = useState<Set<string>>(new Set());
   const [extractionSearch, setExtractionSearch] = useState('');
+  const [evAbridged, setEvAbridged] = useState(() => {
+    const stored = evSsGet('manifest-ev-abridged');
+    return stored === null ? true : stored === 'true';
+  });
   const [bookSearch, setBookSearch] = useState('');
   const [activeBookTags, setActiveBookTags] = useState<Set<string>>(new Set());
   const [booksExpanded, setBooksExpanded] = useState(true);
@@ -1113,8 +1117,34 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName, 
       })).filter((d) => d.summaries.length > 0 || d.principles.length > 0 || d.actionSteps.length > 0 || d.questions.length > 0 || d.declarations.length > 0);
     }
 
+    // Abridged filter — keep key points + hearted, fallback to first 2 per section
+    if (evAbridged) {
+      const abridgeArray = <T extends { is_key_point?: boolean; is_hearted?: boolean; section_title?: string | null }>(items: T[]): T[] => {
+        const sectionMap = new Map<string, T[]>();
+        for (const item of items) {
+          const key = item.section_title || '__full_book__';
+          if (!sectionMap.has(key)) sectionMap.set(key, []);
+          sectionMap.get(key)!.push(item);
+        }
+        const result: T[] = [];
+        for (const [, sectionItems] of sectionMap.entries()) {
+          const keyItems = sectionItems.filter((i) => i.is_key_point || i.is_hearted);
+          result.push(...(keyItems.length > 0 ? keyItems : sectionItems.slice(0, 2)));
+        }
+        return result;
+      };
+      data = data.map((d) => ({
+        ...d,
+        summaries: abridgeArray(d.summaries),
+        principles: abridgeArray(d.principles),
+        actionSteps: abridgeArray(d.actionSteps),
+        questions: abridgeArray(d.questions),
+        declarations: abridgeArray(d.declarations),
+      }));
+    }
+
     return data;
-  }, [favoritesMode, activeTags, extractionSearch, selectedData]);
+  }, [favoritesMode, activeTags, extractionSearch, evAbridged, selectedData]);
 
   // Counts that reflect what's actually displayed (respects filter mode + tag)
   const displayCounts = useMemo(() => {
@@ -2139,6 +2169,15 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName, 
                       {filterMode === 'hearted' ? 'Hearted' : 'All'}
                     </button>
                   )}
+                  <button
+                    type="button"
+                    className={`extraction-tabs__filter-btn${evAbridged ? ' extraction-tabs__filter-btn--active' : ''}`}
+                    onClick={() => { setEvAbridged((v) => { const next = !v; evSsSet('manifest-ev-abridged', String(next)); return next; }); }}
+                    title={evAbridged ? 'Show all items' : 'Show only key points and hearted items'}
+                  >
+                    <Sparkles size={12} />
+                    {evAbridged ? 'Abridged' : 'Full Content'}
+                  </button>
                   <div className="extraction-tabs__view-toggle">
                     <button
                       type="button"
