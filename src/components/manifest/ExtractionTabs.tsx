@@ -478,7 +478,7 @@ function FrameworksTab({
             {!isCollapsed && (
               <div className="extraction-tab__section-items">
                 {items.map((item) => (
-                  <div key={item.id} className={itemClass(item.content_type || 'framework', !!item.is_from_go_deeper, deletingIds.has(item.id), !!item.is_hearted)}>
+                  <div key={item.id} className={itemClass('framework', !!item.is_from_go_deeper, deletingIds.has(item.id), !!item.is_hearted)}>
                     <p className="extraction-item__text">
                       {item.is_from_go_deeper && <Sparkles size={12} className="extraction-item__deeper-icon" />}
                       {item.text}
@@ -1953,7 +1953,7 @@ function ChapterView({ summaries, principles, actionSteps, declarations, questio
                   <div className="chapter-view__type-group">
                     <div className="chapter-view__type-label">Frameworks</div>
                     {chPrinciples.map((item) => (
-                      <div key={item.id} className={itemClass(item.content_type || 'framework', !!item.is_from_go_deeper, false, !!item.is_hearted)}>
+                      <div key={item.id} className={itemClass('framework', !!item.is_from_go_deeper, false, !!item.is_hearted)}>
                         <p className="extraction-item__text">
                           {item.is_from_go_deeper && <Sparkles size={12} className="extraction-item__deeper-icon" />}
                           {item.text}
