@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { Search, X, Loader, BookOpen, Sparkles } from 'lucide-react';
+import { Search, X, Loader, BookOpen, Sparkles, Download } from 'lucide-react';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { searchManifestContent } from '../../lib/rag';
 import type { ManifestContentMatch } from '../../lib/rag';
@@ -124,6 +124,49 @@ export function SemanticSearch({ onClose }: SemanticSearchProps) {
   const terms = parseTerms(query);
   const showTermChips = (mode === 'any' || mode === 'separate') && terms.length > 1;
 
+  const exportResults = useCallback(() => {
+    let md = `# Search Results: "${query}"\n\n`;
+    md += `Mode: ${mode === 'any' ? 'Any of these' : mode === 'together' ? 'All together' : 'Show each separately'}\n\n`;
+
+    if (separateResults) {
+      for (const [term, matches] of separateResults.entries()) {
+        md += `## "${term}" (${matches.length} results)\n\n`;
+        for (const m of matches) {
+          md += `### ${SOURCE_LABELS[m.source_table] || m.source_table} — ${m.book_title}\n`;
+          md += `${m.content_preview}\n\n`;
+        }
+      }
+    } else if (results) {
+      if (groupBy === 'book') {
+        const bookGroups = new Map<string, ManifestContentMatch[]>();
+        for (const m of results) {
+          if (!bookGroups.has(m.manifest_item_id)) bookGroups.set(m.manifest_item_id, []);
+          bookGroups.get(m.manifest_item_id)!.push(m);
+        }
+        for (const [, matches] of bookGroups.entries()) {
+          md += `## ${matches[0].book_title}\n\n`;
+          for (const m of matches) {
+            md += `**${SOURCE_LABELS[m.source_table] || m.source_table}** (${Math.round(m.similarity * 100)}%)\n`;
+            md += `${m.content_preview}\n\n`;
+          }
+        }
+      } else {
+        for (const m of results) {
+          md += `**${SOURCE_LABELS[m.source_table] || m.source_table}** — *${m.book_title}* (${Math.round(m.similarity * 100)}%)\n`;
+          md += `${m.content_preview}\n\n`;
+        }
+      }
+    }
+
+    const blob = new Blob([md], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `search-${query.trim().replace(/\s+/g, '-').substring(0, 30)}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [query, mode, groupBy, results, separateResults]);
+
   return (
     <div className="semantic-search">
       <div className="semantic-search__header">
@@ -200,6 +243,11 @@ export function SemanticSearch({ onClose }: SemanticSearchProps) {
         <div className="semantic-search__results-header">
           <span className="semantic-search__result-count">
             {resultCount} result{resultCount !== 1 ? 's' : ''} found
+            {resultCount > 0 && (
+              <button type="button" className="semantic-search__export-btn" onClick={() => exportResults()} title="Export results">
+                <Download size={12} /> Export
+              </button>
+            )}
           </span>
           {results && results.length > 0 && (
             <div className="semantic-search__group-toggle">

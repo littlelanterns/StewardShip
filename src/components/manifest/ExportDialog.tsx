@@ -48,7 +48,7 @@ function SortableBookRow({ group, id }: { group: BookExtractionGroup; id: string
   };
 
   const count = group.summaries.length + group.principles.length +
-    (group.actionSteps?.length || 0) + group.declarations.length;
+    (group.actionSteps?.length || 0) + (group.questions?.length || 0) + group.declarations.length;
 
   return (
     <div
@@ -81,6 +81,7 @@ export function ExportDialog({ groups, onClose, defaultTitle, mode = 'extraction
     summary: true,
     frameworks: true,
     action_steps: true,
+    questions: true,
     mast_content: true,
   });
 
@@ -96,17 +97,18 @@ export function ExportDialog({ groups, onClose, defaultTitle, mode = 'extraction
 
   // Counts per tab
   const tabCounts = useMemo(() => {
-    let summaries = 0, frameworks = 0, actionSteps = 0, declarations = 0;
+    let summaries = 0, frameworks = 0, actionSteps = 0, questions = 0, declarations = 0;
     for (const g of groups) {
       summaries += g.summaries.length;
       frameworks += g.principles.length;
       actionSteps += (g.actionSteps?.length || 0);
+      questions += (g.questions?.length || 0);
       declarations += g.declarations.length;
     }
-    return { summaries, frameworks, actionSteps, declarations };
+    return { summaries, frameworks, actionSteps, questions, declarations };
   }, [groups]);
 
-  const noTabsSelected = !tabs.summary && !tabs.frameworks && !tabs.action_steps && !tabs.mast_content;
+  const noTabsSelected = !tabs.summary && !tabs.frameworks && !tabs.action_steps && !tabs.questions && !tabs.mast_content;
 
   // DnD
   const sensors = useSensors(
@@ -193,6 +195,15 @@ export function ExportDialog({ groups, onClose, defaultTitle, mode = 'extraction
             />
             <span className="export-dialog__tab-label">Action Steps</span>
             {tabCounts.actionSteps > 0 && <span className="export-dialog__tab-count">{tabCounts.actionSteps}</span>}
+          </label>
+          <label className="export-dialog__tab-checkbox">
+            <input
+              type="checkbox"
+              checked={tabs.questions ?? true}
+              onChange={() => toggleTab('questions')}
+            />
+            <span className="export-dialog__tab-label">Questions</span>
+            {tabCounts.questions > 0 && <span className="export-dialog__tab-count">{tabCounts.questions}</span>}
           </label>
           <label className="export-dialog__tab-checkbox">
             <input

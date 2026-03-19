@@ -170,6 +170,28 @@
 .semantic-search__result-count {
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary, var(--color-slate-gray));
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.semantic-search__export-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: 1px solid var(--color-border, var(--color-slate-gray));
+  border-radius: var(--radius-sm, 4px);
+  padding: 2px var(--spacing-xs);
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary, var(--color-slate-gray));
+  transition: all 0.15s ease;
+}
+
+.semantic-search__export-btn:hover {
+  border-color: var(--color-mid-teal);
+  color: var(--color-mid-teal);
 }
 
 .semantic-search__group-toggle {
