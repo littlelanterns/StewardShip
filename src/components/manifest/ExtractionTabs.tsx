@@ -2122,6 +2122,7 @@ export function ExtractionTabs({
             onToggleQuestionHeart={onToggleQuestionHeart}
             onDeleteQuestion={onDeleteQuestion}
             onSendQuestionToPrompts={onSendQuestionToPrompts}
+            abridgedInfo={abridgedInfo}
           />
         )}
       </div>
@@ -2153,6 +2154,7 @@ interface ChapterViewProps {
   onToggleQuestionHeart: (id: string) => void;
   onDeleteQuestion: (id: string) => void;
   onSendQuestionToPrompts: (id: string) => void;
+  abridgedInfo?: AbridgedSectionInfo;
 }
 
 function ChapterView({
@@ -2162,6 +2164,7 @@ function ChapterView({
   onToggleActionStepHeart, onDeleteActionStep, onSendActionStepToCompass,
   onToggleDeclarationHeart, onDeleteDeclaration, onSendDeclarationToMast,
   onToggleQuestionHeart, onDeleteQuestion, onSendQuestionToPrompts,
+  abridgedInfo,
 }: ChapterViewProps) {
   const [collapsedChapters, setCollapsedChapters] = useState<Set<string>>(new Set());
   const [notingId, setNotingId] = useState<string | null>(null);
@@ -2190,14 +2193,21 @@ function ChapterView({
       .map(([key]) => key);
   }, [summaries, principles, actionSteps, declarations, questions, filterMode]);
 
-  // Default chapters to collapsed when there are multiple
+  // Collapse/expand chapters based on abridged mode
   const cvInitRef = useRef(false);
+  const cvPrevAbridgedRef = useRef(abridgedInfo?.active);
   useEffect(() => {
+    if (cvPrevAbridgedRef.current !== abridgedInfo?.active) {
+      cvPrevAbridgedRef.current = abridgedInfo?.active;
+      if (abridgedInfo?.active) setCollapsedChapters(new Set());
+      else if (chapters.length > 1) setCollapsedChapters(new Set(chapters));
+      return;
+    }
     if (!cvInitRef.current && chapters.length > 1) {
       cvInitRef.current = true;
-      setCollapsedChapters(new Set(chapters));
+      if (!abridgedInfo?.active) setCollapsedChapters(new Set(chapters));
     }
-  }, [chapters]);
+  }, [chapters, abridgedInfo?.active]);
 
   const filterItems = <T extends { is_deleted?: boolean; is_hearted?: boolean }>(items: T[]): T[] => {
     let filtered = items.filter((i) => !i.is_deleted);
@@ -2302,6 +2312,21 @@ function ChapterView({
                         ) : null}
                       </div>
                     ))}
+                    {abridgedInfo?.active && (() => {
+                      const hidden = abridgedInfo.hiddenCounts.get(`summary-${chapterKey}`) || 0;
+                      const expanded = abridgedInfo.isExpanded(`summary-${chapterKey}`);
+                      if (hidden > 0 && !expanded) return (
+                        <button type="button" className="extraction-tab__see-more" onClick={() => abridgedInfo.onExpand(`summary-${chapterKey}`)}>
+                          <ChevronDown size={12} /> See {hidden} more
+                        </button>
+                      );
+                      if (expanded) return (
+                        <button type="button" className="extraction-tab__see-more" onClick={() => abridgedInfo.onExpand(`summary-${chapterKey}`)}>
+                          <ChevronRight size={12} /> Key points only
+                        </button>
+                      );
+                      return null;
+                    })()}
                   </div>
                 )}
 
@@ -2342,6 +2367,13 @@ function ChapterView({
                         ) : null}
                       </div>
                     ))}
+                    {abridgedInfo?.active && (() => {
+                      const hidden = abridgedInfo.hiddenCounts.get(`frameworks-${chapterKey}`) || 0;
+                      const expanded = abridgedInfo.isExpanded(`frameworks-${chapterKey}`);
+                      if (hidden > 0 && !expanded) return (<button type="button" className="extraction-tab__see-more" onClick={() => abridgedInfo.onExpand(`frameworks-${chapterKey}`)}><ChevronDown size={12} /> See {hidden} more</button>);
+                      if (expanded) return (<button type="button" className="extraction-tab__see-more" onClick={() => abridgedInfo.onExpand(`frameworks-${chapterKey}`)}><ChevronRight size={12} /> Key points only</button>);
+                      return null;
+                    })()}
                   </div>
                 )}
 
@@ -2388,6 +2420,13 @@ function ChapterView({
                         ) : null}
                       </div>
                     ))}
+                    {abridgedInfo?.active && (() => {
+                      const hidden = abridgedInfo.hiddenCounts.get(`action_steps-${chapterKey}`) || 0;
+                      const expanded = abridgedInfo.isExpanded(`action_steps-${chapterKey}`);
+                      if (hidden > 0 && !expanded) return (<button type="button" className="extraction-tab__see-more" onClick={() => abridgedInfo.onExpand(`action_steps-${chapterKey}`)}><ChevronDown size={12} /> See {hidden} more</button>);
+                      if (expanded) return (<button type="button" className="extraction-tab__see-more" onClick={() => abridgedInfo.onExpand(`action_steps-${chapterKey}`)}><ChevronRight size={12} /> Key points only</button>);
+                      return null;
+                    })()}
                   </div>
                 )}
 
@@ -2439,6 +2478,13 @@ function ChapterView({
                         ) : null}
                       </div>
                     ))}
+                    {abridgedInfo?.active && (() => {
+                      const hidden = abridgedInfo.hiddenCounts.get(`mast_content-${chapterKey}`) || 0;
+                      const expanded = abridgedInfo.isExpanded(`mast_content-${chapterKey}`);
+                      if (hidden > 0 && !expanded) return (<button type="button" className="extraction-tab__see-more" onClick={() => abridgedInfo.onExpand(`mast_content-${chapterKey}`)}><ChevronDown size={12} /> See {hidden} more</button>);
+                      if (expanded) return (<button type="button" className="extraction-tab__see-more" onClick={() => abridgedInfo.onExpand(`mast_content-${chapterKey}`)}><ChevronRight size={12} /> Key points only</button>);
+                      return null;
+                    })()}
                   </div>
                 )}
 
@@ -2488,6 +2534,13 @@ function ChapterView({
                         ) : null}
                       </div>
                     ))}
+                    {abridgedInfo?.active && (() => {
+                      const hidden = abridgedInfo.hiddenCounts.get(`questions-${chapterKey}`) || 0;
+                      const expanded = abridgedInfo.isExpanded(`questions-${chapterKey}`);
+                      if (hidden > 0 && !expanded) return (<button type="button" className="extraction-tab__see-more" onClick={() => abridgedInfo.onExpand(`questions-${chapterKey}`)}><ChevronDown size={12} /> See {hidden} more</button>);
+                      if (expanded) return (<button type="button" className="extraction-tab__see-more" onClick={() => abridgedInfo.onExpand(`questions-${chapterKey}`)}><ChevronRight size={12} /> Key points only</button>);
+                      return null;
+                    })()}
                   </div>
                 )}
               </div>
