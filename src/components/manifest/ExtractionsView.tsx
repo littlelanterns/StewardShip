@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Heart, Download, ChevronDown, ChevronRight, Trash2, Anchor, Compass, MessageCircle, RefreshCw, Sparkles, LayoutList, BookOpen, StickyNote, Search, X, Library } from 'lucide-react';
+import { ChevronLeft, Heart, Download, ChevronDown, ChevronRight, Trash2, Anchor, Compass, MessageCircle, RefreshCw, Sparkles, LayoutList, BookOpen, StickyNote, Search, X, Library, Loader } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { useTagUsage } from '../../hooks/useTagUsage';
@@ -121,6 +121,8 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName, 
     const stored = evSsGet('manifest-ev-abridged');
     return stored === null ? true : stored === 'true';
   });
+  const [refreshingKeyPoints, setRefreshingKeyPoints] = useState(false);
+  const [refreshProgress, setRefreshProgress] = useState('');
   const [bookSearch, setBookSearch] = useState('');
   const [activeBookTags, setActiveBookTags] = useState<Set<string>>(new Set());
   const [booksExpanded, setBooksExpanded] = useState(true);
@@ -427,6 +429,26 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName, 
       setLoading(false);
     }
   }, [user, extractedItems]);
+
+  const handleRefreshKeyPoints = useCallback(async () => {
+    const bookIds = Array.from(selectedIds);
+    if (bookIds.length === 0) return;
+    setRefreshingKeyPoints(true);
+    let done = 0;
+    for (const id of bookIds) {
+      done++;
+      setRefreshProgress(`${done} of ${bookIds.length}`);
+      try {
+        await supabase.functions.invoke('manifest-key-points', { body: { manifest_item_id: id } });
+      } catch (err) {
+        console.error('Key points refresh failed:', err);
+      }
+      if (done < bookIds.length) await new Promise((r) => setTimeout(r, 500));
+    }
+    setRefreshingKeyPoints(false);
+    setRefreshProgress('');
+    fetchExtractions(bookIds);
+  }, [selectedIds, fetchExtractions]);
 
   useEffect(() => {
     const ids = Array.from(selectedIds);
@@ -2177,6 +2199,16 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName, 
                   >
                     <Sparkles size={12} />
                     {evAbridged ? 'Abridged' : 'Full Content'}
+                  </button>
+                  <button
+                    type="button"
+                    className="extraction-tabs__filter-btn"
+                    onClick={handleRefreshKeyPoints}
+                    disabled={refreshingKeyPoints || selectedIds.size === 0}
+                    title="AI selects the most important items per section"
+                  >
+                    {refreshingKeyPoints ? <Loader size={12} className="spin" /> : <RefreshCw size={12} />}
+                    {refreshingKeyPoints ? refreshProgress : 'Refresh Key Points'}
                   </button>
                   <div className="extraction-tabs__view-toggle">
                     <button
