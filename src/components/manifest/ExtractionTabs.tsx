@@ -155,14 +155,28 @@ function SummaryTab({
     });
   }, [visible]);
 
-  // Default chapters to collapsed when there are multiple sections
+  // Collapse/expand chapters based on abridged mode
   const summaryInitRef = useRef(false);
+  const prevAbridgedRef = useRef(abridgedInfo?.active);
   useEffect(() => {
+    // React to abridged toggle change
+    if (prevAbridgedRef.current !== abridgedInfo?.active) {
+      prevAbridgedRef.current = abridgedInfo?.active;
+      if (abridgedInfo?.active) {
+        setCollapsedSections(new Set()); // expand all
+      } else if (sections.length > 1) {
+        setCollapsedSections(new Set(sections.map(([key]) => key))); // collapse all
+      }
+      return;
+    }
+    // Initial mount
     if (!summaryInitRef.current && sections.length > 1) {
       summaryInitRef.current = true;
-      setCollapsedSections(new Set(sections.map(([key]) => key)));
+      if (!abridgedInfo?.active) {
+        setCollapsedSections(new Set(sections.map(([key]) => key)));
+      }
     }
-  }, [sections]);
+  }, [sections, abridgedInfo?.active]);
 
   const toggleSection = (key: string) => {
     setCollapsedSections((prev) => {
@@ -429,12 +443,19 @@ function FrameworksTab({
 
   // Default chapters to collapsed when there are multiple sections
   const fwInitRef = useRef(false);
+  const fwPrevAbridgedRef = useRef(abridgedInfo?.active);
   useEffect(() => {
+    if (fwPrevAbridgedRef.current !== abridgedInfo?.active) {
+      fwPrevAbridgedRef.current = abridgedInfo?.active;
+      if (abridgedInfo?.active) setCollapsedSections(new Set());
+      else if (sections.length > 1) setCollapsedSections(new Set(sections.map(([key]) => key)));
+      return;
+    }
     if (!fwInitRef.current && sections.length > 1) {
       fwInitRef.current = true;
-      setCollapsedSections(new Set(sections.map(([key]) => key)));
+      if (!abridgedInfo?.active) setCollapsedSections(new Set(sections.map(([key]) => key)));
     }
-  }, [sections]);
+  }, [sections, abridgedInfo?.active]);
 
   const toggleSection = (key: string) => {
     setCollapsedSections((prev) => {
@@ -669,12 +690,19 @@ function ActionStepsTab({
 
   // Default chapters to collapsed when there are multiple sections
   const asInitRef = useRef(false);
+  const asPrevAbridgedRef = useRef(abridgedInfo?.active);
   useEffect(() => {
+    if (asPrevAbridgedRef.current !== abridgedInfo?.active) {
+      asPrevAbridgedRef.current = abridgedInfo?.active;
+      if (abridgedInfo?.active) setCollapsedSections(new Set());
+      else if (sections.length > 1) setCollapsedSections(new Set(sections.map(([key]) => key)));
+      return;
+    }
     if (!asInitRef.current && sections.length > 1) {
       asInitRef.current = true;
-      setCollapsedSections(new Set(sections.map(([key]) => key)));
+      if (!abridgedInfo?.active) setCollapsedSections(new Set(sections.map(([key]) => key)));
     }
-  }, [sections]);
+  }, [sections, abridgedInfo?.active]);
 
   const toggleSection = (key: string) => {
     setCollapsedSections((prev) => {
@@ -977,12 +1005,19 @@ function MastContentTab({
 
   // Default chapters to collapsed when there are multiple sections
   const mastInitRef = useRef(false);
+  const mastPrevAbridgedRef = useRef(abridgedInfo?.active);
   useEffect(() => {
+    if (mastPrevAbridgedRef.current !== abridgedInfo?.active) {
+      mastPrevAbridgedRef.current = abridgedInfo?.active;
+      if (abridgedInfo?.active) setCollapsedSections(new Set());
+      else if (sections.length > 1) setCollapsedSections(new Set(sections.map(([key]) => key)));
+      return;
+    }
     if (!mastInitRef.current && sections.length > 1) {
       mastInitRef.current = true;
-      setCollapsedSections(new Set(sections.map(([key]) => key)));
+      if (!abridgedInfo?.active) setCollapsedSections(new Set(sections.map(([key]) => key)));
     }
-  }, [sections]);
+  }, [sections, abridgedInfo?.active]);
 
   const toggleSection = (key: string) => {
     setCollapsedSections((prev) => {
@@ -1289,12 +1324,19 @@ function QuestionsTab({
 
   // Default chapters to collapsed when there are multiple sections
   const qInitRef = useRef(false);
+  const qPrevAbridgedRef = useRef(abridgedInfo?.active);
   useEffect(() => {
+    if (qPrevAbridgedRef.current !== abridgedInfo?.active) {
+      qPrevAbridgedRef.current = abridgedInfo?.active;
+      if (abridgedInfo?.active) setCollapsedSections(new Set());
+      else if (sections.length > 1) setCollapsedSections(new Set(sections.map(([key]) => key)));
+      return;
+    }
     if (!qInitRef.current && sections.length > 1) {
       qInitRef.current = true;
-      setCollapsedSections(new Set(sections.map(([key]) => key)));
+      if (!abridgedInfo?.active) setCollapsedSections(new Set(sections.map(([key]) => key)));
     }
-  }, [sections]);
+  }, [sections, abridgedInfo?.active]);
 
   const toggleSection = (key: string) => {
     setCollapsedSections((prev) => {
