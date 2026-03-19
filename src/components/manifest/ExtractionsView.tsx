@@ -2508,7 +2508,7 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName, 
                         {!collapsedBooks.has(group.bookId) && sortedSections.map(([sectionKey]) => {
                           const label = sectionKey === '__full_book__' ? 'Full Book' : sectionKey;
                           const collapseKey = `${group.bookId}-ch-${sectionKey}`;
-                          const isCollapsed = collapsedSections.has(collapseKey);
+                          const isCollapsed = evAbridged ? false : collapsedSections.has(collapseKey);
                           const secSummaries = allItems.summaries.filter((s) => (s.section_title || '__full_book__') === sectionKey);
                           const secPrinciples = allItems.principles.filter((p) => ((p.section_title as string | null) || '__full_book__') === sectionKey);
                           const secActions = allItems.actionSteps.filter((a) => (a.section_title || '__full_book__') === sectionKey);
@@ -2560,6 +2560,7 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName, 
                                           ) : null}
                                         </div>
                                       ))}
+                                      {renderSeeMore(group.bookId, 'summary', sectionKey)}
                                     </div>
                                   )}
                                   {secPrinciples.length > 0 && (
@@ -2597,6 +2598,7 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName, 
                                           ) : null}
                                         </div>
                                       ))}
+                                      {renderSeeMore(group.bookId, 'frameworks', sectionKey)}
                                     </div>
                                   )}
                                   {secActions.length > 0 && (
@@ -2644,6 +2646,7 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName, 
                                           ) : null}
                                         </div>
                                       ))}
+                                      {renderSeeMore(group.bookId, 'action_steps', sectionKey)}
                                     </div>
                                   )}
                                   {secQuestions.length > 0 && (
@@ -2691,6 +2694,7 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName, 
                                           ) : null}
                                         </div>
                                       ))}
+                                      {renderSeeMore(group.bookId, 'questions', sectionKey)}
                                     </div>
                                   )}
                                   {secDeclarations.length > 0 && (
@@ -2739,6 +2743,7 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName, 
                                           ) : null}
                                         </div>
                                       ))}
+                                      {renderSeeMore(group.bookId, 'mast_content', sectionKey)}
                                     </div>
                                   )}
                                 </div>
