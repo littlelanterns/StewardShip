@@ -1531,7 +1531,7 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
                           <StickyNote size={14} />
                         </button>
                         {item.sent_to_compass ? (
-                          <span className="extraction-item__compass-sent">In Compass</span>
+                          <span className="extraction-item__sent-label">In Compass</span>
                         ) : (
                           <button
                             type="button"
@@ -1541,7 +1541,6 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
                             title="Send to Compass"
                           >
                             <Compass size={14} />
-                            {sendingToCompass.has(item.id) ? 'Sending...' : 'Send to Compass'}
                           </button>
                         )}
                         <button type="button" className="extraction-item__delete" onClick={() => handleDeleteItem('manifest_action_steps', item.id)} title="Delete">
@@ -1684,7 +1683,7 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
                           <StickyNote size={14} />
                         </button>
                         {item.sent_to_mast ? (
-                          <span className="extraction-item__mast-sent">In Mast</span>
+                          <span className="extraction-item__sent-label">In Mast</span>
                         ) : (
                           <button
                             type="button"
@@ -1694,7 +1693,6 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
                             title="Send to Mast"
                           >
                             <Anchor size={14} />
-                            {sendingToMast.has(item.id) ? 'Sending...' : 'Send to Mast'}
                           </button>
                         )}
                         <button type="button" className="extraction-item__delete" onClick={() => handleDeleteItem('manifest_declarations', item.id)}>
@@ -1837,7 +1835,7 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
                           <StickyNote size={14} />
                         </button>
                         {item.sent_to_prompts ? (
-                          <span className="extraction-item__compass-sent">In Prompts</span>
+                          <span className="extraction-item__sent-label">In Prompts</span>
                         ) : (
                           <button
                             type="button"
@@ -1847,7 +1845,6 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
                             title="Send to Journal Prompts"
                           >
                             <MessageCircle size={14} />
-                            {sendingToPrompts.has(item.id) ? 'Sending...' : 'Send to Prompts'}
                           </button>
                         )}
                         <button type="button" className="extraction-item__delete" onClick={() => handleDeleteItem('manifest_questions', item.id)} title="Delete">
@@ -2385,10 +2382,10 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
                                               title={a.user_note ? 'Edit note' : 'Add note'}
                                             ><StickyNote size={14} /></button>
                                             {a.sent_to_compass ? (
-                                              <span className="extraction-item__compass-sent">In Compass</span>
+                                              <span className="extraction-item__sent-label">In Compass</span>
                                             ) : (
                                               <button type="button" className="extraction-item__send-compass" onClick={() => handleSendToCompass(a.id)} disabled={sendingToCompass.has(a.id)}>
-                                                <Compass size={14} /> {sendingToCompass.has(a.id) ? '...' : 'Compass'}
+                                                <Compass size={14} />
                                               </button>
                                             )}
                                             <button type="button" className="extraction-item__delete" onClick={() => handleDeleteItem('manifest_action_steps', a.id)}><Trash2 size={14} /></button>
@@ -2432,10 +2429,10 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
                                               title={q.user_note ? 'Edit note' : 'Add note'}
                                             ><StickyNote size={14} /></button>
                                             {q.sent_to_prompts ? (
-                                              <span className="extraction-item__compass-sent">In Prompts</span>
+                                              <span className="extraction-item__sent-label">In Prompts</span>
                                             ) : (
                                               <button type="button" className="extraction-item__send-compass" onClick={() => handleSendToPrompts(q.id)} disabled={sendingToPrompts.has(q.id)}>
-                                                <MessageCircle size={14} /> {sendingToPrompts.has(q.id) ? '...' : 'Prompts'}
+                                                <MessageCircle size={14} />
                                               </button>
                                             )}
                                             <button type="button" className="extraction-item__delete" onClick={() => handleDeleteItem('manifest_questions', q.id)}><Trash2 size={14} /></button>
@@ -2480,10 +2477,10 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName }
                                               title={d.user_note ? 'Edit note' : 'Add note'}
                                             ><StickyNote size={14} /></button>
                                             {d.sent_to_mast ? (
-                                              <span className="extraction-item__mast-sent">In Mast</span>
+                                              <span className="extraction-item__sent-label">In Mast</span>
                                             ) : (
                                               <button type="button" className="extraction-item__send-mast" onClick={() => handleSendToMast(d.id)} disabled={sendingToMast.has(d.id)}>
-                                                <Anchor size={14} /> {sendingToMast.has(d.id) ? '...' : 'Mast'}
+                                                <Anchor size={14} />
                                               </button>
                                             )}
                                             <button type="button" className="extraction-item__delete" onClick={() => handleDeleteItem('manifest_declarations', d.id)}><Trash2 size={14} /></button>
