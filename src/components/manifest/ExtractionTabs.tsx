@@ -1544,34 +1544,52 @@ export function ExtractionTabs({
   }, []);
   const setViewMode = useCallback((vm: ViewMode) => { setViewModeRaw(vm); ssSet('manifest-extraction-view', vm); }, []);
 
+  // Abridged view — show only key points + hearted items
+  const [abridged, setAbridged] = useState(() => ssGet('manifest-abridged') === 'true');
+  const toggleAbridged = useCallback(() => {
+    setAbridged((prev) => {
+      const next = !prev;
+      ssSet('manifest-abridged', String(next));
+      return next;
+    });
+  }, []);
+
   // In-book text search
   const [itemSearch, setItemSearch] = useState('');
   const searchQ = itemSearch.trim().toLowerCase();
+  const abridgedFilter = <T extends { is_key_point?: boolean; is_hearted?: boolean }>(items: T[]): T[] =>
+    abridged ? items.filter((i) => i.is_key_point || i.is_hearted) : items;
+
   const filteredSummaries = useMemo(() => {
-    const base = summaries.filter((s) => !s.is_deleted);
+    let base = summaries.filter((s) => !s.is_deleted);
+    base = abridgedFilter(base);
     if (!searchQ) return base;
     return base.filter((s) => s.text.toLowerCase().includes(searchQ) || s.user_note?.toLowerCase().includes(searchQ));
-  }, [summaries, searchQ]);
+  }, [summaries, searchQ, abridged]);
   const filteredPrinciples = useMemo(() => {
-    const base = principles.filter((p) => !p.is_deleted);
+    let base = principles.filter((p) => !p.is_deleted);
+    base = abridgedFilter(base);
     if (!searchQ) return base;
     return base.filter((p) => p.text.toLowerCase().includes(searchQ) || p.user_note?.toLowerCase().includes(searchQ));
-  }, [principles, searchQ]);
+  }, [principles, searchQ, abridged]);
   const filteredActionSteps = useMemo(() => {
-    const base = actionSteps.filter((a) => !a.is_deleted);
+    let base = actionSteps.filter((a) => !a.is_deleted);
+    base = abridgedFilter(base);
     if (!searchQ) return base;
     return base.filter((a) => a.text.toLowerCase().includes(searchQ) || a.user_note?.toLowerCase().includes(searchQ));
-  }, [actionSteps, searchQ]);
+  }, [actionSteps, searchQ, abridged]);
   const filteredDeclarations = useMemo(() => {
-    const base = declarations.filter((d) => !d.is_deleted);
+    let base = declarations.filter((d) => !d.is_deleted);
+    base = abridgedFilter(base);
     if (!searchQ) return base;
     return base.filter((d) => d.declaration_text.toLowerCase().includes(searchQ) || d.user_note?.toLowerCase().includes(searchQ));
-  }, [declarations, searchQ]);
+  }, [declarations, searchQ, abridged]);
   const filteredQuestions = useMemo(() => {
-    const base = questions.filter((q) => !q.is_deleted);
+    let base = questions.filter((q) => !q.is_deleted);
+    base = abridgedFilter(base);
     if (!searchQ) return base;
     return base.filter((q) => q.text.toLowerCase().includes(searchQ) || q.user_note?.toLowerCase().includes(searchQ));
-  }, [questions, searchQ]);
+  }, [questions, searchQ, abridged]);
 
   const summaryCount = filteredSummaries.length;
   const frameworkCount = filteredPrinciples.length;
@@ -1722,6 +1740,15 @@ export function ExtractionTabs({
         >
           <Heart size={12} fill={filterMode === 'hearted' ? 'currentColor' : 'none'} />
           {filterMode === 'hearted' ? 'Hearted' : 'All'}
+        </button>
+        <button
+          type="button"
+          className={`extraction-tabs__filter-btn${abridged ? ' extraction-tabs__filter-btn--active' : ''}`}
+          onClick={toggleAbridged}
+          title={abridged ? 'Show all items' : 'Show key points only'}
+        >
+          <Sparkles size={12} />
+          {abridged ? 'Key Points' : 'Full'}
         </button>
         <div className="extraction-tabs__view-toggle">
           <button
