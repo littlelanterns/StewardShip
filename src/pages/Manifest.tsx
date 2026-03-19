@@ -20,6 +20,7 @@ import { AdminBookManager } from '../components/manifest/AdminBookManager';
 import { CollectionSidebar } from '../components/manifest/CollectionSidebar';
 import { CollectionModal } from '../components/manifest/CollectionModal';
 import { ExtractionsView } from '../components/manifest/ExtractionsView';
+import { SemanticSearch } from '../components/manifest/SemanticSearch';
 import { useManifestCollections } from '../hooks/useManifestCollections';
 import { CollapsibleGroup } from '../components/shared/CollapsibleGroup';
 import { FloatingActionButton } from '../components/shared/FloatingActionButton';
@@ -116,6 +117,7 @@ export default function Manifest() {
   const [fabExpanded, setFabExpanded] = useState(false);
   const [titleSearch, setTitleSearch] = useState('');
   const [continueDismissed, setContinueDismissed] = useState(false);
+  const [showSemanticSearch, setShowSemanticSearch] = useState(false);
   const [folderToDelete, setFolderToDelete] = useState<string | null>(null);
 
   // Parent/child parts state for split books
@@ -828,6 +830,15 @@ export default function Manifest() {
       .filter((i): i is ManifestItem => i !== undefined);
   }, [collectionExtractionsId, getItemIdsForCollection, items]);
 
+  // Semantic search view
+  if (showSemanticSearch) {
+    return (
+      <div className="page manifest-page">
+        <SemanticSearch onClose={() => setShowSemanticSearch(false)} />
+      </div>
+    );
+  }
+
   // Upload view
   if (viewMode === 'upload') {
     return (
@@ -1149,6 +1160,16 @@ export default function Manifest() {
             >
               <MessageSquare size={16} />
               Discuss Books
+            </button>
+          )}
+          {hasCompletedItems && (
+            <button
+              type="button"
+              className="manifest-page__action-btn"
+              onClick={() => setShowSemanticSearch(true)}
+            >
+              <Search size={16} />
+              Search Library
             </button>
           )}
         </div>
