@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 
-import { Upload, MessageSquare, Loader, List, LayoutGrid, CheckSquare, FolderInput, X, Plus, Folder, Trash2, Search, Library, BookOpen } from 'lucide-react';
+import { Upload, MessageSquare, Loader, List, LayoutGrid, CheckSquare, FolderInput, X, Plus, Folder, Trash2, Search, Library, BookOpen, Sparkles } from 'lucide-react';
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core';
 import { usePageContext } from '../hooks/usePageContext';
 import { useAuthContext } from '../contexts/AuthContext';
@@ -119,6 +119,8 @@ export default function Manifest() {
   const [titleSearch, setTitleSearch] = useState('');
   const [continueDismissed, setContinueDismissed] = useState(false);
   const [showSemanticSearch, setShowSemanticSearch] = useState(false);
+  const [refreshingAllKeyPoints, setRefreshingAllKeyPoints] = useState(false);
+  const [refreshAllProgress, setRefreshAllProgress] = useState('');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try { return sessionStorage.getItem('manifest-sidebar-collapsed') === 'true'; } catch { return false; }
   });
@@ -288,6 +290,30 @@ export default function Manifest() {
     fetchDiscussions();
     fetchCollections();
   }, [fetchFrameworks, fetchDiscussions, fetchCollections]);
+
+  // Refresh key points for all extracted books
+  const handleRefreshAllKeyPoints = useCallback(async () => {
+    const extractedBooks = items.filter((i) => i.extraction_status === 'completed');
+    if (extractedBooks.length === 0) return;
+    setRefreshingAllKeyPoints(true);
+    let done = 0;
+    for (const book of extractedBooks) {
+      setRefreshAllProgress(`${done + 1} of ${extractedBooks.length}: ${book.title}`);
+      try {
+        await supabase.functions.invoke('manifest-key-points', {
+          body: { manifest_item_id: book.id },
+        });
+      } catch (err) {
+        console.error(`Key points failed for ${book.title}:`, err);
+      }
+      done++;
+      // Brief pause to avoid rate limiting
+      if (done < extractedBooks.length) await new Promise((r) => setTimeout(r, 500));
+    }
+    setRefreshAllProgress(`Done — ${done} books updated`);
+    setRefreshingAllKeyPoints(false);
+    setTimeout(() => setRefreshAllProgress(''), 4000);
+  }, [items]);
 
   // Fetch extraction status for child parts of multi-part books
   const [partExtractionMap, setPartExtractionMap] = useState<Map<string, { extracted: number; total: number }>>(new Map());
@@ -1207,7 +1233,21 @@ export default function Manifest() {
               Search Library
             </button>
           )}
+          {hasCompletedItems && (
+            <button
+              type="button"
+              className="manifest-page__action-btn"
+              onClick={handleRefreshAllKeyPoints}
+              disabled={refreshingAllKeyPoints}
+            >
+              {refreshingAllKeyPoints ? <Loader size={16} className="spin" /> : <Sparkles size={16} />}
+              {refreshingAllKeyPoints ? 'Refreshing...' : 'Refresh All Key Points'}
+            </button>
+          )}
         </div>
+      )}
+      {refreshAllProgress && (
+        <div className="manifest-page__refresh-progress">{refreshAllProgress}</div>
       )}
 
       {/* Fresh Start confirmation */}

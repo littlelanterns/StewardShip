@@ -1072,6 +1072,17 @@
   color: var(--color-text-primary, var(--color-navy));
 }
 
+/* Refresh all key points progress */
+.manifest-page__refresh-progress {
+  font-size: var(--font-size-xs);
+  color: var(--color-mid-teal);
+  text-align: center;
+  padding: var(--spacing-xs) var(--spacing-md);
+  background: color-mix(in srgb, var(--color-mid-teal) 8%, transparent);
+  border-radius: var(--radius-sm, 4px);
+  margin-bottom: var(--spacing-sm);
+}
+
 /* Deep search hint (shown when title search has no results) */
 .manifest-page__deep-search-hint {
   display: block;
