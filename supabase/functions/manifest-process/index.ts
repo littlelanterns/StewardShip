@@ -118,9 +118,28 @@ serve(async (req: Request) => {
             // Cleaning wiped everything — use raw
             fullText = rawText;
           }
-        } else {
-          console.log(`PDF text extraction yielded ${rawText.trim().length} chars — vision fallback not available for PDFs`);
-          fullText = rawText;
+        }
+
+        // Step 2b: Vision OCR fallback for scanned / image-heavy PDFs
+        // If text extraction yielded very little usable text relative to file size,
+        // the PDF is likely scanned pages. Send the PDF to Claude Haiku vision for OCR.
+        const minExpectedChars = 200;
+        if ((!fullText || fullText.trim().length < minExpectedChars) && pdfBytes.length > 100_000) {
+          console.log(`[PDF] Only ${fullText?.trim().length || 0} chars from ${pdfBytes.length} byte file — trying vision OCR fallback`);
+          await setDetail('Scanned PDF detected — extracting text via AI vision...');
+
+          const visionText = await extractPDFViaVision(pdfBytes);
+          if (visionText && visionText.trim().length > (fullText?.trim().length || 0)) {
+            console.log(`[PDF] Vision OCR produced ${visionText.length} chars (vs ${fullText?.trim().length || 0} from text extraction)`);
+            fullText = visionText;
+            await supabase
+              .from('manifest_items')
+              .update({ text_content: fullText })
+              .eq('id', manifest_item_id);
+          } else if (!fullText || fullText.trim().length === 0) {
+            console.log(`[PDF] Vision OCR also yielded no usable text`);
+            fullText = fullText || '';
+          }
         }
 
         // Step 3: Metadata + TOC (non-fatal, separate from text save)
@@ -226,12 +245,21 @@ serve(async (req: Request) => {
           throw new Error(`Failed to download EPUB: ${downloadErr?.message}`);
         }
 
-        await setDetail('Extracting text from EPUB...');
+        const blobSize = fileData.size;
+        console.log(`[EPUB] Downloaded ${blobSize} bytes (${Math.round(blobSize / 1024 / 1024)}MB)`);
+
+        await setDetail(blobSize > 20_000_000
+          ? `Extracting text from large EPUB (${Math.round(blobSize / 1024 / 1024)}MB) — skipping images...`
+          : 'Extracting text from EPUB...');
         const arrayBuffer = await fileData.arrayBuffer();
 
         // Unzip ONCE with a content-only filter (skip images, fonts, media, CSS).
         // Prevents memory exhaustion on large EPUBs with map images, illustrations, etc.
+        // For a 57MB image-heavy EPUB, fflate only decompresses the ~1-5MB of text content.
         const epubFiles = await unzipEPUBContentOnly(new Uint8Array(arrayBuffer));
+        const entryCount = Object.keys(epubFiles).length;
+        const decompressedSize = Object.values(epubFiles).reduce((sum, v) => sum + v.length, 0);
+        console.log(`[EPUB] Unzipped ${entryCount} content entries (${Math.round(decompressedSize / 1024)}KB text) from ${Math.round(blobSize / 1024 / 1024)}MB archive`);
 
         fullText = extractTextFromEPUBFiles(epubFiles);
 
@@ -433,7 +461,7 @@ serve(async (req: Request) => {
         has_text_content: !!item.text_content,
       });
       const failMessage = item.file_type === 'pdf'
-        ? 'This PDF appears to be scanned or image-only — no text could be extracted. Try uploading an EPUB or text version instead.'
+        ? 'This PDF appears to be scanned or image-only — text extraction and AI vision OCR both failed to recover usable text. Try uploading an EPUB or text version instead.'
         : 'No text content could be extracted from this file.';
       await supabase
         .from('manifest_items')
@@ -976,6 +1004,83 @@ function stripHtmlTags(html: string): string {
     // Clean up whitespace
     .replace(/\n{3,}/g, '\n\n')
     .trim();
+}
+
+/**
+ * PDF-specific vision OCR fallback for scanned / image-heavy PDFs.
+ * Sends the PDF bytes directly to Claude Haiku vision (supports application/pdf).
+ * Uses higher max_tokens than image vision since books have more content.
+ * For very large PDFs (>10MB), only sends a sample to stay within API limits.
+ */
+async function extractPDFViaVision(pdfBytes: Uint8Array): Promise<string | null> {
+  const apiKey = Deno.env.get('OPENROUTER_API_KEY');
+  if (!apiKey) {
+    console.error('[PDF Vision] No OPENROUTER_API_KEY — cannot use vision OCR');
+    return null;
+  }
+
+  try {
+    // For very large PDFs, sending the whole file may exceed API payload limits.
+    // Claude vision can handle PDFs up to ~30MB base64, but we cap at 10MB input
+    // to keep costs reasonable and avoid timeouts.
+    const MAX_PDF_VISION_BYTES = 10_000_000; // 10MB
+    let bytesToSend = pdfBytes;
+    if (pdfBytes.length > MAX_PDF_VISION_BYTES) {
+      console.log(`[PDF Vision] PDF is ${pdfBytes.length} bytes — truncating to first ${MAX_PDF_VISION_BYTES} bytes for vision OCR`);
+      bytesToSend = pdfBytes.subarray(0, MAX_PDF_VISION_BYTES);
+    }
+
+    // Encode in chunks to avoid stack overflow on large files
+    let binary = '';
+    const chunkSize = 8192;
+    for (let i = 0; i < bytesToSend.length; i += chunkSize) {
+      binary += String.fromCharCode(...bytesToSend.subarray(i, i + chunkSize));
+    }
+    const base64 = btoa(binary);
+    const dataUri = `data:application/pdf;base64,${base64}`;
+
+    console.log(`[PDF Vision] Sending ${bytesToSend.length} bytes (${Math.round(base64.length / 1024)}KB base64) to Haiku vision`);
+
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': Deno.env.get('SITE_URL') || 'https://stewardship.app',
+        'X-Title': 'StewardShip',
+      },
+      body: JSON.stringify({
+        model: 'anthropic/claude-haiku-4.5',
+        max_tokens: 16384,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: 'This is a scanned or image-based PDF book. Extract ALL readable text from every page, preserving the reading order, paragraph structure, and chapter/section headings. Include page numbers if visible. Return only the extracted text as structured plain text. Do not add commentary, interpretation, or summaries.',
+              },
+              { type: 'image_url', image_url: { url: dataUri } },
+            ],
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error(`[PDF Vision] API error (${response.status}):`, errorBody);
+      return null;
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || '';
+    console.log(`[PDF Vision] Extracted ${content.length} chars via vision OCR`);
+    return content.trim() || null;
+  } catch (err) {
+    console.error('[PDF Vision] Extraction failed:', err);
+    return null;
+  }
 }
 
 /**
