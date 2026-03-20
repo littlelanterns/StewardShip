@@ -121,13 +121,25 @@ export async function extractPDFMetadata(bytes: Uint8Array): Promise<PDFMetadata
  * Exported so callers can save raw text to DB immediately (before CPU timeout),
  * then clean separately.
  */
-export async function extractRawTextFromPDF(bytes: Uint8Array): Promise<string> {
+export async function extractRawTextFromPDF(
+  bytes: Uint8Array,
+  options?: { skipUnpdf?: boolean },
+): Promise<string> {
   let text = '';
-  try {
-    text = await extractTextWithUnPDF(bytes);
-  } catch (err) {
-    console.warn('[PDF] unpdf extraction failed, falling back to legacy:', err);
+
+  // For large/image-heavy PDFs, unpdf (PDF.js) can exhaust Edge Function CPU/memory limits.
+  // Callers can pass skipUnpdf: true to go straight to the lightweight legacy regex extractor,
+  // which explicitly skips image streams and uses far less CPU/memory.
+  if (!options?.skipUnpdf) {
+    try {
+      text = await extractTextWithUnPDF(bytes);
+    } catch (err) {
+      console.warn('[PDF] unpdf extraction failed, falling back to legacy:', err);
+    }
+  } else {
+    console.log(`[PDF] Skipping unpdf (${bytes.length} bytes) — using lightweight legacy extraction`);
   }
+
   if (!text || text.length < 50) {
     try {
       const legacyText = await extractTextFromPDFLegacy(bytes);

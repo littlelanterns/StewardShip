@@ -89,13 +89,23 @@ serve(async (req: Request) => {
           throw new Error(`Failed to download PDF: ${downloadErr?.message}`);
         }
 
-        await setDetail('Extracting text from PDF...');
         const arrayBuffer = await fileData.arrayBuffer();
         const pdfBytes = new Uint8Array(arrayBuffer);
 
+        // For PDFs > 1.5MB, unpdf (PDF.js) can exhaust Edge Function CPU/memory limits
+        // (e.g., 5MB image-heavy PDF → 268MB memory, 2.5MB scanned PDF → CPU timeout).
+        // Use the lightweight legacy regex extractor instead — it skips image streams
+        // and uses far less resources. Vision OCR fallback handles the rest.
+        const isLargePDF = pdfBytes.length > 1_500_000;
+        if (isLargePDF) {
+          await setDetail('Extracting text from large PDF (lightweight mode)...');
+        } else {
+          await setDetail('Extracting text from PDF...');
+        }
+
         // Step 1: Extract raw text and save to DB IMMEDIATELY
         // This must happen before any other CPU work — large PDFs can exhaust the CPU budget.
-        const rawText = await extractRawTextFromPDF(pdfBytes);
+        const rawText = await extractRawTextFromPDF(pdfBytes, { skipUnpdf: isLargePDF });
 
         if (rawText && rawText.trim().length > 0) {
           // Save raw text right away — if CPU times out after this, chunk phase can still read it

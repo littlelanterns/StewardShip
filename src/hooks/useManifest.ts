@@ -69,13 +69,35 @@ export function useManifest() {
       epub: 'application/epub+zip',
       docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     };
-    const uploadOptions = mimeOverrides[ext || '']
-      ? { contentType: mimeOverrides[ext || ''] }
-      : undefined;
+    const contentType = mimeOverrides[ext || ''] || undefined;
+    const uploadOptions = contentType ? { contentType } : undefined;
 
-    const { error: uploadErr } = await supabase.storage
-      .from('manifest-files')
-      .upload(storagePath, file, uploadOptions);
+    // For large files (>20MB), use Supabase's signed URL upload which supports
+    // larger payloads through the storage API. Standard upload can hit API gateway
+    // body size limits (~50MB) resulting in 400 errors.
+    let uploadErr: { message: string } | null = null;
+    if (file.size > 20_000_000) {
+      console.log(`[Manifest] Large file (${Math.round(file.size / 1024 / 1024)}MB) — using signed URL upload`);
+      const { data: signedData, error: signErr } = await supabase.storage
+        .from('manifest-files')
+        .createSignedUploadUrl(storagePath);
+
+      if (signErr || !signedData) {
+        uploadErr = signErr || { message: 'Failed to create signed upload URL' };
+      } else {
+        const { error: putErr } = await supabase.storage
+          .from('manifest-files')
+          .uploadToSignedUrl(storagePath, signedData.token, file, {
+            ...(contentType ? { contentType } : {}),
+          });
+        uploadErr = putErr;
+      }
+    } else {
+      const { error: stdErr } = await supabase.storage
+        .from('manifest-files')
+        .upload(storagePath, file, uploadOptions);
+      uploadErr = stdErr;
+    }
 
     if (uploadErr) {
       setError(uploadErr.message);
