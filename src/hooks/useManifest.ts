@@ -56,7 +56,9 @@ export function useManifest() {
     if (!user) return null;
     setError(null);
 
-    const storagePath = `${user.id}/${Date.now()}_${file.name}`;
+    // Sanitize filename: remove special chars that break Supabase Storage paths
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const storagePath = `${user.id}/${Date.now()}_${safeName}`;
 
     // 1. Upload to storage — explicitly set contentType for formats where
     // browsers may send a MIME type not in the bucket's allowed list
