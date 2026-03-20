@@ -26,7 +26,9 @@ serve(async (req: Request) => {
     const payloadB64 = jwt.split('.')[1];
     const b64 = payloadB64.replace(/-/g, '+').replace(/_/g, '/');
     const jwtPayload = JSON.parse(atob(b64));
-    const userId = jwtPayload.sub as string;
+    const jwtUserId = jwtPayload.sub as string;
+    // For self-invoked chunk phase (service role key), accept user_id from body
+    const userId = jwtUserId || bodyUserId;
     if (!userId) {
       return new Response(
         JSON.stringify({ error: 'Invalid token payload' }),
@@ -35,7 +37,7 @@ serve(async (req: Request) => {
     }
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 
-    const { manifest_item_id, phase } = await req.json();
+    const { manifest_item_id, phase, user_id: bodyUserId } = await req.json();
 
     if (!manifest_item_id) {
       return new Response(
@@ -356,12 +358,20 @@ serve(async (req: Request) => {
     // text_note: fullText already populated from item.text_content
     // audio: TODO — Whisper transcription (post-MVP)
 
-    // --- After text extraction: if this was phase 1 (default), save text and return ---
-    // The client will call back with phase='chunk' to do chunking in a separate CPU budget.
+    // --- After text extraction: if this was phase 1 (default), self-invoke phase 2 ---
+    // Chunking runs in a separate Edge Function invocation with its own CPU budget.
+    // We fire it off before returning so it works even if the client doesn't call back.
     if (phase !== 'chunk' && fullText && fullText.trim().length > 0) {
       await supabase.from('manifest_items').update({
         processing_detail: 'Text extracted. Chunking...',
       }).eq('id', manifest_item_id);
+
+      // Self-invoke phase 2 (fire-and-forget — don't await, let it run in its own invocation)
+      supabase.functions.invoke('manifest-process', {
+        body: { manifest_item_id, user_id: userId, phase: 'chunk' },
+      }).catch((err: unknown) => {
+        console.warn('Self-invoke chunk phase failed (client will retry):', err);
+      });
 
       return new Response(
         JSON.stringify({ success: true, needs_chunking: true, text_length: fullText.trim().length }),
