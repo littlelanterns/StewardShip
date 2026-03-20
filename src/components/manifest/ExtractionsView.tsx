@@ -2287,15 +2287,24 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName, 
                       {filterMode === 'hearted' ? 'Hearted' : 'All'}
                     </button>
                   )}
-                  <button
-                    type="button"
-                    className={`extraction-tabs__filter-btn${evAbridged ? ' extraction-tabs__filter-btn--active' : ''}`}
-                    onClick={() => { setEvAbridged((v) => { const next = !v; evSsSet('manifest-ev-abridged', String(next)); return next; }); }}
-                    title={evAbridged ? 'Show all items' : 'Show only key points and hearted items'}
-                  >
-                    <Sparkles size={12} />
-                    {evAbridged ? 'Abridged' : 'Full Content'}
-                  </button>
+                  <div className="extraction-tabs__abridged-toggle">
+                    <button
+                      type="button"
+                      className={`extraction-tabs__abridged-btn${evAbridged ? ' extraction-tabs__abridged-btn--active' : ''}`}
+                      onClick={() => { if (!evAbridged) { setEvAbridged(() => { evSsSet('manifest-ev-abridged', 'true'); return true; }); } }}
+                      title="Show only key points and hearted items"
+                    >
+                      Abridged
+                    </button>
+                    <button
+                      type="button"
+                      className={`extraction-tabs__abridged-btn${!evAbridged ? ' extraction-tabs__abridged-btn--active' : ''}`}
+                      onClick={() => { if (evAbridged) { setEvAbridged(() => { evSsSet('manifest-ev-abridged', 'false'); return false; }); } }}
+                      title="Show all items"
+                    >
+                      Full
+                    </button>
+                  </div>
                   <button
                     type="button"
                     className="extraction-tabs__filter-btn"

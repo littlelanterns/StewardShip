@@ -2011,15 +2011,24 @@ export function ExtractionTabs({
           <Heart size={12} fill={filterMode === 'hearted' ? 'currentColor' : 'none'} />
           {filterMode === 'hearted' ? 'Hearted' : 'All'}
         </button>
-        <button
-          type="button"
-          className={`extraction-tabs__filter-btn${abridged ? ' extraction-tabs__filter-btn--active' : ''}`}
-          onClick={toggleAbridgedWrapped}
-          title={abridged ? 'Show all items' : 'Show only key points and hearted items'}
-        >
-          <Sparkles size={12} />
-          {abridged ? 'Abridged' : 'Full Content'}
-        </button>
+        <div className="extraction-tabs__abridged-toggle">
+          <button
+            type="button"
+            className={`extraction-tabs__abridged-btn${abridged ? ' extraction-tabs__abridged-btn--active' : ''}`}
+            onClick={() => { if (!abridged) toggleAbridgedWrapped(); }}
+            title="Show only key points and hearted items"
+          >
+            Abridged
+          </button>
+          <button
+            type="button"
+            className={`extraction-tabs__abridged-btn${!abridged ? ' extraction-tabs__abridged-btn--active' : ''}`}
+            onClick={() => { if (abridged) toggleAbridgedWrapped(); }}
+            title="Show all items"
+          >
+            Full
+          </button>
+        </div>
         <div className="extraction-tabs__view-toggle">
           <button
             type="button"
