@@ -611,7 +611,7 @@ export function ManifestItemDetail({
     supabase.from('people')
       .select('id, name, nickname')
       .eq('user_id', user.id)
-      .in('relationship_type', ['son', 'daughter', 'child', 'stepson', 'stepdaughter', 'foster_child'])
+      .in('relationship_type', ['child'])
       .is('archived_at', null)
       .then(({ data }) => {
         setChildren((data || []).map((p) => ({ id: p.id, name: p.nickname || p.name })));
