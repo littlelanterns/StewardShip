@@ -116,6 +116,44 @@ export async function extractPDFMetadata(bytes: Uint8Array): Promise<PDFMetadata
 
 // --- unpdf Extraction (Primary) ---
 
+/**
+ * Extract raw text from PDF without any cleaning/filtering.
+ * Exported so callers can save raw text to DB immediately (before CPU timeout),
+ * then clean separately.
+ */
+export async function extractRawTextFromPDF(bytes: Uint8Array): Promise<string> {
+  let text = '';
+  try {
+    text = await extractTextWithUnPDF(bytes);
+  } catch (err) {
+    console.warn('[PDF] unpdf extraction failed, falling back to legacy:', err);
+  }
+  if (!text || text.length < 50) {
+    try {
+      const legacyText = await extractTextFromPDFLegacy(bytes);
+      if (legacyText.length > text.length) text = legacyText;
+    } catch (err) {
+      console.warn('[PDF] Legacy extraction also failed:', err);
+    }
+  }
+  return text;
+}
+
+/**
+ * Clean previously extracted raw text (sanitize + filter with safety net).
+ * Lightweight CPU compared to extraction itself.
+ */
+export function cleanExtractedText(rawText: string): string {
+  const rawLength = rawText.length;
+  let cleaned = sanitizeExtractedText(rawText);
+  cleaned = filterTextParagraphs(cleaned);
+  if (rawLength > 500 && cleaned.length < rawLength * 0.1) {
+    console.warn(`[PDF] Cleaning removed ${rawLength - cleaned.length}/${rawLength} chars (${Math.round((1 - cleaned.length / rawLength) * 100)}%) — falling back to light cleaning`);
+    cleaned = rawText.replace(/\n{4,}/g, '\n\n\n').replace(/\s{10,}/g, '  ').replace(/\n{3,}/g, '\n\n').trim();
+  }
+  return cleaned;
+}
+
 async function extractTextWithUnPDF(bytes: Uint8Array): Promise<string> {
   // Dynamic import — only loaded when a PDF is processed
   const unpdfModule = await import('https://esm.sh/unpdf@1.4.0');

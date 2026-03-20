@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { extractCleanTextFromPDF, extractPDFMetadata } from '../_shared/pdf-utils.ts';
+import { extractCleanTextFromPDF, extractRawTextFromPDF, cleanExtractedText, extractPDFMetadata } from '../_shared/pdf-utils.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -91,53 +91,74 @@ serve(async (req: Request) => {
 
         await setDetail('Extracting text from PDF...');
         const arrayBuffer = await fileData.arrayBuffer();
-        fullText = await extractCleanTextFromPDF(new Uint8Array(arrayBuffer));
+        const pdfBytes = new Uint8Array(arrayBuffer);
 
-        // Note: Vision fallback is NOT available for PDFs — Claude's vision API
-        // only accepts image formats (PNG, JPEG, WEBP), not PDF files.
-        // Scanned/image-only PDFs with <50 chars extracted will proceed with
-        // whatever text was extracted (may be empty).
-        if (!fullText || fullText.trim().length < 50) {
-          console.log(`PDF text extraction yielded ${fullText.trim().length} chars — vision fallback not available for PDFs`);
+        // Step 1: Extract raw text and save to DB IMMEDIATELY
+        // This must happen before any other CPU work — large PDFs can exhaust the CPU budget.
+        const rawText = await extractRawTextFromPDF(pdfBytes);
+
+        if (rawText && rawText.trim().length > 0) {
+          // Save raw text right away — if CPU times out after this, chunk phase can still read it
+          await supabase
+            .from('manifest_items')
+            .update({ text_content: rawText })
+            .eq('id', manifest_item_id);
+          console.log(`[PDF] Saved raw text (${rawText.length} chars) to DB immediately`);
+
+          // Step 2: Clean the text (lighter CPU than extraction)
+          fullText = cleanExtractedText(rawText);
+
+          if (fullText && fullText.length > 0) {
+            // Update with cleaned version
+            await supabase
+              .from('manifest_items')
+              .update({ text_content: fullText })
+              .eq('id', manifest_item_id);
+          } else {
+            // Cleaning wiped everything — use raw
+            fullText = rawText;
+          }
+        } else {
+          console.log(`PDF text extraction yielded ${rawText.trim().length} chars — vision fallback not available for PDFs`);
+          fullText = rawText;
         }
 
-        await supabase
-          .from('manifest_items')
-          .update({ text_content: fullText })
-          .eq('id', manifest_item_id);
+        // Step 3: Metadata + TOC (non-fatal, separate from text save)
+        // These re-parse the PDF which is expensive — skip for very large PDFs
+        // to avoid CPU timeout after text is already saved
+        if (pdfBytes.length < 3_000_000) { // Only for PDFs under 3MB
+          try {
+            await setDetail('Extracting table of contents...');
+            const toc = await extractTOCFromPDF(pdfBytes);
+            if (toc && toc.length > 0) {
+              await supabase.from('manifest_items').update({ toc }).eq('id', manifest_item_id);
+            }
+          } catch (tocErr) {
+            console.error('PDF TOC save failed (non-fatal):', tocErr);
+          }
 
-        // TOC extraction (non-fatal)
-        try {
-          await setDetail('Extracting table of contents...');
-          const toc = await extractTOCFromPDF(new Uint8Array(arrayBuffer));
-          if (toc && toc.length > 0) {
-            await supabase.from('manifest_items').update({ toc }).eq('id', manifest_item_id);
+          try {
+            const pdfMeta = await extractPDFMetadata(pdfBytes);
+            const metaUpdate: Record<string, unknown> = {};
+            if (pdfMeta.author) metaUpdate.author = pdfMeta.author;
+            const pdfTitleGarbled = pdfMeta.title && (
+              (!/\s/.test(pdfMeta.title) && /[!@#$%^&]|^[A-Z0-9]{20,}/.test(pdfMeta.title)) ||
+              /^CR![A-Z0-9]+/i.test(pdfMeta.title) ||
+              /\.(azw|mobi|azw3)$/i.test(pdfMeta.title)
+            );
+            const currentTitleLooksGood = item.title && /\s/.test(item.title) && !/^CR![A-Z0-9]+/i.test(item.title) && !/\.(azw|mobi|azw3)$/i.test(item.title);
+            const filenameTitle = item.file_name ? item.file_name.replace(/\.[^.]+$/, '') : '';
+            if (pdfMeta.title && !pdfTitleGarbled && !currentTitleLooksGood && item.title === filenameTitle) {
+              metaUpdate.title = pdfMeta.title;
+            }
+            if (Object.keys(metaUpdate).length > 0) {
+              await supabase.from('manifest_items').update(metaUpdate).eq('id', manifest_item_id);
+            }
+          } catch (metaErr) {
+            console.error('PDF metadata extraction failed (non-fatal):', metaErr);
           }
-        } catch (tocErr) {
-          console.error('PDF TOC save failed (non-fatal):', tocErr);
-        }
-
-        // Metadata extraction — author, title (non-fatal)
-        try {
-          const pdfMeta = await extractPDFMetadata(new Uint8Array(arrayBuffer));
-          const metaUpdate: Record<string, unknown> = {};
-          if (pdfMeta.author) metaUpdate.author = pdfMeta.author;
-          // Only override title if current title is still the filename default AND metadata title isn't garbled
-          const pdfTitleGarbled = pdfMeta.title && (
-            (!/\s/.test(pdfMeta.title) && /[!@#$%^&]|^[A-Z0-9]{20,}/.test(pdfMeta.title)) ||
-            /^CR![A-Z0-9]+/i.test(pdfMeta.title) ||
-            /\.(azw|mobi|azw3)$/i.test(pdfMeta.title)
-          );
-          const currentTitleLooksGood = item.title && /\s/.test(item.title) && !/^CR![A-Z0-9]+/i.test(item.title) && !/\.(azw|mobi|azw3)$/i.test(item.title);
-          const filenameTitle = item.file_name ? item.file_name.replace(/\.[^.]+$/, '') : '';
-          if (pdfMeta.title && !pdfTitleGarbled && !currentTitleLooksGood && item.title === filenameTitle) {
-            metaUpdate.title = pdfMeta.title;
-          }
-          if (Object.keys(metaUpdate).length > 0) {
-            await supabase.from('manifest_items').update(metaUpdate).eq('id', manifest_item_id);
-          }
-        } catch (metaErr) {
-          console.error('PDF metadata extraction failed (non-fatal):', metaErr);
+        } else {
+          console.log(`[PDF] Skipping TOC/metadata for large PDF (${pdfBytes.length} bytes) to preserve CPU budget`);
         }
       } catch (pdfErr) {
         console.error('PDF extraction failed:', pdfErr);
