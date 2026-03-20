@@ -58,18 +58,29 @@ export function useManifest() {
 
     const storagePath = `${user.id}/${Date.now()}_${file.name}`;
 
-    // 1. Upload to storage
+    // 1. Upload to storage — explicitly set contentType for formats where
+    // browsers may send a MIME type not in the bucket's allowed list
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    const mimeOverrides: Record<string, string> = {
+      md: 'text/markdown',
+      txt: 'text/plain',
+      epub: 'application/epub+zip',
+      docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    };
+    const uploadOptions = mimeOverrides[ext || '']
+      ? { contentType: mimeOverrides[ext || ''] }
+      : undefined;
+
     const { error: uploadErr } = await supabase.storage
       .from('manifest-files')
-      .upload(storagePath, file);
+      .upload(storagePath, file, uploadOptions);
 
     if (uploadErr) {
       setError(uploadErr.message);
       return null;
     }
 
-    // 2. Determine file type
-    const ext = file.name.split('.').pop()?.toLowerCase();
+    // 2. Determine file type (ext already computed above)
     const fileType = (file.type === 'application/pdf' || ext === 'pdf')
       ? 'pdf'
       : (file.type === 'application/epub+zip' || ext === 'epub')
