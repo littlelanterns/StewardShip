@@ -201,10 +201,10 @@ export const MAST_ENTRY_COLUMNS = 'id, user_id, type, text, category, sort_order
 export const KEEL_ENTRY_COLUMNS = 'id, user_id, category, text, source, source_type, source_reference_id, file_storage_path, sort_order, is_included, archived_at, created_at, updated_at';
 export const JOURNAL_ENTRY_COLUMNS = 'id, user_id, text, entry_type, life_area_tags, source, source_reference_id, audio_file_path, routed_to, routed_reference_ids, related_wheel_id, related_rigging_plan_id, related_meeting_id, archived_at, created_at, updated_at';
 export const AI_FRAMEWORK_PRINCIPLE_COLUMNS = 'id, user_id, framework_id, text, sort_order, is_user_added, is_included, section_title, is_hearted, is_deleted, is_from_go_deeper, is_key_point, user_note, archived_at, created_at, updated_at';
-export const MANIFEST_SUMMARY_COLUMNS = 'id, user_id, manifest_item_id, section_title, section_index, content_type, text, sort_order, is_hearted, is_deleted, is_from_go_deeper, is_key_point, user_note, tags, created_at';
-export const MANIFEST_DECLARATION_COLUMNS = 'id, user_id, manifest_item_id, section_title, section_index, value_name, declaration_text, declaration_style, is_hearted, is_deleted, sent_to_mast, mast_entry_id, sort_order, is_from_go_deeper, is_key_point, user_note, tags, created_at';
-export const MANIFEST_ACTION_STEP_COLUMNS = 'id, user_id, manifest_item_id, section_title, section_index, content_type, text, sort_order, is_hearted, is_deleted, is_from_go_deeper, is_key_point, user_note, tags, sent_to_compass, compass_task_id, created_at';
-export const MANIFEST_QUESTION_COLUMNS = 'id, user_id, manifest_item_id, section_title, section_index, content_type, text, sort_order, is_hearted, is_deleted, is_from_go_deeper, is_key_point, user_note, tags, sent_to_prompts, journal_prompt_id, created_at';
+export const MANIFEST_SUMMARY_COLUMNS = 'id, user_id, manifest_item_id, section_title, section_index, content_type, text, sort_order, is_hearted, is_deleted, is_from_go_deeper, is_key_point, audience, user_note, tags, created_at';
+export const MANIFEST_DECLARATION_COLUMNS = 'id, user_id, manifest_item_id, section_title, section_index, value_name, declaration_text, declaration_style, is_hearted, is_deleted, sent_to_mast, mast_entry_id, sort_order, is_from_go_deeper, is_key_point, audience, user_note, tags, created_at';
+export const MANIFEST_ACTION_STEP_COLUMNS = 'id, user_id, manifest_item_id, section_title, section_index, content_type, text, sort_order, is_hearted, is_deleted, is_from_go_deeper, is_key_point, audience, user_note, tags, sent_to_compass, compass_task_id, created_at';
+export const MANIFEST_QUESTION_COLUMNS = 'id, user_id, manifest_item_id, section_title, section_index, content_type, text, sort_order, is_hearted, is_deleted, is_from_go_deeper, is_key_point, audience, user_note, tags, sent_to_prompts, journal_prompt_id, created_at';
 export const JOURNAL_PROMPT_COLUMNS = 'id, user_id, prompt_text, source, source_reference_id, source_book_title, tags, sort_order, archived_at, created_at, updated_at';
 
 export const MAST_TYPE_LABELS: Record<MastEntryType, string> = {
@@ -1474,6 +1474,7 @@ export interface ManifestSummary {
   is_deleted: boolean;
   is_from_go_deeper: boolean;
   is_key_point: boolean;
+  audience: string;
   user_note: string | null;
   tags: string[];
   created_at: string;
@@ -1496,6 +1497,7 @@ export interface ManifestDeclaration {
   sort_order: number;
   is_from_go_deeper: boolean;
   is_key_point: boolean;
+  audience: string;
   user_note: string | null;
   tags: string[];
   created_at: string;
@@ -1536,6 +1538,7 @@ export interface ManifestActionStep {
   is_deleted: boolean;
   is_from_go_deeper: boolean;
   is_key_point: boolean;
+  audience: string;
   user_note: string | null;
   tags: string[];
   sent_to_compass: boolean;
@@ -1574,6 +1577,7 @@ export interface ManifestQuestion {
   is_deleted: boolean;
   is_from_go_deeper: boolean;
   is_key_point: boolean;
+  audience: string;
   user_note: string | null;
   tags: string[];
   sent_to_prompts: boolean;

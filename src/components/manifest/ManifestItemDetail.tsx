@@ -598,6 +598,30 @@ export function ManifestItemDetail({
     }
   }, [item.id, onFetchSummaries, onFetchDeclarations, onFetchActionSteps, onFetchQuestions]);
 
+  const [generatingStudyGuide, setGeneratingStudyGuide] = useState(false);
+  const [studyGuideResult, setStudyGuideResult] = useState<string | null>(null);
+  const handleGenerateStudyGuide = useCallback(async () => {
+    setGeneratingStudyGuide(true);
+    setStudyGuideResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('manifest-study-guide', {
+        body: { manifest_item_id: item.id },
+      });
+      if (error) throw error;
+      setStudyGuideResult(`Study guide created: ${data.items_created} items from ${data.source_items} key points`);
+      onFetchSummaries(item.id);
+      onFetchDeclarations(item.id);
+      onFetchActionSteps(item.id);
+      onFetchQuestions(item.id);
+      setTimeout(() => setStudyGuideResult(null), 5000);
+    } catch (err) {
+      setStudyGuideResult('Failed to generate study guide');
+      console.error('Study guide failed:', err);
+    } finally {
+      setGeneratingStudyGuide(false);
+    }
+  }, [item.id, onFetchSummaries, onFetchDeclarations, onFetchActionSteps, onFetchQuestions]);
+
   return (
     <div className="manifest-detail">
       <button type="button" className="manifest-detail__back" onClick={isPart && onBackToParent ? onBackToParent : onBack}>
@@ -783,8 +807,13 @@ export function ManifestItemDetail({
                 {refreshingKeyPoints ? <Loader size={14} className="spin" /> : <Sparkles size={14} />}
                 {refreshingKeyPoints ? 'Scanning...' : 'Refresh Key Points'}
               </button>
+              <button type="button" className="apply-section__btn" onClick={handleGenerateStudyGuide} disabled={generatingStudyGuide}>
+                {generatingStudyGuide ? <Loader size={14} className="spin" /> : <BookOpen size={14} />}
+                {generatingStudyGuide ? 'Generating...' : 'Teen Study Guide'}
+              </button>
             </div>
             {keyPointsResult && <div className="apply-section__result">{keyPointsResult}</div>}
+            {studyGuideResult && <div className="apply-section__result">{studyGuideResult}</div>}
           </div>
         </section>
       )}

@@ -1690,6 +1690,15 @@ export function ExtractionTabs({
   }, []);
   const setViewMode = useCallback((vm: ViewMode) => { setViewModeRaw(vm); ssSet('manifest-extraction-view', vm); }, []);
 
+  // Audience toggle — original vs teen study guide
+  const [audience, setAudience] = useState<string>('original');
+  const hasStudyGuide = useMemo(() => {
+    return summaries.some((s) => s.audience === 'teen_study_guide') ||
+      actionSteps.some((a) => a.audience === 'teen_study_guide') ||
+      questions.some((q) => q.audience === 'teen_study_guide') ||
+      declarations.some((d) => d.audience === 'teen_study_guide');
+  }, [summaries, actionSteps, questions, declarations]);
+
   // Abridged view — show only key points + hearted items
   const [abridged, setAbridged] = useState(() => {
     const stored = ssGet('manifest-abridged-v2');
@@ -1758,35 +1767,37 @@ export function ExtractionTabs({
   };
 
   const filteredSummaries = useMemo(() => {
-    let base = summaries.filter((s) => !s.is_deleted);
+    let base = summaries.filter((s) => !s.is_deleted && (s.audience || 'original') === audience);
     base = abridgedFilterSection(base, 'summary');
     if (!searchQ) return base;
     return base.filter((s) => s.text.toLowerCase().includes(searchQ) || s.user_note?.toLowerCase().includes(searchQ));
-  }, [summaries, searchQ, abridged, expandedAbridgedSections]);
+  }, [summaries, searchQ, abridged, expandedAbridgedSections, audience]);
   const filteredPrinciples = useMemo(() => {
+    // Principles don't have audience column — always show
     let base = principles.filter((p) => !p.is_deleted);
+    if (audience !== 'original') base = []; // hide frameworks in study guide mode
     base = abridgedFilterSection(base, 'frameworks');
     if (!searchQ) return base;
     return base.filter((p) => p.text.toLowerCase().includes(searchQ) || p.user_note?.toLowerCase().includes(searchQ));
-  }, [principles, searchQ, abridged, expandedAbridgedSections]);
+  }, [principles, searchQ, abridged, expandedAbridgedSections, audience]);
   const filteredActionSteps = useMemo(() => {
-    let base = actionSteps.filter((a) => !a.is_deleted);
+    let base = actionSteps.filter((a) => !a.is_deleted && (a.audience || 'original') === audience);
     base = abridgedFilterSection(base, 'action_steps');
     if (!searchQ) return base;
     return base.filter((a) => a.text.toLowerCase().includes(searchQ) || a.user_note?.toLowerCase().includes(searchQ));
-  }, [actionSteps, searchQ, abridged, expandedAbridgedSections]);
+  }, [actionSteps, searchQ, abridged, expandedAbridgedSections, audience]);
   const filteredDeclarations = useMemo(() => {
-    let base = declarations.filter((d) => !d.is_deleted);
+    let base = declarations.filter((d) => !d.is_deleted && (d.audience || 'original') === audience);
     base = abridgedFilterSection(base, 'mast_content');
     if (!searchQ) return base;
     return base.filter((d) => d.declaration_text.toLowerCase().includes(searchQ) || d.user_note?.toLowerCase().includes(searchQ));
-  }, [declarations, searchQ, abridged, expandedAbridgedSections]);
+  }, [declarations, searchQ, abridged, expandedAbridgedSections, audience]);
   const filteredQuestions = useMemo(() => {
-    let base = questions.filter((q) => !q.is_deleted);
+    let base = questions.filter((q) => !q.is_deleted && (q.audience || 'original') === audience);
     base = abridgedFilterSection(base, 'questions');
     if (!searchQ) return base;
     return base.filter((q) => q.text.toLowerCase().includes(searchQ) || q.user_note?.toLowerCase().includes(searchQ));
-  }, [questions, searchQ, abridged, expandedAbridgedSections]);
+  }, [questions, searchQ, abridged, expandedAbridgedSections, audience]);
 
   const summaryCount = filteredSummaries.length;
   const frameworkCount = filteredPrinciples.length;
@@ -1948,6 +1959,18 @@ export function ExtractionTabs({
           Questions {questionCount > 0 && <span className="extraction-tabs__tab-count">{questionCount}</span>}
         </button>
       </div>
+
+      {/* Audience toggle */}
+      {hasStudyGuide && (
+        <div className="extraction-tabs__audience">
+          <button type="button" className={`extraction-tabs__audience-btn${audience === 'original' ? ' extraction-tabs__audience-btn--active' : ''}`} onClick={() => setAudience('original')}>
+            Original
+          </button>
+          <button type="button" className={`extraction-tabs__audience-btn${audience === 'teen_study_guide' ? ' extraction-tabs__audience-btn--active' : ''}`} onClick={() => setAudience('teen_study_guide')}>
+            Teen Study Guide
+          </button>
+        </div>
+      )}
 
       {/* Search within this book */}
       <div className="extraction-tabs__search">
