@@ -1690,14 +1690,24 @@ export function ExtractionTabs({
   }, []);
   const setViewMode = useCallback((vm: ViewMode) => { setViewModeRaw(vm); ssSet('manifest-extraction-view', vm); }, []);
 
-  // Audience toggle — original vs teen study guide
+  // Audience toggle — original vs study guides (generic or per-child)
   const [audience, setAudience] = useState<string>('original');
-  const hasStudyGuide = useMemo(() => {
-    return summaries.some((s) => s.audience === 'teen_study_guide') ||
-      actionSteps.some((a) => a.audience === 'teen_study_guide') ||
-      questions.some((q) => q.audience === 'teen_study_guide') ||
-      declarations.some((d) => d.audience === 'teen_study_guide');
+  const availableAudiences = useMemo(() => {
+    const all = new Set<string>();
+    for (const s of summaries) if (s.audience && s.audience !== 'original') all.add(s.audience);
+    for (const a of actionSteps) if (a.audience && a.audience !== 'original') all.add(a.audience);
+    for (const q of questions) if (q.audience && q.audience !== 'original') all.add(q.audience);
+    for (const d of declarations) if (d.audience && d.audience !== 'original') all.add(d.audience);
+    return Array.from(all).sort();
   }, [summaries, actionSteps, questions, declarations]);
+
+  // Format audience tag into a display label
+  const audienceLabel = (tag: string): string => {
+    if (tag === 'original') return 'Original';
+    if (tag === 'teen_study_guide') return 'Teen Study Guide';
+    if (tag.startsWith('study_guide_')) return tag.replace('study_guide_', '').replace(/-/g, ' ');
+    return tag;
+  };
 
   // Abridged view — show only key points + hearted items
   const [abridged, setAbridged] = useState(() => {
@@ -1961,14 +1971,16 @@ export function ExtractionTabs({
       </div>
 
       {/* Audience toggle */}
-      {hasStudyGuide && (
+      {availableAudiences.length > 0 && (
         <div className="extraction-tabs__audience">
           <button type="button" className={`extraction-tabs__audience-btn${audience === 'original' ? ' extraction-tabs__audience-btn--active' : ''}`} onClick={() => setAudience('original')}>
             Original
           </button>
-          <button type="button" className={`extraction-tabs__audience-btn${audience === 'teen_study_guide' ? ' extraction-tabs__audience-btn--active' : ''}`} onClick={() => setAudience('teen_study_guide')}>
-            Teen Study Guide
-          </button>
+          {availableAudiences.map((a) => (
+            <button key={a} type="button" className={`extraction-tabs__audience-btn${audience === a ? ' extraction-tabs__audience-btn--active' : ''}`} onClick={() => setAudience(a)}>
+              {audienceLabel(a)}
+            </button>
+          ))}
         </div>
       )}
 

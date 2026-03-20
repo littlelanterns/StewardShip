@@ -5,6 +5,7 @@ import { MANIFEST_FILE_TYPE_LABELS, MANIFEST_STATUS_LABELS } from '../../lib/typ
 import type { SectionInfo } from '../../hooks/useManifestExtraction';
 import type { MergeStats } from '../../lib/mergeSections';
 import { supabase } from '../../lib/supabase';
+import { useAuthContext } from '../../contexts/AuthContext';
 import { Button, LoadingSpinner } from '../shared';
 import { GenrePicker } from './GenrePicker';
 import { ExtractionTabs } from './ExtractionTabs';
@@ -225,6 +226,7 @@ export function ManifestItemDetail({
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(item.title);
   const [editingAuthor, setEditingAuthor] = useState(false);
+  const { user } = useAuthContext();
   const [authorDraft, setAuthorDraft] = useState(item.author || '');
   const [editingISBN, setEditingISBN] = useState(false);
   const [isbnDraft, setIsbnDraft] = useState(item.isbn || '');
@@ -600,15 +602,33 @@ export function ManifestItemDetail({
 
   const [generatingStudyGuide, setGeneratingStudyGuide] = useState(false);
   const [studyGuideResult, setStudyGuideResult] = useState<string | null>(null);
-  const handleGenerateStudyGuide = useCallback(async () => {
+  const [showChildPicker, setShowChildPicker] = useState(false);
+  const [children, setChildren] = useState<Array<{ id: string; name: string }>>([]);
+
+  // Fetch children from Crew for personalized study guide
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('people')
+      .select('id, name, nickname')
+      .eq('user_id', user.id)
+      .in('relationship_type', ['son', 'daughter', 'child', 'stepson', 'stepdaughter', 'foster_child'])
+      .is('archived_at', null)
+      .then(({ data }) => {
+        setChildren((data || []).map((p) => ({ id: p.id, name: p.nickname || p.name })));
+      });
+  }, [user]);
+
+  const handleGenerateStudyGuide = useCallback(async (childId?: string) => {
     setGeneratingStudyGuide(true);
     setStudyGuideResult(null);
+    setShowChildPicker(false);
     try {
       const { data, error } = await supabase.functions.invoke('manifest-study-guide', {
-        body: { manifest_item_id: item.id },
+        body: { manifest_item_id: item.id, child_id: childId || undefined },
       });
       if (error) throw error;
-      setStudyGuideResult(`Study guide created: ${data.items_created} items from ${data.source_items} key points`);
+      const name = data.child_name || 'teens';
+      setStudyGuideResult(`Study guide for ${name}: ${data.items_created} items created`);
       onFetchSummaries(item.id);
       onFetchDeclarations(item.id);
       onFetchActionSteps(item.id);
@@ -807,10 +827,24 @@ export function ManifestItemDetail({
                 {refreshingKeyPoints ? <Loader size={14} className="spin" /> : <Sparkles size={14} />}
                 {refreshingKeyPoints ? 'Scanning...' : 'Refresh Key Points'}
               </button>
-              <button type="button" className="apply-section__btn" onClick={handleGenerateStudyGuide} disabled={generatingStudyGuide}>
-                {generatingStudyGuide ? <Loader size={14} className="spin" /> : <BookOpen size={14} />}
-                {generatingStudyGuide ? 'Generating...' : 'Teen Study Guide'}
-              </button>
+              <div style={{ position: 'relative', display: 'inline-block' }}>
+                <button type="button" className="apply-section__btn" onClick={() => children.length > 0 ? setShowChildPicker((v) => !v) : handleGenerateStudyGuide()} disabled={generatingStudyGuide}>
+                  {generatingStudyGuide ? <Loader size={14} className="spin" /> : <BookOpen size={14} />}
+                  {generatingStudyGuide ? 'Generating...' : 'Study Guide'}
+                </button>
+                {showChildPicker && (
+                  <div className="apply-section__child-picker">
+                    <button type="button" className="apply-section__child-option" onClick={() => handleGenerateStudyGuide()}>
+                      General (ages 10-13)
+                    </button>
+                    {children.map((child) => (
+                      <button key={child.id} type="button" className="apply-section__child-option" onClick={() => handleGenerateStudyGuide(child.id)}>
+                        For {child.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
             {keyPointsResult && <div className="apply-section__result">{keyPointsResult}</div>}
             {studyGuideResult && <div className="apply-section__result">{studyGuideResult}</div>}

@@ -877,6 +877,42 @@
   cursor: default;
 }
 
+.apply-section__child-picker {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  margin-bottom: var(--spacing-xs);
+  background: var(--color-bg-card, var(--color-white));
+  border: 1px solid var(--color-border, var(--color-slate-gray));
+  border-radius: var(--radius-md, 8px);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--color-deep-teal) 15%, transparent);
+  z-index: 20;
+  min-width: 180px;
+  overflow: hidden;
+}
+
+.apply-section__child-option {
+  display: block;
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--color-bg-secondary);
+  cursor: pointer;
+  text-align: left;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary, var(--color-navy));
+  transition: background 0.1s ease;
+}
+
+.apply-section__child-option:last-child {
+  border-bottom: none;
+}
+
+.apply-section__child-option:hover {
+  background: var(--color-bg-secondary);
+}
+
 .apply-section__result {
   font-size: var(--font-size-xs);
   color: var(--color-mid-teal);
