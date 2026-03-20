@@ -749,6 +749,204 @@ Enables: deep links, browser back/forward, share links, bookmark.
 
 ---
 
-*End of PRD-25 v2 Specification*
+## 15. Study Guides — Age-Adapted Audience Layers
+
+### 15.1 Concept
+
+Study guides are **transformations of existing key-point extractions**, not new extractions from the raw book. The AI takes the parent's adult-level summaries, frameworks, action steps, and questions and rewrites them for a specific audience — adapting language, examples, and framing while preserving the core ideas.
+
+**No book re-scan required.** Cost: ~$0.01-0.02 per book per audience.
+
+### 15.2 Audience Types
+
+| Audience Tag | Description | Source |
+|-------------|-------------|--------|
+| `original` | Adult extraction (default) | Extraction pipeline |
+| `teen_study_guide` | Generic ages 10-13 | Study guide generator |
+| `study_guide_[childId]` | Personalized for a specific child | Study guide generator + Archives context |
+
+### 15.3 Personalization via Archives (v2) / Crew Notes (v1)
+
+When generating a study guide for a specific child, the system fetches ALL known context about that child:
+
+**v1 (StewardShip):** `people` table (name, age, relationship) + `crew_notes` table (personality, interests, challenges, growth areas, observations).
+
+**v2 (MyAIM Family):** The child's **Archives** profile (PRD-13), which includes:
+- **InnerWorkings** (PRD-07) — personality, communication style, learning style, strengths
+- **Journal entries** — what the child has written about their interests and struggles
+- **Task/routine completion patterns** (PRD-09A) — what they engage with vs avoid
+- **Tracker data** (PRD-10) — mood patterns, habits
+- **Guiding Stars** (PRD-06) — what the child cares about and aspires to
+- **Sequential collection progress** (PRD-09A) — what curriculum they're working through, what level they're at
+
+This context feeds directly into the AI rewrite prompt:
+
+```
+IMPORTANT — You are personalizing this for a SPECIFIC person:
+
+Name: Sarah
+Age: 12
+PERSONALITY: Loves animals, especially horses. Visual learner.
+Gets frustrated with abstract concepts but thrives with stories.
+INTERESTS: Horseback riding, drawing, Minecraft
+CHALLENGES: Reading comprehension below grade level. Needs extra
+time with new vocabulary. Responds well to encouragement.
+STRENGTHS: Creative problem-solver. Natural leader in group settings.
+LEARNING STYLE: Learns best through hands-on activities and stories.
+Struggles with bullet-point lists of principles.
+```
+
+The AI then rewrites "Implement a feedback loop for continuous product improvement" as "Think about when you're training a horse — you try something, watch how they respond, then adjust. That's exactly what great product builders do too. What's something you've gotten better at by watching how it goes and trying again?"
+
+### 15.4 Detail Levels (v2)
+
+The parent selects a detail level when generating:
+
+| Level | Description | Items per section |
+|-------|------------|-------------------|
+| **Brief** | One-sentence essence of each key point | Same count, shorter text |
+| **Standard** (default) | Clear explanation with one relatable example | Same count, moderate length |
+| **Detailed** | Full explanation with examples, context, and "try this" suggestions | Same count, longer text |
+
+### 15.5 What Gets Generated Per Chapter
+
+| Tab | Original Name | Study Guide Name | What changes |
+|-----|--------------|-----------------|--------------|
+| Summary | Key Concepts, Stories, etc. | **Key Ideas** | Simplified language, teen-relatable examples |
+| Action Steps | Exercises, Practices, etc. | **Try This** | Adapted for a young person's daily life |
+| Questions | Reflection, Discussion, etc. | **Think About** | Personal and conversational ("Have you ever...") |
+| Declarations | Choosing & Committing, etc. | **Principles to Remember** | Reframed for a young person's identity journey |
+| Frameworks | Principles | **Not included** | Parent-level analytical content — not age-appropriate |
+
+### 15.6 Access Control (v2)
+
+In MyAIM Family:
+- Mom generates the study guide (reviews, edits if desired)
+- Mom toggles **"Share with [child]"** per book
+- Child sees the book in their BookShelf with ONLY their study guide content
+- Child cannot see the parent's original extractions
+- Permissions flow through PRD-02 (Permissions & Access Control)
+
+### 15.7 UI Flow
+
+**v1 (StewardShip):**
+1. Open extracted book → Apply section → **"Study Guide"** button
+2. If children exist in Crew → dropdown: "General (ages 10-13)" or "For [child name]"
+3. AI generates → audience toggle appears above tabs
+4. Switch between **Original** and **[child name]** versions
+
+**v2 (MyAIM Family):**
+1. Open extracted book → Apply section → **"Study Guide"** button
+2. Select child from family member picker + detail level (brief/standard/detailed)
+3. AI generates using child's full Archives context
+4. Audience selector shows all generated versions
+5. Mom can edit any item before sharing
+6. Toggle "Share with [child]" → book appears in child's BookShelf
+
+### 15.8 Database
+
+**`audience` column** on `manifest_summaries`, `manifest_action_steps`, `manifest_questions`, `manifest_declarations`:
+- `DEFAULT 'original'` — all existing extractions
+- `'teen_study_guide'` — generic teen version
+- `'study_guide_[childId]'` — personalized per child
+- Indexed: `(manifest_item_id, audience)` for fast filtering
+
+### 15.9 Edge Function: `manifest-study-guide`
+
+- Model: Haiku (`anthropic/claude-haiku-4.5`)
+- Input: existing key-point + hearted items (original audience), optional child context
+- Output: rewritten items saved with audience tag
+- Regenerate: deletes existing study guide items for that audience, creates fresh
+- Deployed with `--no-verify-jwt`
+
+---
+
+## 16. Semantic Search — Cross-Feature Integration Map (MyAIM Family v2)
+
+The `SemanticSearchPanel` component and the underlying `searchManifestContent()` + `searchPersonalContext()` functions connect to nearly every feature in the platform. This section maps each integration point to the specific MyAIM Family PRDs.
+
+### 16.1 Direct UI Integration (SemanticSearchPanel opens)
+
+| Feature | PRD | Trigger | Default Query | Scope | What the user gets |
+|---------|-----|---------|---------------|-------|--------------------|
+| **BookShelf** | PRD-23 | "Search Library" button | User-typed | Books | Cross-library content search with 3 modes |
+| **ThoughtSift** (Safe Harbor) | PRD-34 | "What have I read about this?" | Current topic | Books | Relevant frameworks + action steps for processing |
+| **Pathways** (Rigging) | PRD-20 | "Find relevant principles" | Plan goal | Books | Frameworks for planning, milestone inspiration |
+| **Gatherings** (Meetings) | PRD-16 | Pre-meeting prep | Meeting type + person | Books + Personal | Relevant content for agenda preparation |
+| **InnerWorkings** (Keel) | PRD-07 | "What books relate to this?" | Growth area | Books | Self-knowledge content from library |
+| **Journal** | PRD-08 | Sidebar: "Related reading" | Current entry text | Books + Personal | Contextual suggestions while writing |
+| **Tasks** (Compass) | PRD-09A | Task detail: "Resources" | Task title | Books | Relevant action steps and principles |
+| **Crew / Family Context** | PRD-19 | Person detail: "What do my books say?" | Person name + context | Books + Personal | Parenting strategies, relationship insights |
+| **LifeLantern** (Life Inventory) | PRD-12A | Area detail: "Library insights" | Life area | Books + Personal | Relevant extracted content for assessment |
+
+### 16.2 Automatic Context Loading (No UI, AI uses silently)
+
+| Feature | PRD | When it fires | What it loads | Why |
+|---------|-----|--------------|---------------|-----|
+| **LiLa Core** (Helm) | PRD-05 | Every message >15 chars | Top 8 manifest content + top 5 personal context matches | Grounds AI responses in user's own library and self-knowledge |
+| **LiLa Guided Modes** | PRD-05 | Mode-specific triggers | Targeted content based on guided mode type | Coaching grounded in principles the user has already read |
+| **Rhythms Sunrise** (Reveille) | PRD-18 | Morning briefing generation | 1-3 hearted items rotated daily | "From Your Library" resurfacing card |
+| **Rhythms Sunset** (Reckoning) | PRD-18 | Evening review | Hearted content for reflection | "Something to sit with tonight" |
+| **BookShelf Discussions** | PRD-23 | Book discussion mode | Dual search: RAG chunks + extracted content | Rich book-specific context for AI discussion |
+| **Victory Context** | PRD-11 | Victory celebration | Matching Guiding Stars + book principles | Identity-based celebration connected to principles |
+
+### 16.3 Archives as Context Source for Study Guides
+
+In MyAIM Family v2, the **Archives** system (PRD-13) is the unified data layer that every feature writes to and reads from. When generating a personalized study guide, the flow is:
+
+```
+Mom taps "Study Guide" → selects child → selects detail level
+                                            ↓
+                              Archives fetch for that child:
+                              ├── InnerWorkings (PRD-07): personality, learning style
+                              ├── Journal entries (PRD-08): interests, struggles
+                              ├── Task patterns (PRD-09A): engagement data
+                              ├── Tracker data (PRD-10): mood, habits
+                              ├── Guiding Stars (PRD-06): aspirations
+                              └── Parent's crew notes (PRD-19): observations
+                                            ↓
+                              AI prompt personalized with full context
+                                            ↓
+                              Haiku rewrites key points → saves with audience tag
+                                            ↓
+                              Child sees personalized study guide in their BookShelf
+```
+
+**Key insight:** The more the family uses the platform (journals, tracks, completes tasks, builds InnerWorkings), the BETTER the study guides become — because the AI has richer context about each child. This creates a virtuous cycle where platform engagement directly improves the educational output.
+
+### 16.4 Dual-Layer Search in Practice
+
+For every integration above, both search layers are available:
+
+| Layer | Function | Best for | Example |
+|-------|----------|----------|---------|
+| **RAG chunks** | `searchManifest()` → `match_manifest_chunks()` | Exact book passages, author quotes | "What did the author say about developmental plateaus?" |
+| **Extracted content** | `searchManifestContent()` → `match_manifest_content()` | Distilled principles, action steps | "Give me a framework for IEP advocacy" |
+
+The `SemanticSearchPanel` offers a scope toggle: **Book Passages** / **Extracted Insights** / **Both** (default).
+
+For automatic context loading (LiLa, Rhythms), both layers run in parallel and results are merged by relevance.
+
+---
+
+## 17. Requirements Checklist — Study Guides
+
+| # | Requirement | How to Test |
+|---|------------|-------------|
+| SG-1 | "Study Guide" button appears in Apply section | Open extracted book → button visible |
+| SG-2 | Child picker dropdown shows when children exist in Crew | Have children → dropdown with names |
+| SG-3 | "General (ages 10-13)" option available | Always shown in dropdown |
+| SG-4 | Personalized guide uses child context | Generate for child with crew notes → content references their interests |
+| SG-5 | Audience toggle appears after generation | Generate → "Original" / "[child name]" toggle visible |
+| SG-6 | Switching audience filters all tabs | Toggle to study guide → all tabs show rewritten content |
+| SG-7 | Frameworks tab hidden in study guide mode | Toggle to study guide → Frameworks tab empty or hidden |
+| SG-8 | Multiple children get unique guides | Generate for child A, then child B → both available in toggle |
+| SG-9 | Regenerating replaces existing guide | Generate twice for same child → old items deleted, new created |
+| SG-10 | Study guide items are all marked is_key_point | Study guide items show in abridged mode |
+| SG-11 | Original content unchanged after generation | Toggle back to Original → all items intact |
+| SG-12 | Study guide works on books with key points refreshed | Refresh key points → generate study guide → works |
+| SG-13 | Study guide fails gracefully without key points | Book without key points → message "Run Refresh Key Points first" |
+
+---
 
 *End of PRD-25 v2 Specification*
