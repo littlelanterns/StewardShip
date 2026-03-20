@@ -35,12 +35,12 @@ type SortOption = 'newest' | 'oldest' | 'name_asc' | 'name_desc' | 'has_extracti
 type GroupMode = 'by_folder' | 'all_books';
 
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
-  { value: 'newest', label: 'Newest' },
+  { value: 'newest', label: 'Recently Added' },
   { value: 'oldest', label: 'Oldest' },
+  { value: 'recently_viewed', label: 'Recently Viewed' },
   { value: 'name_asc', label: 'Name A-Z' },
   { value: 'name_desc', label: 'Name Z-A' },
   { value: 'has_extractions', label: 'Has Extractions' },
-  { value: 'recently_viewed', label: 'Recently Viewed' },
   { value: 'most_annotated', label: 'Most Annotated' },
 ];
 
@@ -259,7 +259,12 @@ export default function Manifest() {
   const handleSetSortOption = useCallback((opt: SortOption) => {
     setSortOption(opt);
     persistPreference('manifest_sort', opt);
-  }, [persistPreference]);
+    // Time-based sorts should show flat list so chronological order is visible
+    if ((opt === 'newest' || opt === 'recently_viewed') && groupMode === 'by_folder') {
+      setGroupMode('all_books');
+      persistPreference('manifest_group_mode', 'all_books');
+    }
+  }, [persistPreference, groupMode]);
 
   const handleSetLibraryLayout = useCallback((layout: LibraryLayout) => {
     setLibraryLayout(layout);
