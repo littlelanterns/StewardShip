@@ -46,14 +46,23 @@ export async function extractCleanTextFromPDF(bytes: Uint8Array): Promise<string
     }
   }
 
-  // Sanitize and filter
-  text = sanitizeExtractedText(text);
-  text = filterTextParagraphs(text);
+  // Sanitize and filter — with safety net
+  const rawLength = text.length;
+  let cleaned = sanitizeExtractedText(text);
+  cleaned = filterTextParagraphs(cleaned);
+
+  // Safety net: if cleaning removed >90% of substantial text, it's over-aggressive
+  // for this PDF. Fall back to lightly cleaned raw text.
+  if (rawLength > 500 && cleaned.length < rawLength * 0.1) {
+    console.warn(`[PDF] Cleaning removed ${rawLength - cleaned.length}/${rawLength} chars (${Math.round((1 - cleaned.length / rawLength) * 100)}%) — falling back to light cleaning`);
+    // Light cleaning: just collapse whitespace and trim
+    cleaned = text.replace(/\n{4,}/g, '\n\n\n').replace(/\s{10,}/g, '  ').replace(/\n{3,}/g, '\n\n').trim();
+  }
 
   const elapsed = Date.now() - startTime;
-  console.log(`[PDF] Extraction complete: ${text.length} chars via ${method} in ${elapsed}ms`);
+  console.log(`[PDF] Extraction complete: ${cleaned.length} chars via ${method} in ${elapsed}ms`);
 
-  return text;
+  return cleaned;
 }
 
 // --- PDF Metadata Extraction ---
