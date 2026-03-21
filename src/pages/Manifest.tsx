@@ -31,7 +31,7 @@ import './Manifest.css';
 
 type ViewMode = 'list' | 'detail' | 'upload';
 type LibraryLayout = 'compact' | 'grid';
-type SortOption = 'newest' | 'oldest' | 'name_asc' | 'name_desc' | 'has_extractions' | 'recently_viewed' | 'most_annotated';
+type SortOption = 'newest' | 'oldest' | 'name_asc' | 'name_desc' | 'has_extractions' | 'recently_viewed' | 'most_annotated' | 'failed_first';
 type GroupMode = 'by_folder' | 'all_books';
 
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
@@ -42,6 +42,7 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: 'name_desc', label: 'Name Z-A' },
   { value: 'has_extractions', label: 'Has Extractions' },
   { value: 'most_annotated', label: 'Most Annotated' },
+  { value: 'failed_first', label: 'Failed First' },
 ];
 
 // --- sessionStorage helpers (safe for incognito / storage-disabled browsers) ---
@@ -260,7 +261,7 @@ export default function Manifest() {
     setSortOption(opt);
     persistPreference('manifest_sort', opt);
     // Time-based sorts should show flat list so chronological order is visible
-    if ((opt === 'newest' || opt === 'recently_viewed') && groupMode === 'by_folder') {
+    if ((opt === 'newest' || opt === 'recently_viewed' || opt === 'failed_first') && groupMode === 'by_folder') {
       setGroupMode('all_books');
       persistPreference('manifest_group_mode', 'all_books');
     }
@@ -757,6 +758,12 @@ export default function Manifest() {
           const aScore = (a.extraction_status === 'completed' ? 1 : 0);
           const bScore = (b.extraction_status === 'completed' ? 1 : 0);
           if (aScore !== bScore) return bScore - aScore;
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        }
+        case 'failed_first': {
+          const aFailed = (a.processing_status === 'failed' || a.extraction_status === 'failed') ? 0 : 1;
+          const bFailed = (b.processing_status === 'failed' || b.extraction_status === 'failed') ? 0 : 1;
+          if (aFailed !== bFailed) return aFailed - bFailed;
           return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
         }
         case 'newest':
