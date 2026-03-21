@@ -282,6 +282,22 @@
   background: var(--color-warm-sand);
 }
 
+.manifest-card--draggable {
+  cursor: grab;
+}
+
+.manifest-card--draggable:active {
+  cursor: grabbing;
+}
+
 .manifest-row--selected {
   background: var(--color-warm-sand);
+}
+
+.manifest-row--draggable {
+  cursor: grab;
+}
+
+.manifest-row--draggable:active {
+  cursor: grabbing;
 }

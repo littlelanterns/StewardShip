@@ -56,10 +56,10 @@ export function ManifestItemCard({ item, onClick, compact, selectable, selected,
       <button
         ref={isDraggable ? setNodeRef : undefined}
         type="button"
-        className={`manifest-row${selected ? ' manifest-row--selected' : ''}${isDragging ? ' manifest-row--dragging' : ''}`}
+        className={`manifest-row${selected ? ' manifest-row--selected' : ''}${isDragging ? ' manifest-row--dragging' : ''}${isDraggable ? ' manifest-row--draggable' : ''}`}
         onClick={() => onClick(item)}
         {...(isDraggable ? { ...listeners, ...attributes } : {})}
-        style={isDragging ? { opacity: 0.4 } : undefined}
+        style={isDragging ? { opacity: 0.4, touchAction: 'none' } : isDraggable ? { touchAction: 'none' } : undefined}
       >
         {selectable && (
           <input
@@ -118,10 +118,10 @@ export function ManifestItemCard({ item, onClick, compact, selectable, selected,
   return (
     <Card
       ref={isDraggable ? setNodeRef : undefined}
-      className={`manifest-card${selected ? ' manifest-card--selected' : ''}`}
+      className={`manifest-card${selected ? ' manifest-card--selected' : ''}${isDraggable ? ' manifest-card--draggable' : ''}`}
       onClick={() => onClick(item)}
       {...(isDraggable ? { ...listeners, ...attributes } : {})}
-      style={isDragging ? { opacity: 0.4 } : undefined}
+      style={isDragging ? { opacity: 0.4, touchAction: 'none' } : isDraggable ? { touchAction: 'none' } : undefined}
     >
       <div className="manifest-card__content">
         <div className="manifest-card__top">

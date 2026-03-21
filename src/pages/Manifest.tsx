@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 
 import { Upload, MessageSquare, Loader, List, LayoutGrid, CheckSquare, FolderInput, X, Plus, Folder, Trash2, Search, Library, BookOpen, Sparkles } from 'lucide-react';
-import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core';
+import { DndContext, DragOverlay, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core';
 import { usePageContext } from '../hooks/usePageContext';
 import { useAuthContext } from '../contexts/AuthContext';
 import { useManifest } from '../hooks/useManifest';
@@ -182,6 +182,7 @@ export default function Manifest() {
   // DnD sensors for collections
   const dndSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
   );
 
   // Select mode (for folder assignment)
@@ -805,22 +806,39 @@ export default function Manifest() {
   const currentPrinciples: import('../lib/types').AIFrameworkPrinciple[] = currentFramework?.principles || [];
 
   // Collection drag-and-drop handlers
+  const wasDraggingRef = useRef(false);
+
   const handleDragStart = useCallback((event: DragStartEvent) => {
     setDragActiveId(event.active.id as string);
+    wasDraggingRef.current = true;
   }, []);
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     setDragActiveId(null);
     const { active, over } = event;
-    if (!over) return;
-    addToCollection(over.id as string, [active.id as string]);
+    if (over) {
+      addToCollection(over.id as string, [active.id as string]);
+    }
+    // Clear after a tick so the subsequent click event is suppressed
+    setTimeout(() => { wasDraggingRef.current = false; }, 0);
   }, [addToCollection]);
 
   const handleDragCancel = useCallback(() => {
     setDragActiveId(null);
+    setTimeout(() => { wasDraggingRef.current = false; }, 0);
   }, []);
 
   const draggedItem = dragActiveId ? items.find((i) => i.id === dragActiveId) : null;
+
+  // Drag-safe click handler: suppress onClick that fires after a drag ends
+  const handleCardClick = useCallback((item: ManifestItem) => {
+    if (wasDraggingRef.current) return;
+    if (selectMode) {
+      toggleSelectItem(item.id);
+    } else {
+      handleSelectItem(item);
+    }
+  }, [selectMode, toggleSelectItem, handleSelectItem]);
 
   // Collection action handlers
   const handleViewCollectionExtractions = useCallback((collectionId: string) => {
@@ -1424,7 +1442,7 @@ export default function Manifest() {
                     <ManifestItemCard
                       key={item.id}
                       item={item}
-                      onClick={selectMode ? () => toggleSelectItem(item.id) : handleSelectItem}
+                      onClick={handleCardClick}
                       compact={libraryLayout === 'compact'}
                       selectable={selectMode}
                       selected={selectedIds.has(item.id)}
@@ -1457,7 +1475,7 @@ export default function Manifest() {
                         <ManifestItemCard
                           key={item.id}
                           item={item}
-                          onClick={selectMode ? () => toggleSelectItem(item.id) : handleSelectItem}
+                          onClick={handleCardClick}
                           compact={libraryLayout === 'compact'}
                           selectable={selectMode}
                           selected={selectedIds.has(item.id)}

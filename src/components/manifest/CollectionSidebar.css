@@ -248,6 +248,13 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transition: all var(--transition-fast);
+}
+
+.collection-sidebar__detail--over {
+  background: var(--color-warm-sand);
+  outline: 2px dashed var(--color-cognac);
+  outline-offset: -2px;
 }
 
 .collection-sidebar__detail-header {

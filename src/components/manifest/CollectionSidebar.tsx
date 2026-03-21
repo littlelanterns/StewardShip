@@ -88,6 +88,24 @@ function DroppableCollection({
   );
 }
 
+function DroppableDetailView({
+  collectionId,
+  children,
+}: {
+  collectionId: string;
+  children: React.ReactNode;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: collectionId });
+  return (
+    <div
+      ref={setNodeRef}
+      className={`collection-sidebar__detail${isOver ? ' collection-sidebar__detail--over' : ''}`}
+    >
+      {children}
+    </div>
+  );
+}
+
 export function CollectionSidebar({
   collections,
   collectionItemsMap,
@@ -166,9 +184,9 @@ export function CollectionSidebar({
         </div>
       )}
 
-      {/* Collection detail view */}
+      {/* Collection detail view — also a drop target */}
       {activeCollection ? (
-        <div className="collection-sidebar__detail">
+        <DroppableDetailView collectionId={activeCollection.id}>
           <div className="collection-sidebar__detail-header">
             <button
               type="button"
@@ -281,7 +299,7 @@ export function CollectionSidebar({
               )}
             </div>
           )}
-        </div>
+        </DroppableDetailView>
       ) : (
         <>
           {/* Collection list */}
