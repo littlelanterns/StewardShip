@@ -959,3 +959,23 @@
   text-align: center;
   padding: var(--spacing-xs) 0;
 }
+
+/* Highlight animation for search result navigation */
+.extraction-item--highlighted {
+  animation: extraction-highlight-flash 2.5s ease-out;
+}
+
+@keyframes extraction-highlight-flash {
+  0% {
+    box-shadow: 0 0 0 3px var(--color-cognac);
+    background: color-mix(in srgb, var(--color-cognac) 12%, transparent);
+  }
+  30% {
+    box-shadow: 0 0 0 3px var(--color-cognac);
+    background: color-mix(in srgb, var(--color-cognac) 12%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+    background: transparent;
+  }
+}

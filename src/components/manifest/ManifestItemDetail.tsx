@@ -120,6 +120,10 @@ interface ManifestItemDetailProps {
   // Generate Tags
   onGenerateTags?: () => Promise<void>;
   generatingTags?: boolean;
+  // Deep-link from search
+  initialTab?: string | null;
+  highlightItemId?: string | null;
+  onHighlightComplete?: () => void;
 }
 
 const FILE_TYPE_ICONS = {
@@ -212,6 +216,9 @@ export function ManifestItemDetail({
   onOpenDiscussion,
   onGenerateTags,
   generatingTags,
+  initialTab,
+  highlightItemId,
+  onHighlightComplete,
   childParts,
   parentItem,
   onSelectPart,
@@ -798,6 +805,9 @@ export function ManifestItemDetail({
             onQuestionReRun={onQuestionReRun}
             extractionProgress={extractionProgress}
             onFrameworkReRun={onFrameworkReRun}
+            initialTab={initialTab as 'summary' | 'frameworks' | 'action_steps' | 'mast_content' | 'questions' | null | undefined}
+            highlightItemId={highlightItemId}
+            onHighlightComplete={onHighlightComplete}
           />
         </section>
       )}

@@ -20,7 +20,9 @@ import { AdminBookManager } from '../components/manifest/AdminBookManager';
 import { CollectionSidebar } from '../components/manifest/CollectionSidebar';
 import { CollectionModal } from '../components/manifest/CollectionModal';
 import { ExtractionsView } from '../components/manifest/ExtractionsView';
-import { SemanticSearch } from '../components/manifest/SemanticSearch';
+import { SemanticSearch, INITIAL_SEARCH_STATE } from '../components/manifest/SemanticSearch';
+import type { SearchState } from '../components/manifest/SemanticSearch';
+import { SearchFab } from '../components/manifest/SearchFab';
 import { ManifestSidebar } from '../components/manifest/ManifestSidebar';
 import { useManifestCollections } from '../hooks/useManifestCollections';
 import { CollapsibleGroup } from '../components/shared/CollapsibleGroup';
@@ -120,6 +122,9 @@ export default function Manifest() {
   const [titleSearch, setTitleSearch] = useState('');
   const [continueDismissed, setContinueDismissed] = useState(false);
   const [showSemanticSearch, setShowSemanticSearch] = useState(false);
+  const searchStateRef = useRef<SearchState>({ ...INITIAL_SEARCH_STATE });
+  const [highlightItemId, setHighlightItemId] = useState<string | null>(null);
+  const [initialExtractionTab, setInitialExtractionTab] = useState<string | null>(null);
   const [refreshingAllKeyPoints, setRefreshingAllKeyPoints] = useState(false);
   const [refreshAllProgress, setRefreshAllProgress] = useState('');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
@@ -403,11 +408,57 @@ export default function Manifest() {
     }
   }, [fetchItemDetail, extraction, fetchParts]);
 
+  // Source table → extraction tab mapping
+  const SOURCE_TABLE_TO_TAB: Record<string, string> = {
+    manifest_summaries: 'summary',
+    ai_framework_principles: 'frameworks',
+    manifest_action_steps: 'action_steps',
+    manifest_declarations: 'mast_content',
+    manifest_questions: 'questions',
+  };
+
+  const handleNavigateToResult = useCallback(async (manifestItemId: string, sourceTable: string, recordId: string) => {
+    // Map source table to tab
+    const tab = SOURCE_TABLE_TO_TAB[sourceTable] || 'summary';
+    setInitialExtractionTab(tab);
+    setHighlightItemId(recordId);
+    // Close search modal
+    setShowSemanticSearch(false);
+
+    // Find the item in loaded items or fetch it
+    const existing = items.find((i) => i.id === manifestItemId);
+    if (existing) {
+      await handleSelectItem(existing);
+    } else {
+      // Item not in current list — fetch directly
+      const detail = await fetchItemDetail(manifestItemId);
+      if (detail) {
+        setSelectedItem(detail);
+        setViewMode('detail');
+        ssSet('manifest-selected-item', detail.id);
+        ssSet('manifest-selected-title', detail.title);
+        if (detail.processing_status === 'completed') {
+          extraction.fetchSummaries(detail.id);
+          extraction.fetchDeclarations(detail.id);
+          extraction.fetchActionSteps(detail.id);
+          extraction.fetchQuestions(detail.id);
+        }
+      }
+    }
+  }, [items, handleSelectItem, fetchItemDetail, extraction]);
+
+  const handleHighlightComplete = useCallback(() => {
+    setHighlightItemId(null);
+    setInitialExtractionTab(null);
+  }, []);
+
   const handleBack = useCallback(() => {
     setSelectedItem(null);
     setParentItem(null);
     setChildParts([]);
     setViewMode('list');
+    setHighlightItemId(null);
+    setInitialExtractionTab(null);
     ssRemove('manifest-selected-item');
     ssRemove('manifest-selected-title');
     fetchItems();
@@ -1063,6 +1114,10 @@ export default function Manifest() {
           // Generate Tags
           onGenerateTags={currentFramework?.principles?.length ? handleGenerateTags : undefined}
           generatingTags={generatingTags}
+          // Deep-link from search
+          initialTab={initialExtractionTab}
+          highlightItemId={highlightItemId}
+          onHighlightComplete={handleHighlightComplete}
           // Parts (split books)
           childParts={childParts}
           parentItem={parentItem}
@@ -1775,11 +1830,18 @@ export default function Manifest() {
         );
       })()}
 
+      {/* Floating Search FAB — visible on all views */}
+      <SearchFab onClick={() => setShowSemanticSearch(true)} />
+
       {/* Semantic Search Modal Overlay */}
       {showSemanticSearch && (
         <div className="manifest-page__search-modal-backdrop" onClick={() => setShowSemanticSearch(false)}>
           <div className="manifest-page__search-modal" onClick={(e) => e.stopPropagation()}>
-            <SemanticSearch onClose={() => setShowSemanticSearch(false)} />
+            <SemanticSearch
+              onClose={() => setShowSemanticSearch(false)}
+              onNavigateToResult={handleNavigateToResult}
+              persistedState={searchStateRef}
+            />
           </div>
         </div>
       )}

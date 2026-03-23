@@ -272,7 +272,7 @@ function SummaryTab({
             {!isCollapsed && (
               <div className="extraction-tab__section-items">
                 {items.map((item) => (
-                  <div key={item.id} className={itemClass(item.content_type, !!item.is_from_go_deeper, deletingIds.has(item.id), !!item.is_hearted)}>
+                  <div key={item.id} data-record-id={item.id} className={itemClass(item.content_type, !!item.is_from_go_deeper, deletingIds.has(item.id), !!item.is_hearted)}>
                     <TypeBadge contentType={item.content_type} label={item.content_type.replace(/_/g, ' ')} />
                     {item.is_from_go_deeper && <Sparkles size={12} className="extraction-item__deeper-badge" />}
 
@@ -545,7 +545,7 @@ function FrameworksTab({
             {!isCollapsed && (
               <div className="extraction-tab__section-items">
                 {items.map((item) => (
-                  <div key={item.id} className={itemClass('framework', !!item.is_from_go_deeper, deletingIds.has(item.id), !!item.is_hearted)}>
+                  <div key={item.id} data-record-id={item.id} className={itemClass('framework', !!item.is_from_go_deeper, deletingIds.has(item.id), !!item.is_hearted)}>
                     <p className="extraction-item__text">
                       {item.is_from_go_deeper && <Sparkles size={12} className="extraction-item__deeper-icon" />}
                       {item.text}
@@ -808,7 +808,7 @@ function ActionStepsTab({
             {!isCollapsed && (
               <div className="extraction-tab__section-items">
                 {items.map((item) => (
-                  <div key={item.id} className={itemClass(item.content_type || 'framework', !!item.is_from_go_deeper, deletingIds.has(item.id), !!item.is_hearted)}>
+                  <div key={item.id} data-record-id={item.id} className={itemClass(item.content_type || 'framework', !!item.is_from_go_deeper, deletingIds.has(item.id), !!item.is_hearted)}>
                     <div className="extraction-item__type-badge">
                       {ACTION_STEP_CONTENT_TYPE_LABELS[item.content_type as ActionStepContentType] || item.content_type.replace(/_/g, ' ')}
                     </div>
@@ -1123,7 +1123,7 @@ function MastContentTab({
             {!isCollapsed && (
               <div className="extraction-tab__section-items">
                 {items.map((item) => (
-                  <div key={item.id} className={itemClass('declaration', !!item.is_from_go_deeper, deletingIds.has(item.id), !!item.is_hearted)}>
+                  <div key={item.id} data-record-id={item.id} className={itemClass('declaration', !!item.is_from_go_deeper, deletingIds.has(item.id), !!item.is_hearted)}>
                     <div className="extraction-item__declaration-meta">
                       {item.value_name && (
                         <span className="extraction-item__value-name">{item.value_name}</span>
@@ -1442,7 +1442,7 @@ function QuestionsTab({
             {!isCollapsed && (
               <div className="extraction-tab__section-items">
                 {items.map((item) => (
-                  <div key={item.id} className={itemClass(item.content_type || 'framework', !!item.is_from_go_deeper, deletingIds.has(item.id), !!item.is_hearted)}>
+                  <div key={item.id} data-record-id={item.id} className={itemClass(item.content_type || 'framework', !!item.is_from_go_deeper, deletingIds.has(item.id), !!item.is_hearted)}>
                     <div className="extraction-item__type-badge">
                       {QUESTION_CONTENT_TYPE_LABELS[item.content_type as QuestionContentType] || item.content_type.replace(/_/g, ' ')}
                     </div>
@@ -1616,6 +1616,10 @@ interface ExtractionTabsProps {
   onSendQuestionToPrompts: (id: string) => void;
   onQuestionGoDeeper: (sectionTitle: string | undefined, existingItems: string[], sectionIndex?: number) => void;
   onQuestionReRun: (sectionTitle?: string) => void;
+  // Deep-link from search
+  initialTab?: TabType | null;
+  highlightItemId?: string | null;
+  onHighlightComplete?: () => void;
 }
 
 export function ExtractionTabs({
@@ -1660,6 +1664,9 @@ export function ExtractionTabs({
   onSendQuestionToPrompts,
   onQuestionGoDeeper,
   onQuestionReRun,
+  initialTab,
+  highlightItemId,
+  onHighlightComplete,
 }: ExtractionTabsProps) {
   // --- sessionStorage helpers ---
   const ssGet = (key: string): string | null => { try { return sessionStorage.getItem(key); } catch { return null; } };
@@ -1689,6 +1696,35 @@ export function ExtractionTabs({
     });
   }, []);
   const setViewMode = useCallback((vm: ViewMode) => { setViewModeRaw(vm); ssSet('manifest-extraction-view', vm); }, []);
+
+  // Switch tab from deep-link navigation (search result click)
+  useEffect(() => {
+    if (initialTab && initialTab !== activeTab) {
+      setActiveTab(initialTab);
+    }
+  // Only trigger when initialTab changes, not activeTab
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialTab]);
+
+  // Scroll to and highlight a specific extraction item from search
+  useEffect(() => {
+    if (!highlightItemId) return;
+    // Small delay to let the tab switch and render complete
+    const timer = setTimeout(() => {
+      const el = document.querySelector(`[data-record-id="${highlightItemId}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('extraction-item--highlighted');
+        setTimeout(() => {
+          el.classList.remove('extraction-item--highlighted');
+          onHighlightComplete?.();
+        }, 2500);
+      } else {
+        onHighlightComplete?.();
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [highlightItemId, onHighlightComplete]);
 
   // Audience toggle — original vs study guides (generic or per-child)
   const [audience, setAudience] = useState<string>('original');
@@ -2322,7 +2358,7 @@ function ChapterView({
                   <div className="chapter-view__type-group">
                     <div className="chapter-view__type-label">Summary</div>
                     {chSummaries.map((item) => (
-                      <div key={item.id} className={itemClass(item.content_type || 'framework', !!item.is_from_go_deeper, false, !!item.is_hearted)}>
+                      <div key={item.id} data-record-id={item.id} className={itemClass(item.content_type || 'framework', !!item.is_from_go_deeper, false, !!item.is_hearted)}>
                         <TypeBadge contentType={item.content_type} label={item.content_type.replace(/_/g, ' ')} />
                         <p className="extraction-item__text">{item.text}</p>
                         <ItemTags tags={item.tags} />
@@ -2378,7 +2414,7 @@ function ChapterView({
                   <div className="chapter-view__type-group">
                     <div className="chapter-view__type-label">Frameworks</div>
                     {chPrinciples.map((item) => (
-                      <div key={item.id} className={itemClass('framework', !!item.is_from_go_deeper, false, !!item.is_hearted)}>
+                      <div key={item.id} data-record-id={item.id} className={itemClass('framework', !!item.is_from_go_deeper, false, !!item.is_hearted)}>
                         <TypeBadge contentType="framework" label="principle" />
                         <p className="extraction-item__text">{item.text}</p>
                         <div className="extraction-item__actions">
@@ -2425,7 +2461,7 @@ function ChapterView({
                   <div className="chapter-view__type-group">
                     <div className="chapter-view__type-label">Action Steps</div>
                     {chActionSteps.map((item) => (
-                      <div key={item.id} className={itemClass(item.content_type || 'framework', !!item.is_from_go_deeper, false, !!item.is_hearted)}>
+                      <div key={item.id} data-record-id={item.id} className={itemClass(item.content_type || 'framework', !!item.is_from_go_deeper, false, !!item.is_hearted)}>
                         <TypeBadge contentType={item.content_type} label={ACTION_STEP_CONTENT_TYPE_LABELS[item.content_type as ActionStepContentType] || item.content_type.replace(/_/g, ' ')} />
                         <p className="extraction-item__text">{item.text}</p>
                         <ItemTags tags={item.tags} />
@@ -2478,7 +2514,7 @@ function ChapterView({
                   <div className="chapter-view__type-group">
                     <div className="chapter-view__type-label">Mast Content</div>
                     {chDeclarations.map((item) => (
-                      <div key={item.id} className={itemClass('declaration', !!item.is_from_go_deeper, false, !!item.is_hearted)}>
+                      <div key={item.id} data-record-id={item.id} className={itemClass('declaration', !!item.is_from_go_deeper, false, !!item.is_hearted)}>
                         <div className="extraction-item__declaration-meta">
                           {item.value_name && <span className="extraction-item__value-name">{item.value_name}</span>}
                           <span className="extraction-item__style-label">{DECLARATION_STYLE_LABELS[item.declaration_style]}</span>
@@ -2536,7 +2572,7 @@ function ChapterView({
                   <div className="chapter-view__type-group">
                     <div className="chapter-view__type-label">Questions</div>
                     {chQuestions.map((item) => (
-                      <div key={item.id} className={itemClass(item.content_type || 'framework', !!item.is_from_go_deeper, false, !!item.is_hearted)}>
+                      <div key={item.id} data-record-id={item.id} className={itemClass(item.content_type || 'framework', !!item.is_from_go_deeper, false, !!item.is_hearted)}>
                         <div className="extraction-item__type-badge">
                           {QUESTION_CONTENT_TYPE_LABELS[item.content_type as QuestionContentType] || item.content_type.replace(/_/g, ' ')}
                         </div>

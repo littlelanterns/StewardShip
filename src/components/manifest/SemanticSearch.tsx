@@ -1,21 +1,39 @@
-import { useState, useCallback, useRef } from 'react';
-import { Search, X, Loader, BookOpen, Sparkles, Download } from 'lucide-react';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { Search, X, Loader, BookOpen, Sparkles, Download, Clock, ChevronRight, Info } from 'lucide-react';
 import { useAuthContext } from '../../contexts/AuthContext';
 import { searchManifestContent } from '../../lib/rag';
 import type { ManifestContentMatch } from '../../lib/rag';
+import { supabase } from '../../lib/supabase';
 import { Button } from '../shared';
 import './SemanticSearch.css';
 
-type SearchMode = 'any' | 'together' | 'separate';
+export type SearchMode = 'any' | 'together' | 'separate';
 type GroupBy = 'relevance' | 'book';
 
-// Restore from sessionStorage
-function ssGet(key: string): string | null { try { return sessionStorage.getItem(key); } catch { return null; } }
-function ssSet(key: string, v: string) { try { sessionStorage.setItem(key, v); } catch { /* */ } }
+export interface SearchState {
+  query: string;
+  mode: SearchMode;
+  groupBy: GroupBy;
+  results: ManifestContentMatch[] | null;
+  separateResults: Map<string, ManifestContentMatch[]> | null;
+  resultCount: number;
+}
 
-// Parse comma/semicolon/newline separated terms
-function parseTerms(input: string): string[] {
-  return input.split(/[,;\n]+/).map((t) => t.trim()).filter(Boolean);
+export const INITIAL_SEARCH_STATE: SearchState = {
+  query: '',
+  mode: 'any',
+  groupBy: 'relevance',
+  results: null,
+  separateResults: null,
+  resultCount: 0,
+};
+
+interface SearchHistoryEntry {
+  id: string;
+  query: string;
+  mode: string;
+  result_count: number;
+  created_at: string;
 }
 
 // Source table → human label
@@ -27,70 +45,145 @@ const SOURCE_LABELS: Record<string, string> = {
   manifest_questions: 'Question',
 };
 
-interface SemanticSearchProps {
-  onClose: () => void;
+// Parse comma/semicolon/newline separated terms
+function parseTerms(input: string): string[] {
+  return input.split(/[,;\n]+/).map((t) => t.trim()).filter(Boolean);
 }
 
-export function SemanticSearch({ onClose }: SemanticSearchProps) {
+function relativeTime(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString();
+}
+
+const DIRECTIONS_KEY = 'manifest-search-directions-dismissed';
+
+interface SemanticSearchProps {
+  onClose: () => void;
+  onNavigateToResult?: (manifestItemId: string, sourceTable: string, recordId: string) => void;
+  persistedState?: React.MutableRefObject<SearchState>;
+}
+
+export function SemanticSearch({ onClose, onNavigateToResult, persistedState }: SemanticSearchProps) {
   const { user } = useAuthContext();
-  const [query, setQuery] = useState('');
-  const [mode, setMode] = useState<SearchMode>(() => {
-    const stored = ssGet('manifest-semantic-mode');
-    if (stored === 'any' || stored === 'together' || stored === 'separate') return stored;
-    return 'any';
-  });
-  const [groupBy, setGroupBy] = useState<GroupBy>('relevance');
+
+  // Initialize from persisted state or defaults
+  const initial = persistedState?.current || INITIAL_SEARCH_STATE;
+  const [query, setQuery] = useState(initial.query);
+  const [mode, setMode] = useState<SearchMode>(initial.mode);
+  const [groupBy, setGroupBy] = useState<GroupBy>(initial.groupBy);
   const [searching, setSearching] = useState(false);
-  const [results, setResults] = useState<ManifestContentMatch[] | null>(null);
-  const [separateResults, setSeparateResults] = useState<Map<string, ManifestContentMatch[]> | null>(null);
+  const [results, setResults] = useState<ManifestContentMatch[] | null>(initial.results);
+  const [separateResults, setSeparateResults] = useState<Map<string, ManifestContentMatch[]> | null>(initial.separateResults);
   const [error, setError] = useState<string | null>(null);
-  const [resultCount, setResultCount] = useState(0);
+  const [resultCount, setResultCount] = useState(initial.resultCount);
   const searchIdRef = useRef(0);
+
+  // Search history
+  const [history, setHistory] = useState<SearchHistoryEntry[]>([]);
+  const [showHistory, setShowHistory] = useState(true);
+  const historyFetchedRef = useRef(false);
+
+  // Directions card
+  const [showDirections, setShowDirections] = useState(() => {
+    try { return !localStorage.getItem(DIRECTIONS_KEY); } catch { return true; }
+  });
+
+  // Sync state back to persisted ref on every change
+  useEffect(() => {
+    if (!persistedState) return;
+    persistedState.current = { query, mode, groupBy, results, separateResults, resultCount };
+  }, [query, mode, groupBy, results, separateResults, resultCount, persistedState]);
+
+  // Fetch search history on mount
+  useEffect(() => {
+    if (!user || historyFetchedRef.current) return;
+    historyFetchedRef.current = true;
+    supabase
+      .from('manifest_search_history')
+      .select('id, query, mode, result_count, created_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(15)
+      .then(({ data }) => {
+        if (data) setHistory(data);
+      });
+  }, [user]);
+
+  const saveToHistory = useCallback((q: string, m: string, count: number) => {
+    if (!user) return;
+    supabase
+      .from('manifest_search_history')
+      .insert({ user_id: user.id, query: q, mode: m, result_count: count })
+      .select('id, query, mode, result_count, created_at')
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setHistory((prev) => [data, ...prev].slice(0, 15));
+        }
+      });
+  }, [user]);
+
+  const deleteHistoryItem = useCallback((id: string) => {
+    setHistory((prev) => prev.filter((h) => h.id !== id));
+    supabase.from('manifest_search_history').delete().eq('id', id).then();
+  }, []);
+
+  const clearHistory = useCallback(() => {
+    if (!user) return;
+    setHistory([]);
+    supabase.from('manifest_search_history').delete().eq('user_id', user.id).then();
+  }, [user]);
 
   const handleModeChange = useCallback((m: SearchMode) => {
     setMode(m);
-    ssSet('manifest-semantic-mode', m);
   }, []);
 
-  const handleSearch = useCallback(async () => {
-    if (!user || !query.trim()) return;
+  const handleSearch = useCallback(async (overrideQuery?: string, overrideMode?: SearchMode) => {
+    const q = overrideQuery ?? query;
+    const m = overrideMode ?? mode;
+    if (!user || !q.trim()) return;
     const id = ++searchIdRef.current;
     setSearching(true);
     setError(null);
     setResults(null);
     setSeparateResults(null);
+    setShowHistory(false);
 
     try {
-      if (mode === 'together' || parseTerms(query).length <= 1) {
-        // Single query
-        const matches = await searchManifestContent(query.trim(), user.id, { matchThreshold: 0.25, matchCount: 30 });
+      if (m === 'together' || parseTerms(q).length <= 1) {
+        const matches = await searchManifestContent(q.trim(), user.id, { matchThreshold: 0.25, matchCount: 30 });
         if (id !== searchIdRef.current) return;
         setResults(matches);
         setResultCount(matches.length);
-      } else if (mode === 'any') {
-        // Search each term, merge + deduplicate, rank by match count + similarity
-        const terms = parseTerms(query);
+        saveToHistory(q.trim(), m, matches.length);
+      } else if (m === 'any') {
+        const terms = parseTerms(q);
         const allMatches: (ManifestContentMatch & { matchedTerms: string[] })[] = [];
-        const seenIds = new Map<string, number>(); // record_id → index in allMatches
+        const seenIds = new Map<string, number>();
 
         for (const term of terms) {
           const matches = await searchManifestContent(term, user.id, { matchThreshold: 0.25, matchCount: 20 });
           if (id !== searchIdRef.current) return;
-          for (const m of matches) {
-            const existing = seenIds.get(m.record_id);
+          for (const match of matches) {
+            const existing = seenIds.get(match.record_id);
             if (existing !== undefined) {
-              // Already seen — add term and boost similarity
               const e = allMatches[existing];
               e.matchedTerms.push(term);
-              e.similarity = Math.max(e.similarity, m.similarity);
+              e.similarity = Math.max(e.similarity, match.similarity);
             } else {
-              seenIds.set(m.record_id, allMatches.length);
-              allMatches.push({ ...m, matchedTerms: [term] });
+              seenIds.set(match.record_id, allMatches.length);
+              allMatches.push({ ...match, matchedTerms: [term] });
             }
           }
         }
 
-        // Sort: more matched terms first, then by similarity
         allMatches.sort((a, b) => {
           if (a.matchedTerms.length !== b.matchedTerms.length) return b.matchedTerms.length - a.matchedTerms.length;
           return b.similarity - a.similarity;
@@ -98,9 +191,9 @@ export function SemanticSearch({ onClose }: SemanticSearchProps) {
 
         setResults(allMatches);
         setResultCount(allMatches.length);
+        saveToHistory(q.trim(), m, allMatches.length);
       } else {
-        // Separate mode: group results by term
-        const terms = parseTerms(query);
+        const terms = parseTerms(q);
         const map = new Map<string, ManifestContentMatch[]>();
         let total = 0;
 
@@ -113,16 +206,46 @@ export function SemanticSearch({ onClose }: SemanticSearchProps) {
 
         setSeparateResults(map);
         setResultCount(total);
+        saveToHistory(q.trim(), 'separate', total);
       }
     } catch {
       if (id === searchIdRef.current) setError('Search failed. Try again.');
     } finally {
       if (id === searchIdRef.current) setSearching(false);
     }
-  }, [user, query, mode]);
+  }, [user, query, mode, saveToHistory]);
+
+  const handleRerunHistory = useCallback((entry: SearchHistoryEntry) => {
+    const m = (entry.mode === 'any' || entry.mode === 'together' || entry.mode === 'separate') ? entry.mode as SearchMode : 'any';
+    setQuery(entry.query);
+    setMode(m);
+    // Trigger search with the history values directly
+    handleSearch(entry.query, m);
+  }, [handleSearch]);
+
+  const handleResultClick = useCallback((match: ManifestContentMatch) => {
+    if (onNavigateToResult) {
+      onNavigateToResult(match.manifest_item_id, match.source_table, match.record_id);
+    }
+  }, [onNavigateToResult]);
+
+  const dismissDirections = useCallback(() => {
+    setShowDirections(false);
+    try { localStorage.setItem(DIRECTIONS_KEY, 'true'); } catch { /* */ }
+  }, []);
 
   const terms = parseTerms(query);
   const showTermChips = (mode === 'any' || mode === 'separate') && terms.length > 1;
+
+  const hasResults = results !== null || separateResults !== null;
+  const showHistorySection = showHistory && !hasResults && !searching && history.length > 0;
+
+  // Count frequency of queries
+  const queryFrequency = new Map<string, number>();
+  for (const h of history) {
+    const key = h.query.toLowerCase();
+    queryFrequency.set(key, (queryFrequency.get(key) || 0) + 1);
+  }
 
   const exportResults = useCallback(() => {
     let md = `# Search Results: "${query}"\n\n`;
@@ -178,6 +301,32 @@ export function SemanticSearch({ onClose }: SemanticSearchProps) {
         </button>
       </div>
 
+      {/* Directions card */}
+      {showDirections && (
+        <div className="semantic-search__directions">
+          <div className="semantic-search__directions-icon">
+            <Info size={14} />
+          </div>
+          <div className="semantic-search__directions-body">
+            <p className="semantic-search__directions-text">
+              This searches the meaning of your extracted book content, not just keywords.
+              Try natural language like "dealing with pride" or "how to listen better."
+            </p>
+            <p className="semantic-search__directions-text">
+              <strong>Any of these</strong> — separate terms with commas to find content matching any term.{' '}
+              <strong>All together</strong> — searches your full phrase as one concept.{' '}
+              <strong>Show each separately</strong> — groups results by term so you can compare.
+            </p>
+            <p className="semantic-search__directions-text">
+              Click any result to jump directly to that item in its book.
+            </p>
+          </div>
+          <button type="button" className="semantic-search__directions-dismiss" onClick={dismissDirections}>
+            Got it
+          </button>
+        </div>
+      )}
+
       {/* Search input */}
       <div className="semantic-search__input-row">
         <div className="semantic-search__input-wrap">
@@ -191,12 +340,12 @@ export function SemanticSearch({ onClose }: SemanticSearchProps) {
             onKeyDown={(e) => { if (e.key === 'Enter' && query.trim()) handleSearch(); }}
           />
           {query && (
-            <button type="button" className="semantic-search__input-clear" onClick={() => { setQuery(''); setResults(null); setSeparateResults(null); }}>
+            <button type="button" className="semantic-search__input-clear" onClick={() => { setQuery(''); setResults(null); setSeparateResults(null); setShowHistory(true); }}>
               <X size={12} />
             </button>
           )}
         </div>
-        <Button size="sm" onClick={handleSearch} disabled={!query.trim() || searching}>
+        <Button size="sm" onClick={() => handleSearch()} disabled={!query.trim() || searching}>
           {searching ? <Loader size={14} className="semantic-search__spinner" /> : 'Search'}
         </Button>
       </div>
@@ -238,6 +387,49 @@ export function SemanticSearch({ onClose }: SemanticSearchProps) {
       {/* Error */}
       {error && <div className="semantic-search__error">{error}</div>}
 
+      {/* Search history */}
+      {showHistorySection && (
+        <div className="semantic-search__history">
+          <div className="semantic-search__history-header">
+            <span className="semantic-search__history-title">
+              <Clock size={13} /> Recent Searches
+            </span>
+            <button type="button" className="semantic-search__history-clear" onClick={clearHistory}>
+              Clear All
+            </button>
+          </div>
+          <div className="semantic-search__history-list">
+            {history.map((entry) => {
+              const freq = queryFrequency.get(entry.query.toLowerCase()) || 1;
+              return (
+                <div key={entry.id} className="semantic-search__history-item" onClick={() => handleRerunHistory(entry)}>
+                  <div className="semantic-search__history-item-main">
+                    <span className="semantic-search__history-query">{entry.query}</span>
+                    <div className="semantic-search__history-meta">
+                      <span className="semantic-search__history-mode">{entry.mode}</span>
+                      <span className="semantic-search__history-count">{entry.result_count} results</span>
+                      {freq > 1 && <span className="semantic-search__history-freq">{freq}x</span>}
+                      <span className="semantic-search__history-time">{relativeTime(entry.created_at)}</span>
+                    </div>
+                  </div>
+                  <div className="semantic-search__history-actions">
+                    <button
+                      type="button"
+                      className="semantic-search__history-delete"
+                      onClick={(e) => { e.stopPropagation(); deleteHistoryItem(entry.id); }}
+                      title="Remove"
+                    >
+                      <X size={12} />
+                    </button>
+                    <ChevronRight size={14} className="semantic-search__history-arrow" />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Results header */}
       {(results || separateResults) && !searching && (
         <div className="semantic-search__results-header">
@@ -277,10 +469,15 @@ export function SemanticSearch({ onClose }: SemanticSearchProps) {
             <div className="semantic-search__empty">No results found. Try different terms or a broader query.</div>
           ) : groupBy === 'relevance' ? (
             results.map((m) => (
-              <ResultCard key={`${m.source_table}-${m.record_id}`} match={m} matchedTerms={'matchedTerms' in m ? (m as { matchedTerms: string[] }).matchedTerms : undefined} />
+              <ResultCard
+                key={`${m.source_table}-${m.record_id}`}
+                match={m}
+                matchedTerms={'matchedTerms' in m ? (m as { matchedTerms: string[] }).matchedTerms : undefined}
+                onClick={handleResultClick}
+                clickable={!!onNavigateToResult}
+              />
             ))
           ) : (
-            // Group by book
             (() => {
               const bookGroups = new Map<string, ManifestContentMatch[]>();
               for (const m of results) {
@@ -294,7 +491,12 @@ export function SemanticSearch({ onClose }: SemanticSearchProps) {
                     <BookOpen size={14} /> {matches[0].book_title}
                   </div>
                   {matches.map((m) => (
-                    <ResultCard key={`${m.source_table}-${m.record_id}`} match={m} />
+                    <ResultCard
+                      key={`${m.source_table}-${m.record_id}`}
+                      match={m}
+                      onClick={handleResultClick}
+                      clickable={!!onNavigateToResult}
+                    />
                   ))}
                 </div>
               ));
@@ -315,7 +517,12 @@ export function SemanticSearch({ onClose }: SemanticSearchProps) {
                 <div className="semantic-search__empty">No results for this term.</div>
               ) : (
                 matches.map((m) => (
-                  <ResultCard key={`${m.source_table}-${m.record_id}`} match={m} />
+                  <ResultCard
+                    key={`${m.source_table}-${m.record_id}`}
+                    match={m}
+                    onClick={handleResultClick}
+                    clickable={!!onNavigateToResult}
+                  />
                 ))
               )}
             </div>
@@ -334,9 +541,20 @@ export function SemanticSearch({ onClose }: SemanticSearchProps) {
   );
 }
 
-function ResultCard({ match, matchedTerms }: { match: ManifestContentMatch; matchedTerms?: string[] }) {
+function ResultCard({ match, matchedTerms, onClick, clickable }: {
+  match: ManifestContentMatch;
+  matchedTerms?: string[];
+  onClick?: (match: ManifestContentMatch) => void;
+  clickable?: boolean;
+}) {
   return (
-    <div className="semantic-search__result">
+    <div
+      className={`semantic-search__result${clickable ? ' semantic-search__result--clickable' : ''}`}
+      onClick={clickable ? () => onClick?.(match) : undefined}
+      role={clickable ? 'button' : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onKeyDown={clickable ? (e) => { if (e.key === 'Enter') onClick?.(match); } : undefined}
+    >
       <div className="semantic-search__result-meta">
         <span className="semantic-search__result-type">{SOURCE_LABELS[match.source_table] || match.source_table}</span>
         <span className="semantic-search__result-similarity">{Math.round(match.similarity * 100)}%</span>
@@ -347,6 +565,7 @@ function ResultCard({ match, matchedTerms }: { match: ManifestContentMatch; matc
       <p className="semantic-search__result-text">{match.content_preview}</p>
       <div className="semantic-search__result-book">
         <BookOpen size={11} /> {match.book_title}
+        {clickable && <ChevronRight size={12} className="semantic-search__result-go" />}
       </div>
     </div>
   );
