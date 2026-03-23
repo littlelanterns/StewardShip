@@ -8,6 +8,7 @@ import type { SearchState } from '../components/manifest/SemanticSearch';
 import { SearchFab } from '../components/manifest/SearchFab';
 import { FeatureGuide } from '../components/shared';
 import { FEATURE_GUIDES } from '../lib/featureGuides';
+import './Manifest.css';
 
 // Source table → extraction tab mapping
 const SOURCE_TABLE_TO_TAB: Record<string, string> = {

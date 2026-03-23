@@ -9,8 +9,8 @@ interface SearchFabProps {
 const SS_KEY = 'manifest-search-fab-pos';
 
 function getDefaultPos(): { x: number; y: number } {
-  // Bottom-right, above the main FAB
-  return { x: window.innerWidth - 64, y: window.innerHeight - 160 };
+  // Top-left, below the header area
+  return { x: 12, y: 70 };
 }
 
 function loadPos(): { x: number; y: number } {

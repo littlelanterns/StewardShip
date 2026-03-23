@@ -1706,25 +1706,7 @@ export function ExtractionTabs({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialTab]);
 
-  // Scroll to and highlight a specific extraction item from search
-  useEffect(() => {
-    if (!highlightItemId) return;
-    // Small delay to let the tab switch and render complete
-    const timer = setTimeout(() => {
-      const el = document.querySelector(`[data-record-id="${highlightItemId}"]`);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        el.classList.add('extraction-item--highlighted');
-        setTimeout(() => {
-          el.classList.remove('extraction-item--highlighted');
-          onHighlightComplete?.();
-        }, 2500);
-      } else {
-        onHighlightComplete?.();
-      }
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [highlightItemId, onHighlightComplete]);
+  // Scroll-to-highlight effect is placed after abridged state is declared (see below)
 
   // Audience toggle — original vs study guides (generic or per-child)
   const [audience, setAudience] = useState<string>('original');
@@ -1776,6 +1758,52 @@ export function ExtractionTabs({
   const origToggleAbridged = toggleAbridged;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const toggleAbridgedWrapped = useCallback(() => { origToggleAbridged(); setExpandedAbridgedSections(new Set()); }, [origToggleAbridged]);
+
+  // Scroll to and highlight a specific extraction item from search.
+  // Must be after abridged state so we can expand the containing section.
+  useEffect(() => {
+    if (!highlightItemId) return;
+
+    // Map tab → source data array to find which section the item is in
+    const tabToItems: Record<string, Array<{ id: string; section_title?: string | null }>> = {
+      summary: summaries,
+      frameworks: principles,
+      action_steps: actionSteps,
+      mast_content: declarations,
+      questions: questions,
+    };
+    const dataItems = tabToItems[activeTab] || [];
+    const targetItem = dataItems.find((i) => i.id === highlightItemId);
+    const sectionTitle = targetItem?.section_title || '__full_book__';
+
+    // If abridged, expand the section containing the target item
+    if (abridged) {
+      const secKey = `${activeTab}-${sectionTitle}`;
+      setExpandedAbridgedSections((prev) => {
+        if (prev.has(secKey)) return prev;
+        const next = new Set(prev);
+        next.add(secKey);
+        return next;
+      });
+    }
+
+    // Longer delay to let abridged expansion + render complete, then scroll
+    const timer = setTimeout(() => {
+      const el = document.querySelector(`[data-record-id="${highlightItemId}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('extraction-item--highlighted');
+        setTimeout(() => {
+          el.classList.remove('extraction-item--highlighted');
+          onHighlightComplete?.();
+        }, 2500);
+      } else {
+        onHighlightComplete?.();
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [highlightItemId]);
 
   // Abridged filter: respects per-section expansion.
   // Guarantees every section keeps at least 2 items even if none are key_point/hearted.
