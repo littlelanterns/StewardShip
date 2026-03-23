@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { X, Send, Copy, Anchor, Target, HelpCircle, CheckSquare, BarChart3 } from 'lucide-react';
-import type { DiscussionType, DiscussionAudience, BookDiscussionMessage } from '../../lib/types';
+import { X, Send, Copy, Anchor, Target, HelpCircle, CheckSquare, BarChart3, Clock, Trash2 } from 'lucide-react';
+import type { DiscussionType, DiscussionAudience, BookDiscussion, BookDiscussionMessage } from '../../lib/types';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../contexts/AuthContext';
 import './BookDiscussionModal.css';
@@ -39,6 +39,14 @@ interface BookDiscussionModalProps {
   onClose: () => void;
   /** Called when items are routed to another feature */
   onRouted?: (destination: string, count: number) => void;
+  /** Past discussions for history panel */
+  discussions?: BookDiscussion[];
+  /** Called when user selects a past discussion from history */
+  onSwitchDiscussion?: (discussion: BookDiscussion) => void;
+  /** Called when user deletes a discussion from history */
+  onDeleteDiscussion?: (discussionId: string) => void;
+  /** Map of manifest item IDs to titles for resolving book names in history */
+  itemTitleMap?: Record<string, string>;
 }
 
 export function BookDiscussionModal({
@@ -49,6 +57,10 @@ export function BookDiscussionModal({
   existingDiscussionId,
   onClose,
   onRouted,
+  discussions: pastDiscussions,
+  onSwitchDiscussion,
+  onDeleteDiscussion,
+  itemTitleMap,
 }: BookDiscussionModalProps) {
   const { user } = useAuthContext();
   const [discussionId, setDiscussionId] = useState<string | null>(existingDiscussionId || null);
@@ -60,8 +72,10 @@ export function BookDiscussionModal({
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [started, setStarted] = useState(!!existingDiscussionId);
+  const [showHistory, setShowHistory] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const historyRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // Auto-scroll to bottom on new messages
@@ -397,6 +411,18 @@ export function BookDiscussionModal({
     return () => document.removeEventListener('keydown', handleEscape);
   }, [handleEscape]);
 
+  // Close history dropdown on outside click
+  useEffect(() => {
+    if (!showHistory) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (historyRef.current && !historyRef.current.contains(e.target as Node)) {
+        setShowHistory(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showHistory]);
+
   const TypeIcon = DISCUSSION_TYPE_ICONS[discussionType];
   const titleText = bookTitles.length === 1
     ? bookTitles[0]
@@ -424,6 +450,79 @@ export function BookDiscussionModal({
               <option key={val} value={val}>{label}</option>
             ))}
           </select>
+
+          {pastDiscussions && pastDiscussions.length > 0 && onSwitchDiscussion && (
+            <div className="book-discussion-modal__history-wrapper" ref={historyRef}>
+              <button
+                type="button"
+                className="book-discussion-modal__history-btn"
+                onClick={() => setShowHistory((v) => !v)}
+                title="Past discussions"
+              >
+                <Clock size={18} />
+              </button>
+              {showHistory && (
+                <div className="book-discussion-modal__history-dropdown">
+                  <div className="book-discussion-modal__history-header">Past Discussions</div>
+                  <div className="book-discussion-modal__history-list">
+                    {pastDiscussions.map((disc) => {
+                      const typeLabel = disc.discussion_type === 'discuss' ? 'Discussion'
+                        : disc.discussion_type === 'generate_goals' ? 'Goals'
+                        : disc.discussion_type === 'generate_questions' ? 'Questions'
+                        : disc.discussion_type === 'generate_tasks' ? 'Tasks'
+                        : 'Tracker';
+                      const bookNames = itemTitleMap
+                        ? disc.manifest_item_ids.map((id) => itemTitleMap[id] || 'Unknown').join(', ')
+                        : null;
+                      const isCurrent = disc.id === discussionId;
+                      return (
+                        <div
+                          key={disc.id}
+                          className={`book-discussion-modal__history-item${isCurrent ? ' book-discussion-modal__history-item--active' : ''}`}
+                        >
+                          <button
+                            type="button"
+                            className="book-discussion-modal__history-item-btn"
+                            onClick={() => {
+                              if (!isCurrent) {
+                                onSwitchDiscussion(disc);
+                                setShowHistory(false);
+                              }
+                            }}
+                            disabled={isCurrent}
+                          >
+                            <span className="book-discussion-modal__history-item-type">{typeLabel}</span>
+                            <span className="book-discussion-modal__history-item-title">
+                              {disc.title || 'Untitled'}
+                            </span>
+                            {bookNames && (
+                              <span className="book-discussion-modal__history-item-book">{bookNames}</span>
+                            )}
+                            <span className="book-discussion-modal__history-item-date">
+                              {new Date(disc.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            </span>
+                          </button>
+                          {onDeleteDiscussion && !isCurrent && (
+                            <button
+                              type="button"
+                              className="book-discussion-modal__history-item-delete"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDeleteDiscussion(disc.id);
+                              }}
+                              title="Delete discussion"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           <button type="button" className="book-discussion-modal__close" onClick={onClose}>
             <X size={20} />

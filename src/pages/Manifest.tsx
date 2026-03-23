@@ -8,7 +8,7 @@ import { useManifest } from '../hooks/useManifest';
 import { useFrameworks } from '../hooks/useFrameworks';
 import { useManifestExtraction } from '../hooks/useManifestExtraction';
 import { useBookDiscussions } from '../hooks/useBookDiscussions';
-import type { ManifestItem, BookGenre, DiscussionType, DiscussionAudience } from '../lib/types';
+import type { ManifestItem, BookGenre, BookDiscussion, DiscussionType, DiscussionAudience } from '../lib/types';
 import { supabase } from '../lib/supabase';
 import { ManifestItemCard } from '../components/manifest/ManifestItemCard';
 import { ManifestItemDetail } from '../components/manifest/ManifestItemDetail';
@@ -598,6 +598,33 @@ export default function Manifest() {
     setDiscussionModal(null);
     fetchDiscussions();
   }, [fetchDiscussions]);
+
+  const handleSwitchDiscussion = useCallback((disc: BookDiscussion) => {
+    const titles = disc.manifest_item_ids.map((id) => {
+      const item = items.find((i) => i.id === id);
+      return item?.title || 'Unknown';
+    });
+    setDiscussionModal({
+      bookTitles: titles,
+      manifestItemIds: disc.manifest_item_ids,
+      discussionType: disc.discussion_type,
+      audience: disc.audience,
+      existingDiscussionId: disc.id,
+    });
+  }, [items]);
+
+  const handleDeleteDiscussionFromHistory = useCallback(async (discussionId: string) => {
+    await deleteDiscussion(discussionId);
+  }, [deleteDiscussion]);
+
+  // Build a map of manifest item IDs to titles for the history panel
+  const itemTitleMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const item of items) {
+      map[item.id] = item.title;
+    }
+    return map;
+  }, [items]);
 
   // --- Extraction handlers (wired to useManifestExtraction) ---
 
@@ -1195,6 +1222,10 @@ export default function Manifest() {
             initialAudience={discussionModal.audience}
             existingDiscussionId={discussionModal.existingDiscussionId}
             onClose={handleDiscussionClosed}
+            discussions={discussions}
+            onSwitchDiscussion={handleSwitchDiscussion}
+            onDeleteDiscussion={handleDeleteDiscussionFromHistory}
+            itemTitleMap={itemTitleMap}
           />
         )}
       </div>

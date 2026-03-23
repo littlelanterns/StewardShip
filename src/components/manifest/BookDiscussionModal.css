@@ -117,6 +117,156 @@
   background-color: var(--color-bg-secondary);
 }
 
+/* History dropdown */
+
+.book-discussion-modal__history-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.book-discussion-modal__history-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: none;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+}
+
+.book-discussion-modal__history-btn:hover {
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-secondary);
+}
+
+.book-discussion-modal__history-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 210;
+  margin-top: 4px;
+  width: 320px;
+  max-height: 360px;
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.book-discussion-modal__history-header {
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: var(--font-heading);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.book-discussion-modal__history-list {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.book-discussion-modal__history-item {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--color-border-light, var(--color-border));
+}
+
+.book-discussion-modal__history-item:last-child {
+  border-bottom: none;
+}
+
+.book-discussion-modal__history-item--active {
+  background: var(--color-bg-secondary);
+}
+
+.book-discussion-modal__history-item-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.book-discussion-modal__history-item-btn:not(:disabled):hover {
+  background: var(--color-bg-secondary);
+}
+
+.book-discussion-modal__history-item-btn:disabled {
+  cursor: default;
+  opacity: 0.8;
+}
+
+.book-discussion-modal__history-item-type {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-cognac, var(--color-text-secondary));
+  font-weight: 600;
+}
+
+.book-discussion-modal__history-item-title {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.book-discussion-modal__history-item-book {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.book-discussion-modal__history-item-date {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+
+.book-discussion-modal__history-item-delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-right: var(--spacing-xs);
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+.book-discussion-modal__history-item-delete:hover {
+  opacity: 1;
+  color: #c0392b;
+  background: rgba(192, 57, 43, 0.08);
+}
+
+@media (max-width: 480px) {
+  .book-discussion-modal__history-dropdown {
+    width: 280px;
+    right: -40px;
+  }
+}
+
 /* Messages area */
 
 .book-discussion-modal__messages {
