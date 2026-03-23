@@ -452,6 +452,41 @@ export default function Manifest() {
     setInitialExtractionTab(null);
   }, []);
 
+  // Pick up cross-page navigation from Extractions/Favorites pages
+  const crossNavHandledRef = useRef(false);
+  useEffect(() => {
+    if (crossNavHandledRef.current || !items.length) return;
+    try {
+      const raw = sessionStorage.getItem('manifest-search-navigate');
+      if (raw) {
+        sessionStorage.removeItem('manifest-search-navigate');
+        crossNavHandledRef.current = true;
+        const { manifestItemId, tab, recordId } = JSON.parse(raw);
+        setInitialExtractionTab(tab);
+        setHighlightItemId(recordId);
+        const existing = items.find((i) => i.id === manifestItemId);
+        if (existing) {
+          handleSelectItem(existing);
+        } else {
+          fetchItemDetail(manifestItemId).then((detail) => {
+            if (detail) {
+              setSelectedItem(detail);
+              setViewMode('detail');
+              ssSet('manifest-selected-item', detail.id);
+              ssSet('manifest-selected-title', detail.title);
+              if (detail.processing_status === 'completed') {
+                extraction.fetchSummaries(detail.id);
+                extraction.fetchDeclarations(detail.id);
+                extraction.fetchActionSteps(detail.id);
+                extraction.fetchQuestions(detail.id);
+              }
+            }
+          });
+        }
+      }
+    } catch { /* */ }
+  }, [items, handleSelectItem, fetchItemDetail, extraction]);
+
   const handleBack = useCallback(() => {
     setSelectedItem(null);
     setParentItem(null);

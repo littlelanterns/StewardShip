@@ -2137,7 +2137,7 @@ export function ExtractionsView({ items, onBack, favoritesMode, collectionName, 
                 </span>
               </div>
             </button>
-            {booksExpanded && extractedItems.length > 4 && (
+            {booksExpanded && (
               <div className="extractions-view__search">
                 <Search size={14} />
                 <input
