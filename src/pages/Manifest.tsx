@@ -1228,6 +1228,20 @@ export default function Manifest() {
             itemTitleMap={itemTitleMap}
           />
         )}
+
+        {/* Search FAB + modal on detail view */}
+        <SearchFab onClick={() => setShowSemanticSearch(true)} />
+        {showSemanticSearch && (
+          <div className="manifest-page__search-modal-backdrop" onClick={() => setShowSemanticSearch(false)}>
+            <div className="manifest-page__search-modal" onClick={(e) => e.stopPropagation()}>
+              <SemanticSearch
+                onClose={() => setShowSemanticSearch(false)}
+                onNavigateToResult={handleNavigateToResult}
+                persistedState={searchStateRef}
+              />
+            </div>
+          </div>
+        )}
       </div>
     );
   }
