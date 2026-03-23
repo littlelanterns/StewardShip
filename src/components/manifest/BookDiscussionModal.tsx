@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { X, Send, Copy, Anchor, Target, HelpCircle, CheckSquare, BarChart3, Clock, Trash2 } from 'lucide-react';
 import type { DiscussionType, DiscussionAudience, BookDiscussion, BookDiscussionMessage } from '../../lib/types';
 import { supabase } from '../../lib/supabase';
@@ -73,10 +73,30 @@ export function BookDiscussionModal({
   const [toast, setToast] = useState<string | null>(null);
   const [started, setStarted] = useState(!!existingDiscussionId);
   const [showHistory, setShowHistory] = useState(false);
+  const [selfFetchedDiscussions, setSelfFetchedDiscussions] = useState<BookDiscussion[]>([]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const historyRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Fetch all discussions on mount so history is always available
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('book_discussions')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('updated_at', { ascending: false })
+      .then(({ data }) => {
+        if (data) setSelfFetchedDiscussions(data);
+      });
+  }, [user]);
+
+  // Use passed-in discussions if available, otherwise use self-fetched
+  const allDiscussions = useMemo(() => {
+    if (pastDiscussions && pastDiscussions.length > 0) return pastDiscussions;
+    return selfFetchedDiscussions;
+  }, [pastDiscussions, selfFetchedDiscussions]);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -451,7 +471,7 @@ export function BookDiscussionModal({
             ))}
           </select>
 
-          {pastDiscussions && pastDiscussions.length > 0 && onSwitchDiscussion && (
+          {allDiscussions.length > 0 && (
             <div className="book-discussion-modal__history-wrapper" ref={historyRef}>
               <button
                 type="button"
@@ -465,7 +485,7 @@ export function BookDiscussionModal({
                 <div className="book-discussion-modal__history-dropdown">
                   <div className="book-discussion-modal__history-header">Past Discussions</div>
                   <div className="book-discussion-modal__history-list">
-                    {pastDiscussions.map((disc) => {
+                    {allDiscussions.map((disc) => {
                       const typeLabel = disc.discussion_type === 'discuss' ? 'Discussion'
                         : disc.discussion_type === 'generate_goals' ? 'Goals'
                         : disc.discussion_type === 'generate_questions' ? 'Questions'
@@ -485,7 +505,15 @@ export function BookDiscussionModal({
                             className="book-discussion-modal__history-item-btn"
                             onClick={() => {
                               if (!isCurrent) {
-                                onSwitchDiscussion(disc);
+                                if (onSwitchDiscussion) {
+                                  onSwitchDiscussion(disc);
+                                } else {
+                                  // Built-in switch: load the discussion inline
+                                  setDiscussionId(disc.id);
+                                  setAudience(disc.audience);
+                                  setStarted(true);
+                                  loadExistingDiscussion(disc.id);
+                                }
                                 setShowHistory(false);
                               }
                             }}
@@ -502,13 +530,20 @@ export function BookDiscussionModal({
                               {new Date(disc.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                             </span>
                           </button>
-                          {onDeleteDiscussion && !isCurrent && (
+                          {!isCurrent && (
                             <button
                               type="button"
                               className="book-discussion-modal__history-item-delete"
-                              onClick={(e) => {
+                              onClick={async (e) => {
                                 e.stopPropagation();
-                                onDeleteDiscussion(disc.id);
+                                if (onDeleteDiscussion) {
+                                  onDeleteDiscussion(disc.id);
+                                } else if (user) {
+                                  // Built-in delete
+                                  await supabase.from('book_discussion_messages').delete().eq('discussion_id', disc.id);
+                                  await supabase.from('book_discussions').delete().eq('id', disc.id).eq('user_id', user.id);
+                                  setSelfFetchedDiscussions((prev) => prev.filter((d) => d.id !== disc.id));
+                                }
                               }}
                               title="Delete discussion"
                             >
